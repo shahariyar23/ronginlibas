@@ -2,13 +2,11 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useAuth } from '@/context/AuthContext';
 import { Logo } from './Logo';
 import {
-  Search,
   ShoppingCart,
   Heart,
   User,
@@ -29,18 +27,6 @@ export const Header: React.FC = () => {
   const { wishlist } = useWishlist();
   const { user, isLoggedIn } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
-  const router = useRouter();
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/shop?q=${encodeURIComponent(searchQuery.trim())}`);
-      setSearchOpen(false);
-      setSearchQuery('');
-    }
-  };
 
   return (
     <>
@@ -88,7 +74,7 @@ export const Header: React.FC = () => {
           </div>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-8 font-sans text-xs tracking-[0.15em] uppercase font-bold text-[#404945]">
+          <nav className="hidden lg:flex items-center gap-7 xl:gap-8 font-sans text-xs tracking-[0.15em] uppercase font-bold text-[#404945]">
             <Link
               href="/shop"
               className="hover:text-[#073a2d] transition-colors py-2 relative group font-bold"
@@ -104,57 +90,36 @@ export const Header: React.FC = () => {
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#073a2d] transition-all group-hover:w-full" />
             </Link>
             <Link
-              href="/shop?category=panjabi"
+              href="/shop"
               className="hover:text-[#073a2d] transition-colors py-2 relative group font-bold"
             >
-              <span className="font-bold">PANJABI</span>
+              <span className="font-bold">COLLECTIONS</span>
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#073a2d] transition-all group-hover:w-full" />
             </Link>
             <Link
-              href="/shop?category=shirts"
+              href="/shop?filter=bestseller"
               className="hover:text-[#073a2d] transition-colors py-2 relative group font-bold"
             >
-              <span className="font-bold">SHIRTS</span>
+              <span className="font-bold">BEST SELLERS</span>
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#073a2d] transition-all group-hover:w-full" />
             </Link>
             <Link
-              href="/shop?category=polos"
-              className="hover:text-[#073a2d] transition-colors py-2 relative group font-bold"
+              href="/shop?filter=offers"
+              className="hover:text-[#073a2d] transition-colors py-2 relative group font-bold text-[#c79a45]"
             >
-              <span className="font-bold">POLOS</span>
-              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#073a2d] transition-all group-hover:w-full" />
+              <span className="font-bold">OFFERS</span>
+              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#c79a45] transition-all group-hover:w-full" />
             </Link>
             <div className="relative flex items-center font-bold">
-              <span className="text-[#404945]/60 cursor-not-allowed font-bold">WOMEN</span>
+              <span className="text-[#404945]/60 cursor-not-allowed font-bold">WOMAN</span>
               <span className="ml-1.5 bg-[#eae8e1] text-[#073a2d] text-[9px] px-1.5 py-0.5 font-bold uppercase tracking-wider">
                 Soon
               </span>
             </div>
           </nav>
 
-          {/* Right Action Icons & Search */}
+          {/* Right Action Icons */}
           <div className="flex items-center gap-3 sm:gap-4">
-            {/* Desktop Search Bar */}
-            <form onSubmit={handleSearch} className="hidden md:flex items-center relative">
-              <input
-                type="text"
-                placeholder="Search bespoke atelier..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-48 lg:w-60 bg-white text-[#1b1c18] font-sans text-xs pl-9 pr-4 py-2 border border-[#deddd3] focus:outline-none focus:border-[#073a2d] placeholder:text-[#717975] transition-all"
-              />
-              <Search className="w-4 h-4 text-[#717975] absolute left-3 pointer-events-none" />
-            </form>
-
-            {/* Mobile Search Button */}
-            <button
-              onClick={() => setSearchOpen(!searchOpen)}
-              className="md:hidden text-[#1b1c18] hover:text-[#073a2d] p-1.5"
-              aria-label="Search"
-            >
-              <Search className="w-5 h-5" />
-            </button>
-
             {/* Patron Sanctuary Profile / Sign In */}
             <Link
               href={isLoggedIn ? "/profile" : "/login"}
@@ -209,25 +174,6 @@ export const Header: React.FC = () => {
             </Button>
           </div>
         </div>
-
-        {/* Mobile Search Overlay */}
-        {searchOpen && (
-          <div className="md:hidden p-3 bg-white border-t border-[#deddd3]">
-            <form onSubmit={handleSearch} className="flex gap-2">
-              <input
-                type="text"
-                autoFocus
-                placeholder="Search panjabis, polos, shirts..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 bg-[#fbf9f2] text-xs px-3 py-2 border border-[#deddd3] focus:outline-none focus:border-[#073a2d]"
-              />
-              <Button type="submit" size="sm" className="bg-[#073a2d] text-xs px-4">
-                Search
-              </Button>
-            </form>
-          </div>
-        )}
       </header>
 
       {/* Mobile Off-Canvas Menu */}
@@ -303,49 +249,47 @@ export const Header: React.FC = () => {
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-bold"
                 >
-                  <span className="font-bold">All Men's Collection</span>
-                  <ArrowRight className="w-4 h-4 text-[#c79a45]" />
-                </Link>
-                <Link
-                  href="/shop?category=panjabi"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-bold"
-                >
-                  <span className="font-bold">Panjabi & Silk Weaves</span>
-                  <ArrowRight className="w-4 h-4 text-[#c79a45]" />
-                </Link>
-                <Link
-                  href="/shop?category=shirts"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-bold"
-                >
-                  <span className="font-bold">Tailored Shirts</span>
-                  <ArrowRight className="w-4 h-4 text-[#c79a45]" />
-                </Link>
-                <Link
-                  href="/shop?category=polos"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-bold"
-                >
-                  <span className="font-bold">Mercerized Polos</span>
-                  <ArrowRight className="w-4 h-4 text-[#c79a45]" />
-                </Link>
-                <Link
-                  href="/shop?category=trousers"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-bold"
-                >
-                  <span className="font-bold">Gurkha & Chino Trousers</span>
+                  <span className="font-bold">MEN</span>
                   <ArrowRight className="w-4 h-4 text-[#c79a45]" />
                 </Link>
                 <Link
                   href="/shop?filter=new"
                   onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-bold"
+                >
+                  <span className="font-bold">NEW ARRIVALS</span>
+                  <ArrowRight className="w-4 h-4 text-[#c79a45]" />
+                </Link>
+                <Link
+                  href="/shop"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-bold"
+                >
+                  <span className="font-bold">COLLECTIONS</span>
+                  <ArrowRight className="w-4 h-4 text-[#c79a45]" />
+                </Link>
+                <Link
+                  href="/shop?filter=bestseller"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-bold"
+                >
+                  <span className="font-bold">BEST SELLERS</span>
+                  <ArrowRight className="w-4 h-4 text-[#c79a45]" />
+                </Link>
+                <Link
+                  href="/shop?filter=offers"
+                  onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-[#c79a45] font-bold"
                 >
-                  <span className="font-bold">Fresh Off The Loom (New)</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <span className="font-bold">OFFERS</span>
+                  <ArrowRight className="w-4 h-4 text-[#c79a45]" />
                 </Link>
+                <div className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-bold">
+                  <span className="text-[#404945]/60 font-bold">WOMAN</span>
+                  <span className="bg-[#eae8e1] text-[#073a2d] text-[10px] px-2 py-0.5 font-bold uppercase tracking-wider">
+                    Soon
+                  </span>
+                </div>
               </nav>
             </div>
 

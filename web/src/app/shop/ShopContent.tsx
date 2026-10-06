@@ -87,6 +87,12 @@ export const ShopContent: React.FC = () => {
       // Special presets from URL
       if (initialFilter === 'new' && !p.isNewArrival) return false;
       if (initialFilter === 'bestseller' && !p.isBestSeller) return false;
+      if (
+        (initialFilter === 'offers' || initialFilter === 'sale') &&
+        (!p.originalPrice || p.originalPrice <= p.price)
+      ) {
+        return false;
+      }
 
       // Category
       if (selectedCategory !== 'all' && p.category !== selectedCategory) {
@@ -354,14 +360,28 @@ export const ShopContent: React.FC = () => {
             </Link>
             <span>/</span>
             <span className="text-[#073a2d] font-semibold">
-              {selectedCategory !== 'all'
+              {initialFilter === 'new'
+                ? 'New Arrivals'
+                : initialFilter === 'bestseller'
+                ? 'Best Sellers'
+                : initialFilter === 'offers' || initialFilter === 'sale'
+                ? 'Offers & Archive'
+                : selectedCategory !== 'all'
                 ? categories.find((c) => c.id === selectedCategory)?.label
                 : 'All Sartorial Weaves'}
             </span>
           </nav>
 
           <h1 className="font-serif text-3xl sm:text-5xl font-normal text-[#073a2d] mb-3">
-            MEN’S COLLECTION
+            {initialFilter === 'new'
+              ? 'NEW ARRIVALS'
+              : initialFilter === 'bestseller'
+              ? 'BEST SELLERS'
+              : initialFilter === 'offers' || initialFilter === 'sale'
+              ? 'EXCLUSIVE OFFERS'
+              : selectedCategory !== 'all'
+              ? categories.find((c) => c.id === selectedCategory)?.label.toUpperCase()
+              : 'MEN’S COLLECTION'}
           </h1>
           <p className="font-sans text-xs sm:text-sm text-[#69726d] max-w-2xl font-light">
             Handcrafted Bengal panjabis, Egyptian long-staple cotton shirts, and modern architectural bottom wear designed for tropical ease and aristocratic presence.
