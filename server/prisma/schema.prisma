@@ -1,0 +1,306 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  CUSTOMER
+}
+
+enum Gender {
+  MEN
+  WOMEN
+  UNISEX
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  PACKED
+  SHIPPED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+  RETURN_REQUESTED
+  RETURNED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  COD
+  BKASH
+  NAGAD
+  CARD
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  HIDDEN
+}
+
+enum InventoryTransactionType {
+  PURCHASE
+  SALE
+  RETURN
+  ADJUSTMENT
+  RESTOCK
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         Role     @default(ADMIN)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  inventoryTransactions InventoryTransaction[]
+
+  @@map("users")
+}
+
+model Customer {
+  id           String    @id @default(uuid())
+  email        String?   @unique
+  phone        String    @unique
+  firstName    String
+  lastName     String?
+  passwordHash String?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  addresses Address[]
+  orders    Order[]
+  reviews   Review[]
+
+  @@map("customers")
+}
+
+model Address {
+  id           String   @id @default(uuid())
+  customerId   String
+  customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  division     String   // e.g. Dhaka, Chittagong
+  postalCode   String?
+  country      String   @default("Bangladesh")
+  isDefault    Boolean  @default(false)
+  phone        String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("addresses")
+}
+
+model Category {
+  id          String     @id @default(uuid())
+  name        String
+  slug        String     @unique
+  description String?
+  image       String?
+  parentId    String?
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Category[] @relation("CategoryHierarchy")
+  isActive    Boolean    @default(true)
+  sortOrder   Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id             String   @id @default(uuid())
+  name           String
+  slug           String   @unique
+  description    String?
+  price          Decimal  @db.Decimal(10, 2)
+  compareAtPrice Decimal? @db.Decimal(10, 2)
+  costPrice      Decimal? @db.Decimal(10, 2)
+  sku            String   @unique
+  gender         Gender   @default(MEN)
+  fabric         String?
+  fit            String?
+  isActive       Boolean  @default(true)
+  isFeatured     Boolean  @default(false)
+  isNewArrival   Boolean  @default(true)
+  isBestSeller   Boolean  @default(false)
+  categoryId     String
+  category       Category @relation(fields: [categoryId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  variants   ProductVariant[]
+  images     ProductImage[]
+  reviews    Review[]
+  orderItems OrderItem[]
+
+  @@map("products")
+}
+
+model ProductVariant {
+  id            String   @id @default(uuid())
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size          String   // e.g. 38, 40, 42, 44, S, M, L, XL
+  color         String   // e.g. Heritage Olive, Midnight Navy
+  sku           String   @unique
+  stock         Int      @default(0)
+  priceOverride Decimal? @db.Decimal(10, 2)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  inventoryTransactions InventoryTransaction[]
+  orderItems            OrderItem[]
+
+  @@unique([productId, size, color])
+  @@map("product_variants")
+}
+
+model ProductImage {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  altText   String?
+  sortOrder Int      @default(0)
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("product_images")
+}
+
+model InventoryTransaction {
+  id             String                   @id @default(uuid())
+  variantId      String
+  variant        ProductVariant           @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantityChange Int                      // e.g. +10, -2
+  previousStock  Int
+  newStock       Int
+  type           InventoryTransactionType
+  note           String?
+  userId         String?
+  user           User?                    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt      DateTime                 @default(now())
+
+  @@map("inventory_transactions")
+}
+
+model Order {
+  id              String        @id @default(uuid())
+  orderNumber     String        @unique // e.g. #RL1001
+  customerId      String
+  customer        Customer      @relation(fields: [customerId], references: [id])
+  status          OrderStatus   @default(PENDING)
+  paymentStatus   PaymentStatus @default(PENDING)
+  paymentMethod   PaymentMethod @default(COD)
+  subtotal        Decimal       @db.Decimal(10, 2)
+  discountAmount  Decimal       @default(0.00) @db.Decimal(10, 2)
+  deliveryCharge  Decimal       @default(80.00) @db.Decimal(10, 2)
+  totalAmount     Decimal       @db.Decimal(10, 2)
+  shippingAddress Json
+  customerNotes   String?
+  adminNotes      String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  items OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String         @id @default(uuid())
+  orderId     String
+  order       Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product        @relation(fields: [productId], references: [id])
+  variantId   String
+  variant     ProductVariant @relation(fields: [variantId], references: [id])
+  productName String
+  variantName String
+  sku         String
+  unitPrice   Decimal        @db.Decimal(10, 2)
+  quantity    Int
+  subtotal    Decimal        @db.Decimal(10, 2)
+  createdAt   DateTime       @default(now())
+
+  @@map("order_items")
+}
+
+model Coupon {
+  id                 String     @id @default(uuid())
+  code               String     @unique
+  description        String?
+  type               CouponType @default(PERCENTAGE)
+  value              Decimal    @db.Decimal(10, 2)
+  minimumOrderAmount Decimal    @default(0.00) @db.Decimal(10, 2)
+  maximumDiscount    Decimal?   @db.Decimal(10, 2)
+  startDate          DateTime   @default(now())
+  expiryDate         DateTime
+  usageLimit         Int?
+  usageCount         Int        @default(0)
+  isActive           Boolean    @default(true)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  @@map("coupons")
+}
+
+model Review {
+  id         String       @id @default(uuid())
+  customerId String
+  customer   Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  rating     Int          // 1-5
+  comment    String
+  status     ReviewStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@map("reviews")
+}
+
+model StoreSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  group       String   @default("general") // general, delivery, payment
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("store_settings")
+}

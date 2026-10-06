@@ -1,0 +1,61 @@
+import { PrismaService } from '../../prisma/prisma.service.js';
+import { UpdateSettingsDto } from '../dto/update-settings.dto.js';
+export declare class SettingsService {
+    private readonly prisma;
+    constructor(prisma: PrismaService);
+    private readonly defaultSettings;
+    getSettings(): Promise<Record<string, any> | {
+        storeName: string;
+        logo: string;
+        phone: string;
+        whatsapp: string;
+        email: string;
+        website: string;
+        facebook: string;
+        currency: string;
+        currencySymbol: string;
+        dhakaDeliveryCharge: number;
+        outsideDhakaDeliveryCharge: number;
+        freeDeliveryThreshold: number;
+        codEnabled: boolean;
+        bkashEnabled: boolean;
+        bkashWallet: string;
+        nagadEnabled: boolean;
+        nagadWallet: string;
+        storeStatus: string;
+    }>;
+    getPublicSettings(): Promise<{
+        storeName: any;
+        logo: any;
+        phone: any;
+        whatsapp: any;
+        currency: any;
+        currencySymbol: any;
+        dhakaDeliveryCharge: any;
+        outsideDhakaDeliveryCharge: any;
+        freeDeliveryThreshold: any;
+        codEnabled: any;
+        bkashEnabled: any;
+        nagadEnabled: any;
+    }>;
+    updateSettings(dto: UpdateSettingsDto): Promise<Record<string, any> | {
+        storeName: string;
+        logo: string;
+        phone: string;
+        whatsapp: string;
+        email: string;
+        website: string;
+        facebook: string;
+        currency: string;
+        currencySymbol: string;
+        dhakaDeliveryCharge: number;
+        outsideDhakaDeliveryCharge: number;
+        freeDeliveryThreshold: number;
+        codEnabled: boolean;
+        bkashEnabled: boolean;
+        bkashWallet: string;
+        nagadEnabled: boolean;
+        nagadWallet: string;
+        storeStatus: string;
+    }>;
+}

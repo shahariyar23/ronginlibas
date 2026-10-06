@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: rongin-libas-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: rongin_libas
+    ports:
+      - "5432:5432"
+    volumes:
+      - rongin_libas_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  rongin_libas_postgres_data:

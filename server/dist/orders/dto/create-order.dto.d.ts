@@ -1,0 +1,19 @@
+export declare class CreateOrderItemDto {
+    productId: string;
+    variantId: string;
+    quantity: number;
+}
+export declare class ShippingAddressDto {
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    division: string;
+    phone: string;
+}
+export declare class CreateOrderDto {
+    items: CreateOrderItemDto[];
+    shippingAddress: ShippingAddressDto;
+    paymentMethod?: 'COD' | 'BKASH' | 'NAGAD' | 'CARD';
+    couponCode?: string;
+    customerNotes?: string;
+}
