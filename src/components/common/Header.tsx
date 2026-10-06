@@ -46,8 +46,8 @@ export const Header: React.FC = () => {
     <>
       <header className="sticky top-0 left-0 right-0 z-40 bg-[#fbf9f2]/95 backdrop-blur-md border-b border-[#deddd3]/80 shadow-[0_1px_8px_rgba(0,0,0,0.03)] transition-all">
         {/* Top Announcement Bar */}
-        <div className="bg-[#073a2d] text-[#ffffff] py-2 px-4 text-center overflow-hidden">
-          <div className="max-w-7xl mx-auto flex items-center justify-between font-sans text-[11px] tracking-[0.16em] uppercase">
+        <div className="bg-[#073a2d] text-[#ffffff] py-1.5 px-4 text-center overflow-hidden">
+          <div className="max-w-7xl mx-auto flex items-center justify-between font-sans text-[10.5px] tracking-[0.16em] uppercase">
             <span className="hidden md:inline-flex items-center gap-2 text-[#76a493]">
               <Sparkles className="w-3 h-3 text-[#c79a45]" />
               Haute Couture & Bespoke Menswear
@@ -77,7 +77,7 @@ export const Header: React.FC = () => {
         </div>
 
         {/* Main Navigation Bar */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-18 flex items-center justify-between gap-4">
           {/* Left: Mobile hamburger & Logo */}
           <div className="flex items-center gap-4">
             <button
