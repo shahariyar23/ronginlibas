@@ -103,7 +103,7 @@ export const LoginClient: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen pt-28 pb-20 bg-[#fbf9f2]">
+    <div className="min-h-screen pt-36 sm:pt-40 pb-20 bg-[#fbf9f2]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Breadcrumb */}
         <nav className="mb-6 flex items-center gap-2 text-xs font-sans uppercase tracking-widest text-[#717975]">

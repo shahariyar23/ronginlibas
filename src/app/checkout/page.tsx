@@ -110,7 +110,7 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="w-full pt-28 pb-24 bg-[#fbf9f2]">
+    <div className="w-full pt-36 sm:pt-40 pb-24 bg-[#fbf9f2]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header Breadcrumb */}
         <div className="mb-8">

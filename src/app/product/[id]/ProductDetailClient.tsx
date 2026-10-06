@@ -81,7 +81,7 @@ export const ProductDetailClient: React.FC<ProductDetailClientProps> = ({
   };
 
   return (
-    <div className="w-full pt-28 pb-24 bg-[#fbf9f2]">
+    <div className="w-full pt-36 sm:pt-40 pb-24 bg-[#fbf9f2]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-[11px] font-sans uppercase tracking-widest text-[#717975] mb-8">
