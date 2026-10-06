@@ -44,7 +44,7 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-40 bg-[#fbf9f2]/95 backdrop-blur-md border-b border-[#deddd3]/80 shadow-[0_1px_8px_rgba(0,0,0,0.03)] transition-all">
+      <header className="sticky top-0 left-0 right-0 z-40 bg-[#fbf9f2]/95 backdrop-blur-md border-b border-[#deddd3]/80 shadow-[0_1px_8px_rgba(0,0,0,0.03)] transition-all">
         {/* Top Announcement Bar */}
         <div className="bg-[#073a2d] text-[#ffffff] py-2 px-4 text-center overflow-hidden">
           <div className="max-w-7xl mx-auto flex items-center justify-between font-sans text-[11px] tracking-[0.16em] uppercase">

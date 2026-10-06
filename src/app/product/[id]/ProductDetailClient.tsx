@@ -155,7 +155,7 @@ export const ProductDetailClient: React.FC<ProductDetailClientProps> = ({
   };
 
   return (
-    <div className="w-full pt-36 sm:pt-40 pb-24 bg-[#fbf9f2]">
+    <div className="w-full pt-8 sm:pt-10 pb-24 bg-[#fbf9f2]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         {/* Subtle Breadcrumb & Artisan Reference Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 text-xs font-sans uppercase tracking-wider text-[#717975] pb-2 border-b border-[#deddd3]/60">

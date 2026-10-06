@@ -176,7 +176,7 @@ export const OrdersClient: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen pt-36 sm:pt-40 pb-24 bg-[#fbf9f2]">
+    <div className="min-h-screen pt-8 sm:pt-10 pb-24 bg-[#fbf9f2]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         {/* Breadcrumb & Navigation */}
         <nav className="flex items-center gap-2 text-xs font-sans uppercase tracking-widest text-[#717975]">

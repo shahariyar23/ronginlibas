@@ -6,13 +6,13 @@ import { cn } from '@/lib/utils';
 
 export const HeroBanner: React.FC = () => {
   return (
-    <section className="relative w-full min-h-[92vh] flex items-center justify-start overflow-hidden bg-[#00231a] pt-24">
+    <section className="relative w-full min-h-[calc(100vh-114px)] flex items-center justify-start overflow-hidden bg-[#00231a] py-8 sm:py-12 lg:py-16">
       {/* Background Hero Image with atmospheric overlays */}
       <div className="absolute inset-0 z-0">
         <img
           src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-PIsbLozCP5fnpvyZ-k60kSTLBh4QX1LmsfLPxmt-js88mmKtE2qsMWHQRxTclOzk2nH_Edm1dm6DiBTlzgwzjmEcVhTDrp9Z-lWVGQ_H6ybcjFhK-CKWG5fqds4Zg3GI_epoqzp89xlIJoGPexlm7WJtsBd-gLnyAfwvodB74CkRDWpiY_khKFKpNLI3ZeK7GK2_EaNpmgAxyp1vNVSOo90BFu53oKE_Cc7rG3rsCZ4kwW1HJcC7kQ"
           alt="Rongin Libas Aristocratic Panjabi Atelier"
-          className="w-full h-full object-cover object-[center_20%] opacity-85 scale-100 transition-transform duration-1000 ease-out"
+          className="w-full h-full object-cover object-[center_top] sm:object-[center_5%] opacity-85 scale-100 transition-transform duration-1000 ease-out"
         />
         {/* Editorial gradient scrims */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#00231a] via-[#00231a]/70 to-transparent" />
@@ -20,8 +20,8 @@ export const HeroBanner: React.FC = () => {
       </div>
 
       {/* Hero Content Canvas */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 w-full flex flex-col justify-between min-h-[75vh]">
-        <div className="max-w-2xl mt-8">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 w-full flex flex-col justify-between min-h-[calc(100vh-200px)]">
+        <div className="max-w-2xl mt-4 sm:mt-6 mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#073a2d]/80 border border-[#c79a45]/40 text-[#c79a45] text-xs font-sans uppercase tracking-[0.25em] mb-6 backdrop-blur-sm">
             <span>Spring / Festive Collection '25</span>
           </div>

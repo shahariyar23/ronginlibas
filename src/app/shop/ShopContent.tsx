@@ -339,7 +339,7 @@ export const ShopContent: React.FC = () => {
   );
 
   return (
-    <div className="w-full pt-36 sm:pt-40 pb-24 bg-[#fbf9f2]">
+    <div className="w-full pb-24 bg-[#fbf9f2]">
       {/* Editorial Top Orientation */}
       <div className="w-full bg-[#f0eee7] border-b border-[#deddd3] py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
