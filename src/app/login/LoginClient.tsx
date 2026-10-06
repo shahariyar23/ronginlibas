@@ -195,12 +195,9 @@ export const LoginClient: React.FC = () => {
           <div className="lg:col-span-7 p-6 sm:p-10 md:p-12 flex flex-col justify-center bg-white">
             {/* Crest & Title */}
             <div className="text-center pb-8">
-              <div className="flex justify-center mb-3">
-                <Logo className="h-12 w-auto" />
+              <div className="flex justify-center mb-4">
+                <Logo className="h-11 w-auto" />
               </div>
-              <p className="font-sans text-[11px] uppercase tracking-[0.25em] text-[#c79a45] font-bold">
-                Cloth Your Identity
-              </p>
               <h2 className="font-serif text-2xl sm:text-3xl text-[#073a2d] mt-1 font-normal">
                 Patron Sanctuary Portal
               </h2>

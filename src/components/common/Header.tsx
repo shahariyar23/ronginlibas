@@ -77,7 +77,7 @@ export const Header: React.FC = () => {
         </div>
 
         {/* Main Navigation Bar */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-18 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-20 flex items-center justify-between gap-4">
           {/* Left: Mobile hamburger & Logo */}
           <div className="flex items-center gap-4">
             <button
@@ -87,7 +87,7 @@ export const Header: React.FC = () => {
             >
               <Menu className="w-6 h-6" />
             </button>
-            <Logo className="h-10 w-auto" />
+            <Logo className="h-9 sm:h-10 w-auto" />
           </div>
 
           {/* Desktop Navigation Links */}
