@@ -2,7 +2,7 @@ export interface Product {
   id: string;
   slug: string;
   name: string;
-  category: 'panjabi' | 'shirts' | 'polos' | 't-shirts' | 'trousers' | 'casual';
+  category: 'panjabi' | 'shirts' | 'polos' | 't-shirts' | 'trousers' | 'casual' | 'accessories';
   categoryLabel: string;
   price: number;
   originalPrice?: number;
@@ -14,7 +14,7 @@ export interface Product {
   fabricOrigin?: string;
   fit: string;
   careGuide: string[];
-  sizes: ('S' | 'M' | 'L' | 'XL' | 'XXL' | 'Bespoke')[];
+  sizes: ('S' | 'M' | 'L' | 'XL' | 'XXL' | 'Bespoke' | 'Standard')[];
   colors: {
     name: string;
     hex: string;
