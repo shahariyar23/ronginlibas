@@ -15,7 +15,7 @@ export const Logo: React.FC<LogoProps> = ({
   return (
     <Link
       href="/"
-      className="inline-flex flex-col items-start group focus:outline-none select-none py-1"
+      className="inline-flex flex-col items-start focus:outline-none select-none py-1 cursor-pointer"
       aria-label="Rongin Libas — Cloth Your Identity"
     >
       {/* Top Section: Logo Emblem + Brand Name (Rongin on top, Libas below) */}
@@ -24,16 +24,14 @@ export const Logo: React.FC<LogoProps> = ({
         <div
           className={
             inverted
-              ? 'p-1.5 bg-[#fbf9f2] rounded-sm border border-[#c79a45]/60 shadow-[0_2px_8px_rgba(0,0,0,0.35)] inline-flex items-center justify-center transition-transform duration-300 group-hover:scale-105'
+              ? 'p-1.5 bg-[#fbf9f2] rounded-sm border border-[#c79a45]/60 shadow-[0_2px_8px_rgba(0,0,0,0.35)] inline-flex items-center justify-center'
               : 'inline-flex items-center justify-center'
           }
         >
           <img
             src="/logo.svg"
             alt="Rongin Libas Emblem"
-            className={`${className} object-contain ${
-              inverted ? '' : 'transition-transform duration-300 group-hover:scale-105'
-            }`}
+            className={`${className} object-contain`}
           />
         </div>
 

@@ -65,7 +65,7 @@ export const Header: React.FC = () => {
                 href="https://wa.me/8801916664011"
                 target="_blank"
                 rel="noreferrer"
-                className="hover:text-[#c79a45] transition-colors hidden md:inline"
+                className="hover:text-[#c79a45] transition-colors hidden md:inline font-bold"
               >
                 WHATSAPP ORDER: 01916664011
               </a>
@@ -91,41 +91,41 @@ export const Header: React.FC = () => {
           <nav className="hidden lg:flex items-center gap-8 font-sans text-xs tracking-[0.15em] uppercase font-bold text-[#404945]">
             <Link
               href="/shop"
-              className="hover:text-[#073a2d] transition-colors py-2 relative group"
+              className="hover:text-[#073a2d] transition-colors py-2 relative group font-bold"
             >
-              <span>MEN</span>
+              <span className="font-bold">MEN</span>
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#073a2d] transition-all group-hover:w-full" />
             </Link>
             <Link
               href="/shop?filter=new"
-              className="hover:text-[#073a2d] transition-colors py-2 relative group"
+              className="hover:text-[#073a2d] transition-colors py-2 relative group font-bold"
             >
-              <span>NEW ARRIVALS</span>
+              <span className="font-bold">NEW ARRIVALS</span>
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#073a2d] transition-all group-hover:w-full" />
             </Link>
             <Link
               href="/shop?category=panjabi"
-              className="hover:text-[#073a2d] transition-colors py-2 relative group"
+              className="hover:text-[#073a2d] transition-colors py-2 relative group font-bold"
             >
-              <span>PANJABI</span>
+              <span className="font-bold">PANJABI</span>
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#073a2d] transition-all group-hover:w-full" />
             </Link>
             <Link
               href="/shop?category=shirts"
-              className="hover:text-[#073a2d] transition-colors py-2 relative group"
+              className="hover:text-[#073a2d] transition-colors py-2 relative group font-bold"
             >
-              <span>SHIRTS</span>
+              <span className="font-bold">SHIRTS</span>
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#073a2d] transition-all group-hover:w-full" />
             </Link>
             <Link
               href="/shop?category=polos"
-              className="hover:text-[#073a2d] transition-colors py-2 relative group"
+              className="hover:text-[#073a2d] transition-colors py-2 relative group font-bold"
             >
-              <span>POLOS</span>
+              <span className="font-bold">POLOS</span>
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#073a2d] transition-all group-hover:w-full" />
             </Link>
-            <div className="relative flex items-center">
-              <span className="text-[#404945]/60 cursor-not-allowed">WOMEN</span>
+            <div className="relative flex items-center font-bold">
+              <span className="text-[#404945]/60 cursor-not-allowed font-bold">WOMEN</span>
               <span className="ml-1.5 bg-[#eae8e1] text-[#073a2d] text-[9px] px-1.5 py-0.5 font-bold uppercase tracking-wider">
                 Soon
               </span>
@@ -203,7 +203,7 @@ export const Header: React.FC = () => {
                   </Badge>
                 )}
               </div>
-              <span className="font-sans text-xs uppercase tracking-wider font-semibold text-[#073a2d]">
+              <span className="font-sans text-xs uppercase tracking-wider font-bold text-[#073a2d]">
                 Cart {totalCount > 0 && `(${totalCount})`}
               </span>
             </Button>
@@ -249,39 +249,39 @@ export const Header: React.FC = () => {
                 </button>
               </div>
 
-              <nav className="mt-8 flex flex-col space-y-4 font-serif text-lg text-[#073a2d]">
+              <nav className="mt-8 flex flex-col space-y-4 font-serif text-lg font-bold text-[#073a2d]">
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
                     setIsCartOpen(true);
                   }}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-left w-full cursor-pointer"
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-left w-full cursor-pointer font-bold"
                 >
-                  <span className="flex items-center gap-2.5 font-sans text-sm font-semibold uppercase tracking-wider">
+                  <span className="flex items-center gap-2.5 font-sans text-sm font-bold uppercase tracking-wider">
                     <ShoppingCart className="w-4 h-4 text-[#073a2d]" />
                     <span>Shopping Cart</span>
                   </span>
-                  <Badge variant="outline" className="text-xs bg-[#f5f4ed] text-[#073a2d] rounded-none">
+                  <Badge variant="outline" className="text-xs bg-[#f5f4ed] text-[#073a2d] rounded-none font-bold">
                     {totalCount} items
                   </Badge>
                 </button>
                 <Link
                   href="/track-order"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-sm text-[#073a2d] font-sans font-semibold uppercase tracking-wider"
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-sm text-[#073a2d] font-sans font-bold uppercase tracking-wider"
                 >
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 font-bold">
                     <Truck className="w-4 h-4 text-[#c79a45]" />
                     <span>Track Consignment</span>
                   </span>
-                  <Badge className="bg-[#073a2d] text-white text-[10px]">Active</Badge>
+                  <Badge className="bg-[#073a2d] text-white text-[10px] font-bold">Active</Badge>
                 </Link>
                 <Link
                   href="/orders"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-sm text-[#073a2d] font-sans font-semibold uppercase tracking-wider"
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-sm text-[#073a2d] font-sans font-bold uppercase tracking-wider"
                 >
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 font-bold">
                     <Clock className="w-4 h-4 text-[#717975]" />
                     <span>Order History</span>
                   </span>
@@ -290,9 +290,9 @@ export const Header: React.FC = () => {
                 <Link
                   href={isLoggedIn ? "/profile" : "/login"}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-sm text-[#073a2d] font-sans font-semibold uppercase tracking-wider"
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-sm text-[#073a2d] font-sans font-bold uppercase tracking-wider"
                 >
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 font-bold">
                     <User className="w-4 h-4 text-[#717975]" />
                     <span>{isLoggedIn ? 'Patron Profile' : 'Sign In / Join Atelier'}</span>
                   </span>
@@ -301,49 +301,49 @@ export const Header: React.FC = () => {
                 <Link
                   href="/shop"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7]"
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-bold"
                 >
-                  <span>All Men's Collection</span>
+                  <span className="font-bold">All Men's Collection</span>
                   <ArrowRight className="w-4 h-4 text-[#c79a45]" />
                 </Link>
                 <Link
                   href="/shop?category=panjabi"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7]"
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-bold"
                 >
-                  <span>Panjabi & Silk Weaves</span>
+                  <span className="font-bold">Panjabi & Silk Weaves</span>
                   <ArrowRight className="w-4 h-4 text-[#c79a45]" />
                 </Link>
                 <Link
                   href="/shop?category=shirts"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7]"
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-bold"
                 >
-                  <span>Tailored Shirts</span>
+                  <span className="font-bold">Tailored Shirts</span>
                   <ArrowRight className="w-4 h-4 text-[#c79a45]" />
                 </Link>
                 <Link
                   href="/shop?category=polos"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7]"
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-bold"
                 >
-                  <span>Mercerized Polos</span>
+                  <span className="font-bold">Mercerized Polos</span>
                   <ArrowRight className="w-4 h-4 text-[#c79a45]" />
                 </Link>
                 <Link
                   href="/shop?category=trousers"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7]"
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-bold"
                 >
-                  <span>Gurkha & Chino Trousers</span>
+                  <span className="font-bold">Gurkha & Chino Trousers</span>
                   <ArrowRight className="w-4 h-4 text-[#c79a45]" />
                 </Link>
                 <Link
                   href="/shop?filter=new"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-[#c79a45]"
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-[#c79a45] font-bold"
                 >
-                  <span>Fresh Off The Loom (New)</span>
+                  <span className="font-bold">Fresh Off The Loom (New)</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </nav>
@@ -354,7 +354,7 @@ export const Header: React.FC = () => {
                 href="https://wa.me/8801916664011"
                 target="_blank"
                 rel="noreferrer"
-                className="w-full flex items-center justify-center gap-2 py-3 bg-[#073a2d] text-[#fbf9f2] text-xs font-sans uppercase tracking-widest font-semibold hover:bg-[#0d4d3b] transition-colors"
+                className="w-full flex items-center justify-center gap-2 py-3 bg-[#073a2d] text-[#fbf9f2] text-xs font-sans uppercase tracking-widest font-bold hover:bg-[#0d4d3b] transition-colors"
               >
                 <PhoneCall className="w-4 h-4 text-[#c79a45]" />
                 <span>WhatsApp Atelier (01916664011)</span>
