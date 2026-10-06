@@ -70,9 +70,6 @@ export const Header: React.FC = () => {
                 WHATSAPP ORDER: 01916664011
               </a>
             </div>
-            <span className="hidden lg:block text-[#76a493] text-[10px]">
-              DHAKA • CHATTOGRAM • SYLHET
-            </span>
           </div>
         </div>
 
@@ -91,7 +88,7 @@ export const Header: React.FC = () => {
           </div>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-8 font-sans text-xs tracking-[0.15em] uppercase font-semibold text-[#404945]">
+          <nav className="hidden lg:flex items-center gap-8 font-sans text-xs tracking-[0.15em] uppercase font-bold text-[#404945]">
             <Link
               href="/shop"
               className="hover:text-[#073a2d] transition-colors py-2 relative group"

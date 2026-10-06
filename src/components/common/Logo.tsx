@@ -25,7 +25,9 @@ export const Logo: React.FC<LogoProps> = ({
           src="/logo.svg"
           alt="Rongin Libas Emblem"
           className={`${className} object-contain transition-transform duration-300 group-hover:scale-105 ${
-            inverted ? 'brightness-110 drop-shadow-[0_1px_4px_rgba(255,255,255,0.15)]' : ''
+            inverted
+              ? 'brightness-0 invert drop-shadow-[0_2px_8px_rgba(255,255,255,0.25)]'
+              : ''
           }`}
         />
 
