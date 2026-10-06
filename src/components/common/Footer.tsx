@@ -102,23 +102,33 @@ export const Footer: React.FC = () => {
                 </Link>
               </li>
               <li>
+                <Link href="/track-order" className="text-[#c79a45] hover:underline font-semibold flex items-center gap-1.5">
+                  <span>Track Consignment</span>
+                </Link>
+              </li>
+              <li>
+                <Link href="/orders" className="hover:text-[#c79a45] transition-colors">
+                  Order History & Invoices
+                </Link>
+              </li>
+              <li>
+                <Link href="/profile" className="hover:text-[#c79a45] transition-colors">
+                  Patron Sanctuary Profile
+                </Link>
+              </li>
+              <li>
+                <Link href="/login?tab=register" className="hover:text-[#c79a45] transition-colors">
+                  Join Atelier (Claim ৳500 Key)
+                </Link>
+              </li>
+              <li>
                 <Link href="/checkout" className="hover:text-[#c79a45] transition-colors">
                   Delivery & Shipping Terms
                 </Link>
               </li>
               <li>
                 <span className="hover:text-[#c79a45] transition-colors cursor-pointer">
-                  Easy Exchanges & Returns
-                </span>
-              </li>
-              <li>
-                <span className="hover:text-[#c79a45] transition-colors cursor-pointer">
-                  Pure Silk & Muslin Care
-                </span>
-              </li>
-              <li>
-                <span className="hover:text-[#c79a45] transition-colors cursor-pointer">
-                  Corporate & Wedding Gifting
+                  Doorstep Open-Box Inspection Policy
                 </span>
               </li>
             </ul>

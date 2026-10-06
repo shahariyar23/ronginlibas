@@ -5,16 +5,21 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
+import { useAuth } from '@/context/AuthContext';
 import { Logo } from './Logo';
 import {
   Search,
   ShoppingCart,
   Heart,
+  User,
   Menu,
   X,
   PhoneCall,
   Sparkles,
   ArrowRight,
+  Package,
+  Truck,
+  Clock,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,6 +27,7 @@ import { Button } from '@/components/ui/button';
 export const Header: React.FC = () => {
   const { totalCount, setIsCartOpen } = useCart();
   const { wishlist } = useWishlist();
+  const { user, isLoggedIn } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -152,6 +158,19 @@ export const Header: React.FC = () => {
               <Search className="w-5 h-5" />
             </button>
 
+            {/* Patron Sanctuary Profile / Sign In */}
+            <Link
+              href={isLoggedIn ? "/profile" : "/login"}
+              className="relative text-[#1b1c18] hover:text-[#073a2d] p-1.5 transition-colors"
+              aria-label="Patron Sanctuary"
+              title={isLoggedIn ? `Patron: ${user?.name}` : "Sign In to Patron Sanctuary"}
+            >
+              <User className="w-5 h-5" />
+              {isLoggedIn && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#c79a45] ring-1 ring-white" />
+              )}
+            </Link>
+
             {/* Wishlist Icon */}
             <Link
               href="/shop?wishlist=true"
@@ -249,6 +268,39 @@ export const Header: React.FC = () => {
                     {totalCount} items
                   </Badge>
                 </button>
+                <Link
+                  href="/track-order"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-sm text-[#073a2d] font-sans font-semibold uppercase tracking-wider"
+                >
+                  <span className="flex items-center gap-2">
+                    <Truck className="w-4 h-4 text-[#c79a45]" />
+                    <span>Track Consignment</span>
+                  </span>
+                  <Badge className="bg-[#073a2d] text-white text-[10px]">Active</Badge>
+                </Link>
+                <Link
+                  href="/orders"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-sm text-[#073a2d] font-sans font-semibold uppercase tracking-wider"
+                >
+                  <span className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-[#717975]" />
+                    <span>Order History</span>
+                  </span>
+                  <ArrowRight className="w-4 h-4 text-[#c79a45]" />
+                </Link>
+                <Link
+                  href={isLoggedIn ? "/profile" : "/login"}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-sm text-[#073a2d] font-sans font-semibold uppercase tracking-wider"
+                >
+                  <span className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-[#717975]" />
+                    <span>{isLoggedIn ? 'Patron Profile' : 'Sign In / Join Atelier'}</span>
+                  </span>
+                  <ArrowRight className="w-4 h-4 text-[#c79a45]" />
+                </Link>
                 <Link
                   href="/shop"
                   onClick={() => setMobileMenuOpen(false)}

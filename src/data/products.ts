@@ -321,3 +321,5 @@ export const PRODUCTS: Product[] = [
     isBestSeller: true
   }
 ];
+
+export const products = PRODUCTS;

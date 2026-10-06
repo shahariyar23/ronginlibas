@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { CartProvider } from '@/context/CartContext';
 import { WishlistProvider } from '@/context/WishlistContext';
+import { AuthProvider } from '@/context/AuthContext';
 import { Header } from '@/components/common/Header';
 import { Footer } from '@/components/common/Footer';
 import { CartDrawer } from '@/components/common/CartDrawer';
@@ -45,15 +46,17 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className="bg-[#fbf9f2] text-[#1b1c18] antialiased flex flex-col min-h-screen">
-        <CartProvider>
-          <WishlistProvider>
-            <Header />
-            <main className="flex-1 w-full">{children}</main>
-            <CartDrawer />
-            <Footer />
-            <Toaster position="top-right" richColors />
-          </WishlistProvider>
-        </CartProvider>
+        <AuthProvider>
+          <CartProvider>
+            <WishlistProvider>
+              <Header />
+              <main className="flex-1 w-full">{children}</main>
+              <CartDrawer />
+              <Footer />
+              <Toaster position="top-right" richColors />
+            </WishlistProvider>
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   );
