@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(cmd:*)",
+      "Shell(curl -sS -X POST https://stitch.googleapis.com/mcp -H \"X-Goog-Api-Key: AQ.Ab8RN6LtxeiLXtV8OTBI1ykOQUYmBA2nCQ2EAsX3or4f_unZ9w\" -H \"Content-Type: application/json\" -H \"Accept: application/json, text/event-stream\" -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{},\"clientInfo\":{\"name\":\"cmd\",\"version\":\"1.0\"}}}')",
+      "Shell(curl -sS -X POST https://stitch.googleapis.com/mcp -H \"X-Goog-Api-Key: AQ.Ab8RN6LtxeiLXtV8OTBI1ykOQUYmBA2nCQ2EAsX3or4f_unZ9w\" -H \"Content-Type: application/json\" -H \"Accept: application/json, text/event-stream\" -d '{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}}')",
+      "Shell(python3 - <<'PY' import json,re p=\"/tmp/commandcode/shellout/2026-10-06T15-32-17-931Z-fg-qr8cs9.log\" s=open(p).read() # find the JSON body start=s.find('{\"id\":2') if start<0: start=s.find('{\"jsonrpc\"') data=json.loads(s[start:]) for t in data[\"result\"][\"tools\"]: print(\"==\",t[\"name\"]) print(json.dumps(t[\"inputSchema\"].get(\"properties\",{}),indent=1)[:1200]) print(\"required:\",t[\"inputSchema\"].get(\"required\")) PY)",
+      "Shell(curl -sS -X POST https://stitch.googleapis.com/mcp -H X-Goog-Api-Key: AQ.Ab8RN6LtxeiLXtV8OTBI1ykOQUYmBA2nCQ2EAsX3or4f_unZ9w -H Content-Type: application/json -H Accept: application/json, text/event-stream -d {\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"get_project\",\"arguments\":{\"name\":\"projects/14482169343204579235\"}}} -o project.json)",
+      "Shell(curl -sS -X POST https://stitch.googleapis.com/mcp -H X-Goog-Api-Key: AQ.Ab8RN6LtxeiLXtV8OTBI1ykOQUYmBA2nCQ2EAsX3or4f_unZ9w -H Content-Type: application/json -H Accept: application/json, text/event-stream -d {\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"list_screens\",\"arguments\":{\"projectId\":\"14482169343204579235\"}}} -o screens.json)",
+      "Shell(ls -la ~/.commandcode/ 2>/dev/null; echo \"---\"; cat ~/.commandcode/mcp.json 2>/dev/null; echo \"---settings---\"; cat ~/.commandcode/settings.json 2>/dev/null)",
+      "Shell(curl -sS -i -X POST https://stitch.googleapis.com/mcp  -H X-Goog-Api-Key: AQ.Ab8RN6LtxeiLXtV8OTBI1ykOQUYmBA2nCQ2EAsX3or4f_unZ9w  -H Content-Type: application/json  -H Accept: application/json, text/event-stream  -d {\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{},\"clientInfo\":{\"name\":\"cmd\",\"version\":\"1.0\"}}} 2 >& 1)",
+      "Shell(curl -sS -i -X POST https://stitch.googleapis.com/mcp  -H X-Goog-Api-Key: AQ.Ab8RN6LtxeiLXtV8OTBI1ykOQUYmBA2nCQ2EAsX3or4f_unZ9w  -H Content-Type: application/json  -H Accept: application/json, text/event-stream  -d {\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}} 2 >& 1)",
+      "Shell(for:*)",
+      "Shell(do:*)",
+      "Shell(done:*)",
+      "Shell(curl -sS -i -X POST https://stitch.googleapis.com/mcp  -H X-Goog-Api-Key: AQ.Ab8RN6LtxeiLXtV8OTBI1ykOQUYmBA2nCQ2EAsX3or4f_unZ9w  -H Content-Type: application/json  -H Accept: application/json, text/event-stream  -d {\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"list_projects\",\"arguments\":{}}} 2 >& 1)",
+      "mcp__stitch__list_projects",
+      "Shell(cd /home/shahariyar/Documents/RonginLibas && ls -la web | head -40; echo \"--- node/npm versions ---\"; node -v; npm -v; which pnpm yarn bun 2>/dev/null; echo \"--- next docs ---\"; ls web/node_modules/next/dist/docs/ 2>/dev/null | head)",
+      "Shell(npx --yes create-next-app@16.3.8 --help 2 >& 1)",
+      "Shell(npx --yes create-next-app@16.3.8 admin --ts --tailwind --eslint --app --src-dir --import-alias @/* --use-npm --disable-git --yes 2 >& 1)",
+      "Shell(npm:*)"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}

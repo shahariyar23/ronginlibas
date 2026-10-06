@@ -30,10 +30,10 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="sticky top-0 left-0 right-0 z-40 bg-[#fbf9f2]/95 backdrop-blur-md border-b border-[#deddd3]/80 shadow-[0_1px_8px_rgba(0,0,0,0.03)] transition-all">
+      <header className="sticky top-0 left-0 right-0 z-40 bg-[#fbf9f2]/95 backdrop-blur-md shadow-[0_1px_8px_rgba(0,0,0,0.03)] transition-all">
         {/* Top Announcement Bar */}
-        <div className="bg-[#073a2d] text-[#ffffff] py-1.5 px-4 text-center overflow-hidden">
-          <div className="max-w-7xl mx-auto flex items-center justify-between font-sans text-[10.5px] tracking-[0.16em] uppercase">
+        <div className="bg-[#073a2d] text-[#ffffff] py-1.5 text-center overflow-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between font-sans text-[10.5px] tracking-[0.16em] uppercase">
             <span className="hidden md:inline-flex items-center gap-2 text-[#76a493]">
               <Sparkles className="w-3 h-3 text-[#c79a45]" />
               Haute Couture & Bespoke Menswear
@@ -74,104 +74,98 @@ export const Header: React.FC = () => {
           </div>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-7 xl:gap-8 font-sans text-xs tracking-[0.15em] uppercase font-bold text-[#404945]">
+          <nav className="hidden lg:flex items-center gap-7 xl:gap-8 font-sans text-[13.5px] tracking-[0.12em] uppercase font-semibold text-[#404945]">
             <Link
               href="/shop"
-              className="hover:text-[#073a2d] transition-colors py-2 relative group font-bold"
+              className="hover:text-[#073a2d] transition-colors py-2 relative group font-semibold"
             >
-              <span className="font-bold">MEN</span>
+              <span>MEN</span>
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#073a2d] transition-all group-hover:w-full" />
             </Link>
             <Link
               href="/shop?filter=new"
-              className="hover:text-[#073a2d] transition-colors py-2 relative group font-bold"
+              className="hover:text-[#073a2d] transition-colors py-2 relative group font-semibold"
             >
-              <span className="font-bold">NEW ARRIVALS</span>
+              <span>NEW ARRIVALS</span>
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#073a2d] transition-all group-hover:w-full" />
             </Link>
             <Link
               href="/shop"
-              className="hover:text-[#073a2d] transition-colors py-2 relative group font-bold"
+              className="hover:text-[#073a2d] transition-colors py-2 relative group font-semibold"
             >
-              <span className="font-bold">COLLECTIONS</span>
+              <span>COLLECTIONS</span>
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#073a2d] transition-all group-hover:w-full" />
             </Link>
             <Link
               href="/shop?filter=bestseller"
-              className="hover:text-[#073a2d] transition-colors py-2 relative group font-bold"
+              className="hover:text-[#073a2d] transition-colors py-2 relative group font-semibold"
             >
-              <span className="font-bold">BEST SELLERS</span>
+              <span>BEST SELLERS</span>
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#073a2d] transition-all group-hover:w-full" />
             </Link>
             <Link
               href="/shop?filter=offers"
-              className="hover:text-[#073a2d] transition-colors py-2 relative group font-bold text-[#c79a45]"
+              className="hover:text-[#073a2d] transition-colors py-2 relative group font-semibold text-[#c79a45]"
             >
-              <span className="font-bold">OFFERS</span>
+              <span>OFFERS</span>
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#c79a45] transition-all group-hover:w-full" />
             </Link>
-            <div className="relative flex items-center font-bold">
-              <span className="text-[#404945]/60 cursor-not-allowed font-bold">WOMAN</span>
-              <span className="ml-1.5 bg-[#eae8e1] text-[#073a2d] text-[9px] px-1.5 py-0.5 font-bold uppercase tracking-wider">
+            <div className="relative flex items-center font-semibold">
+              <span className="text-[#404945]/60 cursor-not-allowed">WOMAN</span>
+              <span className="ml-1.5 bg-[#eae8e1] text-[#073a2d] text-[9.5px] px-1.5 py-0.5 font-semibold uppercase tracking-wider rounded-xs">
                 Soon
               </span>
             </div>
           </nav>
 
-          {/* Right Action Icons */}
-          <div className="flex items-center gap-3 sm:gap-4">
-            {/* Patron Sanctuary Profile / Sign In */}
+          {/* Right Action Icons: Wishlist & Cart to the left, Borderless Login button last */}
+          <div className="flex items-center gap-4 sm:gap-6">
+            {/* Wishlist & Cart Container (no divider border) */}
+            <div className="flex items-center gap-3 sm:gap-4">
+              {/* 1. Wishlist Icon */}
+              <Link
+                href="/shop?wishlist=true"
+                className="relative text-[#1b1c18] hover:text-[#073a2d] p-1.5 transition-colors group flex items-center justify-center"
+                aria-label="Wishlist"
+                title="Saved Wishlist"
+              >
+                <Heart className="w-5 h-5 text-[#1b1c18] group-hover:text-[#073a2d] transition-transform group-hover:scale-105" />
+                <span className="absolute -top-1 -right-1.5 bg-[#073a2d] text-[#c79a45] text-[9.5px] font-sans font-bold min-w-4 h-4 px-1 rounded-full flex items-center justify-center shadow-xs">
+                  {wishlist.length}
+                </span>
+              </Link>
+
+              {/* 2. Shopping Cart Trigger */}
+              <button
+                onClick={() => setIsCartOpen(true)}
+                className="relative text-[#1b1c18] hover:text-[#073a2d] p-1.5 transition-colors cursor-pointer group flex items-center justify-center"
+                aria-label="Shopping Cart"
+                title="Shopping Cart"
+              >
+                <ShoppingCart className="w-5 h-5 text-[#1b1c18] group-hover:text-[#073a2d] transition-transform group-hover:scale-105" />
+                <span className="absolute -top-1 -right-1.5 bg-[#073a2d] text-[#c79a45] text-[9.5px] font-sans font-bold min-w-4 h-4 px-1 rounded-full flex items-center justify-center shadow-xs">
+                  {totalCount}
+                </span>
+              </button>
+            </div>
+
+            {/* 3. Luxury Login Button with radius and bigger icon */}
             <Link
               href={isLoggedIn ? "/profile" : "/login"}
-              className="relative text-[#1b1c18] hover:text-[#073a2d] p-1.5 transition-colors"
-              aria-label="Patron Sanctuary"
-              title={isLoggedIn ? `Patron: ${user?.name}` : "Sign In to Patron Sanctuary"}
+              className="inline-flex items-center gap-2.5 px-4.5 sm:px-5 py-2.5 bg-[#073a2d] hover:bg-[#0c4e3b] text-[#fbf9f2] rounded-md border-0 transition-colors duration-300 group cursor-pointer"
+              aria-label="Sign In / Patron Profile"
+              title={isLoggedIn ? `Patron Sanctuary: ${user?.name}` : "Sign In to Patron Sanctuary"}
             >
-              <User className="w-5 h-5" />
-              {isLoggedIn && (
-                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#c79a45] ring-1 ring-white" />
-              )}
-            </Link>
-
-            {/* Wishlist Icon */}
-            <Link
-              href="/shop?wishlist=true"
-              className="relative text-[#1b1c18] hover:text-[#073a2d] p-1.5 transition-colors"
-              aria-label="Wishlist"
-            >
-              <Heart className="w-5 h-5" />
-              {wishlist.length > 0 && (
-                <Badge
-                  variant="default"
-                  className="absolute -top-1.5 -right-1.5 bg-[#073a2d] text-white text-[10px] min-w-4 h-4 px-1 rounded-full flex items-center justify-center font-bold p-0 border-0"
-                >
-                  {wishlist.length}
-                </Badge>
-              )}
-            </Link>
-
-            {/* Shopping Cart Trigger using shadcn Button & Badge */}
-            <Button
-              variant="ghost"
-              onClick={() => setIsCartOpen(true)}
-              className="relative text-[#1b1c18] hover:text-[#073a2d] hover:bg-[#073a2d]/5 p-2 h-auto rounded-none transition-colors flex items-center gap-2 group cursor-pointer"
-              aria-label="Shopping Cart"
-            >
-              <div className="relative flex items-center">
-                <ShoppingCart className="size-5 text-[#073a2d] transition-transform group-hover:scale-110" />
-                {totalCount > 0 && (
-                  <Badge
-                    variant="default"
-                    className="absolute -top-2 -right-2 bg-[#073a2d] text-white text-[10px] min-w-4 h-4 px-1 rounded-full flex items-center justify-center font-bold p-0 border-0"
-                  >
-                    {totalCount}
-                  </Badge>
+              <div className="relative flex items-center justify-center">
+                <User className="w-4.5 h-4.5 text-[#c79a45] transition-transform duration-300 group-hover:scale-110" />
+                {isLoggedIn && (
+                  <span className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-[#c79a45] animate-pulse" />
                 )}
               </div>
-              <span className="font-sans text-xs uppercase tracking-wider font-bold text-[#073a2d]">
-                Cart {totalCount > 0 && `(${totalCount})`}
+              <span className="font-sans text-xs font-semibold uppercase tracking-[0.16em] text-[#fbf9f2] group-hover:text-white transition-colors">
+                {isLoggedIn ? (user?.name?.split(' ')[0] || 'Patron') : 'Login'}
               </span>
-            </Button>
+            </Link>
           </div>
         </div>
       </header>
@@ -247,46 +241,46 @@ export const Header: React.FC = () => {
                 <Link
                   href="/shop"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-bold"
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-semibold"
                 >
-                  <span className="font-bold">MEN</span>
+                  <span className="font-semibold">MEN</span>
                   <ArrowRight className="w-4 h-4 text-[#c79a45]" />
                 </Link>
                 <Link
                   href="/shop?filter=new"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-bold"
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-semibold"
                 >
-                  <span className="font-bold">NEW ARRIVALS</span>
+                  <span className="font-semibold">NEW ARRIVALS</span>
                   <ArrowRight className="w-4 h-4 text-[#c79a45]" />
                 </Link>
                 <Link
                   href="/shop"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-bold"
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-semibold"
                 >
-                  <span className="font-bold">COLLECTIONS</span>
+                  <span className="font-semibold">COLLECTIONS</span>
                   <ArrowRight className="w-4 h-4 text-[#c79a45]" />
                 </Link>
                 <Link
                   href="/shop?filter=bestseller"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-bold"
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-semibold"
                 >
-                  <span className="font-bold">BEST SELLERS</span>
+                  <span className="font-semibold">BEST SELLERS</span>
                   <ArrowRight className="w-4 h-4 text-[#c79a45]" />
                 </Link>
                 <Link
                   href="/shop?filter=offers"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-[#c79a45] font-bold"
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-[#c79a45] font-semibold"
                 >
-                  <span className="font-bold">OFFERS</span>
+                  <span className="font-semibold">OFFERS</span>
                   <ArrowRight className="w-4 h-4 text-[#c79a45]" />
                 </Link>
-                <div className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-bold">
-                  <span className="text-[#404945]/60 font-bold">WOMAN</span>
-                  <span className="bg-[#eae8e1] text-[#073a2d] text-[10px] px-2 py-0.5 font-bold uppercase tracking-wider">
+                <div className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-semibold">
+                  <span className="text-[#404945]/60 font-semibold">WOMAN</span>
+                  <span className="bg-[#eae8e1] text-[#073a2d] text-[10px] px-2 py-0.5 font-semibold uppercase tracking-wider rounded-xs">
                     Soon
                   </span>
                 </div>

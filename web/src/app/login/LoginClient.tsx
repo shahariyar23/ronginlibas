@@ -104,7 +104,7 @@ export const LoginClient: React.FC = () => {
 
   return (
     <div className="min-h-screen pt-8 sm:pt-10 pb-20 bg-[#fbf9f2]">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Breadcrumb */}
         <nav className="mb-6 flex items-center gap-2 text-xs font-sans uppercase tracking-widest text-[#717975]">
           <Link href="/" className="hover:text-[#073a2d] transition-colors">
@@ -114,7 +114,7 @@ export const LoginClient: React.FC = () => {
           <span className="text-[#073a2d] font-semibold">Patron Sanctuary Portal</span>
         </nav>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 border border-[#deddd3] bg-white shadow-xl overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-12 bg-white shadow-xl overflow-hidden">
           {/* Left Editorial Privilege Sanctuary (5 Cols) */}
           <div className="lg:col-span-5 bg-[#073a2d] text-[#fbf9f2] p-8 sm:p-12 flex flex-col justify-between relative overflow-hidden">
             {/* Background geometric motif */}
@@ -204,7 +204,7 @@ export const LoginClient: React.FC = () => {
             </div>
 
             {/* Dual Tab Switcher */}
-            <div className="flex max-w-md mx-auto w-full mb-8 bg-[#f5f4ed] p-1 border border-[#deddd3]">
+            <div className="flex max-w-md mx-auto w-full mb-8 bg-[#f5f4ed] p-1">
               <button
                 type="button"
                 onClick={() => setActiveTab('signin')}

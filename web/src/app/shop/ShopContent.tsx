@@ -347,8 +347,8 @@ export const ShopContent: React.FC = () => {
   return (
     <div className="w-full pb-24 bg-[#fbf9f2]">
       {/* Editorial Top Orientation */}
-      <div className="w-full bg-[#f0eee7] border-b border-[#deddd3] py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
+      <div className="w-full bg-[#f0eee7] border-b border-[#deddd3] py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Breadcrumb */}
           <nav className="flex items-center gap-2 text-[11px] font-sans uppercase tracking-widest text-[#717975] mb-3">
             <Link href="/" className="hover:text-[#073a2d]">
@@ -390,8 +390,8 @@ export const ShopContent: React.FC = () => {
       </div>
 
       {/* Main Interactive Controls Bar */}
-      <div className="sticky top-20 z-30 bg-[#fbf9f2]/95 backdrop-blur-md border-b border-[#deddd3] py-3.5 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      <div className="sticky top-20 z-30 bg-[#fbf9f2]/95 backdrop-blur-md border-b border-[#deddd3] py-3.5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-4">
           {/* Mobile Filter Sheet Trigger */}
           <div className="flex items-center gap-3">
             <Sheet open={mobileFilterOpen} onOpenChange={setMobileFilterOpen}>

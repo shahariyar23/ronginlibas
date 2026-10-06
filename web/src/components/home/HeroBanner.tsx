@@ -1,126 +1,100 @@
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, ChevronDown } from 'lucide-react';
-import { buttonVariants } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { ArrowRight, ArrowDown } from 'lucide-react';
 
 export const HeroBanner: React.FC = () => {
   return (
-    <section className="relative w-full bg-[#00231a] overflow-hidden py-10 sm:py-14 lg:py-20">
-      {/* Ambient background atmosphere with golden warmth & royal emerald depth */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-96 h-96 rounded-full bg-[#073a2d]/40 blur-3xl" />
-        <div className="absolute top-1/2 right-0 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-[#c79a45]/10 blur-[140px]" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#00231a] via-[#00231a]/95 to-[#00231a]/80" />
+    <section className="relative w-full min-h-[640px] sm:min-h-[720px] lg:min-h-[820px] flex items-center overflow-hidden bg-[#00231a]">
+      {/* 1. Full-bleed editorial background image from Stitch */}
+      <div className="absolute inset-0 z-0">
+        <img
+          src="/hero-model.jpg"
+          alt="Rongin Libas Sartorial Menswear Campaign"
+          className="w-full h-full object-cover object-[75%_center] sm:object-[center_35%] lg:object-[80%_center]"
+        />
+        {/* Cinematic gradient veil: heavy dark emerald on left for text readability, atmospheric fade to right */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#00231a] via-[#00231a]/90 sm:via-[#00231a]/80 md:via-[#00231a]/70 lg:via-[#00231a]/60 to-transparent" />
+        {/* Bottom subtle grounding vignette for metrics bar */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#00231a]/95 via-transparent to-transparent" />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
-          {/* Left Column: Regal Atelier Copy & Actions */}
-          <div className="lg:col-span-7 xl:col-span-7 flex flex-col justify-center">
-            {/* Collection Badge */}
-            <div className="inline-flex items-center gap-2 self-start px-3.5 py-1.5 bg-[#073a2d] border border-[#c79a45]/40 text-[#c79a45] text-[11px] font-sans font-medium uppercase tracking-[0.22em] mb-6 shadow-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#c79a45] animate-pulse" />
-              <span>Spring / Festive Collection '25 • Dhaka Atelier</span>
+      {/* 2. Main Hero Content Canvas */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-24 flex flex-col justify-between min-h-[640px] sm:min-h-[720px] lg:min-h-[820px]">
+        {/* Top/Center Main Copy Section */}
+        <div className="max-w-2xl pt-6 sm:pt-10">
+          {/* Pill Badge */}
+          <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-[#073a2d]/80 backdrop-blur-md border border-[#c79a45]/35 text-[#deddd3] text-[10px] sm:text-[11px] font-sans uppercase tracking-[0.2em] mb-6 shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-[#c79a45] shadow-[0_0_8px_#c79a45]" />
+            <span>LAUNCH COLLECTION 2025</span>
+            <span className="text-[#c79a45]/70">|</span>
+            <span>DIGNITY IN FABRIC • DHAKA ATELIER</span>
+          </div>
+
+          {/* Kicker Overline */}
+          <p className="font-sans text-xs tracking-[0.24em] font-bold text-[#c79a45] uppercase mb-4">
+            SARTORIAL MENSWEAR
+          </p>
+
+          {/* Headline */}
+          <h1 className="font-serif text-5xl sm:text-7xl lg:text-8xl font-normal text-white tracking-tight leading-[1.02] mb-6">
+            CLOTH YOUR <br />
+            <span className="italic font-light">IDENTITY</span>
+          </h1>
+
+          {/* Supporting Narrative */}
+          <p className="font-sans text-sm sm:text-base text-[#deddd3] leading-relaxed max-w-xl mb-9 font-light">
+            Modern menswear crafted for style, comfort and confidence. Hand-stitched tailoring meets contemporary silhouette architecture for everyday grandeur.
+          </p>
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-6 sm:gap-8 mb-10">
+            <Link
+              href="/shop"
+              className="h-12 px-9 bg-white hover:bg-[#fbf9f2] text-[#073a2d] font-sans font-bold uppercase tracking-[0.16em] text-xs shadow-lg transition-all rounded-none inline-flex items-center justify-center hover:scale-[1.02] active:scale-[0.98]"
+            >
+              SHOP MEN
+            </Link>
+            <Link
+              href="/shop?filter=new"
+              className="font-sans text-xs uppercase tracking-[0.16em] font-bold text-white hover:text-[#c79a45] transition-colors inline-flex items-center gap-2 group py-2"
+            >
+              <span>EXPLORE NEW ARRIVALS</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
+            </Link>
+          </div>
+        </div>
+
+        {/* Bottom Metrics Strip & Scroll Indicator */}
+        <div className="pt-8 border-t border-white/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 text-white">
+          <div className="flex flex-wrap items-center gap-8 sm:gap-12">
+            <div>
+              <p className="font-serif text-2xl font-bold text-white">100%</p>
+              <p className="font-sans text-[10px] sm:text-[11px] uppercase tracking-wider text-[#c0c8c3]">
+                COMBED COTTON & SILK
+              </p>
             </div>
-
-            {/* Headline */}
-            <h1 className="font-serif text-4xl sm:text-6xl xl:text-7xl font-normal text-[#fbf9f2] tracking-tight leading-[1.08] mb-6">
-              CLOTH YOUR <br />
-              <span className="italic font-light text-[#c79a45]">IDENTITY</span>
-            </h1>
-
-            {/* Narrative description */}
-            <p className="font-sans text-sm sm:text-base text-[#deddd3] leading-relaxed max-w-xl mb-8 font-light">
-              Bespoke Bengal panjabis, mercerized knitwear, and structured casual tailoring engineered with aristocratic dignity and contemporary minimalism.
-            </p>
-
-            {/* Action Buttons */}
-            <div className="flex flex-wrap items-center gap-4 mb-10">
-              <Link
-                href="/shop"
-                className={cn(
-                  buttonVariants({ variant: 'default' }),
-                  'h-12 px-8 bg-[#c79a45] hover:bg-[#b08535] text-[#073a2d] font-sans font-bold uppercase tracking-[0.16em] text-xs shadow-lg transition-all inline-flex items-center justify-center'
-                )}
-              >
-                SHOP MEN
-              </Link>
-              <Link
-                href="/shop?filter=new"
-                className={cn(
-                  buttonVariants({ variant: 'outline' }),
-                  'h-12 px-8 bg-white/10 hover:bg-white/20 text-[#fbf9f2] border-white/30 hover:border-white font-sans uppercase tracking-[0.16em] text-xs backdrop-blur-sm group inline-flex items-center justify-center gap-2'
-                )}
-              >
-                <span>EXPLORE NEW ARRIVALS</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </Link>
+            <div>
+              <p className="font-serif text-2xl font-bold text-white">3-Ply</p>
+              <p className="font-sans text-[10px] sm:text-[11px] uppercase tracking-wider text-[#c0c8c3]">
+                ARTISANAL STITCH SEAMS
+              </p>
             </div>
-
-            {/* Craftsmanship Metrics */}
-            <div className="pt-8 border-t border-white/15 flex flex-wrap items-center gap-6 sm:gap-10 text-[#fbf9f2]">
-              <div>
-                <p className="font-serif text-2xl font-bold text-[#c79a45]">100%</p>
-                <p className="font-sans text-[11px] uppercase tracking-wider text-[#c0c8c3]">
-                  Combed Cotton & Silk
-                </p>
-              </div>
-              <div className="w-px h-8 bg-white/20" />
-              <div>
-                <p className="font-serif text-2xl font-bold text-[#c79a45]">3-Ply</p>
-                <p className="font-sans text-[11px] uppercase tracking-wider text-[#c0c8c3]">
-                  Artisanal Stitch Seams
-                </p>
-              </div>
-              <div className="w-px h-8 bg-white/20 hidden sm:block" />
-              <div className="hidden sm:block">
-                <p className="font-serif text-2xl font-bold text-[#c79a45]">৳ 3,000+</p>
-                <p className="font-sans text-[11px] uppercase tracking-wider text-[#c0c8c3]">
-                  Complimentary Shipping
-                </p>
-              </div>
+            <div>
+              <p className="font-serif text-2xl font-bold text-white">৳ 3,000+</p>
+              <p className="font-sans text-[10px] sm:text-[11px] uppercase tracking-wider text-[#c0c8c3]">
+                COMPLIMENTARY SHIPPING
+              </p>
             </div>
           </div>
 
-          {/* Right Column: Complete Editorial Portrait Showcase (100% Full Visibility) */}
-          <div className="lg:col-span-5 xl:col-span-5 flex justify-center lg:justify-end">
-            <div className="relative group w-full max-w-[430px]">
-              {/* Subtle royal glow behind image frame */}
-              <div className="absolute -inset-1.5 bg-gradient-to-tr from-[#c79a45]/40 via-[#073a2d]/60 to-[#c79a45]/20 rounded-sm blur-xl opacity-75 group-hover:opacity-100 transition-opacity duration-700" />
-
-              {/* High-fashion Portrait Frame */}
-              <div className="relative rounded-sm overflow-hidden border border-[#c79a45]/40 bg-[#073a2d] shadow-[0_25px_60px_rgba(0,0,0,0.7)]">
-                <div className="aspect-[3/4] w-full relative overflow-hidden bg-[#001711]">
-                  <img
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-PIsbLozCP5fnpvyZ-k60kSTLBh4QX1LmsfLPxmt-js88mmKtE2qsMWHQRxTclOzk2nH_Edm1dm6DiBTlzgwzjmEcVhTDrp9Z-lWVGQ_H6ybcjFhK-CKWG5fqds4Zg3GI_epoqzp89xlIJoGPexlm7WJtsBd-gLnyAfwvodB74CkRDWpiY_khKFKpNLI3ZeK7GK2_EaNpmgAxyp1vNVSOo90BFu53oKE_Cc7rG3rsCZ4kwW1HJcC7kQ"
-                    alt="Rongin Libas Signature Royal Silk Panjabi in Deep Emerald"
-                    className="w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
-                  />
-                  {/* Subtle inner lighting gradient */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-80" />
-                </div>
-
-                {/* Floating Provenance & Quick Shop Card */}
-                <div className="absolute bottom-4 left-4 right-4 p-3.5 bg-[#00231a]/95 backdrop-blur-md border border-[#c79a45]/30 flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-sans uppercase tracking-[0.2em] text-[#c79a45] block">
-                      Tangail Silk • 1445 Edition
-                    </span>
-                    <h4 className="text-sm font-serif font-medium text-[#fbf9f2]">
-                      Royal Emerald Panjabi
-                    </h4>
-                  </div>
-                  <Link
-                    href="/product/1"
-                    className="text-[11px] font-sans uppercase tracking-widest bg-[#c79a45] hover:bg-[#b08535] text-[#073a2d] font-bold px-3 py-1.5 transition-colors"
-                  >
-                    View
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Scroll to Atelier link */}
+          <a
+            href="#categories"
+            className="font-sans text-[11px] uppercase tracking-[0.2em] text-white/70 hover:text-white transition-colors inline-flex items-center gap-2 group self-end sm:self-auto"
+          >
+            <span>SCROLL TO ATELIER</span>
+            <ArrowDown className="w-3.5 h-3.5 group-hover:translate-y-1 transition-transform" />
+          </a>
         </div>
       </div>
     </section>
