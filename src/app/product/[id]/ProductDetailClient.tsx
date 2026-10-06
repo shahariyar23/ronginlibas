@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   Heart,
-  ShoppingBag,
+  ShoppingCart,
   Ruler,
   ShieldCheck,
   Truck,
@@ -339,13 +339,13 @@ export const ProductDetailClient: React.FC<ProductDetailClientProps> = ({
                   </button>
                 </div>
 
-                {/* Add to Bag */}
+                {/* Add to Cart */}
                 <Button
                   onClick={handleAddToCart}
-                  className="flex-1 h-13 bg-[#073a2d] hover:bg-[#0d4d3b] text-[#fbf9f2] font-sans uppercase tracking-[0.16em] text-xs font-bold shadow-md flex items-center justify-center gap-2 group"
+                  className="flex-1 h-13 bg-[#073a2d] hover:bg-[#0d4d3b] text-[#fbf9f2] font-sans uppercase tracking-[0.16em] text-xs font-bold shadow-md flex items-center justify-center gap-2 group cursor-pointer"
                 >
-                  <ShoppingBag className="w-4 h-4" />
-                  <span>Add To Sartorial Bag</span>
+                  <ShoppingCart className="w-4 h-4" />
+                  <span>Add To Cart</span>
                 </Button>
 
                 {/* Wishlist */}

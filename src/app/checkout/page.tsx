@@ -122,7 +122,7 @@ export default function CheckoutPage() {
             <span>Continue Shopping</span>
           </Link>
           <h1 className="font-serif text-3xl sm:text-5xl font-normal text-[#073a2d]">
-            Your Sartorial Bag & Checkout
+            Your Shopping Cart & Checkout
           </h1>
           <p className="font-sans text-xs sm:text-sm text-[#69726d] mt-2">
             Inspect your tailored selections and complete delivery details with open-box verification.
@@ -131,7 +131,7 @@ export default function CheckoutPage() {
 
         {items.length === 0 && !orderConfirmed ? (
           <div className="p-16 bg-white border border-[#deddd3] text-center space-y-4">
-            <h3 className="font-serif text-2xl text-[#073a2d]">Your Bag is Currently Empty</h3>
+            <h3 className="font-serif text-2xl text-[#073a2d]">Your Cart is Currently Empty</h3>
             <p className="font-sans text-xs text-[#69726d] max-w-sm mx-auto">
               Please select pieces from our Panjabi, Shirt, or Polo collection to initiate checkout.
             </p>
@@ -149,14 +149,14 @@ export default function CheckoutPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
             {/* Left Form Canvas (7 Cols) */}
             <form onSubmit={handleSubmitOrder} className="lg:col-span-7 space-y-10">
-              {/* Step 1: Bag Items Review */}
+              {/* Step 1: Cart Items Review */}
               <div className="bg-white border border-[#deddd3] p-6 shadow-xs">
                 <div className="flex items-center justify-between pb-4 border-b border-[#deddd3] mb-5">
                   <h3 className="font-serif text-lg font-semibold text-[#073a2d] flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-[#073a2d] text-white text-xs flex items-center justify-center font-sans font-bold">
                       1
                     </span>
-                    <span>Review Bag Items ({items.length})</span>
+                    <span>Review Cart Items ({items.length})</span>
                   </h3>
                   <Link href="/shop" className="text-xs font-sans text-[#c79a45] hover:underline font-semibold">
                     + Add More Items

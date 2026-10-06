@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Product } from '@/types';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
-import { Heart, ShoppingBag, Check } from 'lucide-react';
+import { Heart, ShoppingCart, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -101,9 +101,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           ) : (
             <Button
               onClick={() => setShowSizePicker(true)}
-              className="w-full bg-[#073a2d] hover:bg-[#0d4d3b] text-[#fbf9f2] font-sans text-xs uppercase tracking-widest h-10 shadow-md flex items-center justify-center gap-2"
+              className="w-full bg-[#073a2d] hover:bg-[#0d4d3b] text-[#fbf9f2] font-sans text-xs uppercase tracking-widest h-10 shadow-md flex items-center justify-center gap-2 cursor-pointer"
             >
-              <ShoppingBag className="w-3.5 h-3.5" />
+              <ShoppingCart className="w-3.5 h-3.5" />
               <span>Quick Add</span>
             </Button>
           )}

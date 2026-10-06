@@ -11,10 +11,11 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Minus, Trash2, ArrowRight, ShieldCheck, Tag } from 'lucide-react';
+import { Plus, Minus, Trash2, ArrowRight, ShieldCheck, Tag, ShoppingCart } from 'lucide-react';
 
 export const CartDrawer: React.FC = () => {
   const {
@@ -56,16 +57,17 @@ export const CartDrawer: React.FC = () => {
         <SheetHeader className="p-6 border-b border-[#deddd3] bg-white">
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-[11px] font-sans font-semibold tracking-[0.2em] text-[#c79a45] uppercase block">
+              <span className="text-[11px] font-sans font-semibold tracking-[0.2em] text-[#c79a45] uppercase block flex items-center gap-1.5">
+                <ShoppingCart className="w-3.5 h-3.5" />
                 Atelier Selection
               </span>
               <SheetTitle className="font-serif text-2xl font-normal text-[#073a2d]">
-                Your Sartorial Bag
+                Shopping Cart
               </SheetTitle>
             </div>
-            <span className="font-sans text-xs bg-[#f5f4ed] px-2.5 py-1 text-[#073a2d] font-medium border border-[#deddd3]">
+            <Badge variant="outline" className="font-sans text-xs bg-[#f5f4ed] px-2.5 py-1 text-[#073a2d] font-medium border-[#deddd3] rounded-none">
               {items.length} {items.length === 1 ? 'Item' : 'Items'}
-            </span>
+            </Badge>
           </div>
 
           {/* Free Shipping Progress Indicator */}
@@ -98,7 +100,7 @@ export const CartDrawer: React.FC = () => {
               <div className="w-16 h-16 flex items-center justify-center mb-4">
                 <img src="/logo.svg" alt="Rongin Libas Logo" className="w-14 h-14 object-contain" />
               </div>
-              <h3 className="font-serif text-xl text-[#073a2d] mb-2">Your Bag is Empty</h3>
+              <h3 className="font-serif text-xl text-[#073a2d] mb-2">Your Cart is Empty</h3>
               <p className="font-sans text-xs text-[#69726d] max-w-xs mb-6">
                 Discover our curated heritage panjabis, mercerized knitwear, and architectural menswear.
               </p>

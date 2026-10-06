@@ -67,10 +67,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    toast.success(`Added ${product.name} to your sartorial bag.`, {
+    toast.success(`Added ${product.name} to your cart.`, {
       description: `Size: ${size} | Color: ${color}`,
       action: {
-        label: 'View Bag',
+        label: 'View Cart',
         onClick: () => setIsCartOpen(true),
       },
     });

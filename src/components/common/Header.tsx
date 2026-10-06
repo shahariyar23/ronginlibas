@@ -8,7 +8,7 @@ import { useWishlist } from '@/context/WishlistContext';
 import { Logo } from './Logo';
 import {
   Search,
-  ShoppingBag,
+  ShoppingCart,
   Heart,
   Menu,
   X,
@@ -160,30 +160,37 @@ export const Header: React.FC = () => {
             >
               <Heart className="w-5 h-5" />
               {wishlist.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#073a2d] text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                <Badge
+                  variant="default"
+                  className="absolute -top-1.5 -right-1.5 bg-[#073a2d] text-white text-[10px] min-w-4 h-4 px-1 rounded-full flex items-center justify-center font-bold p-0 border-0"
+                >
                   {wishlist.length}
-                </span>
+                </Badge>
               )}
             </Link>
 
-            {/* Shopping Bag Trigger */}
-            <button
+            {/* Shopping Cart Trigger using shadcn Button & Badge */}
+            <Button
+              variant="ghost"
               onClick={() => setIsCartOpen(true)}
-              className="relative text-[#1b1c18] hover:text-[#073a2d] p-1.5 transition-colors flex items-center gap-2 group"
-              aria-label="Shopping Bag"
+              className="relative text-[#1b1c18] hover:text-[#073a2d] hover:bg-[#073a2d]/5 p-2 h-auto rounded-none transition-colors flex items-center gap-2 group cursor-pointer"
+              aria-label="Shopping Cart"
             >
-              <div className="relative">
-                <ShoppingBag className="w-5 h-5" />
+              <div className="relative flex items-center">
+                <ShoppingCart className="size-5 text-[#073a2d] transition-transform group-hover:scale-110" />
                 {totalCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-[#073a2d] text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                  <Badge
+                    variant="default"
+                    className="absolute -top-2 -right-2 bg-[#073a2d] text-white text-[10px] min-w-4 h-4 px-1 rounded-full flex items-center justify-center font-bold p-0 border-0"
+                  >
                     {totalCount}
-                  </span>
+                  </Badge>
                 )}
               </div>
-              <span className="hidden sm:inline font-sans text-xs uppercase tracking-wider font-semibold text-[#073a2d]">
-                Bag {totalCount > 0 && `(${totalCount})`}
+              <span className="font-sans text-xs uppercase tracking-wider font-semibold text-[#073a2d]">
+                Cart {totalCount > 0 && `(${totalCount})`}
               </span>
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -227,6 +234,21 @@ export const Header: React.FC = () => {
               </div>
 
               <nav className="mt-8 flex flex-col space-y-4 font-serif text-lg text-[#073a2d]">
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setIsCartOpen(true);
+                  }}
+                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-left w-full cursor-pointer"
+                >
+                  <span className="flex items-center gap-2.5 font-sans text-sm font-semibold uppercase tracking-wider">
+                    <ShoppingCart className="w-4 h-4 text-[#073a2d]" />
+                    <span>Shopping Cart</span>
+                  </span>
+                  <Badge variant="outline" className="text-xs bg-[#f5f4ed] text-[#073a2d] rounded-none">
+                    {totalCount} items
+                  </Badge>
+                </button>
                 <Link
                   href="/shop"
                   onClick={() => setMobileMenuOpen(false)}
