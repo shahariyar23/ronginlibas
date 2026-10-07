@@ -290,7 +290,18 @@ export default function InventoryPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0eee7]">
-              {filteredInventory.map((item) => {
+              {filteredInventory.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-[#717975]">
+                    <Warehouse className="w-8 h-8 mx-auto mb-2 opacity-40 text-[#717975]" />
+                    <p className="font-serif text-sm text-[#1b1c18]">No inventory entries found</p>
+                    <p className="text-[11px] text-[#717975]">
+                      Stock levels will synchronize automatically as products and variants are created.
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                filteredInventory.map((item) => {
                 const currentStock = getStockValue(item);
                 const isModified = stockEdits[item.id] !== undefined;
 
@@ -376,7 +387,8 @@ export default function InventoryPage() {
                     </td>
                   </tr>
                 );
-              })}
+              })
+            )}
             </tbody>
           </table>
         </div>
@@ -384,7 +396,7 @@ export default function InventoryPage() {
         {/* Footer */}
         <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-[#717975] pt-2 gap-2">
           <span className="uppercase text-[10px] font-bold tracking-wider">
-            DISPLAYING {filteredInventory.length} OF 128 CURATED PIECES
+            DISPLAYING {filteredInventory.length} OF {inventory.length} PIECES
           </span>
           <div className="flex items-center gap-3">
             <span className="text-[#69726d]">Need batch import?</span>

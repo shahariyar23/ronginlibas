@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Ticket, Plus, Trash2, Calendar, Tag, CheckCircle2 } from 'lucide-react';
 
 interface Coupon {
@@ -14,64 +14,73 @@ interface Coupon {
   status: 'ACTIVE' | 'EXPIRED';
 }
 
-const INITIAL_COUPONS: Coupon[] = [
-  {
-    id: 'c-1',
-    code: 'EID2026',
-    discountType: 'PERCENTAGE',
-    value: 15,
-    minSpend: 5000,
-    usageCount: 142,
-    expiryDate: '2026-11-30',
-    status: 'ACTIVE',
-  },
-  {
-    id: 'c-2',
-    code: 'BESPOKE1000',
-    discountType: 'FIXED',
-    value: 1000,
-    minSpend: 8000,
-    usageCount: 38,
-    expiryDate: '2026-12-31',
-    status: 'ACTIVE',
-  },
-  {
-    id: 'c-3',
-    code: 'FIRSTPATRON',
-    discountType: 'FREE_DELIVERY',
-    value: 0,
-    minSpend: 2000,
-    usageCount: 89,
-    expiryDate: '2026-12-31',
-    status: 'ACTIVE',
-  },
-];
+const INITIAL_COUPONS: Coupon[] = [];
+
+import { adminApi } from '@/lib/api';
 
 export default function CouponsPage() {
   const [coupons, setCoupons] = useState<Coupon[]>(INITIAL_COUPONS);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newCode, setNewCode] = useState('');
-  const [newDiscount, setNewDiscount] = useState('10');
-  const [newMinSpend, setNewMinSpend] = useState('3000');
+  const [newDiscount, setNewDiscount] = useState('');
+  const [newMinSpend, setNewMinSpend] = useState('');
 
-  const handleAdd = () => {
+  useEffect(() => {
+    async function loadCoupons() {
+      try {
+        const res = await adminApi.coupons.getAll();
+        if (res.success && res.data && res.data.length > 0) {
+          const mapped: Coupon[] = res.data.map((c: any) => ({
+            id: c.id,
+            code: c.code,
+            discountType: c.type || 'PERCENTAGE',
+            value: Number(c.value) || 0,
+            minSpend: Number(c.minimumOrderAmount) || 0,
+            usageCount: c.usageCount ?? 0,
+            expiryDate: c.expiryDate ? new Date(c.expiryDate).toISOString().split('T')[0] : 'No Expiry',
+            status: c.isActive ? 'ACTIVE' : 'EXPIRED',
+          }));
+          setCoupons(mapped);
+        }
+      } catch (err) {
+        console.warn('Coupons API fetch fallback:', err);
+      }
+    }
+    loadCoupons();
+  }, []);
+
+  const handleAdd = async () => {
     if (!newCode) return;
-    const item: Coupon[] = [
-      ...coupons,
-      {
-        id: `c-${Date.now()}`,
-        code: newCode.toUpperCase(),
-        discountType: 'PERCENTAGE',
-        value: parseInt(newDiscount, 10) || 10,
-        minSpend: parseInt(newMinSpend, 10) || 3000,
-        usageCount: 0,
-        expiryDate: '2026-12-31',
-        status: 'ACTIVE',
-      },
-    ];
-    setCoupons(item);
+    const formattedCode = newCode.toUpperCase().trim();
+    const discountVal = parseInt(newDiscount, 10) || 10;
+    const minSpendVal = parseInt(newMinSpend, 10) || 3000;
+
+    const item: Coupon = {
+      id: `c-${Date.now()}`,
+      code: formattedCode,
+      discountType: 'PERCENTAGE',
+      value: discountVal,
+      minSpend: minSpendVal,
+      usageCount: 0,
+      expiryDate: '2026-12-31',
+      status: 'ACTIVE',
+    };
+    setCoupons((prev) => [item, ...prev]);
     setShowAddModal(false);
     setNewCode('');
+
+    try {
+      await adminApi.coupons.create({
+        code: formattedCode,
+        description: `${discountVal}% privilege coupon code`,
+        type: 'PERCENTAGE',
+        value: discountVal,
+        minimumOrderAmount: minSpendVal,
+        expiryDate: new Date('2026-12-31T23:59:59Z').toISOString(),
+      });
+    } catch (err) {
+      console.warn('Error saving coupon to backend:', err);
+    }
   };
 
   return (
@@ -96,55 +105,72 @@ export default function CouponsPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {coupons.map((coupon) => (
-          <div
-            key={coupon.id}
-            className="bg-white border border-[#deddd3] p-5 shadow-xs flex flex-col justify-between hover:border-[#c79a45] transition-all relative overflow-hidden"
+      {coupons.length === 0 ? (
+        <div className="bg-white border border-[#deddd3] p-12 text-center space-y-3">
+          <Ticket className="w-8 h-8 text-[#717975] mx-auto opacity-40" />
+          <h3 className="font-serif text-lg text-[#1b1c18]">No Active Vouchers</h3>
+          <p className="text-xs text-[#717975] max-w-sm mx-auto">
+            Create promotional discount codes and privileges for your patrons.
+          </p>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 bg-[#073a2d] text-white text-xs font-semibold uppercase tracking-wider"
           >
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#073a2d] bg-[#bcedda]/40 px-2 py-0.5 font-mono">
-                  {coupon.discountType}
-                </span>
-                <span className="text-[10px] font-semibold text-[#0d4d3b] flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" />
-                  {coupon.status}
-                </span>
+            <Plus className="w-3.5 h-3.5" />
+            <span>+ CREATE VOUCHER</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {coupons.map((coupon) => (
+            <div
+              key={coupon.id}
+              className="bg-white border border-[#deddd3] p-5 shadow-xs flex flex-col justify-between hover:border-[#c79a45] transition-all relative overflow-hidden"
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#073a2d] bg-[#bcedda]/40 px-2 py-0.5 font-mono">
+                    {coupon.discountType}
+                  </span>
+                  <span className="text-[10px] font-semibold text-[#0d4d3b] flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    {coupon.status}
+                  </span>
+                </div>
+
+                <div>
+                  <h3 className="font-mono text-xl font-bold tracking-wider text-[#073a2d]">
+                    {coupon.code}
+                  </h3>
+                  <p className="text-xs text-[#1b1c18] font-medium mt-1">
+                    {coupon.discountType === 'PERCENTAGE'
+                      ? `${coupon.value}% OFF total consignment`
+                      : coupon.discountType === 'FIXED'
+                      ? `৳${coupon.value} OFF total consignment`
+                      : 'Complimentary Nationwide Delivery'}
+                  </p>
+                </div>
+
+                <div className="pt-2 text-xs text-[#717975] space-y-1">
+                  <p>Minimum Order: <strong className="text-[#1b1c18]">৳{coupon.minSpend}</strong></p>
+                  <p>Redeemed: <strong className="text-[#1b1c18]">{coupon.usageCount} times</strong></p>
+                  <p>Expires: <span className="font-mono">{coupon.expiryDate}</span></p>
+                </div>
               </div>
 
-              <div>
-                <h3 className="font-mono text-xl font-bold tracking-wider text-[#073a2d]">
-                  {coupon.code}
-                </h3>
-                <p className="text-xs text-[#1b1c18] font-medium mt-1">
-                  {coupon.discountType === 'PERCENTAGE'
-                    ? `${coupon.value}% OFF total consignment`
-                    : coupon.discountType === 'FIXED'
-                    ? `৳${coupon.value} OFF total consignment`
-                    : 'Complimentary Nationwide Delivery'}
-                </p>
-              </div>
-
-              <div className="pt-2 text-xs text-[#717975] space-y-1">
-                <p>Minimum Order: <strong className="text-[#1b1c18]">৳{coupon.minSpend}</strong></p>
-                <p>Redeemed: <strong className="text-[#1b1c18]">{coupon.usageCount} times</strong></p>
-                <p>Expires: <span className="font-mono">{coupon.expiryDate}</span></p>
+              <div className="mt-5 pt-3 border-t border-[#f0eee7] flex items-center justify-end">
+                <button
+                  onClick={() => setCoupons(coupons.filter((c) => c.id !== coupon.id))}
+                  className="text-xs text-[#ba1a1a] hover:underline flex items-center gap-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Revoke Voucher</span>
+                </button>
               </div>
             </div>
-
-            <div className="mt-5 pt-3 border-t border-[#f0eee7] flex items-center justify-end">
-              <button
-                onClick={() => setCoupons(coupons.filter((c) => c.id !== coupon.id))}
-                className="text-xs text-[#ba1a1a] hover:underline flex items-center gap-1"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Revoke Voucher</span>
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
@@ -169,6 +195,7 @@ export default function CouponsPage() {
                 </label>
                 <input
                   type="number"
+                  placeholder="e.g. 15"
                   value={newDiscount}
                   onChange={(e) => setNewDiscount(e.target.value)}
                   className="w-full mt-1 px-3 py-2 border border-[#deddd3] text-xs text-[#1b1c18] focus:border-[#073a2d] outline-hidden font-mono"
@@ -180,6 +207,7 @@ export default function CouponsPage() {
                 </label>
                 <input
                   type="number"
+                  placeholder="e.g. 2500"
                   value={newMinSpend}
                   onChange={(e) => setNewMinSpend(e.target.value)}
                   className="w-full mt-1 px-3 py-2 border border-[#deddd3] text-xs text-[#1b1c18] focus:border-[#073a2d] outline-hidden font-mono"

@@ -29,54 +29,59 @@ export default function AddProductPage() {
   const { addProduct } = useAdmin();
 
   // Form states
-  const [title, setTitle] = useState('Imperial Zari Embroidered Panjabi - Heritage Olive');
+  const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Panjabi');
-  const [fabricNote, setFabricNote] = useState('100% Giza Egyptian Combed Cotton');
-  const [description, setDescription] = useState(
-    'Handcrafted for solemn evening gatherings and celebratory Eid assemblies. Tailored from premium 120s double-ply combed Egyptian cotton with a silken mercerized luster.\n\nFeatures bespoke tone-on-tone fine zari embroidery across the Mandarin band collar, concealed placket, and notched cuffs. Includes mother-of-pearl buttons with hand-stitched bar tacks.'
-  );
+  const [fabricNote, setFabricNote] = useState('');
+  const [description, setDescription] = useState('');
 
   // Pricing
-  const [regularPrice, setRegularPrice] = useState('3850');
-  const [promotionalPrice, setPromotionalPrice] = useState('3450');
-  const [costOfGoods, setCostOfGoods] = useState('1620');
+  const [regularPrice, setRegularPrice] = useState('');
+  const [promotionalPrice, setPromotionalPrice] = useState('');
+  const [costOfGoods, setCostOfGoods] = useState('');
 
   // Inventory
-  const [sku, setSku] = useState('RL-PNJ-25-C');
-  const [barcode, setBarcode] = useState('89430250918');
-  const [aggregateStock, setAggregateStock] = useState('42');
-  const [alertThreshold, setAlertThreshold] = useState('6');
+  const [sku, setSku] = useState('');
+  const [barcode, setBarcode] = useState('');
+  const [aggregateStock, setAggregateStock] = useState('');
+  const [alertThreshold, setAlertThreshold] = useState('5');
 
   // Sizing selections
-  const [selectedSizes, setSelectedSizes] = useState<string[]>(['38"', '40"', '42"', '44"']);
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const availableSizes = ['38"', '40"', '42"', '44"', 'XXL 46"'];
 
   // Shades
-  const [selectedShades, setSelectedShades] = useState([
-    { name: 'Heritage Olive', hex: '#073A2D' },
-    { name: 'Midnight Navy', hex: '#0F1A2C' },
-  ]);
+  const [selectedShades, setSelectedShades] = useState<{ name: string; hex: string }[]>([]);
 
   // Tags
-  const [tags, setTags] = useState([
-    'EID 2026',
-    'EGYPTIAN COTTON',
-    'ZARI WORK',
-    'NEW ARRIVAL',
-    'HERITAGE ATELIER',
-  ]);
+  const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
 
   // Publishing
   const [lifecycleState, setLifecycleState] = useState('Active');
-  const [isFeatured, setIsFeatured] = useState(true);
+  const [isFeatured, setIsFeatured] = useState(false);
 
   // Images
-  const [images] = useState([
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuCKIcKxrkusL16CkM0fjAd340aZTnxr8o_tmugD7XS3cCDAG8yST04u91rCr7OrIxBUE3yNHckrJmRo81EtZGj8lTJHQgDVroNkj2CKu-ot-pwOAH0mcutBcSZUQfz7_-Ar5PUCPtpyOke4D81SjQQyrYnZs7hzWHiKTY0UnNT3WJuv-NAxhFJD5qK4YN7AOBd5nyfFy6KXxGhKLvjxG_EWE4pBc61A0x4zW4Oz-Fnn2JvqDoxPl3_PKQ',
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuDsI5ug241TvsSl6uRptjdZWUUmaLTgXRnq-N6fF3plJmG4bX3qnBL96Zj__lAnv6CmmwMSQvs3jE80Mo33uOIdI455vzCYnNF5aSZaVZ7WvS6KxN9jTrnGo62nMOazBMaiMY5oZPmH-GfoBuAOBSQe_gCSdPpN2H290wtqPtQXsgN_xpV5ptQbaKzZhRMATVIbDQffLn3YH4UMuADiWsJLKwNKhuVwh9gtoCYuZCNyLI1FNDePkmyH0w',
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuA-PIsbLozCP5fnpvyZ-k60kSTLBh4QX1LmsfLPxmt-js88mmKtE2qsMWHQRxTclOzk2nH_Edm1dm6DiBTlzgwzjmEcVhTDrp9Z-lWVGQ_H6ybcjFhK-CKWG5fqds4Zg3GI_epoqzp89xlIJoGPexlm7WJtsBd-gLnyAfwvodB74CkRDWpiY_khKFKpNLI3ZeK7GK2_EaNpmgAxyp1vNVSOo90BFu53oKE_Cc7rG3rsCZ4kwW1HJcC7kQ',
-  ]);
+  const [images, setImages] = useState<string[]>([]);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const url = event.target?.result as string;
+        if (url) {
+          setImages((prev) => [...prev, url]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (indexToRemove: number) => {
+    setImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  };
 
   // Gross margin calculation
   const regNum = parseFloat(promotionalPrice || regularPrice) || 0;
@@ -106,17 +111,24 @@ export default function AddProductPage() {
   };
 
   const handleSave = (publish: boolean = true) => {
+    if (!title.trim()) {
+      alert('Please specify garment silhouette title.');
+      return;
+    }
+    const finalPrice = parseFloat(promotionalPrice) || parseFloat(regularPrice) || 0;
+    const finalStock = parseInt(aggregateStock, 10) || 0;
+
     const newProduct: AdminProduct = {
       id: `p-${Date.now()}`,
       name: title,
-      sku: sku,
+      sku: sku || `RL-${Date.now().toString().slice(-6)}`,
       category: category,
-      price: parseFloat(promotionalPrice) || parseFloat(regularPrice) || 3450,
+      price: finalPrice,
       promotionalPrice: parseFloat(promotionalPrice) || undefined,
       costOfGoods: parseFloat(costOfGoods) || undefined,
-      stock: parseInt(aggregateStock, 10) || 42,
-      status: publish ? 'Active' : 'Low Stock',
-      image: images[0],
+      stock: finalStock,
+      status: publish ? (finalStock <= 5 && finalStock > 0 ? 'Low Stock' : finalStock === 0 ? 'Out of Stock' : 'Active') : 'Low Stock',
+      image: images[0] || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCKIcKxrkusL16CkM0fjAd340aZTnxr8o_tmugD7XS3cCDAG8yST04u91rCr7OrIxBUE3yNHckrJmRo81EtZGj8lTJHQgDVroNkj2CKu-ot-pwOAH0mcutBcSZUQfz7_-Ar5PUCPtpyOke4D81SjQQyrYnZs7hzWHiKTY0UnNT3WJuv-NAxhFJD5qK4YN7AOBd5nyfFy6KXxGhKLvjxG_EWE4pBc61A0x4zW4Oz-Fnn2JvqDoxPl3_PKQ',
       fabricNote: fabricNote,
       description: description,
       tags: tags,
@@ -460,20 +472,20 @@ export default function AddProductPage() {
                 Selected Textile Shades
               </p>
               <div className="flex flex-wrap items-center gap-2.5">
-                {selectedShades.map((shade) => (
+                {selectedShades.map((shade, idx) => (
                   <div
-                    key={shade.name}
+                    key={`${shade.name}-${idx}`}
                     className="flex items-center gap-2 px-3 py-1.5 border border-[#deddd3] bg-[#fbf9f2] text-xs font-medium text-[#1b1c18]"
                   >
                     <span
-                      className="w-3 h-3 rounded-full border border-black/20"
+                      className="w-3 h-3 rounded-full border border-black/20 shrink-0"
                       style={{ backgroundColor: shade.hex }}
                     />
                     <span>{shade.name}</span>
                     <button
                       type="button"
                       onClick={() =>
-                        setSelectedShades(selectedShades.filter((s) => s.name !== shade.name))
+                        setSelectedShades(selectedShades.filter((_, i) => i !== idx))
                       }
                       className="text-[#717975] hover:text-[#ba1a1a]"
                     >
@@ -483,16 +495,48 @@ export default function AddProductPage() {
                 ))}
                 <button
                   type="button"
-                  onClick={() =>
-                    setSelectedShades([
-                      ...selectedShades,
-                      { name: 'Raw Silk White', hex: '#FBF9F2' },
-                    ])
-                  }
-                  className="flex items-center gap-1.5 px-3 py-1.5 border border-[#deddd3] bg-white text-xs text-[#717975] hover:border-[#073a2d]"
+                  onClick={() => {
+                    if (!selectedShades.some((s) => s.name === 'Raw Silk White')) {
+                      setSelectedShades([
+                        ...selectedShades,
+                        { name: 'Raw Silk White', hex: '#FBF9F2' },
+                      ]);
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-[#deddd3] bg-white text-xs text-[#717975] hover:border-[#073a2d] transition-colors"
                 >
                   <span className="w-3 h-3 rounded-full bg-[#fbf9f2] border border-[#deddd3]" />
                   <span>+ Raw Silk White</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!selectedShades.some((s) => s.name === 'Royal Emerald')) {
+                      setSelectedShades([
+                        ...selectedShades,
+                        { name: 'Royal Emerald', hex: '#00231A' },
+                      ]);
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-[#deddd3] bg-white text-xs text-[#717975] hover:border-[#073a2d] transition-colors"
+                >
+                  <span className="w-3 h-3 rounded-full bg-[#00231a] border border-[#deddd3]" />
+                  <span>+ Royal Emerald</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!selectedShades.some((s) => s.name === 'Antique Gold')) {
+                      setSelectedShades([
+                        ...selectedShades,
+                        { name: 'Antique Gold', hex: '#C79A45' },
+                      ]);
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-[#deddd3] bg-white text-xs text-[#717975] hover:border-[#073a2d] transition-colors"
+                >
+                  <span className="w-3 h-3 rounded-full bg-[#c79a45] border border-[#deddd3]" />
+                  <span>+ Antique Gold</span>
                 </button>
               </div>
             </div>
@@ -604,7 +648,7 @@ export default function AddProductPage() {
             <div className="flex items-center justify-between border-b border-[#f0eee7] pb-3">
               <h2 className="font-serif text-base font-medium text-[#1b1c18]">Lookbook Media</h2>
               <span className="text-[10px] font-bold text-[#073a2d] bg-[#bcedda]/40 px-2 py-0.5">
-                3/4 LOADED
+                {images.length}/4 LOADED
               </span>
             </div>
             <p className="text-[11px] text-[#717975]">
@@ -612,31 +656,140 @@ export default function AddProductPage() {
             </p>
 
             {/* Dropzone */}
-            <div className="border border-dashed border-[#deddd3] bg-[#fbf9f2] p-5 text-center cursor-pointer hover:border-[#073a2d] transition-colors">
+            <label className="border border-dashed border-[#deddd3] bg-[#fbf9f2] p-5 text-center cursor-pointer hover:border-[#073a2d] transition-colors block">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleFileUpload}
+              />
               <Upload className="w-6 h-6 text-[#073a2d] mx-auto mb-2" />
               <p className="text-xs font-semibold text-[#1b1c18]">Upload Garment Angles</p>
               <p className="text-[10px] text-[#717975] mt-0.5">
                 360° & high-res imagery here (PNG, JPG, WEBP up to 15MB)
               </p>
-            </div>
+            </label>
 
             {/* Thumbnails grid */}
             <div className="grid grid-cols-2 gap-3 pt-2">
-              <div className="relative aspect-3/4 border border-[#deddd3] overflow-hidden group">
-                <Image src={images[0]} alt="Featured" fill className="object-cover" unoptimized />
-                <span className="absolute top-2 left-2 text-[9px] font-bold uppercase tracking-wider bg-[#00231a] text-white px-1.5 py-0.5">
-                  FEATURED
-                </span>
+              {/* Slot 1: Featured */}
+              <div className="relative aspect-3/4 border border-[#deddd3] bg-[#fbf9f2] overflow-hidden group flex items-center justify-center">
+                {images[0] ? (
+                  <>
+                    <Image src={images[0]} alt="Featured Angle" fill className="object-cover" unoptimized />
+                    <span className="absolute top-2 left-2 text-[9px] font-bold uppercase tracking-wider bg-[#00231a] text-white px-1.5 py-0.5 z-10">
+                      FEATURED
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeImage(0)}
+                      className="absolute top-2 right-2 p-1 bg-black/60 text-white hover:bg-[#ba1a1a] opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      title="Remove image"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <label className="flex flex-col items-center justify-center text-center p-3 text-[#717975] w-full h-full cursor-pointer hover:bg-[#f0eee7] transition-colors">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleFileUpload}
+                    />
+                    <ImageIcon className="w-5 h-5 text-[#8c9490] mb-1.5" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#073a2d]">Featured Angle</span>
+                    <span className="text-[9px] text-[#8c9490] mt-0.5">Primary Display</span>
+                  </label>
+                )}
               </div>
-              <div className="relative aspect-3/4 border border-[#deddd3] overflow-hidden">
-                <Image src={images[1]} alt="Angle 2" fill className="object-cover" unoptimized />
+
+              {/* Slot 2 */}
+              <div className="relative aspect-3/4 border border-[#deddd3] bg-[#fbf9f2] overflow-hidden group flex items-center justify-center">
+                {images[1] ? (
+                  <>
+                    <Image src={images[1]} alt="Angle 2" fill className="object-cover" unoptimized />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(1)}
+                      className="absolute top-2 right-2 p-1 bg-black/60 text-white hover:bg-[#ba1a1a] opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      title="Remove image"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <label className="flex flex-col items-center justify-center text-center p-3 text-[#717975] w-full h-full cursor-pointer hover:bg-[#f0eee7] transition-colors">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleFileUpload}
+                    />
+                    <ImageIcon className="w-5 h-5 text-[#8c9490] mb-1.5" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#404945]">Side / Back</span>
+                    <span className="text-[9px] text-[#8c9490] mt-0.5">Secondary Angle</span>
+                  </label>
+                )}
               </div>
-              <div className="relative aspect-3/4 border border-[#deddd3] overflow-hidden">
-                <Image src={images[2]} alt="Angle 3" fill className="object-cover" unoptimized />
+
+              {/* Slot 3 */}
+              <div className="relative aspect-3/4 border border-[#deddd3] bg-[#fbf9f2] overflow-hidden group flex items-center justify-center">
+                {images[2] ? (
+                  <>
+                    <Image src={images[2]} alt="Angle 3" fill className="object-cover" unoptimized />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(2)}
+                      className="absolute top-2 right-2 p-1 bg-black/60 text-white hover:bg-[#ba1a1a] opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      title="Remove image"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <label className="flex flex-col items-center justify-center text-center p-3 text-[#717975] w-full h-full cursor-pointer hover:bg-[#f0eee7] transition-colors">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleFileUpload}
+                    />
+                    <ImageIcon className="w-5 h-5 text-[#8c9490] mb-1.5" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#404945]">Detail / Texture</span>
+                    <span className="text-[9px] text-[#8c9490] mt-0.5">Fabric Close-up</span>
+                  </label>
+                )}
               </div>
-              <div className="relative aspect-3/4 border border-dashed border-[#deddd3] bg-[#fbf9f2] flex flex-col items-center justify-center text-center p-3 text-[#717975] hover:border-[#073a2d] cursor-pointer">
-                <Plus className="w-4 h-4 text-[#073a2d] mb-1" />
-                <span className="text-[10px] font-semibold uppercase">CUSTOM LOOKBOOK ANGLE</span>
+
+              {/* Slot 4 / Extra */}
+              <div className="relative aspect-3/4 border border-[#deddd3] bg-[#fbf9f2] overflow-hidden group flex items-center justify-center">
+                {images[3] ? (
+                  <>
+                    <Image src={images[3]} alt="Angle 4" fill className="object-cover" unoptimized />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(3)}
+                      className="absolute top-2 right-2 p-1 bg-black/60 text-white hover:bg-[#ba1a1a] opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      title="Remove image"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <label className="relative w-full h-full border border-dashed border-[#deddd3] bg-[#fbf9f2] flex flex-col items-center justify-center text-center p-3 text-[#717975] hover:border-[#073a2d] cursor-pointer transition-colors">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={handleFileUpload}
+                    />
+                    <Plus className="w-4 h-4 text-[#073a2d] mb-1" />
+                    <span className="text-[10px] font-semibold uppercase">CUSTOM LOOKBOOK ANGLE</span>
+                  </label>
+                )}
               </div>
             </div>
           </div>

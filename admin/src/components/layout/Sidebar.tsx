@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   Shirt,
@@ -16,6 +16,7 @@ import {
   Settings,
   LogOut,
 } from 'lucide-react';
+import { adminApi } from '@/lib/api';
 
 const NAV_ITEMS = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -34,6 +35,7 @@ const PREF_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
 
   const isActive = (href: string) => {
     if (href === '/') {
@@ -46,13 +48,13 @@ export function Sidebar() {
     <aside className="w-64 bg-[#00231a] text-[#deddd3] flex flex-col min-h-screen border-r border-[#12503e]/40 shrink-0 select-none">
       {/* Brand Header */}
       <div className="p-6 border-b border-[#12503e]/30 flex items-center gap-3">
-        <div className="w-10 h-10 bg-[#073a2d] border border-[#c79a45]/40 flex items-center justify-center p-1.5 shrink-0">
+        <div className="w-14 h-14 bg-white border border-[#c79a45]/40 flex items-center justify-center p-1 shrink-0">
           <Image
             src="/logo.svg"
             alt="Rongin Libas"
-            width={28}
-            height={28}
-            className="w-full h-full object-contain filter brightness-200"
+            width={48}
+            height={48}
+            className="w-full h-full object-contain"
           />
         </div>
         <div>
@@ -132,9 +134,10 @@ export function Sidebar() {
       <div className="p-4 border-t border-[#12503e]/30">
         <button
           onClick={() => {
-            alert('Atelier Suite: Master session active.');
+            adminApi.auth.logout();
+            router.replace('/login');
           }}
-          className="w-full flex items-center gap-3 px-3 py-2 text-xs font-medium text-[#76a493] hover:text-[#ffdad6] hover:bg-[#ba1a1a]/10 transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2 text-xs font-medium text-[#76a493] hover:text-[#ffdad6] hover:bg-[#ba1a1a]/20 transition-colors cursor-pointer"
         >
           <LogOut className="w-4 h-4 shrink-0 text-[#76a493]" />
           <span>Sign Out</span>

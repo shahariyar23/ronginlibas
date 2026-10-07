@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  ShoppingBag,
 } from 'lucide-react';
 import { useAdmin } from '@/context/AdminContext';
 import { AdminOrder } from '@/data/adminData';
@@ -61,7 +62,7 @@ export default function OrdersPage() {
           <div className="flex items-center gap-3 mt-1">
             <h1 className="text-3xl font-serif text-[#1b1c18] tracking-tight">Orders</h1>
             <span className="text-xs bg-[#bcedda]/40 text-[#073a2d] border border-[#a1d1be] px-2.5 py-0.5 font-semibold">
-              42 Total Orders Today
+              {orders.length} Total Orders
             </span>
           </div>
         </div>
@@ -73,7 +74,9 @@ export default function OrdersPage() {
             </div>
             <div>
               <p className="text-[9px] uppercase font-bold text-[#717975]">GROSS SALES</p>
-              <p className="font-serif font-bold text-[#073a2d]">৳ 1,42,850</p>
+              <p className="font-serif font-bold text-[#073a2d]">
+                ৳ {orders.reduce((sum, o) => sum + (o.amount || 0), 0).toLocaleString()}
+              </p>
             </div>
           </div>
 
@@ -83,7 +86,7 @@ export default function OrdersPage() {
             </div>
             <div>
               <p className="text-[9px] uppercase font-bold text-[#717975]">AWAITING CONFIRM</p>
-              <p className="font-serif font-bold text-[#8c6722]">8 Queued</p>
+              <p className="font-serif font-bold text-[#8c6722]">{pendingCount} Queued</p>
             </div>
           </div>
 
@@ -247,7 +250,18 @@ export default function OrdersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0eee7]">
-              {filteredOrders.map((order) => {
+              {filteredOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-[#717975]">
+                    <ShoppingBag className="w-8 h-8 mx-auto mb-2 opacity-40 text-[#717975]" />
+                    <p className="font-serif text-sm text-[#1b1c18]">No orders found</p>
+                    <p className="text-[11px] text-[#717975]">
+                      Patron orders will stream here live as checkout transactions complete.
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                filteredOrders.map((order) => {
                 const statusColor =
                   order.status === 'PENDING'
                     ? 'bg-[#f5eedf] text-[#8c6722]'
@@ -320,7 +334,8 @@ export default function OrdersPage() {
                     </td>
                   </tr>
                 );
-              })}
+              })
+            )}
             </tbody>
           </table>
         </div>

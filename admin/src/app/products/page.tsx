@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Shirt,
 } from 'lucide-react';
 import { useAdmin } from '@/context/AdminContext';
 import { AdminProduct } from '@/data/adminData';
@@ -200,7 +201,18 @@ export default function ProductsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0eee7]">
-              {filteredProducts.map((p) => {
+              {filteredProducts.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-[#717975]">
+                    <Shirt className="w-8 h-8 mx-auto mb-2 opacity-40 text-[#717975]" />
+                    <p className="font-serif text-sm text-[#1b1c18]">No products found</p>
+                    <p className="text-[11px] text-[#717975]">
+                      Add garments via &apos;Add Product&apos; or adjust filter parameters.
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                filteredProducts.map((p) => {
                 const statusBadge =
                   p.status === 'Active' ? (
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase bg-[#b0ecd3]/40 text-[#073a2d]">
@@ -283,7 +295,8 @@ export default function ProductsPage() {
                     </td>
                   </tr>
                 );
-              })}
+              })
+            )}
             </tbody>
           </table>
         </div>

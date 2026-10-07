@@ -17,14 +17,83 @@ import {
   TrendingUp,
   Clock,
   Sparkles,
+  CheckCircle2,
 } from 'lucide-react';
 import { useAdmin } from '@/context/AdminContext';
 
 export default function DashboardPage() {
-  const { orders, inventory, updateInventoryStock } = useAdmin();
+  const { orders, inventory, products, updateInventoryStock } = useAdmin();
   const [activeRange, setActiveRange] = useState<'7' | '30' | 'month'>('7');
   const [selectedRestockItem, setSelectedRestockItem] = useState<string | null>(null);
   const [restockAmount, setRestockAmount] = useState('10');
+  const [mounted, setMounted] = useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Dynamic calculations from live database records
+  const totalSales = orders.reduce((sum, o) => sum + (o.amount || 0), 0);
+  const totalOrders = orders.length;
+  const pendingOrders = orders.filter((o) => o.status === 'PENDING').length;
+  const dispatchedOrders = orders.filter((o) => o.status === 'SHIPPED' || o.status === 'DELIVERED').length;
+  const dispatchRate = totalOrders > 0 ? Math.round((dispatchedOrders / totalOrders) * 100) : 100;
+  const totalProducts = products.length;
+  const activeProducts = products.filter((p) => p.status === 'Active').length;
+  const uniquePatrons = new Set(orders.map((o) => o.customerName)).size;
+  const avgOrderValue = totalOrders > 0 ? Math.round(totalSales / totalOrders) : 0;
+
+  // Dynamic daily revenue telemetry for the last 7 days
+  const daysData = React.useMemo(() => {
+    if (!mounted) {
+      return ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((label) => ({
+        label,
+        dateStr: '',
+        dhaka: 0,
+        national: 0,
+        total: 0,
+      }));
+    }
+    const list: { label: string; dateStr: string; dhaka: number; national: number; total: number }[] = [];
+    const now = new Date();
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
+      const dateFormatted = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      const isoDate = d.toISOString().split('T')[0];
+
+      const dayOrders = orders.filter((o) => {
+        if (o.createdAt && o.createdAt.startsWith(isoDate)) return true;
+        if (o.dateStr && o.dateStr === dateFormatted) return true;
+        return false;
+      });
+
+      const dhaka = dayOrders
+        .filter((o) => (o.customerLocation || '').toLowerCase().includes('dhaka'))
+        .reduce((sum, o) => sum + (o.amount || 0), 0);
+
+      const national = dayOrders
+        .filter((o) => !(o.customerLocation || '').toLowerCase().includes('dhaka'))
+        .reduce((sum, o) => sum + (o.amount || 0), 0);
+
+      list.push({
+        label: dayLabel,
+        dateStr: dateFormatted,
+        dhaka,
+        national,
+        total: dhaka + national,
+      });
+    }
+
+    return list;
+  }, [orders, mounted]);
+
+  const hasSalesData = daysData.some((d) => d.total > 0);
+  const peakDay = daysData.reduce((prev, curr) => (curr.total > prev.total ? curr : prev), daysData[0]);
+  const maxDayTotal = Math.max(...daysData.map((d) => d.total), 5000);
+  const xCoords = [83, 173, 263, 353, 443, 533, 623];
 
   // Low stock products from inventory
   const lowStockItems = inventory.filter((item) => item.stock <= 5);
@@ -86,7 +155,7 @@ export default function DashboardPage() {
                 TOTAL SALES
               </p>
               <h3 className="text-2xl font-serif font-medium text-[#1b1c18] mt-2">
-                ৳85,400
+                ৳{totalSales.toLocaleString()}
               </h3>
             </div>
             <div className="w-9 h-9 bg-[#fbf9f2] border border-[#deddd3] flex items-center justify-center text-[#073a2d]">
@@ -95,9 +164,9 @@ export default function DashboardPage() {
           </div>
           <div className="mt-4 flex items-center gap-2">
             <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-[#0d4d3b] bg-[#b0ecd3]/40 px-1.5 py-0.5">
-              <ArrowUpRight className="w-3 h-3" /> +12%
+              Live Ledger
             </span>
-            <span className="text-[11px] text-[#717975]">vs. last cycle</span>
+            <span className="text-[11px] text-[#717975]">settled revenue</span>
           </div>
           <div className="mt-4 pt-3 border-t border-[#f0eee7] flex items-center justify-between text-[11px] text-[#69726d]">
             <span>Settled via bKash/SSL/COD</span>
@@ -113,7 +182,7 @@ export default function DashboardPage() {
                 TOTAL ORDERS
               </p>
               <h3 className="text-2xl font-serif font-medium text-[#1b1c18] mt-2">
-                42
+                {totalOrders}
               </h3>
             </div>
             <div className="w-9 h-9 bg-[#fbf9f2] border border-[#deddd3] flex items-center justify-center text-[#073a2d]">
@@ -122,12 +191,12 @@ export default function DashboardPage() {
           </div>
           <div className="mt-4 flex items-center gap-2">
             <span className="inline-flex items-center text-[11px] font-semibold text-[#8c6722] bg-[#f5eedf] px-1.5 py-0.5">
-              6 pending dispatch
+              {pendingOrders} pending dispatch
             </span>
             <span className="text-[11px] text-[#717975]">Dhaka atelier</span>
           </div>
           <div className="mt-4 pt-3 border-t border-[#f0eee7] flex items-center justify-between text-[11px] text-[#69726d]">
-            <span>Delivery rate: 94.3%</span>
+            <span>{totalOrders - pendingOrders} fulfilled</span>
             <Truck className="w-3 h-3 text-[#073a2d]" />
           </div>
         </div>
@@ -140,7 +209,7 @@ export default function DashboardPage() {
                 CATALOG SILHOUETTE
               </p>
               <h3 className="text-2xl font-serif font-medium text-[#1b1c18] mt-2">
-                128
+                {totalProducts}
               </h3>
             </div>
             <div className="w-9 h-9 bg-[#fbf9f2] border border-[#deddd3] flex items-center justify-center text-[#073a2d]">
@@ -149,9 +218,9 @@ export default function DashboardPage() {
           </div>
           <div className="mt-4 flex items-center gap-2">
             <span className="inline-flex items-center text-[11px] font-semibold text-[#073a2d] bg-[#bcedda]/50 px-1.5 py-0.5">
-              Active in catalog
+              {activeProducts} active in catalog
             </span>
-            <span className="text-[11px] text-[#717975]">4 collections</span>
+            <span className="text-[11px] text-[#717975]">pieces</span>
           </div>
           <div className="mt-4 pt-3 border-t border-[#f0eee7] flex items-center justify-between text-[11px] text-[#69726d]">
             <span>Handloom & Pure Silk</span>
@@ -167,7 +236,7 @@ export default function DashboardPage() {
                 CLIENTELE ROSTER
               </p>
               <h3 className="text-2xl font-serif font-medium text-[#1b1c18] mt-2">
-                326
+                {uniquePatrons}
               </h3>
             </div>
             <div className="w-9 h-9 bg-[#fbf9f2] border border-[#deddd3] flex items-center justify-center text-[#073a2d]">
@@ -176,12 +245,12 @@ export default function DashboardPage() {
           </div>
           <div className="mt-4 flex items-center gap-2">
             <span className="inline-flex items-center text-[11px] font-semibold text-[#0d4d3b] bg-[#b0ecd3]/40 px-1.5 py-0.5">
-              +14 new this month
+              Active Patrons
             </span>
-            <span className="text-[11px] text-[#717975]">82% repeat tier</span>
+            <span className="text-[11px] text-[#717975]">clientele</span>
           </div>
           <div className="mt-4 pt-3 border-t border-[#f0eee7] flex items-center justify-between text-[11px] text-[#69726d]">
-            <span>VIP Membership: 48</span>
+            <span>Verified Bookings</span>
             <Users className="w-3 h-3 text-[#c79a45]" />
           </div>
         </div>
@@ -245,91 +314,101 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-1.5 text-[#8c6722] bg-[#f5eedf] px-2.5 py-1 text-[11px] font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-[#c79a45]" />
-            <span>Peak: ৳18,200 on Thursday Atelier Showcase</span>
+            <span>
+              {hasSalesData
+                ? `Peak: ৳${peakDay.total.toLocaleString()} on ${peakDay.label}`
+                : orders.length > 0
+                ? `Live Orders: ${orders.length} in Cloud DB`
+                : 'Awaiting Order Traffic'}
+            </span>
           </div>
         </div>
 
         {/* SVG Chart */}
         <div className="relative pt-6 pb-2">
-          <div className="h-64 w-full relative">
-            <svg
-              className="w-full h-full overflow-visible"
-              viewBox="0 0 700 220"
-              preserveAspectRatio="none"
-            >
-              <defs>
-                <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#073a2d" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#073a2d" stopOpacity="0.0" />
-                </linearGradient>
-                <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#c79a45" stopOpacity="0.35" />
-                  <stop offset="100%" stopColor="#c79a45" stopOpacity="0.05" />
-                </linearGradient>
-              </defs>
+          {orders.length === 0 ? (
+            <div className="h-64 w-full flex flex-col items-center justify-center border border-dashed border-[#deddd3] bg-[#fbf9f2]/70 text-center p-6">
+              <TrendingUp className="w-8 h-8 text-[#717975] mb-2 opacity-30" />
+              <p className="font-serif text-sm font-medium text-[#1b1c18]">Live Telemetry Initialized</p>
+              <p className="text-xs text-[#717975] max-w-sm mt-1">
+                Real-time sales curves and divisional distributions will plot here as patrons place orders through the digital boutique.
+              </p>
+            </div>
+          ) : (
+            <div className="h-64 w-full relative">
+              <svg
+                className="w-full h-full overflow-visible"
+                viewBox="0 0 700 220"
+                preserveAspectRatio="none"
+              >
+                <defs>
+                  <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#073a2d" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="#073a2d" stopOpacity="0.0" />
+                  </linearGradient>
+                  <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#c79a45" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="#c79a45" stopOpacity="0.05" />
+                  </linearGradient>
+                </defs>
 
-              {/* Grid Lines */}
-              <line x1="40" y1="30" x2="680" y2="30" stroke="#deddd3" strokeDasharray="3 3" />
-              <line x1="40" y1="80" x2="680" y2="80" stroke="#deddd3" strokeDasharray="3 3" />
-              <line x1="40" y1="130" x2="680" y2="130" stroke="#deddd3" strokeDasharray="3 3" />
-              <line x1="40" y1="180" x2="680" y2="180" stroke="#deddd3" strokeDasharray="3 3" />
+                {/* Grid Lines */}
+                <line x1="40" y1="30" x2="680" y2="30" stroke="#deddd3" strokeDasharray="3 3" />
+                <line x1="40" y1="80" x2="680" y2="80" stroke="#deddd3" strokeDasharray="3 3" />
+                <line x1="40" y1="130" x2="680" y2="130" stroke="#deddd3" strokeDasharray="3 3" />
+                <line x1="40" y1="180" x2="680" y2="180" stroke="#deddd3" strokeDasharray="3 3" />
 
-              {/* Axis labels */}
-              <text x="10" y="35" fontSize="10" fill="#717975" fontFamily="Plus Jakarta Sans">20k</text>
-              <text x="10" y="85" fontSize="10" fill="#717975" fontFamily="Plus Jakarta Sans">15k</text>
-              <text x="10" y="135" fontSize="10" fill="#717975" fontFamily="Plus Jakarta Sans">10k</text>
-              <text x="10" y="185" fontSize="10" fill="#717975" fontFamily="Plus Jakarta Sans">5.0k</text>
+                {/* Axis labels */}
+                <text x="10" y="35" fontSize="10" fill="#717975" fontFamily="Plus Jakarta Sans">৳{Math.round(maxDayTotal / 1000)}k</text>
+                <text x="10" y="85" fontSize="10" fill="#717975" fontFamily="Plus Jakarta Sans">৳{Math.round((maxDayTotal * 0.66) / 1000)}k</text>
+                <text x="10" y="135" fontSize="10" fill="#717975" fontFamily="Plus Jakarta Sans">৳{Math.round((maxDayTotal * 0.33) / 1000)}k</text>
+                <text x="10" y="185" fontSize="10" fill="#717975" fontFamily="Plus Jakarta Sans">৳0</text>
 
-              {/* Gold Bars (National Division) */}
-              <rect x="75" y="140" width="16" height="40" fill="url(#barGrad)" />
-              <rect x="165" y="110" width="16" height="70" fill="url(#barGrad)" />
-              <rect x="255" y="130" width="16" height="50" fill="url(#barGrad)" />
-              <rect x="345" y="90" width="16" height="90" fill="url(#barGrad)" />
-              <rect x="435" y="75" width="16" height="105" fill="url(#barGrad)" />
-              <rect x="525" y="45" width="16" height="135" fill="url(#barGrad)" />
-              <rect x="615" y="100" width="16" height="80" fill="url(#barGrad)" />
+                {/* Gold Bars (National Division) */}
+                {daysData.map((d, idx) => {
+                  const x = xCoords[idx] - 8;
+                  const barH = Math.max(2, Math.round((d.national / maxDayTotal) * 140));
+                  const y = 180 - barH;
+                  return (
+                    <rect key={`bar-${idx}`} x={x} y={y} width="16" height={barH} fill="url(#barGrad)" />
+                  );
+                })}
 
-              {/* Area spline path */}
-              <path
-                d="M 83 140 C 120 140, 140 100, 173 100 C 210 100, 230 135, 263 135 C 290 135, 330 95, 353 95 C 390 95, 420 75, 443 75 C 480 75, 510 38, 533 38 C 570 38, 600 85, 623 85 L 623 180 L 83 180 Z"
-                fill="url(#salesGrad)"
-              />
+                {/* Spline and Line */}
+                {(() => {
+                  const pts = daysData.map((d, idx) => ({
+                    x: xCoords[idx],
+                    y: 180 - Math.round((d.total / maxDayTotal) * 140),
+                  }));
+                  const pathD = pts.reduce((acc, pt, i) => (i === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`), '');
+                  const areaD = `${pathD} L ${xCoords[6]} 180 L ${xCoords[0]} 180 Z`;
 
-              {/* Line stroke */}
-              <path
-                d="M 83 140 C 120 140, 140 100, 173 100 C 210 100, 230 135, 263 135 C 290 135, 330 95, 353 95 C 390 95, 420 75, 443 75 C 480 75, 510 38, 533 38 C 570 38, 600 85, 623 85"
-                fill="none"
-                stroke="#073a2d"
-                strokeWidth="2.5"
-              />
+                  return (
+                    <>
+                      <path d={areaD} fill="url(#salesGrad)" />
+                      <path d={pathD} fill="none" stroke="#073a2d" strokeWidth="2.5" />
+                      {pts.map((pt, idx) => (
+                        <circle
+                          key={`pt-${idx}`}
+                          cx={pt.x}
+                          cy={pt.y}
+                          r={daysData[idx].total === peakDay.total && peakDay.total > 0 ? 5 : 3.5}
+                          fill={daysData[idx].total === peakDay.total && peakDay.total > 0 ? '#c79a45' : '#073a2d'}
+                        />
+                      ))}
+                    </>
+                  );
+                })()}
 
-              {/* Data points */}
-              <circle cx="83" cy="140" r="3.5" fill="#073a2d" />
-              <circle cx="173" cy="100" r="3.5" fill="#073a2d" />
-              <circle cx="263" cy="135" r="3.5" fill="#073a2d" />
-              <circle cx="353" cy="95" r="3.5" fill="#073a2d" />
-              <circle cx="443" cy="75" r="3.5" fill="#073a2d" />
-              <circle cx="533" cy="38" r="5" fill="#c79a45" stroke="#00231a" strokeWidth="2" />
-              <circle cx="623" cy="85" r="3.5" fill="#073a2d" />
-
-              {/* Peak Tooltip tag */}
-              <g transform="translate(500, 12)">
-                <rect x="0" y="0" width="66" height="20" fill="#073a2d" />
-                <text x="33" y="14" fill="#ffffff" fontSize="10" fontWeight="bold" textAnchor="middle">
-                  ৳18,200
-                </text>
-              </g>
-
-              {/* Day Labels */}
-              <text x="83" y="205" fontSize="11" fill="#717975" textAnchor="middle">Sat</text>
-              <text x="173" y="205" fontSize="11" fill="#717975" textAnchor="middle">Sun</text>
-              <text x="263" y="205" fontSize="11" fill="#717975" textAnchor="middle">Mon</text>
-              <text x="353" y="205" fontSize="11" fill="#717975" textAnchor="middle">Tue</text>
-              <text x="443" y="205" fontSize="11" fill="#717975" textAnchor="middle">Wed</text>
-              <text x="533" y="205" fontSize="11" fill="#073a2d" fontWeight="bold" textAnchor="middle">Thu</text>
-              <text x="623" y="205" fontSize="11" fill="#717975" textAnchor="middle">Fri</text>
-            </svg>
-          </div>
+                {/* Day Labels */}
+                {daysData.map((d, idx) => (
+                  <text key={`label-${idx}`} x={xCoords[idx]} y="205" fontSize="11" fill="#717975" textAnchor="middle">
+                    {d.label}
+                  </text>
+                ))}
+              </svg>
+            </div>
+          )}
         </div>
 
         {/* 3 Metric Pills below chart */}
@@ -340,7 +419,7 @@ export default function DashboardPage() {
             </div>
             <div>
               <p className="text-[10px] uppercase font-semibold text-[#717975]">AVERAGE ORDER VALUE</p>
-              <p className="text-base font-serif font-bold text-[#1b1c18]">৳ 2,033</p>
+              <p className="text-base font-serif font-bold text-[#1b1c18]">৳ {avgOrderValue.toLocaleString()}</p>
             </div>
           </div>
 
@@ -349,9 +428,9 @@ export default function DashboardPage() {
               <TrendingUp className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-[10px] uppercase font-semibold text-[#717975]">CONVERSION RATE</p>
+              <p className="text-[10px] uppercase font-semibold text-[#717975]">DISPATCH RATIO</p>
               <p className="text-base font-serif font-bold text-[#1b1c18]">
-                3.8% <span className="text-xs font-sans font-normal text-[#0d4d3b] ml-1">+0.6%</span>
+                {dispatchRate}% <span className="text-xs font-sans font-normal text-[#0d4d3b] ml-1">{dispatchedOrders}/{totalOrders} orders</span>
               </p>
             </div>
           </div>
@@ -361,8 +440,8 @@ export default function DashboardPage() {
               <Clock className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-[10px] uppercase font-semibold text-[#717975]">FULFILLMENT VELOCITY</p>
-              <p className="text-base font-serif font-bold text-[#1b1c18]">21.4 hrs</p>
+              <p className="text-[10px] uppercase font-semibold text-[#717975]">DISPATCH QUEUE</p>
+              <p className="text-base font-serif font-bold text-[#1b1c18]">{pendingOrders} Pending</p>
             </div>
           </div>
         </div>
@@ -396,53 +475,63 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#f0eee7]">
-                  {orders.slice(0, 5).map((order) => {
-                    const statusColor =
-                      order.status === 'PENDING'
-                        ? 'bg-[#f5eedf] text-[#8c6722]'
-                        : order.status === 'SHIPPED'
-                        ? 'bg-[#bcedda]/50 text-[#0d4d3b]'
-                        : order.status === 'DELIVERED'
-                        ? 'bg-[#b0ecd3]/50 text-[#073a2d]'
-                        : order.status === 'PROCESSING'
-                        ? 'bg-[#e4e2dc] text-[#404945]'
-                        : 'bg-[#ffdad6] text-[#ba1a1a]';
+                  {orders.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-[#717975]">
+                        <ShoppingBag className="w-6 h-6 mx-auto mb-1.5 opacity-40 text-[#717975]" />
+                        <p className="font-serif text-sm text-[#1b1c18]">No Recent Orders</p>
+                        <p className="text-[11px] text-[#717975]">Patron orders will stream here automatically.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    orders.slice(0, 5).map((order) => {
+                      const statusColor =
+                        order.status === 'PENDING'
+                          ? 'bg-[#f5eedf] text-[#8c6722]'
+                          : order.status === 'SHIPPED'
+                          ? 'bg-[#bcedda]/50 text-[#0d4d3b]'
+                          : order.status === 'DELIVERED'
+                          ? 'bg-[#b0ecd3]/50 text-[#073a2d]'
+                          : order.status === 'PROCESSING'
+                          ? 'bg-[#e4e2dc] text-[#404945]'
+                          : 'bg-[#ffdad6] text-[#ba1a1a]';
 
-                    return (
-                      <tr key={order.id} className="hover:bg-[#fbf9f2] transition-colors">
-                        <td className="py-3 font-semibold text-[#073a2d]">{order.id}</td>
-                        <td className="py-3">
-                          <span className="font-medium text-[#1b1c18]">{order.customerName}</span>
-                          <span className="text-[11px] text-[#717975] block">
-                            {order.customerLocation}
-                          </span>
-                        </td>
-                        <td className="py-3 font-medium">
-                          ৳{order.amount}
-                          <span className="text-[10px] text-[#717975] block uppercase font-mono">
-                            {order.paymentMethod}
-                          </span>
-                        </td>
-                        <td className="py-3">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase ${statusColor}`}
-                          >
-                            <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                            {order.status}
-                          </span>
-                        </td>
-                        <td className="py-3 text-right">
-                          <Link
-                            href="/orders"
-                            className="p-1.5 text-[#717975] hover:text-[#073a2d] inline-block"
-                            title="View order details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                      return (
+                        <tr key={order.id} className="hover:bg-[#fbf9f2] transition-colors">
+                          <td className="py-3 font-semibold text-[#073a2d]">{order.id}</td>
+                          <td className="py-3">
+                            <span className="font-medium text-[#1b1c18]">{order.customerName}</span>
+                            <span className="text-[11px] text-[#717975] block">
+                              {order.customerLocation}
+                            </span>
+                          </td>
+                          <td className="py-3 font-medium">
+                            ৳{order.amount.toLocaleString()}
+                            <span className="text-[10px] text-[#717975] block uppercase font-mono">
+                              {order.paymentMethod}
+                            </span>
+                          </td>
+                          <td className="py-3">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase ${statusColor}`}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                              {order.status}
+                            </span>
+                          </td>
+                          <td className="py-3 text-right">
+                            <Link
+                              href="/orders"
+                              className="p-1.5 text-[#717975] hover:text-[#073a2d] inline-block"
+                              title="View order details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -474,40 +563,48 @@ export default function DashboardPage() {
             </div>
 
             <div className="mt-4 space-y-3">
-              {lowStockItems.slice(0, 4).map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between p-2.5 border border-[#deddd3] bg-[#fbf9f2] hover:border-[#c79a45] transition-colors"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 bg-[#073a2d] text-white flex items-center justify-center shrink-0">
-                      <Shirt className="w-5 h-5 text-[#bcedda]" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-[#1b1c18] line-clamp-1">{item.name}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-[11px] text-[#717975]">Stock: {item.stock} units</span>
-                        <span
-                          className={`text-[9px] px-1 py-0.2 font-semibold uppercase ${
-                            item.stock === 0
-                              ? 'bg-[#ffdad6] text-[#ba1a1a]'
-                              : 'bg-[#f5eedf] text-[#8c6722]'
-                          }`}
-                        >
-                          {item.stock === 0 ? 'Out of Stock' : 'Low Stock'}
-                        </span>
+              {lowStockItems.length === 0 ? (
+                <div className="p-8 text-center border border-[#deddd3] bg-[#fbf9f2]">
+                  <CheckCircle2 className="w-6 h-6 mx-auto mb-1.5 text-[#0d4d3b]" />
+                  <p className="font-serif text-sm text-[#1b1c18]">Healthy Inventory</p>
+                  <p className="text-[11px] text-[#717975]">All pieces currently have ample atelier reserve.</p>
+                </div>
+              ) : (
+                lowStockItems.slice(0, 4).map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-2.5 border border-[#deddd3] bg-[#fbf9f2] hover:border-[#c79a45] transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-10 h-10 bg-[#073a2d] text-white flex items-center justify-center shrink-0">
+                        <Shirt className="w-5 h-5 text-[#bcedda]" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-[#1b1c18] line-clamp-1">{item.name}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[11px] text-[#717975]">Stock: {item.stock} units</span>
+                          <span
+                            className={`text-[9px] px-1 py-0.2 font-semibold uppercase ${
+                              item.stock === 0
+                                ? 'bg-[#ffdad6] text-[#ba1a1a]'
+                                : 'bg-[#f5eedf] text-[#8c6722]'
+                            }`}
+                          >
+                            {item.stock === 0 ? 'Out of Stock' : 'Low Stock'}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <button
-                    onClick={() => setSelectedRestockItem(item.id)}
-                    className="px-2.5 py-1.5 bg-[#00231a] hover:bg-[#073a2d] text-white text-[10px] font-semibold tracking-wider uppercase transition-colors shrink-0"
-                  >
-                    + RESTOCK
-                  </button>
-                </div>
-              ))}
+                    <button
+                      onClick={() => setSelectedRestockItem(item.id)}
+                      className="px-2.5 py-1.5 bg-[#00231a] hover:bg-[#073a2d] text-white text-[10px] font-semibold tracking-wider uppercase transition-colors shrink-0"
+                    >
+                      + RESTOCK
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 

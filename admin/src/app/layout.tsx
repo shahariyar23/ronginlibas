@@ -16,8 +16,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full">
-      <body className="min-h-full flex flex-col bg-[#fbf9f2] text-[#1b1c18] antialiased">
+    <html lang="en" className="h-full" suppressHydrationWarning>
+      <body
+        className="min-h-full flex flex-col bg-[#fbf9f2] text-[#1b1c18] antialiased"
+        suppressHydrationWarning
+      >
         <AdminLayout>{children}</AdminLayout>
       </body>
     </html>

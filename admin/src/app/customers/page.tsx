@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, Search, Award, Mail, Phone, MapPin, Download } from 'lucide-react';
 
 interface Patron {
@@ -15,57 +15,52 @@ interface Patron {
   lastOrder: string;
 }
 
-const PATRONS: Patron[] = [
-  {
-    id: 'PAT-01',
-    name: 'Rahim Chowdhury',
-    email: 'rahim.c@gmail.com',
-    phone: '01711-234567',
-    location: 'Gulshan-2, Dhaka',
-    tier: 'VIP Patron',
-    ordersCount: 9,
-    totalSpent: 48900,
-    lastOrder: 'Today, 02:45 PM',
-  },
-  {
-    id: 'PAT-02',
-    name: 'Karimul Islam',
-    email: 'k.islam@yahoo.com',
-    phone: '01819-445566',
-    location: 'Dhanmondi, Dhaka',
-    tier: 'Atelier Regular',
-    ordersCount: 4,
-    totalSpent: 16800,
-    lastOrder: 'Today, 02:10 PM',
-  },
-  {
-    id: 'PAT-03',
-    name: 'Syed Tanvir Hasan',
-    email: 'tanvir.hasan@outlook.com',
-    phone: '01712-334455',
-    location: 'Banani, Dhaka',
-    tier: 'VIP Patron',
-    ordersCount: 7,
-    totalSpent: 39500,
-    lastOrder: 'Today, 11:30 AM',
-  },
-  {
-    id: 'PAT-04',
-    name: 'Farhan Mahmud',
-    email: 'farhan.m@gmail.com',
-    phone: '01611-998877',
-    location: 'Chittagong GEC',
-    tier: 'New Client',
-    ordersCount: 1,
-    totalSpent: 5250,
-    lastOrder: 'Oct 23, 2026',
-  },
-];
+const PATRONS: Patron[] = [];
+
+import { adminApi } from '@/lib/api';
 
 export default function CustomersPage() {
+  const [patrons, setPatrons] = useState<Patron[]>(PATRONS);
   const [search, setSearch] = useState('');
 
-  const filtered = PATRONS.filter(
+  useEffect(() => {
+    async function loadCustomers() {
+      try {
+        const res = await adminApi.customers.getAll();
+        if (res.success && res.data?.items?.length > 0) {
+          const mapped: Patron[] = res.data.items.map((c: any) => {
+            const name = `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Patron Client';
+            const orders = c.orders || [];
+            const ordersCount = c._count?.orders ?? orders.length ?? 0;
+            const totalSpent = orders.reduce((sum: number, o: any) => sum + (Number(o.totalAmount) || 0), 0);
+            const address = c.addresses?.[0]
+              ? `${c.addresses[0].city || ''}${c.addresses[0].division ? `, ${c.addresses[0].division}` : ''}`
+              : '—';
+
+            return {
+              id: c.id,
+              name,
+              email: c.email || '—',
+              phone: c.phone || '—',
+              location: address,
+              tier: ordersCount >= 5 ? 'VIP Patron' : ordersCount > 0 ? 'Atelier Regular' : 'New Client',
+              ordersCount,
+              totalSpent,
+              lastOrder: c.orders?.[0]?.createdAt
+                ? new Date(c.orders[0].createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                : 'Active Ledger',
+            };
+          });
+          setPatrons(mapped);
+        }
+      } catch (err) {
+        console.warn('Customers API fetch fallback:', err);
+      }
+    }
+    loadCustomers();
+  }, []);
+
+  const filtered = patrons.filter(
     (p) =>
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -123,50 +118,60 @@ export default function CustomersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0eee7]">
-              {filtered.map((patron) => (
-                <tr key={patron.id} className="hover:bg-[#fbf9f2] transition-colors">
-                  <td className="py-3.5 px-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-[#073a2d] text-white flex items-center justify-center font-bold text-xs">
-                        {patron.name.charAt(0)}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-[#1b1c18]">{patron.name}</p>
-                        <p className="text-[11px] font-mono text-[#717975]">{patron.id}</p>
-                      </div>
-                    </div>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-[#717975]">
+                    <Users className="w-8 h-8 mx-auto mb-2 opacity-40 text-[#717975]" />
+                    <p className="font-serif text-sm text-[#1b1c18]">No patrons found</p>
+                    <p className="text-[11px] text-[#717975]">Clientele records will appear here as orders are placed.</p>
                   </td>
-                  <td className="py-3.5 px-4 space-y-0.5">
-                    <div className="flex items-center gap-1.5 text-[#404945]">
-                      <Phone className="w-3 h-3 text-[#717975]" />
-                      <span className="font-mono text-[11px]">{patron.phone}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-[#69726d]">
-                      <MapPin className="w-3 h-3 text-[#717975]" />
-                      <span>{patron.location}</span>
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                        patron.tier === 'VIP Patron'
-                          ? 'bg-[#f5eedf] text-[#8c6722]'
-                          : patron.tier === 'Atelier Regular'
-                          ? 'bg-[#bcedda]/40 text-[#073a2d]'
-                          : 'bg-[#f0eee7] text-[#404945]'
-                      }`}
-                    >
-                      <Award className="w-3 h-3" />
-                      {patron.tier}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4 font-bold text-[#1b1c18]">{patron.ordersCount} orders</td>
-                  <td className="py-3.5 px-4 font-serif font-bold text-sm text-[#073a2d]">
-                    ৳{patron.totalSpent.toLocaleString()}
-                  </td>
-                  <td className="py-3.5 px-4 text-right text-[#717975]">{patron.lastOrder}</td>
                 </tr>
-              ))}
+              ) : (
+                filtered.map((patron) => (
+                  <tr key={patron.id} className="hover:bg-[#fbf9f2] transition-colors">
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-[#073a2d] text-white flex items-center justify-center font-bold text-xs">
+                          {patron.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-[#1b1c18]">{patron.name}</p>
+                          <p className="text-[11px] font-mono text-[#717975]">{patron.id}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 space-y-0.5">
+                      <div className="flex items-center gap-1.5 text-[#404945]">
+                        <Phone className="w-3 h-3 text-[#717975]" />
+                        <span className="font-mono text-[11px]">{patron.phone}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[#69726d]">
+                        <MapPin className="w-3 h-3 text-[#717975]" />
+                        <span>{patron.location}</span>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                          patron.tier === 'VIP Patron'
+                            ? 'bg-[#f5eedf] text-[#8c6722]'
+                            : patron.tier === 'Atelier Regular'
+                            ? 'bg-[#bcedda]/40 text-[#073a2d]'
+                            : 'bg-[#f0eee7] text-[#404945]'
+                        }`}
+                      >
+                        <Award className="w-3 h-3" />
+                        {patron.tier}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 font-bold text-[#1b1c18]">{patron.ordersCount} orders</td>
+                    <td className="py-3.5 px-4 font-serif font-bold text-sm text-[#073a2d]">
+                      ৳{patron.totalSpent.toLocaleString()}
+                    </td>
+                    <td className="py-3.5 px-4 text-right text-[#717975]">{patron.lastOrder}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
