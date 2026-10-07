@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { PRODUCTS } from '@/data/products';
+import type { Product } from '@/types';
+import { getProducts } from '@/lib/api';
 import { ProductCard } from '@/components/shop/ProductCard';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
@@ -32,6 +34,25 @@ export const ShopContent: React.FC = () => {
   const initialFilter = searchParams.get('filter') || '';
   const initialQuery = searchParams.get('q') || '';
   const initialWishlist = searchParams.get('wishlist') === 'true';
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    getProducts({ limit: 100 })
+      .then((data) => {
+        if (active) setProducts(data);
+      })
+      .catch((error: unknown) => {
+        if (active) toast.error(error instanceof Error ? error.message : 'Could not load products.');
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Filters state
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
@@ -74,7 +95,7 @@ export const ShopContent: React.FC = () => {
 
   // Filtering Logic
   const filteredProducts = useMemo(() => {
-    return PRODUCTS.filter((p) => {
+    return products.filter((p) => {
       // Search query
       if (initialQuery) {
         const q = initialQuery.toLowerCase();
@@ -101,7 +122,7 @@ export const ShopContent: React.FC = () => {
 
       // Sizes
       if (selectedSizes.length > 0) {
-        const hasSize = selectedSizes.some((s) => p.sizes.includes(s as any));
+        const hasSize = selectedSizes.some((s) => p.sizes.includes(s));
         if (!hasSize) return false;
       }
 
@@ -150,6 +171,7 @@ export const ShopContent: React.FC = () => {
     sortBy,
     initialQuery,
     initialFilter,
+    products,
   ]);
 
   const toggleSize = (size: string) => {
@@ -504,7 +526,11 @@ export const ShopContent: React.FC = () => {
 
           {/* Right Product Grid (9 Cols) */}
           <div className="lg:col-span-9">
-            {filteredProducts.length === 0 ? (
+            {isLoading ? (
+              <div className="p-16 bg-white border border-[#deddd3] text-center font-serif text-lg text-[#073a2d]">
+                Loading the current collection...
+              </div>
+            ) : filteredProducts.length === 0 ? (
               <div className="p-16 bg-white border border-[#deddd3] text-center space-y-4">
                 <h3 className="font-serif text-2xl text-[#073a2d]">
                   No Sartorial Pieces Matched Your Criteria

@@ -47,6 +47,22 @@ export default function OrdersPage() {
     return matchesTab && matchesSearch && matchesPayment;
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, search, paymentFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const paginatedOrders = filteredOrders.slice(
+    (safeCurrentPage - 1) * pageSize,
+    safeCurrentPage * pageSize
+  );
+  const startEntry = filteredOrders.length === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1;
+  const endEntry = Math.min(safeCurrentPage * pageSize, filteredOrders.length);
+
   const handlePrintInvoice = (order: AdminOrder) => {
     setSelectedOrderForInvoice(order);
   };
@@ -261,7 +277,7 @@ export default function OrdersPage() {
                   </td>
                 </tr>
               ) : (
-                filteredOrders.map((order) => {
+                paginatedOrders.map((order) => {
                 const statusColor =
                   order.status === 'PENDING'
                     ? 'bg-[#f5eedf] text-[#8c6722]'
@@ -280,7 +296,7 @@ export default function OrdersPage() {
                     <td className="py-3.5 px-4 font-semibold text-[#073a2d] whitespace-nowrap">
                       <span className="flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#c79a45]" />
-                        {order.id}
+                        {order.orderNumber || order.id}
                       </span>
                     </td>
                     <td className="py-3.5 px-4">
@@ -343,25 +359,52 @@ export default function OrdersPage() {
         {/* Pagination footer */}
         <div className="p-4 bg-[#fbf9f2] border-t border-[#deddd3] flex flex-col sm:flex-row items-center justify-between text-xs text-[#717975] gap-3">
           <span>
-            Showing {filteredOrders.length} of {orders.length} atelier entries
+            {filteredOrders.length === 0
+              ? 'Showing 0 atelier entries'
+              : `Showing ${startEntry} to ${endEntry} of ${filteredOrders.length} atelier entries`}
           </span>
 
           <div className="flex items-center gap-1 font-mono text-xs">
-            <span className="px-2 text-[#717975]">Previous</span>
-            <span className="w-6 h-6 flex items-center justify-center bg-[#073a2d] text-white font-bold">
-              1
-            </span>
-            <button className="w-6 h-6 flex items-center justify-center border border-[#deddd3] bg-white hover:bg-[#f0eee7] text-[#1b1c18]">
-              2
+            <button
+              type="button"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={safeCurrentPage <= 1}
+              className={`px-2 py-1 border border-[#deddd3] bg-white transition-colors ${
+                safeCurrentPage <= 1
+                  ? 'opacity-40 cursor-not-allowed text-[#717975]'
+                  : 'hover:bg-[#f0eee7] text-[#1b1c18] cursor-pointer'
+              }`}
+            >
+              Previous
             </button>
-            <button className="w-6 h-6 flex items-center justify-center border border-[#deddd3] bg-white hover:bg-[#f0eee7] text-[#1b1c18]">
-              3
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <button
+                key={page}
+                type="button"
+                onClick={() => setCurrentPage(page)}
+                className={`w-6 h-6 flex items-center justify-center font-bold text-xs transition-colors cursor-pointer ${
+                  page === safeCurrentPage
+                    ? 'bg-[#073a2d] text-white'
+                    : 'border border-[#deddd3] bg-white hover:bg-[#f0eee7] text-[#1b1c18]'
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={safeCurrentPage >= totalPages}
+              className={`px-2 py-1 border border-[#deddd3] bg-white transition-colors ${
+                safeCurrentPage >= totalPages
+                  ? 'opacity-40 cursor-not-allowed text-[#717975]'
+                  : 'hover:bg-[#f0eee7] text-[#1b1c18] cursor-pointer'
+              }`}
+            >
+              Next
             </button>
-            <span className="px-1 text-[#717975]">...</span>
-            <button className="w-6 h-6 flex items-center justify-center border border-[#deddd3] bg-white hover:bg-[#f0eee7] text-[#1b1c18]">
-              7
-            </button>
-            <span className="px-2 text-[#1b1c18] font-medium cursor-pointer">Next</span>
           </div>
         </div>
       </div>
@@ -463,7 +506,8 @@ export default function OrdersPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
           <div className="bg-white border border-[#deddd3] shadow-2xl p-6 w-full max-w-sm">
             <h3 className="font-serif text-lg font-bold text-[#073a2d]">
-              Update Order Status: {updatingOrderId}
+              Update Order Status:{' '}
+              {orders.find((o) => o.id === updatingOrderId)?.orderNumber || updatingOrderId}
             </h3>
             <p className="text-xs text-[#717975] mt-1">
               Select the next lifecycle stage for this customer consignment:

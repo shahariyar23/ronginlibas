@@ -6,7 +6,8 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { appConfig } from '../config/app/app.config.js';
 import { databaseConfig } from '../config/database/database.config.js';
 import { validateEnv } from '../config/env/env.validation.js';
@@ -24,6 +25,10 @@ import { DashboardModule } from '../dashboard/dashboard.module.js';
 import { SettingsModule } from '../settings/settings.module.js';
 import { PaymentsModule } from '../payments/payments.module.js';
 import { ShippingModule } from '../shipping/shipping.module.js';
+import { StorefrontModule } from '../storefront/storefront.module.js';
+import { CartModule } from '../cart/cart.module.js';
+import { WishlistModule } from '../wishlist/wishlist.module.js';
+import { NewsletterModule } from '../newsletter/newsletter.module.js';
 import { HealthController } from './health.controller.js';
 import { TransformInterceptor } from '../common/interceptors/transform.interceptor.js';
 import { AllExceptionsFilter } from '../common/filters/all-exceptions.filter.js';
@@ -37,6 +42,7 @@ AppModule = __decorate([
                 load: [appConfig, databaseConfig],
                 validate: validateEnv,
             }),
+            ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 120 }]),
             PrismaModule,
             AuthModule,
             UsersModule,
@@ -51,6 +57,10 @@ AppModule = __decorate([
             SettingsModule,
             PaymentsModule,
             ShippingModule,
+            StorefrontModule,
+            CartModule,
+            WishlistModule,
+            NewsletterModule,
         ],
         controllers: [HealthController],
         providers: [
@@ -61,6 +71,10 @@ AppModule = __decorate([
             {
                 provide: APP_FILTER,
                 useClass: AllExceptionsFilter,
+            },
+            {
+                provide: APP_GUARD,
+                useClass: ThrottlerGuard,
             },
         ],
     })

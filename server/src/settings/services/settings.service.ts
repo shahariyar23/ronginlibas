@@ -14,38 +14,36 @@ export class SettingsService {
     email: 'concierge@ronginlibas.com',
     website: 'https://ronginlibas.com',
     facebook: 'https://facebook.com/ronginlibas.bd',
+    instagram: null,
+    promotionalAnnouncement: null,
+    businessHours: null,
     currency: 'BDT',
     currencySymbol: '৳',
     dhakaDeliveryCharge: 80,
     outsideDhakaDeliveryCharge: 150,
     freeDeliveryThreshold: 3000,
     codEnabled: true,
-    bkashEnabled: true,
-    bkashWallet: '01711-223344',
-    nagadEnabled: true,
-    nagadWallet: '01822-554499',
+    bkashEnabled: false,
+    nagadEnabled: false,
+    cardEnabled: false,
     storeStatus: 'ACTIVE',
   };
 
   async getSettings() {
-    try {
-      const records = await this.prisma.storeSetting.findMany();
-      if (!records || records.length === 0) {
-        return this.defaultSettings;
-      }
-
-      const settingsMap: Record<string, any> = { ...this.defaultSettings };
-      for (const record of records) {
-        try {
-          settingsMap[record.key] = JSON.parse(record.value);
-        } catch {
-          settingsMap[record.key] = record.value;
-        }
-      }
-      return settingsMap;
-    } catch {
+    const records = await this.prisma.storeSetting.findMany();
+    if (records.length === 0) {
       return this.defaultSettings;
     }
+
+    const settingsMap: Record<string, unknown> = { ...this.defaultSettings };
+    for (const record of records) {
+      try {
+        settingsMap[record.key] = JSON.parse(record.value) as unknown;
+      } catch {
+        settingsMap[record.key] = record.value;
+      }
+    }
+    return settingsMap;
   }
 
   async getPublicSettings() {
@@ -55,6 +53,10 @@ export class SettingsService {
       logo: all.logo,
       phone: all.phone,
       whatsapp: all.whatsapp,
+      email: all.email,
+      website: all.website,
+      facebook: all.facebook,
+      instagram: all.instagram,
       currency: all.currency,
       currencySymbol: all.currencySymbol,
       dhakaDeliveryCharge: all.dhakaDeliveryCharge,
@@ -63,25 +65,26 @@ export class SettingsService {
       codEnabled: all.codEnabled,
       bkashEnabled: all.bkashEnabled,
       nagadEnabled: all.nagadEnabled,
+      cardEnabled: all.cardEnabled,
+      promotionalAnnouncement: all.promotionalAnnouncement,
+      businessHours: all.businessHours,
     };
   }
 
   async updateSettings(dto: UpdateSettingsDto) {
-    try {
-      const entries = Object.entries(dto);
-      for (const [key, value] of entries) {
-        if (value !== undefined) {
+    const entries = Object.entries(dto);
+    await this.prisma.$transaction(
+      entries
+        .filter(([, value]) => value !== undefined)
+        .map(([key, value]) => {
           const stringified = typeof value === 'object' ? JSON.stringify(value) : String(value);
-          await this.prisma.storeSetting.upsert({
+          return this.prisma.storeSetting.upsert({
             where: { key },
             update: { value: stringified },
             create: { key, value: stringified, group: 'store' },
           });
-        }
-      }
-      return await this.getSettings();
-    } catch {
-      return { ...this.defaultSettings, ...(dto as unknown as Record<string, unknown>) };
-    }
+        }),
+    );
+    return this.getSettings();
   }
 }

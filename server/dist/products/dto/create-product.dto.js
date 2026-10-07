@@ -7,15 +7,18 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsBoolean, IsArray, ValidateNested, IsEnum, Min, } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsNumber, IsBoolean, IsArray, ValidateNested, IsEnum, Min, IsInt, MaxLength, IsObject, } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Prisma } from '@prisma/client';
 export class CreateVariantDto {
     size;
+    sizeLabel;
     color;
     sku;
     stock;
     priceOverride;
+    measurements;
 }
 __decorate([
     ApiProperty({ example: '40' }),
@@ -23,6 +26,12 @@ __decorate([
     IsNotEmpty(),
     __metadata("design:type", String)
 ], CreateVariantDto.prototype, "size", void 0);
+__decorate([
+    ApiPropertyOptional({ example: 'M' }),
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], CreateVariantDto.prototype, "sizeLabel", void 0);
 __decorate([
     ApiProperty({ example: 'Heritage Olive' }),
     IsString(),
@@ -47,8 +56,15 @@ __decorate([
     IsOptional(),
     __metadata("design:type", Number)
 ], CreateVariantDto.prototype, "priceOverride", void 0);
+__decorate([
+    ApiPropertyOptional({ description: 'Optional size-specific garment measurements' }),
+    IsObject(),
+    IsOptional(),
+    __metadata("design:type", Object)
+], CreateVariantDto.prototype, "measurements", void 0);
 export class CreateProductImageDto {
     url;
+    publicId;
     altText;
     sortOrder;
     isPrimary;
@@ -59,6 +75,12 @@ __decorate([
     IsNotEmpty(),
     __metadata("design:type", String)
 ], CreateProductImageDto.prototype, "url", void 0);
+__decorate([
+    ApiPropertyOptional({ example: 'rongin-libas/products/garment-front' }),
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], CreateProductImageDto.prototype, "publicId", void 0);
 __decorate([
     ApiPropertyOptional({ example: 'Imperial Zari Panjabi front angle' }),
     IsString(),
@@ -81,13 +103,19 @@ export class CreateProductDto {
     name;
     slug;
     description;
+    shortDescription;
     price;
     compareAtPrice;
     costPrice;
     sku;
     gender = 'MEN';
     fabric;
+    fabricOrigin;
     fit;
+    gsm;
+    careInstructions;
+    tags;
+    isExpressAvailable;
     categoryId;
     isActive = true;
     isFeatured = false;
@@ -116,6 +144,13 @@ __decorate([
     IsOptional(),
     __metadata("design:type", String)
 ], CreateProductDto.prototype, "description", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    IsString(),
+    MaxLength(300),
+    IsOptional(),
+    __metadata("design:type", String)
+], CreateProductDto.prototype, "shortDescription", void 0);
 __decorate([
     ApiProperty({ example: 3850 }),
     IsNumber(),
@@ -153,11 +188,43 @@ __decorate([
     __metadata("design:type", String)
 ], CreateProductDto.prototype, "fabric", void 0);
 __decorate([
+    ApiPropertyOptional(),
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], CreateProductDto.prototype, "fabricOrigin", void 0);
+__decorate([
     ApiPropertyOptional({ example: 'Tailored Slim Fit' }),
     IsString(),
     IsOptional(),
     __metadata("design:type", String)
 ], CreateProductDto.prototype, "fit", void 0);
+__decorate([
+    ApiPropertyOptional({ minimum: 0 }),
+    IsInt(),
+    Min(0),
+    IsOptional(),
+    __metadata("design:type", Number)
+], CreateProductDto.prototype, "gsm", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], CreateProductDto.prototype, "careInstructions", void 0);
+__decorate([
+    ApiPropertyOptional({ type: [String] }),
+    IsArray(),
+    IsString({ each: true }),
+    IsOptional(),
+    __metadata("design:type", Array)
+], CreateProductDto.prototype, "tags", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    IsBoolean(),
+    IsOptional(),
+    __metadata("design:type", Boolean)
+], CreateProductDto.prototype, "isExpressAvailable", void 0);
 __decorate([
     ApiProperty({ example: 'panjabi-cat-id' }),
     IsString(),

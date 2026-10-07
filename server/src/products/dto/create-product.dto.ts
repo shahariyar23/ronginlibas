@@ -8,15 +8,24 @@ import {
   ValidateNested,
   IsEnum,
   Min,
+  IsInt,
+  MaxLength,
+  IsObject,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Prisma } from '@prisma/client';
 
 export class CreateVariantDto {
   @ApiProperty({ example: '40' })
   @IsString()
   @IsNotEmpty()
   size: string;
+
+  @ApiPropertyOptional({ example: 'M' })
+  @IsString()
+  @IsOptional()
+  sizeLabel?: string;
 
   @ApiProperty({ example: 'Heritage Olive' })
   @IsString()
@@ -37,6 +46,11 @@ export class CreateVariantDto {
   @IsNumber()
   @IsOptional()
   priceOverride?: number;
+
+  @ApiPropertyOptional({ description: 'Optional size-specific garment measurements' })
+  @IsObject()
+  @IsOptional()
+  measurements?: Prisma.InputJsonObject;
 }
 
 export class CreateProductImageDto {
@@ -44,6 +58,11 @@ export class CreateProductImageDto {
   @IsString()
   @IsNotEmpty()
   url: string;
+
+  @ApiPropertyOptional({ example: 'rongin-libas/products/garment-front' })
+  @IsString()
+  @IsOptional()
+  publicId?: string;
 
   @ApiPropertyOptional({ example: 'Imperial Zari Panjabi front angle' })
   @IsString()
@@ -79,6 +98,12 @@ export class CreateProductDto {
   @IsOptional()
   description?: string;
 
+  @ApiPropertyOptional()
+  @IsString()
+  @MaxLength(300)
+  @IsOptional()
+  shortDescription?: string;
+
   @ApiProperty({ example: 3850 })
   @IsNumber()
   @Min(0)
@@ -109,10 +134,37 @@ export class CreateProductDto {
   @IsOptional()
   fabric?: string;
 
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  fabricOrigin?: string;
+
   @ApiPropertyOptional({ example: 'Tailored Slim Fit' })
   @IsString()
   @IsOptional()
   fit?: string;
+
+  @ApiPropertyOptional({ minimum: 0 })
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  gsm?: number;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  careInstructions?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  tags?: string[];
+
+  @ApiPropertyOptional()
+  @IsBoolean()
+  @IsOptional()
+  isExpressAvailable?: boolean;
 
   @ApiProperty({ example: 'panjabi-cat-id' })
   @IsString()

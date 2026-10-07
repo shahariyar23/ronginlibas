@@ -11,6 +11,21 @@ declare class EnvironmentVariables {
     JWT_REFRESH_SECRET?: string;
     WEB_FRONTEND_URL?: string;
     ADMIN_FRONTEND_URL?: string;
+    SMTP_HOST?: string;
+    SMTP_PORT?: string;
+    SMTP_USER?: string;
+    SMTP_PASS?: string;
+    SMTP_FROM?: string;
+    SMTP_SECURE?: string;
+    BKASH_APP_KEY?: string;
+    BKASH_APP_SECRET?: string;
+    NAGAD_MERCHANT_ID?: string;
+    NAGAD_MERCHANT_PRIVATE_KEY?: string;
+    SSLCOMMERZ_STORE_ID?: string;
+    SSLCOMMERZ_STORE_PASSWORD?: string;
+    CLOUDINARY_CLOUD_NAME?: string;
+    CLOUDINARY_API_KEY?: string;
+    CLOUDINARY_API_SECRET?: string;
 }
 export declare function validateEnv(config: Record<string, unknown>): EnvironmentVariables;
 export {};

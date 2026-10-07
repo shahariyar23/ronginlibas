@@ -7,10 +7,9 @@ export const appConfig = registerAs('app', () => ({
   webFrontendUrl: process.env.WEB_FRONTEND_URL || 'http://localhost:3000',
   adminFrontendUrl: process.env.ADMIN_FRONTEND_URL || 'http://localhost:3001',
   corsOrigins: [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'https://ronginlibas.com',
-    'https://www.ronginlibas.com',
+    ...(process.env.NODE_ENV === 'production'
+      ? ['https://ronginlibas.com', 'https://www.ronginlibas.com']
+      : ['http://localhost:3000', 'http://localhost:3001']),
     process.env.WEB_FRONTEND_URL,
     process.env.ADMIN_FRONTEND_URL,
   ].filter((origin): origin is string => Boolean(origin)),

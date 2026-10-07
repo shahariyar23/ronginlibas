@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { AdminProvider } from '@/context/AdminContext';
+import { ToastProvider } from '@/context/ToastContext';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { CommandPalette } from '@/components/common/CommandPalette';
@@ -71,16 +72,18 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AdminProvider>
-      <div className="flex min-h-screen bg-[#fbf9f2]">
-        <Sidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <Header />
-          <main className="flex-1 overflow-x-hidden">{children}</main>
+    <ToastProvider>
+      <AdminProvider>
+        <div className="flex min-h-screen bg-[#fbf9f2]">
+          <Sidebar />
+          <div className="flex-1 flex flex-col min-w-0">
+            <Header />
+            <main className="flex-1 overflow-x-hidden">{children}</main>
+          </div>
         </div>
-      </div>
-      <CommandPalette />
-    </AdminProvider>
+        <CommandPalette />
+      </AdminProvider>
+    </ToastProvider>
   );
 }
 

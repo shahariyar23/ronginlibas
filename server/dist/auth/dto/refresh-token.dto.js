@@ -7,15 +7,17 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { IsNotEmpty, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsString } from 'class-validator';
 export class RefreshTokenDto {
     refreshToken;
 }
 __decorate([
-    ApiProperty({ example: 'eyJhbGciOiJIUzI1NiIsIn...' }),
+    ApiPropertyOptional({
+        description: 'Legacy admin refresh token; customer tokens use the HTTP-only cookie',
+    }),
     IsString(),
-    IsNotEmpty(),
+    IsOptional(),
     __metadata("design:type", String)
 ], RefreshTokenDto.prototype, "refreshToken", void 0);
 //# sourceMappingURL=refresh-token.dto.js.map

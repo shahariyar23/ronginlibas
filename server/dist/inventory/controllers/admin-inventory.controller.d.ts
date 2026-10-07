@@ -1,12 +1,10 @@
 import { InventoryService } from '../services/inventory.service.js';
 import { AdjustStockDto } from '../dto/adjust-stock.dto.js';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto.js';
+import { InventoryQueryDto } from '../dto/inventory-query.dto.js';
 export declare class AdminInventoryController {
     private readonly inventoryService;
     constructor(inventoryService: InventoryService);
-    getInventoryList(query: PaginationQueryDto & {
-        filter?: string;
-    }): Promise<{
+    getInventoryList(query: InventoryQueryDto): Promise<{
         message: string;
         data: import("../../common/dto/pagination-query.dto.js").PaginatedResult<any>;
     }>;
@@ -18,33 +16,26 @@ export declare class AdminInventoryController {
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
+                measurements: import("@prisma/client/runtime/library").JsonValue | null;
+                productId: string;
+                sku: string;
                 size: string;
                 color: string;
-                sku: string;
+                sizeLabel: string | null;
                 stock: number;
                 priceOverride: import("@prisma/client/runtime/library").Decimal | null;
-                productId: string;
             };
             transaction: {
                 type: import("@prisma/client").$Enums.InventoryTransactionType;
                 id: string;
                 createdAt: Date;
+                variantId: string;
                 quantityChange: number;
                 previousStock: number;
                 newStock: number;
                 note: string | null;
                 userId: string | null;
-                variantId: string;
             };
-            message?: undefined;
-            variantId?: undefined;
-            change?: undefined;
-        } | {
-            message: string;
-            variantId: string;
-            change: number;
-            variant?: undefined;
-            transaction?: undefined;
         };
     }>;
     getTransactionHistory(variantId: string): Promise<{
@@ -59,12 +50,12 @@ export declare class AdminInventoryController {
             type: import("@prisma/client").$Enums.InventoryTransactionType;
             id: string;
             createdAt: Date;
+            variantId: string;
             quantityChange: number;
             previousStock: number;
             newStock: number;
             note: string | null;
             userId: string | null;
-            variantId: string;
         })[];
     }>;
 }

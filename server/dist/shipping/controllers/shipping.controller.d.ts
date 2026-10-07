@@ -7,8 +7,8 @@ export declare class ShippingController {
         data: {
             id: string;
             name: string;
-            charge: number;
-            tat: string;
+            charge: unknown;
+            freeDeliveryThreshold: unknown;
         }[];
     }>;
 }

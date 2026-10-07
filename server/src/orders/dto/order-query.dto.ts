@@ -1,20 +1,21 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsIn, IsOptional } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto.js';
+import { OrderStatus, PaymentMethod, PaymentStatus } from '@prisma/client';
 
 export class OrderQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional()
-  @IsString()
+  @IsIn([...Object.values(OrderStatus), 'ALL'])
   @IsOptional()
-  status?: string;
+  status?: OrderStatus | 'ALL';
 
   @ApiPropertyOptional()
-  @IsString()
+  @IsIn([...Object.values(PaymentMethod), 'ALL'])
   @IsOptional()
-  paymentMethod?: string;
+  paymentMethod?: PaymentMethod | 'ALL';
 
   @ApiPropertyOptional()
-  @IsString()
+  @IsIn(Object.values(PaymentStatus))
   @IsOptional()
-  paymentStatus?: string;
+  paymentStatus?: PaymentStatus;
 }

@@ -5,58 +5,40 @@ export declare class AdminCategoriesController {
     constructor(categoriesService: CategoriesService);
     findAll(): Promise<{
         message: string;
-        data: ({
+        data: {
+            description: string | null;
+            sortOrder: number;
+            name: string;
+            slug: string;
+            id: string;
+            image: string | null;
+            parentId: string | null;
+            children: {
+                description: string | null;
+                sortOrder: number;
+                name: string;
+                slug: string;
+                id: string;
+                image: string | null;
+            }[];
             _count: {
                 products: number;
             };
-            children: {
-                description: string | null;
-                id: string;
-                isActive: boolean;
-                createdAt: Date;
-                updatedAt: Date;
-                name: string;
-                sortOrder: number;
-                slug: string;
-                image: string | null;
-                parentId: string | null;
-            }[];
-        } & {
-            description: string | null;
-            id: string;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            name: string;
-            sortOrder: number;
-            slug: string;
-            image: string | null;
-            parentId: string | null;
-        })[] | {
-            id: string;
-            name: string;
-            slug: string;
-            description: string;
-            itemCount: number;
         }[];
     }>;
     create(dto: CreateCategoryDto): Promise<{
         message: string;
         data: {
             description: string | null;
-            id: string;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            name: string;
             sortOrder: number;
+            name: string;
             slug: string;
+            isActive: boolean;
+            id: string;
             image: string | null;
             parentId: string | null;
-        } | {
-            id: string;
-            name: string;
-            slug: string;
+            createdAt: Date;
+            updatedAt: Date;
         };
     }>;
 }

@@ -14,7 +14,7 @@ export interface Product {
   fabricOrigin?: string;
   fit: string;
   careGuide: string[];
-  sizes: ('S' | 'M' | 'L' | 'XL' | 'XXL' | 'Bespoke' | 'Standard')[];
+  sizes: string[];
   colors: {
     name: string;
     hex: string;
@@ -24,6 +24,15 @@ export interface Product {
   isNewArrival?: boolean;
   isBestSeller?: boolean;
   featured?: boolean;
+  variants?: {
+    id: string;
+    size: string;
+    sizeLabel?: string | null;
+    color: string;
+    stock: number;
+    priceOverride?: number | string | null;
+    isActive?: boolean;
+  }[];
 }
 
 export interface CartItem {
@@ -32,6 +41,8 @@ export interface CartItem {
   selectedColor: string;
   quantity: number;
   customNotes?: string;
+  cartItemId?: string;
+  variantId?: string;
 }
 
 export interface FilterState {

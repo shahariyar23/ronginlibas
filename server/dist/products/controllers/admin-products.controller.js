@@ -32,6 +32,13 @@ let AdminProductsController = class AdminProductsController {
             data,
         };
     }
+    async findById(id) {
+        const data = await this.productsService.findById(id);
+        return {
+            message: 'Product specifications retrieved successfully',
+            data,
+        };
+    }
     async create(dto) {
         const data = await this.productsService.create(dto);
         return {
@@ -49,7 +56,7 @@ let AdminProductsController = class AdminProductsController {
     async delete(id) {
         const data = await this.productsService.delete(id);
         return {
-            message: 'Product archived successfully',
+            message: data.message || 'Product permanently deleted from database',
             data,
         };
     }
@@ -62,6 +69,14 @@ __decorate([
     __metadata("design:paramtypes", [ProductQueryDto]),
     __metadata("design:returntype", Promise)
 ], AdminProductsController.prototype, "findAll", null);
+__decorate([
+    Get(':id'),
+    ApiOperation({ summary: 'Retrieve full garment specifications and variant matrix by ID or slug' }),
+    __param(0, Param('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AdminProductsController.prototype, "findById", null);
 __decorate([
     Post(),
     ApiOperation({ summary: 'Create new garment silhouette with variants and lookbook media' }),
@@ -81,7 +96,7 @@ __decorate([
 ], AdminProductsController.prototype, "update", null);
 __decorate([
     Delete(':id'),
-    ApiOperation({ summary: 'Archive/Deactivate product from catalog' }),
+    ApiOperation({ summary: 'Permanently remove product from database' }),
     __param(0, Param('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),

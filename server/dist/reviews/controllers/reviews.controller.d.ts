@@ -1,23 +1,30 @@
+import { ReviewVoteDto } from '../dto/review-vote.dto.js';
+import { UpdateReviewDto } from '../dto/update-review.dto.js';
 import { ReviewsService } from '../services/reviews.service.js';
-import { CreateReviewDto } from '../dto/create-review.dto.js';
 export declare class ReviewsController {
     private readonly reviewsService;
     constructor(reviewsService: ReviewsService);
-    create(dto: CreateReviewDto, customerId: string): Promise<{
+    update(reviewId: string, customerId: string, dto: UpdateReviewDto): Promise<{
         message: string;
         data: {
             id: string;
-            createdAt: Date;
             updatedAt: Date;
-            customerId: string;
             status: import("@prisma/client").$Enums.ReviewStatus;
             productId: string;
             rating: number;
             comment: string;
-        } | {
-            customerId: string;
-            status: string;
-            id: string;
+        };
+    }>;
+    remove(reviewId: string, customerId: string): Promise<{
+        message: string;
+        data: {
+            deleted: boolean;
+        };
+    }>;
+    vote(reviewId: string, customerId: string, dto: ReviewVoteDto): Promise<{
+        message: string;
+        data: {
+            recorded: boolean;
         };
     }>;
 }

@@ -1,0 +1,1 @@
+{"version":3,"file":"newsletter-email.dto.js","sourceRoot":"","sources":["../../../src/newsletter/dto/newsletter-email.dto.ts"],"names":[],"mappings":";;;;;;;;;AAAA,OAAO,EAAE,WAAW,EAAE,MAAM,iBAAiB,CAAC;AAC9C,OAAO,EAAE,OAAO,EAAE,MAAM,iBAAiB,CAAC;AAE1C,MAAM,OAAO,kBAAkB;IAG7B,KAAK,CAAS;CACf;AADC;IAFC,WAAW,CAAC,EAAE,OAAO,EAAE,oBAAoB,EAAE,CAAC;IAC9C,OAAO,EAAE;;iDACI"}

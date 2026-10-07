@@ -1,142 +1,284 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Product, CartItem } from '@/types';
 import { toast } from 'sonner';
+import { apiRequest, getProduct } from '@/lib/api';
+import { useAuth } from './AuthContext';
+
+interface CartResponse {
+  cartId: string | null;
+  items: Array<{
+    id: string;
+    product: { id: string; slug: string; name: string; image?: { url?: string } | string | null };
+    variant: { id: string; size: string; sizeLabel?: string | null; color: string };
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+  }>;
+  subtotal: number;
+  discountAmount?: number;
+  deliveryCharge: number;
+  total: number;
+}
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (product: Product, size: string, color: string, qty?: number, customNotes?: string) => void;
-  removeFromCart: (productId: string, size: string, color: string) => void;
-  updateQuantity: (productId: string, size: string, color: string, quantity: number) => void;
-  clearCart: () => void;
+  addToCart: (product: Product, size: string, color: string, qty?: number, customNotes?: string) => Promise<void>;
+  removeFromCart: (productId: string, size: string, color: string) => Promise<void>;
+  updateQuantity: (productId: string, size: string, color: string, quantity: number) => Promise<void>;
+  clearCart: () => Promise<void>;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
   appliedCoupon: string | null;
   couponDiscountPercent: number;
-  applyCoupon: (code: string) => boolean;
+  applyCoupon: (code: string) => Promise<boolean>;
   removeCoupon: () => void;
   subtotal: number;
   discount: number;
   shippingFee: number;
   total: number;
   totalCount: number;
+  cartId: string | null;
+  isCartLoading: boolean;
+  refreshCart: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
+const CART_ID_KEY = 'rongin_cart_id';
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
+  const [cartId, setCartId] = useState<string | null>(null);
+  const [isCartLoading, setIsCartLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
-  const [couponDiscountPercent, setCouponDiscountPercent] = useState<number>(0);
+  const [discount, setDiscount] = useState(0);
+  const [subtotal, setSubtotal] = useState(0);
+  const [shippingFee, setShippingFee] = useState(0);
+  const [total, setTotal] = useState(0);
 
-  // Load from local storage
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('rongin_cart');
-      if (stored) {
-        setItems(JSON.parse(stored));
-      }
-    } catch {
-      // ignore
-    }
+  const hydrateCart = useCallback(async (response: CartResponse) => {
+    const hydrated = await Promise.all(
+      response.items.map(async (item) => {
+        const product = await getProduct(item.product.slug);
+        const image =
+          typeof item.product.image === 'string'
+            ? item.product.image
+            : item.product.image?.url;
+        const resolvedProduct = image && product.images.length === 0
+          ? { ...product, images: [image] }
+          : product;
+        return {
+          product: resolvedProduct,
+          selectedSize: item.variant.sizeLabel || item.variant.size,
+          selectedColor: item.variant.color,
+          quantity: item.quantity,
+          cartItemId: item.id,
+          variantId: item.variant.id,
+        };
+      }),
+    );
+    setItems(hydrated);
+    setSubtotal(Number(response.subtotal));
+    setDiscount(Number(response.discountAmount ?? 0));
+    setShippingFee(Number(response.deliveryCharge));
+    setTotal(Number(response.total));
   }, []);
 
-  // Save to local storage
-  useEffect(() => {
-    try {
-      localStorage.setItem('rongin_cart', JSON.stringify(items));
-    } catch {
-      // ignore
+  const refreshCart = useCallback(async () => {
+    const query = cartId ? `?cartId=${encodeURIComponent(cartId)}` : '';
+    const response = await apiRequest<CartResponse>(`/cart${query}`);
+    if (response.cartId && response.cartId !== cartId) {
+      setCartId(response.cartId);
+      localStorage.setItem(CART_ID_KEY, response.cartId);
     }
-  }, [items]);
+    await hydrateCart(response);
+  }, [cartId, hydrateCart]);
 
-  const addToCart = (product: Product, size: string, color: string, qty = 1, customNotes?: string) => {
-    setItems((prev) => {
-      const existingIndex = prev.findIndex(
-        (i) => i.product.id === product.id && i.selectedSize === size && i.selectedColor === color
-      );
-
-      if (existingIndex > -1) {
-        const next = [...prev];
-        next[existingIndex].quantity += qty;
-        return next;
-      } else {
-        return [...prev, { product, selectedSize: size, selectedColor: color, quantity: qty, customNotes }];
+  useEffect(() => {
+    if (isAuthLoading) return;
+    let active = true;
+    const initializeCart = async () => {
+      setIsCartLoading(true);
+      try {
+        const guestCartId = localStorage.getItem(CART_ID_KEY) || undefined;
+        let response: CartResponse;
+        if (user && guestCartId) {
+          response = await apiRequest<CartResponse>('/cart/merge', {
+            method: 'POST',
+            body: JSON.stringify({ cartId: guestCartId }),
+          });
+        } else {
+          response = await apiRequest<CartResponse>('/cart', {
+            method: 'POST',
+            body: JSON.stringify({ cartId: user ? undefined : guestCartId }),
+          });
+        }
+        if (!active) return;
+        setCartId(response.cartId);
+        if (response.cartId) localStorage.setItem(CART_ID_KEY, response.cartId);
+        await hydrateCart(response);
+      } catch (error) {
+        if (active) {
+          toast.error(error instanceof Error ? error.message : 'Could not load your cart.');
+        }
+      } finally {
+        if (active) setIsCartLoading(false);
       }
-    });
+    };
+    void initializeCart();
+    return () => {
+      active = false;
+    };
+  }, [user?.id, isAuthLoading, hydrateCart]);
 
-    toast.success(`Added ${product.name} to your cart.`, {
-      description: `Size: ${size} | Color: ${color}`,
-      action: {
-        label: 'View Cart',
-        onClick: () => setIsCartOpen(true),
-      },
+  const ensureCartId = async () => {
+    if (cartId) return cartId;
+    const response = await apiRequest<CartResponse>('/cart', {
+      method: 'POST',
+      body: JSON.stringify({}),
     });
-    setIsCartOpen(true);
+    if (!response.cartId) throw new Error('The server did not create a cart.');
+    setCartId(response.cartId);
+    localStorage.setItem(CART_ID_KEY, response.cartId);
+    await hydrateCart(response);
+    return response.cartId;
   };
 
-  const removeFromCart = (productId: string, size: string, color: string) => {
-    setItems((prev) =>
-      prev.filter(
-        (i) => !(i.product.id === productId && i.selectedSize === size && i.selectedColor === color)
-      )
+  const addToCart = async (
+    product: Product,
+    size: string,
+    color: string,
+    quantity = 1,
+    _customNotes?: string,
+  ) => {
+    const variant = product.variants?.find(
+      (item) =>
+        item.isActive !== false &&
+        item.stock > 0 &&
+        (item.sizeLabel || item.size) === size &&
+        item.color === color,
     );
-    toast.info('Item removed from sartorial bag');
-  };
-
-  const updateQuantity = (productId: string, size: string, color: string, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(productId, size, color);
+    if (!variant) {
+      toast.error('That size and color are currently unavailable.');
       return;
     }
-    setItems((prev) =>
-      prev.map((i) => {
-        if (i.product.id === productId && i.selectedSize === size && i.selectedColor === color) {
-          return { ...i, quantity };
-        }
-        return i;
-      })
+    try {
+      const id = await ensureCartId();
+      const response = await apiRequest<CartResponse>('/cart/items', {
+        method: 'POST',
+        body: JSON.stringify({ cartId: id, variantId: variant.id, quantity }),
+      });
+      await hydrateCart(response);
+      toast.success(`Added ${product.name} to your cart.`);
+      setIsCartOpen(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not add this item to your cart.');
+    }
+  };
+
+  const findItem = (productId: string, size: string, color: string) =>
+    items.find(
+      (item) =>
+        item.product.id === productId &&
+        item.selectedSize === size &&
+        item.selectedColor === color,
     );
+
+  const removeFromCart = async (productId: string, size: string, color: string) => {
+    const item = findItem(productId, size, color);
+    if (!item?.cartItemId) return;
+    try {
+      const response = await apiRequest<CartResponse>(
+        `/cart/items/${encodeURIComponent(item.cartItemId)}?cartId=${encodeURIComponent(cartId ?? '')}`,
+        { method: 'DELETE' },
+      );
+      await hydrateCart(response);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not remove this item.');
+    }
   };
 
-  const clearCart = () => {
-    setItems([]);
-    setAppliedCoupon(null);
-    setCouponDiscountPercent(0);
+  const updateQuantity = async (
+    productId: string,
+    size: string,
+    color: string,
+    quantity: number,
+  ) => {
+    if (quantity <= 0) {
+      await removeFromCart(productId, size, color);
+      return;
+    }
+    const item = findItem(productId, size, color);
+    if (!item?.cartItemId || !cartId) return;
+    try {
+      const response = await apiRequest<CartResponse>(
+        `/cart/items/${encodeURIComponent(item.cartItemId)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ cartId, quantity }),
+        },
+      );
+      await hydrateCart(response);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not update this quantity.');
+    }
   };
 
-  const applyCoupon = (code: string): boolean => {
-    const clean = code.trim().toUpperCase();
-    if (clean === 'RONGINLAUNCH') {
-      setAppliedCoupon('RONGINLAUNCH');
-      setCouponDiscountPercent(15);
-      toast.success('Coupon "RONGINLAUNCH" applied! 15% discount granted.');
+  const clearCart = async () => {
+    if (!cartId) return;
+    try {
+      const response = await apiRequest<CartResponse>(
+        `/cart?cartId=${encodeURIComponent(cartId)}`,
+        { method: 'DELETE' },
+      );
+      await hydrateCart(response);
+      setAppliedCoupon(null);
+      setDiscount(0);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not clear your cart.');
+    }
+  };
+
+  const applyCoupon = async (code: string) => {
+    if (!items.length) {
+      toast.error('Add an item before applying a coupon.');
+      return false;
+    }
+    const couponItems = items
+      .filter((item): item is CartItem & { variantId: string } => Boolean(item.variantId))
+      .map((item) => ({ variantId: item.variantId, quantity: item.quantity }));
+    try {
+      const result = await apiRequest<{
+        valid: boolean;
+        code: string;
+        discountAmount: number;
+      }>('/coupons/validate', {
+        method: 'POST',
+        body: JSON.stringify({ code: code.trim().toUpperCase(), items: couponItems }),
+      });
+      if (!result.valid) throw new Error('This coupon is not valid for the current cart.');
+      setAppliedCoupon(result.code);
+      setDiscount(Number(result.discountAmount));
+      setTotal(subtotal - Number(result.discountAmount) + shippingFee);
+      toast.success(`Coupon ${result.code} applied.`);
       return true;
-    } else if (clean === 'VIPHERITAGE') {
-      setAppliedCoupon('VIPHERITAGE');
-      setCouponDiscountPercent(20);
-      toast.success('VIP Heritage discount 20% applied.');
-      return true;
-    } else {
-      toast.error('Invalid coupon code. Try "RONGINLAUNCH"');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not validate the coupon.');
       return false;
     }
   };
 
   const removeCoupon = () => {
     setAppliedCoupon(null);
-    setCouponDiscountPercent(0);
-    toast.info('Coupon removed');
+    setDiscount(0);
+    setTotal(subtotal + shippingFee);
   };
 
-  const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const discount = Math.round((subtotal * couponDiscountPercent) / 100);
-  // Free delivery over ৳3000
-  const shippingFee = subtotal >= 3000 || subtotal === 0 ? 0 : 80;
-  const total = subtotal - discount + shippingFee;
-  const totalCount = items.reduce((sum, i) => sum + i.quantity, 0);
+  const couponDiscountPercent = subtotal > 0 ? Math.round((discount / subtotal) * 100) : 0;
+  const totalCount = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
 
   return (
     <CartContext.Provider
@@ -157,6 +299,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         shippingFee,
         total,
         totalCount,
+        cartId,
+        isCartLoading,
+        refreshCart,
       }}
     >
       {children}
@@ -166,8 +311,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
 export function useCart() {
   const context = useContext(CartContext);
-  if (!context) {
-    throw new Error('useCart must be used within a CartProvider');
-  }
+  if (!context) throw new Error('useCart must be used within a CartProvider');
   return context;
 }

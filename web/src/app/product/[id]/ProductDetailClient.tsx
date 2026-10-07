@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Product } from '@/types';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
+import { useAuth } from '@/context/AuthContext';
 import { ProductCard } from '@/components/shop/ProductCard';
+import { getProduct, getRelatedProducts } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -41,17 +43,70 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiRequest } from '@/lib/api';
+
+interface ProductReview {
+  id: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  customerName: string;
+  verifiedPurchase: boolean;
+  helpfulYes: number;
+  helpfulNo: number;
+}
 
 interface ProductDetailClientProps {
-  product: Product;
-  relatedProducts: Product[];
+  product?: Product;
+  relatedProducts?: Product[];
+  productId?: string;
 }
 
 export const ProductDetailClient: React.FC<ProductDetailClientProps> = ({
+  product: initialProduct,
+  relatedProducts: initialRelatedProducts = [],
+  productId,
+}) => {
+  const [product, setProduct] = useState(initialProduct);
+  const [relatedProducts, setRelatedProducts] = useState(initialRelatedProducts);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => {
+    if (!productId) return;
+    let active = true;
+    Promise.all([getProduct(productId), getRelatedProducts(productId)])
+      .then(([loadedProduct, related]) => {
+        if (!active) return;
+        setProduct(loadedProduct);
+        setRelatedProducts(related);
+      })
+      .catch((error: unknown) => {
+        if (active) setLoadError(error instanceof Error ? error.message : 'Could not load this product.');
+      });
+    return () => {
+      active = false;
+    };
+  }, [productId]);
+
+  if (!product) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center bg-[#fbf9f2]">
+        <p className="font-sans text-sm text-[#69726d]">
+          {loadError || 'Loading product details...'}
+        </p>
+      </div>
+    );
+  }
+
+  return <ProductDetailView product={product} relatedProducts={relatedProducts} />;
+};
+
+const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[] }> = ({
   product,
   relatedProducts,
 }) => {
   const router = useRouter();
+  const { user } = useAuth();
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
 
@@ -63,7 +118,11 @@ export const ProductDetailClient: React.FC<ProductDetailClientProps> = ({
   const [measurementUnit, setMeasurementUnit] = useState<'in' | 'cm'>('in');
   const [sizeModalOpen, setSizeModalOpen] = useState(false);
   const [openAccordion, setOpenAccordion] = useState<string | null>('accordion-1');
-  const [reviewFilter, setReviewFilter] = useState<'all' | 'photos' | '5stars'>('all');
+  const [reviews, setReviews] = useState<ProductReview[]>([]);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [isReviewFormOpen, setIsReviewFormOpen] = useState(false);
+  const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
 
   const [zoomStyle, setZoomStyle] = useState<{ backgroundPosition: string; display: string }>({
     backgroundPosition: '0% 0%',
@@ -71,6 +130,44 @@ export const ProductDetailClient: React.FC<ProductDetailClientProps> = ({
   });
 
   const isFavorite = isInWishlist(product.id);
+
+  useEffect(() => {
+    let active = true;
+    apiRequest<{ items: ProductReview[] }>(
+      `/products/${encodeURIComponent(product.id)}/reviews?limit=50`,
+    )
+      .then((result) => {
+        if (active) setReviews(result.items ?? []);
+      })
+      .catch((error: unknown) => {
+        if (active) toast.error(error instanceof Error ? error.message : 'Could not load product reviews.');
+      });
+    return () => {
+      active = false;
+    };
+  }, [product.id]);
+
+  const submitReview = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!user) {
+      router.push('/login?next=%2Fproduct%2F' + encodeURIComponent(product.slug));
+      return;
+    }
+    setIsReviewSubmitting(true);
+    try {
+      await apiRequest(`/products/${encodeURIComponent(product.id)}/reviews`, {
+        method: 'POST',
+        body: JSON.stringify({ rating: reviewRating, comment: reviewComment }),
+      });
+      setReviewComment('');
+      setIsReviewFormOpen(false);
+      toast.success('Your review has been submitted for moderation.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not submit your review.');
+    } finally {
+      setIsReviewSubmitting(false);
+    }
+  };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
@@ -293,7 +390,11 @@ export const ProductDetailClient: React.FC<ProductDetailClientProps> = ({
                     <Star key={i} className="w-4 h-4 fill-[#c79a45] text-[#c79a45]" />
                   ))}
                 </div>
-                <span className="font-sans text-xs font-bold text-[#1b1c18]">4.9 / 5.0</span>
+                <span className="font-sans text-xs font-bold text-[#1b1c18]">
+                  {reviews.length
+                    ? `${(reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1)} / 5.0`
+                    : 'No ratings'}
+                </span>
                 <span className="text-[#deddd3]">•</span>
                 <a
                   href="#patron-reviews"
@@ -948,14 +1049,50 @@ export const ProductDetailClient: React.FC<ProductDetailClientProps> = ({
             </div>
 
             <Button
-              onClick={() => toast.info('Patron Review Portal', { description: 'Please complete your purchase to submit verified review feedback.' })}
+              onClick={() => {
+                if (!user) {
+                  router.push(`/login?next=${encodeURIComponent(`/product/${product.slug}#patron-reviews`)}`);
+                  return;
+                }
+                setIsReviewFormOpen((open) => !open);
+              }}
               className="bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-wider px-5 h-11 cursor-pointer"
             >
               Write a Patron Review
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {isReviewFormOpen && (
+            <form onSubmit={submitReview} className="space-y-3 border border-[#deddd3] bg-white p-5">
+              <label className="block text-xs font-semibold text-[#404945]">
+                Rating
+                <select
+                  value={reviewRating}
+                  onChange={(event) => setReviewRating(Number(event.target.value))}
+                  className="mt-1 block h-10 w-full border border-[#deddd3] bg-[#fbf9f2] px-3"
+                >
+                  {[5, 4, 3, 2, 1].map((rating) => (
+                    <option key={rating} value={rating}>{rating} star{rating === 1 ? '' : 's'}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-xs font-semibold text-[#404945]">
+                Review
+                <textarea
+                  required
+                  maxLength={3000}
+                  value={reviewComment}
+                  onChange={(event) => setReviewComment(event.target.value)}
+                  className="mt-1 block min-h-28 w-full border border-[#deddd3] bg-[#fbf9f2] p-3 text-sm"
+                />
+              </label>
+              <Button disabled={isReviewSubmitting} className="bg-[#073a2d] text-white">
+                {isReviewSubmitting ? 'Submitting...' : 'Submit review'}
+              </Button>
+            </form>
+          )}
+
+          <div className="hidden">
             {/* Rating Summary Card (4 Cols) */}
             <div className="lg:col-span-4 bg-white p-6 border border-[#deddd3] flex flex-col justify-between space-y-6">
               <div className="space-y-2">
@@ -1173,6 +1310,47 @@ export const ProductDetailClient: React.FC<ProductDetailClientProps> = ({
                 </p>
               </div>
             </div>
+          </div>
+          <div className="space-y-4">
+            <div className="flex items-baseline gap-2">
+              <span className="font-serif text-3xl font-bold text-[#073a2d]">
+                {reviews.length
+                  ? (reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1)
+                  : '—'}
+              </span>
+              <span className="text-sm text-[#69726d]">/ 5 · {reviews.length} published reviews</span>
+            </div>
+            {reviews.length ? reviews.map((review) => (
+              <article key={review.id} className="space-y-3 border border-[#deddd3] bg-white p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-[#073a2d]">{review.customerName}</h3>
+                    {review.verifiedPurchase && (
+                      <Badge className="mt-1 rounded-none bg-[#b0ecd3]/40 text-[#073a2d]">Verified purchase</Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 text-[#c79a45]" aria-label={`${review.rating} out of 5 stars`}>
+                    {Array.from({ length: 5 }, (_, index) => (
+                      <Star
+                        key={index}
+                        className={`h-4 w-4 ${index < review.rating ? 'fill-[#c79a45]' : 'text-[#deddd3]'}`}
+                      />
+                    ))}
+                    <time className="ml-2 text-xs text-[#717975]">
+                      {new Date(review.createdAt).toLocaleDateString()}
+                    </time>
+                  </div>
+                </div>
+                <p className="text-sm leading-relaxed text-[#404945]">{review.comment}</p>
+                <p className="text-xs text-[#717975]">
+                  Helpful: {review.helpfulYes} · Not helpful: {review.helpfulNo}
+                </p>
+              </article>
+            )) : (
+              <p className="border border-[#deddd3] bg-white p-6 text-sm text-[#69726d]">
+                No approved reviews for this product yet.
+              </p>
+            )}
           </div>
         </section>
 

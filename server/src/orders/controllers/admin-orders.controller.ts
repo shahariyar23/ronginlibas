@@ -36,6 +36,16 @@ export class AdminOrdersController {
     };
   }
 
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update order stage or administrative notes' })
+  async updateOrder(@Param('id') id: string, @Body() dto: UpdateOrderStatusDto) {
+    const data = await this.ordersService.updateStatus(id, dto);
+    return {
+      message: `Order status transitioned to ${dto.status} successfully`,
+      data,
+    };
+  }
+
   @Patch(':id/status')
   @ApiOperation({ summary: 'Advance order stage in the Sartorial Lifecycle flow' })
   async updateStatus(@Param('id') id: string, @Body() dto: UpdateOrderStatusDto) {

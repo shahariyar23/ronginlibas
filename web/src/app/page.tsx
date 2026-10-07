@@ -1,4 +1,6 @@
-import React from 'react';
+'use client';
+
+import React, { useEffect, useState } from 'react';
 import { HeroBanner } from '@/components/home/HeroBanner';
 import { TrustBadges } from '@/components/home/TrustBadges';
 import { CategoryGrid } from '@/components/home/CategoryGrid';
@@ -7,11 +9,29 @@ import { EditorialBanner } from '@/components/home/EditorialBanner';
 import { CraftStory } from '@/components/home/CraftStory';
 import { InstagramFeed } from '@/components/home/InstagramFeed';
 import { Newsletter } from '@/components/home/Newsletter';
-import { PRODUCTS } from '@/data/products';
+import type { Product } from '@/types';
+import { getProducts } from '@/lib/api';
+import { toast } from 'sonner';
 
 export default function HomePage() {
-  const newArrivals = PRODUCTS.filter((p) => p.isNewArrival);
-  const bestSellers = PRODUCTS.filter((p) => p.isBestSeller);
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    getProducts({ limit: 100 })
+      .then((data) => {
+        if (active) setProducts(data);
+      })
+      .catch((error: unknown) => {
+        if (active) toast.error(error instanceof Error ? error.message : 'Could not load products.');
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const newArrivals = products.filter((product) => product.isNewArrival);
+  const bestSellers = products.filter((product) => product.isBestSeller);
 
   return (
     <div className="flex flex-col w-full">
@@ -29,7 +49,7 @@ export default function HomePage() {
         title="NEW ARRIVALS"
         subtitle="Discover the latest artisanal cuts, silk blends, and seasonal drops from Rongin Libas."
         tagline="FRESH OFF THE LOOM"
-        products={newArrivals.length >= 4 ? newArrivals : PRODUCTS.slice(0, 4)}
+        products={newArrivals}
         viewAllLink="/shop?filter=new"
         bgLight={true}
       />
@@ -42,7 +62,7 @@ export default function HomePage() {
         title="BEST SELLERS"
         subtitle="The iconic pieces most celebrated by our patrons across Dhaka, Chattogram, and beyond."
         tagline="PROVEN EXCELLENCE"
-        products={bestSellers.length >= 4 ? bestSellers : PRODUCTS.slice(4, 8)}
+        products={bestSellers}
         viewAllLink="/shop?filter=bestseller"
         bgLight={false}
       />

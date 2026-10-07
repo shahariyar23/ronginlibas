@@ -4,7 +4,7 @@ export declare class SettingsService {
     private readonly prisma;
     constructor(prisma: PrismaService);
     private readonly defaultSettings;
-    getSettings(): Promise<Record<string, any> | {
+    getSettings(): Promise<Record<string, unknown> | {
         storeName: string;
         logo: string;
         phone: string;
@@ -12,6 +12,9 @@ export declare class SettingsService {
         email: string;
         website: string;
         facebook: string;
+        instagram: null;
+        promotionalAnnouncement: null;
+        businessHours: null;
         currency: string;
         currencySymbol: string;
         dhakaDeliveryCharge: number;
@@ -19,26 +22,32 @@ export declare class SettingsService {
         freeDeliveryThreshold: number;
         codEnabled: boolean;
         bkashEnabled: boolean;
-        bkashWallet: string;
         nagadEnabled: boolean;
-        nagadWallet: string;
+        cardEnabled: boolean;
         storeStatus: string;
     }>;
     getPublicSettings(): Promise<{
-        storeName: any;
-        logo: any;
-        phone: any;
-        whatsapp: any;
-        currency: any;
-        currencySymbol: any;
-        dhakaDeliveryCharge: any;
-        outsideDhakaDeliveryCharge: any;
-        freeDeliveryThreshold: any;
-        codEnabled: any;
-        bkashEnabled: any;
-        nagadEnabled: any;
+        storeName: unknown;
+        logo: unknown;
+        phone: unknown;
+        whatsapp: unknown;
+        email: unknown;
+        website: unknown;
+        facebook: unknown;
+        instagram: unknown;
+        currency: unknown;
+        currencySymbol: unknown;
+        dhakaDeliveryCharge: unknown;
+        outsideDhakaDeliveryCharge: unknown;
+        freeDeliveryThreshold: unknown;
+        codEnabled: unknown;
+        bkashEnabled: unknown;
+        nagadEnabled: unknown;
+        cardEnabled: unknown;
+        promotionalAnnouncement: unknown;
+        businessHours: unknown;
     }>;
-    updateSettings(dto: UpdateSettingsDto): Promise<Record<string, any> | {
+    updateSettings(dto: UpdateSettingsDto): Promise<Record<string, unknown> | {
         storeName: string;
         logo: string;
         phone: string;
@@ -46,6 +55,9 @@ export declare class SettingsService {
         email: string;
         website: string;
         facebook: string;
+        instagram: null;
+        promotionalAnnouncement: null;
+        businessHours: null;
         currency: string;
         currencySymbol: string;
         dhakaDeliveryCharge: number;
@@ -53,9 +65,8 @@ export declare class SettingsService {
         freeDeliveryThreshold: number;
         codEnabled: boolean;
         bkashEnabled: boolean;
-        bkashWallet: string;
         nagadEnabled: boolean;
-        nagadWallet: string;
+        cardEnabled: boolean;
         storeStatus: string;
     }>;
 }

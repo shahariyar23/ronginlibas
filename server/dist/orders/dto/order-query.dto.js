@@ -7,9 +7,10 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { IsOptional, IsString } from 'class-validator';
+import { IsIn, IsOptional } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto.js';
+import { OrderStatus, PaymentMethod, PaymentStatus } from '@prisma/client';
 export class OrderQueryDto extends PaginationQueryDto {
     status;
     paymentMethod;
@@ -17,19 +18,19 @@ export class OrderQueryDto extends PaginationQueryDto {
 }
 __decorate([
     ApiPropertyOptional(),
-    IsString(),
+    IsIn([...Object.values(OrderStatus), 'ALL']),
     IsOptional(),
     __metadata("design:type", String)
 ], OrderQueryDto.prototype, "status", void 0);
 __decorate([
     ApiPropertyOptional(),
-    IsString(),
+    IsIn([...Object.values(PaymentMethod), 'ALL']),
     IsOptional(),
     __metadata("design:type", String)
 ], OrderQueryDto.prototype, "paymentMethod", void 0);
 __decorate([
     ApiPropertyOptional(),
-    IsString(),
+    IsIn(Object.values(PaymentStatus)),
     IsOptional(),
     __metadata("design:type", String)
 ], OrderQueryDto.prototype, "paymentStatus", void 0);

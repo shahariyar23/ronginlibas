@@ -1,7 +1,8 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { CategoriesService } from '../services/categories.service.js';
 import { Public } from '../../common/decorators/public.decorator.js';
+import { ProductQueryDto } from '../../products/dto/product-query.dto.js';
 
 @ApiTags('Storefront - Categories')
 @Public()
@@ -17,6 +18,13 @@ export class CategoriesController {
       message: 'Categories retrieved successfully',
       data,
     };
+  }
+
+  @Get(':slug/products')
+  @ApiOperation({ summary: 'List active products in a category' })
+  async findProducts(@Param('slug') slug: string, @Query() query: ProductQueryDto) {
+    const data = await this.categoriesService.findProductsBySlug(slug, query);
+    return { message: 'Category products retrieved successfully', data };
   }
 
   @Get(':slug')

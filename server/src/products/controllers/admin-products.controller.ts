@@ -37,6 +37,16 @@ export class AdminProductsController {
     };
   }
 
+  @Get(':id')
+  @ApiOperation({ summary: 'Retrieve full garment specifications and variant matrix by ID or slug' })
+  async findById(@Param('id') id: string) {
+    const data = await this.productsService.findById(id);
+    return {
+      message: 'Product specifications retrieved successfully',
+      data,
+    };
+  }
+
   @Post()
   @ApiOperation({ summary: 'Create new garment silhouette with variants and lookbook media' })
   async create(@Body() dto: CreateProductDto) {
@@ -58,11 +68,11 @@ export class AdminProductsController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Archive/Deactivate product from catalog' })
+  @ApiOperation({ summary: 'Permanently remove product from database' })
   async delete(@Param('id') id: string) {
     const data = await this.productsService.delete(id);
     return {
-      message: 'Product archived successfully',
+      message: data.message || 'Product permanently deleted from database',
       data,
     };
   }

@@ -22,7 +22,7 @@ import {
 import { useAdmin } from '@/context/AdminContext';
 
 export default function DashboardPage() {
-  const { orders, inventory, products, updateInventoryStock } = useAdmin();
+  const { orders, inventory, products, updateInventoryStock, dashboardMetrics, isLoading } = useAdmin();
   const [activeRange, setActiveRange] = useState<'7' | '30' | 'month'>('7');
   const [selectedRestockItem, setSelectedRestockItem] = useState<string | null>(null);
   const [restockAmount, setRestockAmount] = useState('10');
@@ -32,18 +32,57 @@ export default function DashboardPage() {
     setMounted(true);
   }, []);
 
-  // Dynamic calculations from live database records
-  const totalSales = orders.reduce((sum, o) => sum + (o.amount || 0), 0);
-  const totalOrders = orders.length;
-  const pendingOrders = orders.filter((o) => o.status === 'PENDING').length;
+  // Dynamic calculations from backend dashboard API or live database records
+  const metrics = dashboardMetrics?.metrics;
+  const totalSales =
+    metrics?.totalSales !== undefined
+      ? Number(metrics.totalSales)
+      : orders.reduce((sum, o) => sum + (o.amount || 0), 0);
+  const salesGrowth = metrics?.salesGrowth || '+0%';
+  const totalOrders =
+    metrics?.totalOrders !== undefined ? Number(metrics.totalOrders) : orders.length;
+  const pendingOrders =
+    metrics?.pendingOrders !== undefined
+      ? Number(metrics.pendingOrders)
+      : orders.filter((o) => o.status === 'PENDING').length;
   const dispatchedOrders = orders.filter((o) => o.status === 'SHIPPED' || o.status === 'DELIVERED').length;
-  const dispatchRate = totalOrders > 0 ? Math.round((dispatchedOrders / totalOrders) * 100) : 100;
-  const totalProducts = products.length;
-  const activeProducts = products.filter((p) => p.status === 'Active').length;
-  const uniquePatrons = new Set(orders.map((o) => o.customerName)).size;
-  const avgOrderValue = totalOrders > 0 ? Math.round(totalSales / totalOrders) : 0;
+  const dispatchRate = metrics?.deliveryRate
+    ? parseInt(metrics.deliveryRate, 10)
+    : totalOrders > 0
+    ? Math.round((dispatchedOrders / totalOrders) * 100)
+    : 100;
+  const deliveryRate = metrics?.deliveryRate || `${dispatchRate}%`;
+  const totalProducts =
+    metrics?.totalProducts !== undefined ? Number(metrics.totalProducts) : products.length;
+  const activeProducts =
+    metrics?.activeCatalog !== undefined
+      ? Number(metrics.activeCatalog)
+      : products.filter((p) => p.status === 'Active').length;
+  const uniquePatrons =
+    metrics?.totalCustomers !== undefined
+      ? Number(metrics.totalCustomers)
+      : new Set(orders.map((o) => o.customerName)).size;
+  const vipMembersCount = metrics?.vipMembersCount ?? 0;
 
-  // Dynamic daily revenue telemetry for the last 7 days
+  // Low stock products from dashboard API or inventory fallback
+  const lowStockItems = inventory.filter((item) => item.stock <= 5);
+  const lowStockCount = metrics?.lowStockCount ?? lowStockItems.length;
+  const stockoutCount = metrics?.stockoutCount ?? inventory.filter((i) => i.stock === 0).length;
+
+  const salesOverview = dashboardMetrics?.salesOverview;
+  const peakPoint = salesOverview?.peakPoint;
+  const kpis = salesOverview?.kpis;
+  const avgOrderValue =
+    kpis?.averageOrderValue !== undefined
+      ? Number(kpis.averageOrderValue)
+      : totalOrders > 0
+      ? Math.round(totalSales / totalOrders)
+      : 0;
+  const conversionRate = kpis?.conversionRate || '0%';
+  const conversionGrowth = kpis?.conversionGrowth || '+0%';
+  const fulfillmentVelocity = kpis?.fulfillmentVelocity || '0 hrs';
+
+  // Dynamic daily revenue telemetry for the 7-day period
   const daysData = React.useMemo(() => {
     if (!mounted) {
       return ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((label) => ({
@@ -54,6 +93,18 @@ export default function DashboardPage() {
         total: 0,
       }));
     }
+
+    const backendChart = salesOverview?.chartData;
+    if (Array.isArray(backendChart) && backendChart.length > 0) {
+      return backendChart.map((item: any) => ({
+        label: item.day,
+        dateStr: item.day,
+        dhaka: Number(item.dhakaSales) || 0,
+        national: Number(item.nationalSales) || 0,
+        total: (Number(item.dhakaSales) || 0) + (Number(item.nationalSales) || 0),
+      }));
+    }
+
     const list: { label: string; dateStr: string; dhaka: number; national: number; total: number }[] = [];
     const now = new Date();
 
@@ -88,21 +139,31 @@ export default function DashboardPage() {
     }
 
     return list;
-  }, [orders, mounted]);
+  }, [orders, mounted, salesOverview]);
 
   const hasSalesData = daysData.some((d) => d.total > 0);
   const peakDay = daysData.reduce((prev, curr) => (curr.total > prev.total ? curr : prev), daysData[0]);
   const maxDayTotal = Math.max(...daysData.map((d) => d.total), 5000);
   const xCoords = [83, 173, 263, 353, 443, 533, 623];
 
-  // Low stock products from inventory
-  const lowStockItems = inventory.filter((item) => item.stock <= 5);
+  // Recent Orders list prioritizing API response
+  const recentOrdersList =
+    dashboardMetrics?.recentOrders && dashboardMetrics.recentOrders.length > 0
+      ? dashboardMetrics.recentOrders
+      : orders.slice(0, 5);
 
-  const handleRestock = (id: string) => {
-    const item = inventory.find((i) => i.id === id);
-    if (!item) return;
+  // Low stock products from dashboard API or inventory fallback
+  const lowStockList =
+    dashboardMetrics?.lowStockProducts && dashboardMetrics.lowStockProducts.length > 0
+      ? dashboardMetrics.lowStockProducts
+      : lowStockItems.slice(0, 4);
+
+  const handleRestock = (idOrSku: string) => {
+    const item = inventory.find((i) => i.id === idOrSku || i.sku === idOrSku);
     const addCount = parseInt(restockAmount, 10) || 10;
-    updateInventoryStock(id, item.stock + addCount);
+    if (item) {
+      updateInventoryStock(item.id, item.stock + addCount);
+    }
     setSelectedRestockItem(null);
   };
 
@@ -164,9 +225,10 @@ export default function DashboardPage() {
           </div>
           <div className="mt-4 flex items-center gap-2">
             <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-[#0d4d3b] bg-[#b0ecd3]/40 px-1.5 py-0.5">
-              Live Ledger
+              <TrendingUp className="w-3 h-3 mr-0.5" />
+              {salesGrowth}
             </span>
-            <span className="text-[11px] text-[#717975]">settled revenue</span>
+            <span className="text-[11px] text-[#717975]">growth vs last week</span>
           </div>
           <div className="mt-4 pt-3 border-t border-[#f0eee7] flex items-center justify-between text-[11px] text-[#69726d]">
             <span>Settled via bKash/SSL/COD</span>
@@ -245,9 +307,9 @@ export default function DashboardPage() {
           </div>
           <div className="mt-4 flex items-center gap-2">
             <span className="inline-flex items-center text-[11px] font-semibold text-[#0d4d3b] bg-[#b0ecd3]/40 px-1.5 py-0.5">
-              Active Patrons
+              {vipMembersCount} VIP Members
             </span>
-            <span className="text-[11px] text-[#717975]">clientele</span>
+            <span className="text-[11px] text-[#717975]">connoisseurs</span>
           </div>
           <div className="mt-4 pt-3 border-t border-[#f0eee7] flex items-center justify-between text-[11px] text-[#69726d]">
             <span>Verified Bookings</span>
@@ -315,18 +377,18 @@ export default function DashboardPage() {
           <div className="flex items-center gap-1.5 text-[#8c6722] bg-[#f5eedf] px-2.5 py-1 text-[11px] font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-[#c79a45]" />
             <span>
-              {hasSalesData
+              {peakPoint?.label || (hasSalesData
                 ? `Peak: ৳${peakDay.total.toLocaleString()} on ${peakDay.label}`
                 : orders.length > 0
                 ? `Live Orders: ${orders.length} in Cloud DB`
-                : 'Awaiting Order Traffic'}
+                : 'Awaiting Order Traffic')}
             </span>
           </div>
         </div>
 
         {/* SVG Chart */}
         <div className="relative pt-6 pb-2">
-          {orders.length === 0 ? (
+          {!hasSalesData ? (
             <div className="h-64 w-full flex flex-col items-center justify-center border border-dashed border-[#deddd3] bg-[#fbf9f2]/70 text-center p-6">
               <TrendingUp className="w-8 h-8 text-[#717975] mb-2 opacity-30" />
               <p className="font-serif text-sm font-medium text-[#1b1c18]">Live Telemetry Initialized</p>
@@ -387,15 +449,20 @@ export default function DashboardPage() {
                     <>
                       <path d={areaD} fill="url(#salesGrad)" />
                       <path d={pathD} fill="none" stroke="#073a2d" strokeWidth="2.5" />
-                      {pts.map((pt, idx) => (
-                        <circle
-                          key={`pt-${idx}`}
-                          cx={pt.x}
-                          cy={pt.y}
-                          r={daysData[idx].total === peakDay.total && peakDay.total > 0 ? 5 : 3.5}
-                          fill={daysData[idx].total === peakDay.total && peakDay.total > 0 ? '#c79a45' : '#073a2d'}
-                        />
-                      ))}
+                      {pts.map((pt, idx) => {
+                        const isPeak =
+                          (peakPoint?.day && daysData[idx].label === peakPoint.day) ||
+                          (daysData[idx].total === peakDay.total && peakDay.total > 0);
+                        return (
+                          <circle
+                            key={`pt-${idx}`}
+                            cx={pt.x}
+                            cy={pt.y}
+                            r={isPeak ? 5.5 : 3.5}
+                            fill={isPeak ? '#c79a45' : '#073a2d'}
+                          />
+                        );
+                      })}
                     </>
                   );
                 })()}
@@ -411,14 +478,14 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* 3 Metric Pills below chart */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-[#f0eee7]">
+        {/* 4 Metric KPI Pills below chart */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-[#f0eee7]">
           <div className="flex items-center gap-3 bg-[#fbf9f2] p-3.5 border border-[#deddd3]">
             <div className="w-8 h-8 bg-[#f0eee7] flex items-center justify-center text-[#073a2d]">
               <Banknote className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-[10px] uppercase font-semibold text-[#717975]">AVERAGE ORDER VALUE</p>
+              <p className="text-[10px] uppercase font-semibold text-[#717975]">AVG ORDER VALUE</p>
               <p className="text-base font-serif font-bold text-[#1b1c18]">৳ {avgOrderValue.toLocaleString()}</p>
             </div>
           </div>
@@ -428,9 +495,22 @@ export default function DashboardPage() {
               <TrendingUp className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-[10px] uppercase font-semibold text-[#717975]">DISPATCH RATIO</p>
+              <p className="text-[10px] uppercase font-semibold text-[#717975]">DELIVERY RATE</p>
               <p className="text-base font-serif font-bold text-[#1b1c18]">
-                {dispatchRate}% <span className="text-xs font-sans font-normal text-[#0d4d3b] ml-1">{dispatchedOrders}/{totalOrders} orders</span>
+                {deliveryRate}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 bg-[#fbf9f2] p-3.5 border border-[#deddd3]">
+            <div className="w-8 h-8 bg-[#b0ecd3]/40 flex items-center justify-center text-[#073a2d]">
+              <Sparkles className="w-4 h-4 text-[#c79a45]" />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase font-semibold text-[#717975]">CONVERSION RATE</p>
+              <p className="text-base font-serif font-bold text-[#1b1c18]">
+                {conversionRate}{' '}
+                <span className="text-xs font-sans font-normal text-[#0d4d3b]">({conversionGrowth})</span>
               </p>
             </div>
           </div>
@@ -440,8 +520,8 @@ export default function DashboardPage() {
               <Clock className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-[10px] uppercase font-semibold text-[#717975]">DISPATCH QUEUE</p>
-              <p className="text-base font-serif font-bold text-[#1b1c18]">{pendingOrders} Pending</p>
+              <p className="text-[10px] uppercase font-semibold text-[#717975]">FULFILLMENT VELOCITY</p>
+              <p className="text-base font-serif font-bold text-[#1b1c18]">{fulfillmentVelocity}</p>
             </div>
           </div>
         </div>
@@ -449,7 +529,7 @@ export default function DashboardPage() {
 
       {/* 2-Column Section: Recent Orders & Low Stock */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: Recent Orders (7 cols) */}
+        {/* Left: Recent Orders (8 cols) */}
         <div className="lg:col-span-8 bg-white border border-[#deddd3] p-6 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-[#deddd3]">
@@ -475,7 +555,7 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#f0eee7]">
-                  {orders.length === 0 ? (
+                  {recentOrdersList.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="py-8 text-center text-[#717975]">
                         <ShoppingBag className="w-6 h-6 mx-auto mb-1.5 opacity-40 text-[#717975]" />
@@ -484,7 +564,7 @@ export default function DashboardPage() {
                       </td>
                     </tr>
                   ) : (
-                    orders.slice(0, 5).map((order) => {
+                    recentOrdersList.map((order: any) => {
                       const statusColor =
                         order.status === 'PENDING'
                           ? 'bg-[#f5eedf] text-[#8c6722]'
@@ -506,7 +586,7 @@ export default function DashboardPage() {
                             </span>
                           </td>
                           <td className="py-3 font-medium">
-                            ৳{order.amount.toLocaleString()}
+                            ৳{Number(order.amount || 0).toLocaleString()}
                             <span className="text-[10px] text-[#717975] block uppercase font-mono">
                               {order.paymentMethod}
                             </span>
@@ -538,7 +618,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="pt-4 mt-4 border-t border-[#f0eee7] flex items-center justify-between text-xs text-[#717975]">
-            <span>Showing 5 of {orders.length} transactions</span>
+            <span>Showing {recentOrdersList.length} of {totalOrders} transactions</span>
             <Link
               href="/orders"
               className="text-[#073a2d] font-semibold hover:underline flex items-center gap-1"
@@ -563,16 +643,16 @@ export default function DashboardPage() {
             </div>
 
             <div className="mt-4 space-y-3">
-              {lowStockItems.length === 0 ? (
+              {lowStockList.length === 0 ? (
                 <div className="p-8 text-center border border-[#deddd3] bg-[#fbf9f2]">
                   <CheckCircle2 className="w-6 h-6 mx-auto mb-1.5 text-[#0d4d3b]" />
                   <p className="font-serif text-sm text-[#1b1c18]">Healthy Inventory</p>
                   <p className="text-[11px] text-[#717975]">All pieces currently have ample atelier reserve.</p>
                 </div>
               ) : (
-                lowStockItems.slice(0, 4).map((item) => (
+                lowStockList.map((item: any, idx: number) => (
                   <div
-                    key={item.id}
+                    key={item.sku || item.id || idx}
                     className="flex items-center justify-between p-2.5 border border-[#deddd3] bg-[#fbf9f2] hover:border-[#c79a45] transition-colors"
                   >
                     <div className="flex items-center gap-2.5">
@@ -582,22 +662,25 @@ export default function DashboardPage() {
                       <div>
                         <p className="text-xs font-semibold text-[#1b1c18] line-clamp-1">{item.name}</p>
                         <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[11px] text-[#717975]">Stock: {item.stock} units</span>
+                          {item.sku && (
+                            <span className="text-[10px] font-mono text-[#717975]">{item.sku}</span>
+                          )}
+                          <span className="text-[11px] text-[#717975]">• Stock: {item.stock}</span>
                           <span
                             className={`text-[9px] px-1 py-0.2 font-semibold uppercase ${
-                              item.stock === 0
+                              item.stock === 0 || item.status === 'Out of Stock'
                                 ? 'bg-[#ffdad6] text-[#ba1a1a]'
                                 : 'bg-[#f5eedf] text-[#8c6722]'
                             }`}
                           >
-                            {item.stock === 0 ? 'Out of Stock' : 'Low Stock'}
+                            {item.status || (item.stock === 0 ? 'Out of Stock' : 'Low Stock')}
                           </span>
                         </div>
                       </div>
                     </div>
 
                     <button
-                      onClick={() => setSelectedRestockItem(item.id)}
+                      onClick={() => setSelectedRestockItem(item.id || item.sku)}
                       className="px-2.5 py-1.5 bg-[#00231a] hover:bg-[#073a2d] text-white text-[10px] font-semibold tracking-wider uppercase transition-colors shrink-0"
                     >
                       + RESTOCK
@@ -609,7 +692,10 @@ export default function DashboardPage() {
           </div>
 
           <div className="pt-4 mt-4 border-t border-[#f0eee7] flex items-center justify-between text-xs text-[#717975]">
-            <span>{lowStockItems.length} items require yarn requisition</span>
+            <span>
+              {lowStockCount} items require yarn requisition
+              {stockoutCount > 0 && ` • ${stockoutCount} Stockout`}
+            </span>
             <Link
               href="/inventory"
               className="text-[#073a2d] font-semibold hover:underline flex items-center gap-1 text-[11px]"

@@ -29,4 +29,22 @@ export class ProductsController {
       data,
     };
   }
+
+  @Get(':slug/related')
+  @ApiOperation({ summary: 'Retrieve related active products' })
+  async findRelated(@Param('slug') slug: string) {
+    return {
+      message: 'Related products retrieved successfully',
+      data: await this.productsService.findRelated(slug, 'RELATED'),
+    };
+  }
+
+  @Get(':slug/recommendations')
+  @ApiOperation({ summary: 'Retrieve complementary active product recommendations' })
+  async findRecommendations(@Param('slug') slug: string) {
+    return {
+      message: 'Product recommendations retrieved successfully',
+      data: await this.productsService.findRelated(slug, 'COMPLEMENTARY'),
+    };
+  }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -31,25 +31,26 @@ import {
 
 export const ProfileClient: React.FC = () => {
   const router = useRouter();
-  const { user, isLoggedIn, logout, updateProfile, changePassword } = useAuth();
+  const { user, isLoggedIn, isLoading, logout, updateProfile, changePassword } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'details' | 'security'>('details');
 
   // Form states
-  const [name, setName] = useState(user?.name || 'Mahfuzur Rahman Chowdhury');
-  const [email, setEmail] = useState(user?.email || 'mahfuz@bangladesh.com');
-  const [phone, setPhone] = useState(user?.phone || '+880 1712-345678');
-  const [addressLine, setAddressLine] = useState(user?.address.line1 || 'House 42, Road 11, Block D, Banani');
-  const [division, setDivision] = useState(user?.address.division || 'Dhaka');
-  const [city, setCity] = useState(user?.address.city || 'Dhaka Metro');
-  const [postalCode, setPostalCode] = useState(user?.address.postalCode || '1213');
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [addressLine, setAddressLine] = useState(user?.address.line1 || '');
+  const [division, setDivision] = useState(user?.address.division || '');
+  const [city, setCity] = useState(user?.address.city || '');
+  const [postalCode, setPostalCode] = useState(user?.address.postalCode || '');
 
   // Tailoring profile
-  const [height, setHeight] = useState(user?.tailoringProfile.height || "5' 11\"");
-  const [chest, setChest] = useState(user?.tailoringProfile.chest || '40 Inches (Medium)');
-  const [panjabiLength, setPanjabiLength] = useState(user?.tailoringProfile.preferredPanjabiLength || '42 Inches');
-  const [fit, setFit] = useState(user?.tailoringProfile.preferredFit || 'Slim Heritage Cut');
-  const [collar, setCollar] = useState(user?.tailoringProfile.preferredCollar || 'High Mandarin Collar');
+  const [height, setHeight] = useState(user?.tailoringProfile.height || '');
+  const [chest, setChest] = useState(user?.tailoringProfile.chest || '');
+  const [shoulder, setShoulder] = useState(user?.tailoringProfile.shoulder || '');
+  const [panjabiLength, setPanjabiLength] = useState(user?.tailoringProfile.preferredPanjabiLength || '');
+  const [fit, setFit] = useState(user?.tailoringProfile.preferredFit || '');
+  const [collar, setCollar] = useState(user?.tailoringProfile.preferredCollar || '');
 
   // Security states
   const [oldPw, setOldPw] = useState('');
@@ -58,9 +59,30 @@ export const ProfileClient: React.FC = () => {
   const [showOldPw, setShowOldPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!user) return;
+    setName(user.name ?? '');
+    setEmail(user.email ?? '');
+    setPhone(user.phone ?? '');
+    setAddressLine(user.address?.line1 ?? '');
+    setDivision(user.address?.division ?? '');
+    setCity(user.address?.city ?? '');
+    setPostalCode(user.address?.postalCode ?? '');
+    setHeight(user.tailoringProfile?.height ?? '');
+    setChest(user.tailoringProfile?.chest ?? '');
+    setShoulder(user.tailoringProfile?.shoulder ?? '');
+    setPanjabiLength(user.tailoringProfile?.preferredPanjabiLength ?? '');
+    setFit(user.tailoringProfile?.preferredFit ?? '');
+    setCollar(user.tailoringProfile?.preferredCollar ?? '');
+  }, [user]);
+
+  useEffect(() => {
+    if (!isLoading && !isLoggedIn) router.replace('/login?next=%2Fprofile');
+  }, [isLoading, isLoggedIn, router]);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateProfile({
+    await updateProfile({
       name,
       email,
       phone,
@@ -73,6 +95,7 @@ export const ProfileClient: React.FC = () => {
       tailoringProfile: {
         height,
         chest,
+        shoulder,
         preferredPanjabiLength: panjabiLength,
         preferredFit: fit,
         preferredCollar: collar,
@@ -80,26 +103,36 @@ export const ProfileClient: React.FC = () => {
     });
   };
 
-  const handleUpdatePassword = (e: React.FormEvent) => {
+  const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPw !== confirmPw) {
       alert('New password and confirmation do not match.');
       return;
     }
-    if (newPw.length < 8) {
-      alert('Password must be at least 8 characters long.');
+    if (newPw.length < 10 || !/[a-z]/.test(newPw) || !/[A-Z]/.test(newPw) || !/\d/.test(newPw)) {
+      alert('Password must be at least 10 characters and include uppercase, lowercase, and a number.');
       return;
     }
-    changePassword(oldPw, newPw);
-    setOldPw('');
-    setNewPw('');
-    setConfirmPw('');
+    if (await changePassword(oldPw, newPw)) {
+      setOldPw('');
+      setNewPw('');
+      setConfirmPw('');
+      router.push('/login');
+    }
   };
 
   const handleSignOut = () => {
-    logout();
+    void logout();
     router.push('/');
   };
+
+  if (isLoading || !user) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center bg-[#fbf9f2] text-sm text-[#69726d]">
+        Loading your account...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pt-8 sm:pt-10 pb-24 bg-[#fbf9f2]">
@@ -128,14 +161,14 @@ export const ProfileClient: React.FC = () => {
                   </span>
                   <span className="text-[#76a493] text-xs">•</span>
                   <span className="font-mono text-xs text-[#deddd3]">
-                    ID: {user?.membershipId || 'RL-882049'}
+                    ID: {user?.membershipId || ''}
                   </span>
                 </div>
                 <h1 className="font-serif text-2xl sm:text-3xl text-white font-normal">
                   {name}
                 </h1>
                 <p className="font-sans text-xs text-[#76a493] mt-1">
-                  Patron since {user?.memberSince || 'September 2024'} • Dhaka Metro Residence
+                  {user?.memberSince ? `Patron since ${user.memberSince}` : 'Customer account'}{user?.address.city ? ` • ${user.address.city}` : ''}
                 </p>
               </div>
             </div>
@@ -398,21 +431,27 @@ export const ProfileClient: React.FC = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                       <div className="space-y-1.5">
                         <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">
-                          Patron Height
+                          Shoulder Measurement (in)
                         </Label>
                         <Input
-                          value={height}
-                          onChange={(e) => setHeight(e.target.value)}
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={shoulder ?? ''}
+                          onChange={(e) => setShoulder(e.target.value)}
                           className="bg-[#fbf9f2] border-[#deddd3] h-11"
                         />
                       </div>
 
                       <div className="space-y-1.5">
                         <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">
-                          Chest Profile
+                          Chest Measurement (in)
                         </Label>
                         <Input
-                          value={chest}
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={chest ?? ''}
                           onChange={(e) => setChest(e.target.value)}
                           className="bg-[#fbf9f2] border-[#deddd3] h-11"
                         />
@@ -420,10 +459,13 @@ export const ProfileClient: React.FC = () => {
 
                       <div className="space-y-1.5">
                         <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">
-                          Preferred Panjabi Length
+                          Garment Length (in)
                         </Label>
                         <Input
-                          value={panjabiLength}
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={panjabiLength ?? ''}
                           onChange={(e) => setPanjabiLength(e.target.value)}
                           className="bg-[#fbf9f2] border-[#deddd3] h-11"
                         />
@@ -446,17 +488,16 @@ export const ProfileClient: React.FC = () => {
 
                       <div className="space-y-1.5 sm:col-span-2">
                         <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">
-                          Signature Collar
+                          Collar Measurement (in)
                         </Label>
-                        <select
-                          value={collar}
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={collar ?? ''}
                           onChange={(e) => setCollar(e.target.value)}
-                          className="w-full bg-[#fbf9f2] border border-[#deddd3] h-11 px-3 text-xs font-sans text-[#1b1c18] focus:outline-none focus:border-[#073a2d]"
-                        >
-                          <option value="High Mandarin Collar">High Mandarin Collar</option>
-                          <option value="Classic Band Collar">Classic Band Collar</option>
-                          <option value="Royal Embroidered Collar">Royal Embroidered Collar</option>
-                        </select>
+                          className="bg-[#fbf9f2] border-[#deddd3] h-11"
+                        />
                       </div>
                     </div>
                   </div>

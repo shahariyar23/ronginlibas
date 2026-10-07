@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/co
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { InventoryService } from '../services/inventory.service.js';
 import { AdjustStockDto } from '../dto/adjust-stock.dto.js';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto.js';
+import { InventoryQueryDto } from '../dto/inventory-query.dto.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
@@ -19,7 +19,7 @@ export class AdminInventoryController {
 
   @Get()
   @ApiOperation({ summary: 'List inventory stock levels across all garment variants' })
-  async getInventoryList(@Query() query: PaginationQueryDto & { filter?: string }) {
+  async getInventoryList(@Query() query: InventoryQueryDto) {
     const data = await this.inventoryService.getInventoryList(query);
     return {
       message: 'Inventory ledger retrieved successfully',

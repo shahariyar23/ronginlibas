@@ -1,13 +1,14 @@
-import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { ChangePasswordDto, ResetPasswordDto } from '../dto/password-reset.dto.js';
 import { LoginDto } from '../dto/login.dto.js';
 import { RegisterCustomerDto } from '../dto/register.dto.js';
-import { RefreshTokenDto } from '../dto/refresh-token.dto.js';
 export declare class AuthService {
     private readonly prisma;
     private readonly jwtService;
     private readonly configService;
+    private readonly logger;
     constructor(prisma: PrismaService, jwtService: JwtService, configService: ConfigService);
     adminLogin(dto: LoginDto): Promise<{
         accessToken: string;
@@ -45,7 +46,7 @@ export declare class AuthService {
             type: "customer" | "admin";
         };
     }>;
-    refreshTokens(dto: RefreshTokenDto): Promise<{
+    refreshTokens(refreshToken: string): Promise<{
         accessToken: string;
         refreshToken: string;
         tokenType: string;
@@ -57,5 +58,19 @@ export declare class AuthService {
             type: "customer" | "admin";
         };
     }>;
+    logoutCustomer(customerId: string): Promise<{
+        loggedOut: boolean;
+    }>;
+    changeCustomerPassword(customerId: string, dto: ChangePasswordDto): Promise<{
+        passwordChanged: boolean;
+    }>;
+    requestPasswordReset(email: string): Promise<{
+        message: string;
+    }>;
+    resetCustomerPassword(dto: ResetPasswordDto): Promise<{
+        passwordReset: boolean;
+    }>;
+    private issueCustomerSession;
     private generateTokens;
+    private refreshSecret;
 }

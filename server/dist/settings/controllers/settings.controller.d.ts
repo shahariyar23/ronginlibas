@@ -5,18 +5,25 @@ export declare class SettingsController {
     getPublicSettings(): Promise<{
         message: string;
         data: {
-            storeName: any;
-            logo: any;
-            phone: any;
-            whatsapp: any;
-            currency: any;
-            currencySymbol: any;
-            dhakaDeliveryCharge: any;
-            outsideDhakaDeliveryCharge: any;
-            freeDeliveryThreshold: any;
-            codEnabled: any;
-            bkashEnabled: any;
-            nagadEnabled: any;
+            storeName: unknown;
+            logo: unknown;
+            phone: unknown;
+            whatsapp: unknown;
+            email: unknown;
+            website: unknown;
+            facebook: unknown;
+            instagram: unknown;
+            currency: unknown;
+            currencySymbol: unknown;
+            dhakaDeliveryCharge: unknown;
+            outsideDhakaDeliveryCharge: unknown;
+            freeDeliveryThreshold: unknown;
+            codEnabled: unknown;
+            bkashEnabled: unknown;
+            nagadEnabled: unknown;
+            cardEnabled: unknown;
+            promotionalAnnouncement: unknown;
+            businessHours: unknown;
         };
     }>;
 }

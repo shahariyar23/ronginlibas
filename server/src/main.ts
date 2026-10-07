@@ -49,7 +49,7 @@ async function bootstrap() {
       if (!origin || corsOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(null, true); // Permissive in development
+        callback(new Error('Origin is not allowed by CORS configuration'));
       }
     },
     credentials: true,

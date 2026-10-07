@@ -1,45 +1,38 @@
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AdjustStockDto } from '../dto/adjust-stock.dto.js';
-import { PaginationQueryDto, PaginatedResult } from '../../common/dto/pagination-query.dto.js';
+import { InventoryQueryDto } from '../dto/inventory-query.dto.js';
+import { PaginatedResult } from '../../common/dto/pagination-query.dto.js';
 export declare class InventoryService {
     private readonly prisma;
     constructor(prisma: PrismaService);
-    getInventoryList(query: PaginationQueryDto & {
-        filter?: string;
-    }): Promise<PaginatedResult<any>>;
+    getInventoryList(query: InventoryQueryDto): Promise<PaginatedResult<any>>;
     adjustStock(dto: AdjustStockDto, userId?: string): Promise<{
         variant: {
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            measurements: Prisma.JsonValue | null;
+            productId: string;
+            sku: string;
             size: string;
             color: string;
-            sku: string;
+            sizeLabel: string | null;
             stock: number;
-            priceOverride: import("@prisma/client/runtime/library").Decimal | null;
-            productId: string;
+            priceOverride: Prisma.Decimal | null;
         };
         transaction: {
             type: import("@prisma/client").$Enums.InventoryTransactionType;
             id: string;
             createdAt: Date;
+            variantId: string;
             quantityChange: number;
             previousStock: number;
             newStock: number;
             note: string | null;
             userId: string | null;
-            variantId: string;
         };
-        message?: undefined;
-        variantId?: undefined;
-        change?: undefined;
-    } | {
-        message: string;
-        variantId: string;
-        change: number;
-        variant?: undefined;
-        transaction?: undefined;
     }>;
     getTransactionHistory(variantId: string): Promise<({
         user: {
@@ -51,11 +44,11 @@ export declare class InventoryService {
         type: import("@prisma/client").$Enums.InventoryTransactionType;
         id: string;
         createdAt: Date;
+        variantId: string;
         quantityChange: number;
         previousStock: number;
         newStock: number;
         note: string | null;
         userId: string | null;
-        variantId: string;
     })[]>;
 }

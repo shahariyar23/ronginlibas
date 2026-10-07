@@ -35,8 +35,8 @@ export const LoginClient: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'signin' | 'register'>(initialTab);
 
   // Sign In form state
-  const [signInEmail, setSignInEmail] = useState('mahfuz@bangladesh.com');
-  const [signInPassword, setSignInPassword] = useState('RonginLibas@2026');
+  const [signInEmail, setSignInEmail] = useState('');
+  const [signInPassword, setSignInPassword] = useState('');
   const [showSignInPw, setShowSignInPw] = useState(false);
   const [keepSignedIn, setKeepSignedIn] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,6 +49,7 @@ export const LoginClient: React.FC = () => {
   const [showRegPw, setShowRegPw] = useState(false);
   const [preferredFit, setPreferredFit] = useState('Slim Heritage Cut');
   const [preferredCollar, setPreferredCollar] = useState('High Mandarin Collar');
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   useEffect(() => {
     if (searchParams.get('tab') === 'register') {
@@ -59,8 +60,10 @@ export const LoginClient: React.FC = () => {
   // Password strength calculation
   const getPasswordStrength = (pw: string) => {
     if (!pw) return { score: 0, label: 'Enter Password', color: 'bg-[#deddd3]' };
-    if (pw.length < 6) return { score: 25, label: 'Weak', color: 'bg-[#ba1a1a]' };
-    if (pw.length < 8) return { score: 50, label: 'Moderate', color: 'bg-[#c79a45]' };
+    if (pw.length < 8) return { score: 25, label: 'Weak', color: 'bg-[#ba1a1a]' };
+    if (pw.length < 10 || !/[a-z]/.test(pw) || !/[A-Z]/.test(pw) || !/\d/.test(pw)) {
+      return { score: 50, label: 'Add upper/lowercase and a number', color: 'bg-[#c79a45]' };
+    }
     return { score: 100, label: 'Aristocratic & Secure', color: 'bg-[#073a2d]' };
   };
 
@@ -70,8 +73,7 @@ export const LoginClient: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await login(signInEmail, signInPassword);
-      router.push('/profile');
+      if (await login(signInEmail, signInPassword)) router.push('/profile');
     } finally {
       setIsSubmitting(false);
     }
@@ -81,22 +83,24 @@ export const LoginClient: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await register(
+      const registered = await register(
         {
-          name: regName || 'Mahfuzur Rahman',
-          email: regEmail || 'patron@ronginlibas.com',
-          phone: regMobile ? `+880 ${regMobile}` : '+880 1712-345678',
+          name: regName,
+          email: regEmail,
+          phone: `+880${regMobile.replace(/\s/g, '')}`,
           tailoringProfile: {
-            height: "5' 11\"",
-            chest: '40 Inches',
-            preferredPanjabiLength: '42 Inches',
+            height: '',
+            chest: '',
+            shoulder: '',
+            preferredPanjabiLength: '',
             preferredFit,
             preferredCollar,
           },
         },
-        regPassword
+        regPassword,
+        termsAccepted,
       );
-      router.push('/profile');
+      if (registered) router.push('/profile');
     } finally {
       setIsSubmitting(false);
     }
@@ -248,7 +252,7 @@ export const LoginClient: React.FC = () => {
                         type="email"
                         value={signInEmail}
                         onChange={(e) => setSignInEmail(e.target.value)}
-                        placeholder="e.g. mahfuz@bangladesh.com"
+                        placeholder="name@domain.com"
                         required
                         className="bg-[#fbf9f2] border-[#deddd3] h-12 pl-10 focus:border-[#073a2d]"
                       />
@@ -339,8 +343,7 @@ export const LoginClient: React.FC = () => {
                     <Gift className="w-4 h-4" />
                   </div>
                   <p className="font-sans text-xs text-[#073a2d] leading-tight">
-                    <strong className="font-semibold text-[#073a2d]">Inaugural Privilege:</strong>{' '}
-                    <span className="text-[#c79a45] font-bold">৳500 Welcome Honorarium</span> will be auto-credited to your account.
+                    Create an account to manage your profile, saved addresses, and order history.
                   </p>
                 </div>
 
@@ -412,7 +415,8 @@ export const LoginClient: React.FC = () => {
                         type={showRegPw ? 'text' : 'password'}
                         value={regPassword}
                         onChange={(e) => setRegPassword(e.target.value)}
-                        placeholder="Minimum 8 characters"
+                        placeholder="10+ characters with upper, lower & number"
+                        minLength={10}
                         required
                         className="bg-[#fbf9f2] border-[#deddd3] h-11 pr-10 focus:border-[#073a2d]"
                       />
@@ -466,14 +470,25 @@ export const LoginClient: React.FC = () => {
                     </div>
                   </div>
 
+                  <label className="flex items-start gap-2 text-xs text-[#69726d]">
+                    <input
+                      type="checkbox"
+                      checked={termsAccepted}
+                      onChange={(event) => setTermsAccepted(event.target.checked)}
+                      required
+                      className="mt-0.5 accent-[#073a2d]"
+                    />
+                    <span>I accept the terms and privacy policy for creating a customer account.</span>
+                  </label>
+
                   <div className="pt-2">
                     <Button
                       type="submit"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !termsAccepted}
                       className="w-full bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-[0.16em] h-13 shadow-md flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Crown className="w-4 h-4 text-[#c79a45]" />
-                      <span>{isSubmitting ? 'Enrolling...' : 'Join Atelier & Claim ৳500 Key'}</span>
+                      <span>{isSubmitting ? 'Creating Account...' : 'Create Customer Account'}</span>
                     </Button>
                   </div>
                 </form>

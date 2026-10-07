@@ -236,6 +236,8 @@ export const adminApi = {
       const qs = query.toString();
       return request<any>(`/admin/products${qs ? `?${qs}` : ''}`);
     },
+    getById: (id: string) =>
+      request<any>(`/admin/products/${encodeURIComponent(id)}`),
     create: (payload: any) =>
       request<any>('/admin/products', {
         method: 'POST',
@@ -263,11 +265,16 @@ export const adminApi = {
       const qs = query.toString();
       return request<any>(`/admin/orders${qs ? `?${qs}` : ''}`);
     },
-    getById: (id: string) => request<any>(`/admin/orders/${id}`),
+    getById: (id: string) => request<any>(`/admin/orders/${encodeURIComponent(id.trim())}`),
     updateStatus: (id: string, status: string, adminNotes?: string) =>
-      request<any>(`/admin/orders/${id}/status`, {
+      request<any>(`/admin/orders/${encodeURIComponent(id.trim())}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ status, adminNotes }),
+      }),
+    update: (id: string, payload: any) =>
+      request<any>(`/admin/orders/${encodeURIComponent(id.trim())}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
       }),
   },
 

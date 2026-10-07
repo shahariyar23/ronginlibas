@@ -10,42 +10,62 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { OrdersService } from '../services/orders.service.js';
-import { CreateOrderDto } from '../dto/create-order.dto.js';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { Body, Controller, Get, Header, Param, Post, Query, Res, UseGuards, } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiProduces, ApiTags, } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { CustomerAuthGuard } from '../../auth/guards/customer-auth.guard.js';
+import { OptionalCustomerAuthGuard } from '../../auth/guards/optional-customer-auth.guard.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import { CreateOrderDto } from '../dto/create-order.dto.js';
+import { OrderAccessDto } from '../dto/order-access.dto.js';
+import { OrderQueryDto } from '../dto/order-query.dto.js';
+import { OrdersService } from '../services/orders.service.js';
 let OrdersController = class OrdersController {
     ordersService;
     constructor(ordersService) {
         this.ordersService = ordersService;
     }
     async create(dto, customerId) {
-        const data = await this.ordersService.create(dto, customerId);
         return {
             message: 'Order placed successfully',
-            data,
+            data: await this.ordersService.create(dto, customerId),
         };
     }
-    async getMyOrders(customerId) {
-        const data = await this.ordersService.findCustomerOrders(customerId);
+    async getMyOrders(customerId, query) {
         return {
             message: 'Customer orders retrieved successfully',
-            data,
+            data: await this.ordersService.findCustomerOrders(customerId, query),
         };
     }
-    async findById(id) {
-        const data = await this.ordersService.findById(id);
+    async getMyOrder(customerId, orderNumber) {
         return {
             message: 'Order retrieved successfully',
-            data,
+            data: await this.ordersService.findCustomerOrder(customerId, orderNumber),
+        };
+    }
+    async track(orderNumber, customerId, query) {
+        return {
+            message: 'Order tracking retrieved successfully',
+            data: await this.ordersService.getTracking(orderNumber, customerId, query.phone, query.trackingToken),
+        };
+    }
+    async invoice(orderNumber, customerId, query, response) {
+        const pdf = await this.ordersService.generateInvoice(orderNumber, customerId, query.phone, query.trackingToken);
+        response.setHeader('Content-Type', 'application/pdf');
+        response.setHeader('Content-Disposition', `attachment; filename="${orderNumber}-invoice.pdf"`);
+        response.send(pdf);
+    }
+    async getOrder(orderNumber, customerId, query) {
+        return {
+            message: 'Order retrieved successfully',
+            data: await this.ordersService.getOrderForCustomerAccess(orderNumber, customerId, query.phone, query.trackingToken),
         };
     }
 };
 __decorate([
     Post(),
-    ApiOperation({ summary: 'Place a new garment consignment order' }),
+    Throttle({ default: { limit: 5, ttl: 60_000 } }),
+    ApiOperation({ summary: 'Place an order using server-side pricing and inventory validation' }),
     __param(0, Body()),
     __param(1, CurrentUser('id')),
     __metadata("design:type", Function),
@@ -54,24 +74,63 @@ __decorate([
 ], OrdersController.prototype, "create", null);
 __decorate([
     Get('my-orders'),
-    ApiOperation({ summary: 'List authenticated customer orders' }),
+    UseGuards(CustomerAuthGuard),
+    ApiBearerAuth(),
+    ApiOperation({ summary: 'List the authenticated customer order history' }),
     __param(0, CurrentUser('id')),
+    __param(1, Query()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, OrderQueryDto]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "getMyOrders", null);
 __decorate([
-    Get(':id'),
-    ApiOperation({ summary: 'Retrieve specific order details and tracking' }),
-    __param(0, Param('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Promise)
-], OrdersController.prototype, "findById", null);
-OrdersController = __decorate([
-    ApiTags('Storefront - Orders'),
+    Get('my-orders/:orderNumber'),
+    UseGuards(CustomerAuthGuard),
     ApiBearerAuth(),
-    UseGuards(JwtAuthGuard),
+    ApiOperation({ summary: 'Retrieve an order belonging to the authenticated customer' }),
+    __param(0, CurrentUser('id')),
+    __param(1, Param('orderNumber')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "getMyOrder", null);
+__decorate([
+    Get(':orderNumber/tracking'),
+    ApiOperation({ summary: 'Track an owned customer order or verify a guest order' }),
+    __param(0, Param('orderNumber')),
+    __param(1, CurrentUser('id')),
+    __param(2, Query()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, OrderAccessDto]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "track", null);
+__decorate([
+    Get(':orderNumber/invoice'),
+    ApiProduces('application/pdf'),
+    Header('Content-Type', 'application/pdf'),
+    Header('Content-Disposition', 'attachment; filename="rongin-libas-invoice.pdf"'),
+    ApiOperation({ summary: 'Download an owned order invoice as PDF' }),
+    __param(0, Param('orderNumber')),
+    __param(1, CurrentUser('id')),
+    __param(2, Query()),
+    __param(3, Res()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, OrderAccessDto, Object]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "invoice", null);
+__decorate([
+    Get(':orderNumber'),
+    ApiOperation({ summary: 'Retrieve a customer-safe order confirmation' }),
+    __param(0, Param('orderNumber')),
+    __param(1, CurrentUser('id')),
+    __param(2, Query()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, OrderAccessDto]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "getOrder", null);
+OrdersController = __decorate([
+    ApiTags('Orders'),
+    UseGuards(OptionalCustomerAuthGuard),
     Controller('orders'),
     __metadata("design:paramtypes", [OrdersService])
 ], OrdersController);

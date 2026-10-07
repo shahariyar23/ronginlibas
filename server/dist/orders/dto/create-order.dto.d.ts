@@ -9,6 +9,11 @@ export declare class ShippingAddressDto {
     city: string;
     division: string;
     phone: string;
+    fullName?: string;
+    email?: string;
+    area?: string;
+    postalCode?: string;
+    deliveryInstructions?: string;
 }
 export declare class CreateOrderDto {
     items: CreateOrderItemDto[];
@@ -16,4 +21,7 @@ export declare class CreateOrderDto {
     paymentMethod?: 'COD' | 'BKASH' | 'NAGAD' | 'CARD';
     couponCode?: string;
     customerNotes?: string;
+    guestName?: string;
+    guestEmail?: string;
+    customTailoringNote?: string;
 }

@@ -1,105 +1,54 @@
 import { CategoriesService } from '../services/categories.service.js';
+import { ProductQueryDto } from '../../products/dto/product-query.dto.js';
 export declare class CategoriesController {
     private readonly categoriesService;
     constructor(categoriesService: CategoriesService);
     findAll(): Promise<{
         message: string;
-        data: ({
+        data: {
+            description: string | null;
+            sortOrder: number;
+            name: string;
+            slug: string;
+            id: string;
+            image: string | null;
+            parentId: string | null;
+            children: {
+                description: string | null;
+                sortOrder: number;
+                name: string;
+                slug: string;
+                id: string;
+                image: string | null;
+            }[];
             _count: {
                 products: number;
             };
-            children: {
-                description: string | null;
-                id: string;
-                isActive: boolean;
-                createdAt: Date;
-                updatedAt: Date;
-                name: string;
-                sortOrder: number;
-                slug: string;
-                image: string | null;
-                parentId: string | null;
-            }[];
-        } & {
-            description: string | null;
-            id: string;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            name: string;
-            sortOrder: number;
-            slug: string;
-            image: string | null;
-            parentId: string | null;
-        })[] | {
-            id: string;
-            name: string;
-            slug: string;
-            description: string;
-            itemCount: number;
         }[];
+    }>;
+    findProducts(slug: string, query: ProductQueryDto): Promise<{
+        message: string;
+        data: import("../../common/dto/pagination-query.dto.js").PaginatedResult<any>;
     }>;
     findBySlug(slug: string): Promise<{
         message: string;
-        data: ({
-            children: {
-                description: string | null;
-                id: string;
-                isActive: boolean;
-                createdAt: Date;
-                updatedAt: Date;
-                name: string;
-                sortOrder: number;
-                slug: string;
-                image: string | null;
-                parentId: string | null;
-            }[];
-            products: ({
-                images: {
-                    url: string;
-                    id: string;
-                    createdAt: Date;
-                    updatedAt: Date;
-                    altText: string | null;
-                    sortOrder: number;
-                    isPrimary: boolean;
-                    productId: string;
-                }[];
-            } & {
-                description: string | null;
-                id: string;
-                isActive: boolean;
-                createdAt: Date;
-                updatedAt: Date;
-                name: string;
-                sku: string;
-                slug: string;
-                price: import("@prisma/client/runtime/library").Decimal;
-                compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
-                costPrice: import("@prisma/client/runtime/library").Decimal | null;
-                gender: import("@prisma/client").$Enums.Gender;
-                fabric: string | null;
-                fit: string | null;
-                categoryId: string;
-                isFeatured: boolean;
-                isNewArrival: boolean;
-                isBestSeller: boolean;
-            })[];
-        } & {
+        data: {
             description: string | null;
-            id: string;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
-            sortOrder: number;
             slug: string;
+            id: string;
             image: string | null;
             parentId: string | null;
-        }) | {
-            id: string;
-            name: string;
-            slug: string;
+            children: {
+                description: string | null;
+                name: string;
+                slug: string;
+                id: string;
+                image: string | null;
+            }[];
+            _count: {
+                products: number;
+            };
         };
     }>;
 }

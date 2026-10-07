@@ -5,21 +5,28 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Check, Mail } from 'lucide-react';
+import { apiRequest } from '@/lib/api';
 
 export const Newsletter: React.FC = () => {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !email.includes('@')) {
       toast.error('Please enter a valid email address');
       return;
     }
-    setSubscribed(true);
-    toast.success('Welcome to the Rongin Libas VIP Guild!', {
-      description: 'Your 15% launch voucher code is RONGINLAUNCH',
-    });
+    try {
+      await apiRequest('/newsletter/subscribe', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      });
+      setSubscribed(true);
+      toast.success('You are subscribed to Rongin Libas updates.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not subscribe this email.');
+    }
   };
 
   return (

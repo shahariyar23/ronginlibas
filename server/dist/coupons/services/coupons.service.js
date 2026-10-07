@@ -15,45 +15,17 @@ let CouponsService = class CouponsService {
         this.prisma = prisma;
     }
     async findAll() {
-        try {
-            return await this.prisma.coupon.findMany({
-                orderBy: { createdAt: 'desc' },
-            });
-        }
-        catch {
-            return [
-                {
-                    id: 'c-1',
-                    code: 'EID2026',
-                    description: 'Eid-ul-Fitr Grand Atelier Festival',
-                    type: 'PERCENTAGE',
-                    value: 15,
-                    minimumOrderAmount: 5000,
-                    usageCount: 142,
-                    expiryDate: new Date('2026-11-30'),
-                    isActive: true,
-                },
-                {
-                    id: 'c-2',
-                    code: 'BESPOKE1000',
-                    description: 'VIP Patron First Order Privilege',
-                    type: 'FIXED',
-                    value: 1000,
-                    minimumOrderAmount: 8000,
-                    usageCount: 38,
-                    expiryDate: new Date('2026-12-31'),
-                    isActive: true,
-                },
-            ];
-        }
+        return this.prisma.coupon.findMany({ orderBy: { createdAt: 'desc' } });
     }
     async create(dto) {
         const code = dto.code.toUpperCase().trim();
+        const existing = await this.prisma.coupon.findUnique({
+            where: { code },
+            select: { id: true },
+        });
+        if (existing)
+            throw new ConflictException(`Coupon code ${code} already exists`);
         try {
-            const existing = await this.prisma.coupon.findUnique({ where: { code } });
-            if (existing) {
-                throw new ConflictException(`Coupon code ${code} already exists`);
-            }
             return await this.prisma.coupon.create({
                 data: {
                     code,
@@ -69,66 +41,77 @@ let CouponsService = class CouponsService {
                 },
             });
         }
-        catch (err) {
-            if (err instanceof ConflictException)
-                throw err;
-            return { id: `c-${Date.now()}`, ...dto, code };
+        catch (error) {
+            if (isUniqueConstraintError(error)) {
+                throw new ConflictException(`Coupon code ${code} already exists`);
+            }
+            throw error;
         }
     }
-    async validateCoupon(code, cartTotal) {
-        try {
-            const coupon = await this.prisma.coupon.findUnique({
-                where: { code: code.toUpperCase().trim() },
-            });
-            if (!coupon || !coupon.isActive) {
-                throw new BadRequestException('Voucher code is invalid or inactive');
-            }
-            const now = new Date();
-            if (coupon.startDate && now < coupon.startDate) {
-                throw new BadRequestException('Voucher promotion has not commenced yet');
-            }
-            if (coupon.expiryDate && now > coupon.expiryDate) {
-                throw new BadRequestException('Voucher promotion has expired');
-            }
-            if (coupon.usageLimit && coupon.usageCount >= coupon.usageLimit) {
-                throw new BadRequestException('Voucher redemption limit has been reached');
-            }
-            if (cartTotal < Number(coupon.minimumOrderAmount)) {
-                throw new BadRequestException(`Minimum order total of ৳${coupon.minimumOrderAmount.toString()} required for voucher ${coupon.code}`);
-            }
-            let discount = 0;
-            if (coupon.type === 'PERCENTAGE') {
-                discount = (cartTotal * Number(coupon.value)) / 100;
-                if (coupon.maximumDiscount && discount > Number(coupon.maximumDiscount)) {
-                    discount = Number(coupon.maximumDiscount);
-                }
-            }
-            else {
-                discount = Math.min(Number(coupon.value), cartTotal);
-            }
-            return {
-                valid: true,
-                code: coupon.code,
-                type: coupon.type,
-                discountAmount: discount,
-            };
+    async validateCoupon(code, items) {
+        const coupon = await this.prisma.coupon.findUnique({
+            where: { code: code.toUpperCase().trim() },
+        });
+        const now = new Date();
+        if (!coupon || !coupon.isActive) {
+            throw new BadRequestException('Voucher code is invalid or inactive');
         }
-        catch (err) {
-            if (err instanceof BadRequestException)
-                throw err;
-            throw new BadRequestException('Voucher code validation failed');
+        if (now < coupon.startDate) {
+            throw new BadRequestException('Voucher promotion has not commenced yet');
         }
+        if (now > coupon.expiryDate) {
+            throw new BadRequestException('Voucher promotion has expired');
+        }
+        if (coupon.usageLimit !== null && coupon.usageCount >= coupon.usageLimit) {
+            throw new BadRequestException('Voucher redemption limit has been reached');
+        }
+        if (new Set(items.map((item) => item.variantId)).size !== items.length) {
+            throw new BadRequestException('Each product variant must appear only once');
+        }
+        const variants = await this.prisma.productVariant.findMany({
+            where: {
+                id: { in: items.map((item) => item.variantId) },
+                isActive: true,
+                product: { isActive: true },
+            },
+            include: { product: { select: { price: true, isActive: true } } },
+        });
+        if (variants.length !== items.length) {
+            throw new BadRequestException('One or more products are unavailable');
+        }
+        const variantsById = new Map(variants.map((variant) => [variant.id, variant]));
+        const subtotal = items.reduce((total, item) => {
+            const variant = variantsById.get(item.variantId);
+            if (!variant || variant.stock < item.quantity) {
+                throw new BadRequestException('A cart quantity exceeds available stock');
+            }
+            const unitPrice = variant.priceOverride
+                ? Number(variant.priceOverride)
+                : Number(variant.product.price);
+            return total + unitPrice * item.quantity;
+        }, 0);
+        if (subtotal < Number(coupon.minimumOrderAmount)) {
+            throw new BadRequestException(`Minimum order total of BDT ${coupon.minimumOrderAmount.toString()} required`);
+        }
+        let discountAmount = coupon.type === 'PERCENTAGE'
+            ? (subtotal * Number(coupon.value)) / 100
+            : Number(coupon.value);
+        if (coupon.maximumDiscount) {
+            discountAmount = Math.min(discountAmount, Number(coupon.maximumDiscount));
+        }
+        discountAmount = Math.min(discountAmount, subtotal);
+        return {
+            valid: true,
+            code: coupon.code,
+            type: coupon.type,
+            subtotal,
+            discountAmount,
+            totalAfterDiscount: subtotal - discountAmount,
+            currency: 'BDT',
+        };
     }
     async update(id, partial) {
-        try {
-            return await this.prisma.coupon.update({
-                where: { id },
-                data: partial,
-            });
-        }
-        catch {
-            return { id, ...partial, updatedAt: new Date() };
-        }
+        return this.prisma.coupon.update({ where: { id }, data: partial });
     }
 };
 CouponsService = __decorate([
@@ -136,4 +119,10 @@ CouponsService = __decorate([
     __metadata("design:paramtypes", [PrismaService])
 ], CouponsService);
 export { CouponsService };
+function isUniqueConstraintError(error) {
+    return (typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === 'P2002');
+}
 //# sourceMappingURL=coupons.service.js.map

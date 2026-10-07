@@ -1,7 +1,19 @@
+import { Gender } from '@prisma/client';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto.js';
 export declare class ProductQueryDto extends PaginationQueryDto {
     category?: string;
     status?: string;
-    gender?: string;
+    gender?: Gender;
+    size?: string[];
+    color?: string[];
+    fabric?: string;
+    fit?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    inStock?: boolean;
     featured?: boolean;
+    newArrival?: boolean;
+    bestSeller?: boolean;
+    expressAvailable?: boolean;
+    sort?: 'featured' | 'newest' | 'price-asc' | 'price-desc' | 'best-selling';
 }

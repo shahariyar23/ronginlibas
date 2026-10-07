@@ -5,7 +5,7 @@ export declare class AdminSettingsController {
     constructor(settingsService: SettingsService);
     getSettings(): Promise<{
         message: string;
-        data: Record<string, any> | {
+        data: Record<string, unknown> | {
             storeName: string;
             logo: string;
             phone: string;
@@ -13,6 +13,9 @@ export declare class AdminSettingsController {
             email: string;
             website: string;
             facebook: string;
+            instagram: null;
+            promotionalAnnouncement: null;
+            businessHours: null;
             currency: string;
             currencySymbol: string;
             dhakaDeliveryCharge: number;
@@ -20,15 +23,14 @@ export declare class AdminSettingsController {
             freeDeliveryThreshold: number;
             codEnabled: boolean;
             bkashEnabled: boolean;
-            bkashWallet: string;
             nagadEnabled: boolean;
-            nagadWallet: string;
+            cardEnabled: boolean;
             storeStatus: string;
         };
     }>;
     updateSettings(dto: UpdateSettingsDto): Promise<{
         message: string;
-        data: Record<string, any> | {
+        data: Record<string, unknown> | {
             storeName: string;
             logo: string;
             phone: string;
@@ -36,6 +38,9 @@ export declare class AdminSettingsController {
             email: string;
             website: string;
             facebook: string;
+            instagram: null;
+            promotionalAnnouncement: null;
+            businessHours: null;
             currency: string;
             currencySymbol: string;
             dhakaDeliveryCharge: number;
@@ -43,9 +48,8 @@ export declare class AdminSettingsController {
             freeDeliveryThreshold: number;
             codEnabled: boolean;
             bkashEnabled: boolean;
-            bkashWallet: string;
             nagadEnabled: boolean;
-            nagadWallet: string;
+            cardEnabled: boolean;
             storeStatus: string;
         };
     }>;

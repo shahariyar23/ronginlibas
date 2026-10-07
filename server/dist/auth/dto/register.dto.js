@@ -7,44 +7,84 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { Equals, IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString, Matches, MinLength, MaxLength, } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 export class RegisterCustomerDto {
     phone;
     firstName;
     lastName;
     email;
     password;
+    confirmPassword;
+    preferredSize;
+    preferredFit;
+    termsAccepted;
+    marketingConsent;
 }
 __decorate([
     ApiProperty({ example: '01711234567' }),
     IsString(),
     IsNotEmpty(),
+    Matches(/^(?:01[3-9]\d{8}|\+8801[3-9]\d{8})$/),
     __metadata("design:type", String)
 ], RegisterCustomerDto.prototype, "phone", void 0);
 __decorate([
     ApiProperty({ example: 'Rahim' }),
     IsString(),
     IsNotEmpty(),
+    MaxLength(100),
     __metadata("design:type", String)
 ], RegisterCustomerDto.prototype, "firstName", void 0);
 __decorate([
     ApiPropertyOptional({ example: 'Chowdhury' }),
     IsString(),
+    MaxLength(100),
     IsOptional(),
     __metadata("design:type", String)
 ], RegisterCustomerDto.prototype, "lastName", void 0);
 __decorate([
-    ApiPropertyOptional({ example: 'rahim@gmail.com' }),
+    ApiProperty({ example: 'rahim@gmail.com' }),
     IsEmail(),
-    IsOptional(),
     __metadata("design:type", String)
 ], RegisterCustomerDto.prototype, "email", void 0);
 __decorate([
-    ApiPropertyOptional({ example: 'SecurePassword123' }),
+    ApiProperty({ example: 'SecurePassword123' }),
     IsString(),
-    IsOptional(),
-    MinLength(6),
+    MinLength(10),
+    Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/),
     __metadata("design:type", String)
 ], RegisterCustomerDto.prototype, "password", void 0);
+__decorate([
+    ApiProperty(),
+    IsString(),
+    __metadata("design:type", String)
+], RegisterCustomerDto.prototype, "confirmPassword", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    IsString(),
+    MaxLength(20),
+    IsOptional(),
+    __metadata("design:type", String)
+], RegisterCustomerDto.prototype, "preferredSize", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    IsString(),
+    MaxLength(50),
+    IsOptional(),
+    __metadata("design:type", String)
+], RegisterCustomerDto.prototype, "preferredFit", void 0);
+__decorate([
+    ApiProperty({ default: true }),
+    Transform(({ value }) => value === true || value === 'true'),
+    Equals(true),
+    __metadata("design:type", Boolean)
+], RegisterCustomerDto.prototype, "termsAccepted", void 0);
+__decorate([
+    ApiPropertyOptional({ default: false }),
+    Transform(({ value }) => value === true || value === 'true'),
+    IsBoolean(),
+    IsOptional(),
+    __metadata("design:type", Boolean)
+], RegisterCustomerDto.prototype, "marketingConsent", void 0);
 //# sourceMappingURL=register.dto.js.map

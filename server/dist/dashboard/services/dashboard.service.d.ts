@@ -12,7 +12,7 @@ export declare class DashboardService {
             totalProducts: number;
             activeCatalog: number;
             totalCustomers: number;
-            vipMembersCount: number;
+            vipMembersCount: null;
             lowStockCount: number;
             stockoutCount: number;
         };
@@ -21,7 +21,7 @@ export declare class DashboardService {
                 label: string;
                 amount: number;
                 day: string;
-            };
+            } | null;
             chartData: {
                 day: string;
                 dhakaSales: number;
@@ -50,52 +50,6 @@ export declare class DashboardService {
             stock: number;
             status: string;
             image: string;
-        }[];
-    } | {
-        metrics: {
-            totalSales: number;
-            salesGrowth: string;
-            totalOrders: number;
-            pendingOrders: number;
-            deliveryRate: string;
-            totalProducts: number;
-            activeCatalog: number;
-            totalCustomers: number;
-            vipMembersCount: number;
-            lowStockCount: number;
-            stockoutCount: number;
-        };
-        salesOverview: {
-            peakPoint: {
-                label: string;
-                amount: number;
-                day: string;
-            };
-            chartData: {
-                day: string;
-                dhakaSales: number;
-                nationalSales: number;
-            }[];
-            kpis: {
-                averageOrderValue: number;
-                conversionRate: string;
-                conversionGrowth: string;
-                fulfillmentVelocity: string;
-            };
-        };
-        recentOrders: {
-            id: string;
-            customerName: string;
-            customerLocation: string;
-            amount: number;
-            status: string;
-            paymentMethod: string;
-        }[];
-        lowStockProducts: {
-            name: string;
-            sku: string;
-            stock: number;
-            status: string;
         }[];
     }>;
 }

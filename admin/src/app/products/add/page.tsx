@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   Upload,
@@ -20,13 +20,22 @@ import {
   Percent,
   CheckCircle2,
   Sparkles,
+  Loader2,
 } from 'lucide-react';
 import { useAdmin } from '@/context/AdminContext';
 import { AdminProduct } from '@/data/adminData';
 
-export default function AddProductPage() {
+function ProductFormContent() {
   const router = useRouter();
-  const { addProduct } = useAdmin();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('id');
+  const isEditing = Boolean(editId);
+
+  const { addProduct, updateProduct, getProductDetails, products } = useAdmin();
+
+  // Loading state for edit mode
+  const [isLoadingProduct, setIsLoadingProduct] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form states
   const [title, setTitle] = useState('');
@@ -47,10 +56,13 @@ export default function AddProductPage() {
 
   // Sizing selections
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
-  const availableSizes = ['38"', '40"', '42"', '44"', 'XXL 46"'];
+  const baseSizes = ['38"', '40"', '42"', '44"', 'XXL 46"'];
 
   // Shades
   const [selectedShades, setSelectedShades] = useState<{ name: string; hex: string }[]>([]);
+
+  // Variants list from backend
+  const [productVariants, setProductVariants] = useState<any[]>([]);
 
   // Tags
   const [tags, setTags] = useState<string[]>([]);
@@ -62,6 +74,101 @@ export default function AddProductPage() {
 
   // Images
   const [images, setImages] = useState<string[]>([]);
+
+  // If in edit mode, fetch existing product details
+  useEffect(() => {
+    if (!editId) return;
+
+    let isMounted = true;
+    setIsLoadingProduct(true);
+
+    const loadData = async () => {
+      // 1. Initial fast pre-fill from context if present
+      const cached = products.find((p) => p.id === editId || (p as any).slug === editId);
+      if (cached && isMounted) {
+        setTitle(cached.name || '');
+        setCategory(cached.category || 'Panjabi');
+        setFabricNote(cached.fabricNote || '');
+        setDescription(cached.description || '');
+        setRegularPrice(cached.price !== undefined ? cached.price.toString() : '');
+        setPromotionalPrice(cached.promotionalPrice !== undefined ? cached.promotionalPrice.toString() : '');
+        setCostOfGoods(cached.costOfGoods !== undefined ? cached.costOfGoods.toString() : '');
+        setSku(cached.sku || '');
+        setAggregateStock(cached.stock !== undefined ? cached.stock.toString() : '');
+        setIsFeatured(cached.featured ?? false);
+        setLifecycleState(cached.status === 'Active' ? 'Active' : 'Draft');
+        if (cached.tags && cached.tags.length > 0) {
+          setTags(cached.tags);
+        }
+        if (cached.image) {
+          setImages([cached.image]);
+        }
+      }
+
+      // 2. Fetch full specifications directly from backend API
+      try {
+        const detailed = await getProductDetails(editId);
+        if (detailed && isMounted) {
+          setTitle(detailed.name || '');
+          setCategory(detailed.category?.name || 'Panjabi');
+          setFabricNote(detailed.fabric || '');
+          setDescription(detailed.description || '');
+          setRegularPrice(detailed.price !== undefined ? detailed.price.toString() : '');
+          setPromotionalPrice(
+            detailed.compareAtPrice !== undefined && detailed.compareAtPrice !== null
+              ? detailed.compareAtPrice.toString()
+              : ''
+          );
+          setCostOfGoods(
+            detailed.costPrice !== undefined && detailed.costPrice !== null
+              ? detailed.costPrice.toString()
+              : ''
+          );
+          setSku(detailed.sku || '');
+          
+          const totalStock = detailed.variants?.reduce((sum: number, v: any) => sum + (v.stock || 0), 0) ?? 0;
+          setAggregateStock(totalStock.toString());
+
+          setIsFeatured(detailed.isFeatured ?? false);
+          setLifecycleState(detailed.isActive ? 'Active' : 'Draft');
+          
+          if (detailed.tags && Array.isArray(detailed.tags)) {
+            setTags(detailed.tags);
+          }
+          
+          if (detailed.images && detailed.images.length > 0) {
+            setImages(detailed.images.map((img: any) => (typeof img === 'string' ? img : img.url)));
+          }
+
+          if (detailed.variants && detailed.variants.length > 0) {
+            setProductVariants(detailed.variants);
+            const sizes = Array.from(new Set(detailed.variants.map((v: any) => v.size).filter(Boolean))) as string[];
+            if (sizes.length > 0) setSelectedSizes(sizes);
+
+            const shades = detailed.variants
+              .filter((v: any) => v.color)
+              .map((v: any) => ({ name: v.color, hex: '#00231A' }));
+            if (shades.length > 0) {
+              const uniqueShades = shades.filter((s, idx, arr) => arr.findIndex((x) => x.name === s.name) === idx);
+              setSelectedShades(uniqueShades);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[EditProduct] Error fetching details:', err);
+      } finally {
+        if (isMounted) {
+          setIsLoadingProduct(false);
+        }
+      }
+    };
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [editId, getProductDetails, products]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -110,7 +217,7 @@ export default function AddProductPage() {
     }
   };
 
-  const handleSave = (publish: boolean = true) => {
+  const handleSave = async (publish: boolean = true) => {
     if (!title.trim()) {
       alert('Please specify garment silhouette title.');
       return;
@@ -118,27 +225,59 @@ export default function AddProductPage() {
     const finalPrice = parseFloat(promotionalPrice) || parseFloat(regularPrice) || 0;
     const finalStock = parseInt(aggregateStock, 10) || 0;
 
-    const newProduct: AdminProduct = {
-      id: `p-${Date.now()}`,
-      name: title,
-      sku: sku || `RL-${Date.now().toString().slice(-6)}`,
-      category: category,
-      price: finalPrice,
-      promotionalPrice: parseFloat(promotionalPrice) || undefined,
-      costOfGoods: parseFloat(costOfGoods) || undefined,
-      stock: finalStock,
-      status: publish ? (finalStock <= 5 && finalStock > 0 ? 'Low Stock' : finalStock === 0 ? 'Out of Stock' : 'Active') : 'Low Stock',
-      image: images[0] || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCKIcKxrkusL16CkM0fjAd340aZTnxr8o_tmugD7XS3cCDAG8yST04u91rCr7OrIxBUE3yNHckrJmRo81EtZGj8lTJHQgDVroNkj2CKu-ot-pwOAH0mcutBcSZUQfz7_-Ar5PUCPtpyOke4D81SjQQyrYnZs7hzWHiKTY0UnNT3WJuv-NAxhFJD5qK4YN7AOBd5nyfFy6KXxGhKLvjxG_EWE4pBc61A0x4zW4Oz-Fnn2JvqDoxPl3_PKQ',
-      fabricNote: fabricNote,
-      description: description,
-      tags: tags,
-      featured: isFeatured,
-    };
+    setIsSubmitting(true);
+    try {
+      if (isEditing && editId) {
+        const updatedProduct: Partial<AdminProduct> = {
+          name: title,
+          sku: sku,
+          category: category,
+          price: finalPrice,
+          promotionalPrice: promotionalPrice ? parseFloat(promotionalPrice) : undefined,
+          costOfGoods: costOfGoods ? parseFloat(costOfGoods) : undefined,
+          stock: finalStock,
+          status: finalStock <= 5 && finalStock > 0 ? 'Low Stock' : finalStock === 0 ? 'Out of Stock' : 'Active',
+          image: images[0] || undefined,
+          fabricNote: fabricNote,
+          description: description,
+          tags: tags,
+          featured: isFeatured,
+        };
 
-    addProduct(newProduct);
-    alert('Atelier Suite: Product successfully preserved and added to master catalog!');
-    router.push('/products');
+        await updateProduct(editId, updatedProduct);
+        router.push('/products');
+        return;
+      }
+
+      // Add mode
+      const newProduct: AdminProduct = {
+        id: `p-${Date.now()}`,
+        name: title,
+        sku: sku || `RL-${Date.now().toString().slice(-6)}`,
+        category: category,
+        price: finalPrice,
+        promotionalPrice: promotionalPrice ? parseFloat(promotionalPrice) : undefined,
+        costOfGoods: costOfGoods ? parseFloat(costOfGoods) : undefined,
+        stock: finalStock,
+        status: finalStock <= 5 && finalStock > 0 ? 'Low Stock' : finalStock === 0 ? 'Out of Stock' : 'Active',
+        image:
+          images[0] ||
+          'https://lh3.googleusercontent.com/aida-public/AB6AXuCKIcKxrkusL16CkM0fjAd340aZTnxr8o_tmugD7XS3cCDAG8yST04u91rCr7OrIxBUE3yNHckrJmRo81EtZGj8lTJHQgDVroNkj2CKu-ot-pwOAH0mcutBcSZUQfz7_-Ar5PUCPtpyOke4D81SjQQyrYnZs7hzWHiKTY0UnNT3WJuv-NAxhFJD5qK4YN7AOBd5nyfFy6KXxGhKLvjxG_EWE4pBc61A0x4zW4Oz-Fnn2JvqDoxPl3_PKQ',
+        fabricNote: fabricNote,
+        description: description,
+        tags: tags,
+        featured: isFeatured,
+      };
+
+      await addProduct(newProduct);
+      router.push('/products');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  // Combine available sizes so existing product sizes always have a toggle
+  const allAvailableSizes = Array.from(new Set([...baseSizes, ...selectedSizes]));
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 pb-24">
@@ -149,33 +288,69 @@ export default function AddProductPage() {
           className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider text-[#717975] hover:text-[#073a2d] font-semibold transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Products / CATALOGUE ENTRY</span>
+          <span>
+            {isEditing ? `Back to Products / EDIT SPECIFICATIONS` : 'Back to Products / CATALOGUE ENTRY'}
+          </span>
         </Link>
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mt-2 border-b border-[#deddd3] pb-5">
           <div>
-            <h1 className="text-3xl font-serif text-[#1b1c18] tracking-tight">Add New Product</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-serif text-[#1b1c18] tracking-tight">
+                {isEditing ? (
+                  <>
+                    Edit Product:{' '}
+                    <span className="text-[#073a2d]">{title || (isLoadingProduct ? 'Loading...' : 'Specification')}</span>
+                  </>
+                ) : (
+                  'Add New Product'
+                )}
+              </h1>
+              {isEditing && sku && (
+                <span className="font-mono text-xs text-[#717975] bg-[#f0eee7] border border-[#deddd3] px-2.5 py-1">
+                  SKU: {sku}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-[#69726d] mt-1">
-              Configure atelier specifications, sartorial details, and multi-tier variant inventory.
+              {isEditing
+                ? `Update sartorial specifications, pricing structure, inventory and media for this atelier piece.`
+                : 'Configure atelier specifications, sartorial details, and multi-tier variant inventory.'}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             <button
+              type="button"
+              disabled={isSubmitting}
               onClick={() => handleSave(false)}
-              className="px-4 py-2.5 border border-[#deddd3] bg-white text-xs font-semibold uppercase tracking-wider text-[#404945] hover:bg-[#f0eee7] transition-colors"
+              className="px-4 py-2.5 border border-[#deddd3] bg-white text-xs font-semibold uppercase tracking-wider text-[#404945] hover:bg-[#f0eee7] transition-colors cursor-pointer disabled:opacity-50"
             >
               SAVE AS DRAFT
             </button>
             <button
+              type="button"
+              disabled={isSubmitting}
               onClick={() => handleSave(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-[#00231a] hover:bg-[#073a2d] text-white text-xs font-bold uppercase tracking-wider transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#00231a] hover:bg-[#073a2d] text-white text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-xs disabled:opacity-50"
             >
-              <Check className="w-3.5 h-3.5" />
-              <span>SAVE & PUBLISH</span>
+              {isSubmitting ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Check className="w-3.5 h-3.5" />
+              )}
+              <span>{isEditing ? 'UPDATE PRODUCT' : 'SAVE & PUBLISH'}</span>
             </button>
           </div>
         </div>
       </div>
+
+      {/* Loading banner for edit mode */}
+      {isLoadingProduct && (
+        <div className="p-3 bg-[#f0eee7] border border-[#deddd3] flex items-center gap-2.5 text-xs text-[#073a2d]">
+          <Loader2 className="w-4 h-4 animate-spin text-[#c79a45]" />
+          <span>Synchronizing existing product specifications from database...</span>
+        </div>
+      )}
 
       {/* Main 2-Column Content */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -281,6 +456,7 @@ export default function AddProductPage() {
                   rows={5}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Describe the textile weave, silhouette drape, and bespoke finishing..."
                   className="w-full p-3.5 text-xs text-[#1b1c18] bg-white focus:outline-hidden leading-relaxed"
                 />
               </div>
@@ -312,6 +488,7 @@ export default function AddProductPage() {
                     type="number"
                     value={regularPrice}
                     onChange={(e) => setRegularPrice(e.target.value)}
+                    placeholder="3850"
                     className="w-full pl-8 pr-3 py-2 bg-[#fbf9f2] border border-[#deddd3] text-sm font-semibold text-[#1b1c18] focus:border-[#073a2d] outline-hidden font-mono"
                   />
                 </div>
@@ -330,6 +507,7 @@ export default function AddProductPage() {
                     type="number"
                     value={promotionalPrice}
                     onChange={(e) => setPromotionalPrice(e.target.value)}
+                    placeholder="3450"
                     className="w-full pl-8 pr-3 py-2 bg-[#fbf9f2] border border-[#deddd3] text-sm font-semibold text-[#073a2d] focus:border-[#073a2d] outline-hidden font-mono"
                   />
                 </div>
@@ -348,6 +526,7 @@ export default function AddProductPage() {
                     type="number"
                     value={costOfGoods}
                     onChange={(e) => setCostOfGoods(e.target.value)}
+                    placeholder="1600"
                     className="w-full pl-8 pr-3 py-2 bg-[#fbf9f2] border border-[#deddd3] text-sm font-semibold text-[#1b1c18] focus:border-[#073a2d] outline-hidden font-mono"
                   />
                 </div>
@@ -380,6 +559,7 @@ export default function AddProductPage() {
                   type="text"
                   value={sku}
                   onChange={(e) => setSku(e.target.value)}
+                  placeholder="RL-PNJ-01"
                   className="w-full mt-1.5 px-3 py-2 bg-[#fbf9f2] border border-[#deddd3] text-xs font-mono font-semibold text-[#1b1c18] focus:border-[#073a2d] outline-hidden"
                 />
               </div>
@@ -392,6 +572,7 @@ export default function AddProductPage() {
                   type="text"
                   value={barcode}
                   onChange={(e) => setBarcode(e.target.value)}
+                  placeholder="890123456789"
                   className="w-full mt-1.5 px-3 py-2 bg-[#fbf9f2] border border-[#deddd3] text-xs font-mono text-[#1b1c18] focus:border-[#073a2d] outline-hidden"
                 />
               </div>
@@ -404,6 +585,7 @@ export default function AddProductPage() {
                   type="number"
                   value={aggregateStock}
                   onChange={(e) => setAggregateStock(e.target.value)}
+                  placeholder="25"
                   className="w-full mt-1.5 px-3 py-2 bg-[#fbf9f2] border border-[#deddd3] text-xs font-mono font-semibold text-[#1b1c18] focus:border-[#073a2d] outline-hidden"
                 />
               </div>
@@ -440,14 +622,14 @@ export default function AddProductPage() {
                 Standard Apparel Sizing (Panjabi Chest Scale)
               </p>
               <div className="flex flex-wrap items-center gap-2">
-                {availableSizes.map((size) => {
+                {allAvailableSizes.map((size) => {
                   const active = selectedSizes.includes(size);
                   return (
                     <button
                       key={size}
                       type="button"
                       onClick={() => toggleSize(size)}
-                      className={`px-4 py-2 text-xs font-bold tracking-wider transition-colors border ${
+                      className={`px-4 py-2 text-xs font-bold tracking-wider transition-colors border cursor-pointer ${
                         active
                           ? 'bg-[#00231a] text-white border-[#00231a]'
                           : 'bg-white text-[#404945] border-[#deddd3] hover:border-[#073a2d]'
@@ -457,12 +639,6 @@ export default function AddProductPage() {
                     </button>
                   );
                 })}
-                <button
-                  type="button"
-                  className="px-3 py-2 text-xs border border-dashed border-[#deddd3] text-[#717975] hover:border-[#073a2d] hover:text-[#073a2d]"
-                >
-                  + CUSTOM MEASURE
-                </button>
               </div>
             </div>
 
@@ -487,7 +663,7 @@ export default function AddProductPage() {
                       onClick={() =>
                         setSelectedShades(selectedShades.filter((_, i) => i !== idx))
                       }
-                      className="text-[#717975] hover:text-[#ba1a1a]"
+                      className="text-[#717975] hover:text-[#ba1a1a] cursor-pointer"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -503,7 +679,7 @@ export default function AddProductPage() {
                       ]);
                     }
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 border border-[#deddd3] bg-white text-xs text-[#717975] hover:border-[#073a2d] transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-[#deddd3] bg-white text-xs text-[#717975] hover:border-[#073a2d] transition-colors cursor-pointer"
                 >
                   <span className="w-3 h-3 rounded-full bg-[#fbf9f2] border border-[#deddd3]" />
                   <span>+ Raw Silk White</span>
@@ -518,7 +694,7 @@ export default function AddProductPage() {
                       ]);
                     }
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 border border-[#deddd3] bg-white text-xs text-[#717975] hover:border-[#073a2d] transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-[#deddd3] bg-white text-xs text-[#717975] hover:border-[#073a2d] transition-colors cursor-pointer"
                 >
                   <span className="w-3 h-3 rounded-full bg-[#00231a] border border-[#deddd3]" />
                   <span>+ Royal Emerald</span>
@@ -533,7 +709,7 @@ export default function AddProductPage() {
                       ]);
                     }
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 border border-[#deddd3] bg-white text-xs text-[#717975] hover:border-[#073a2d] transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-[#deddd3] bg-white text-xs text-[#717975] hover:border-[#073a2d] transition-colors cursor-pointer"
                 >
                   <span className="w-3 h-3 rounded-full bg-[#c79a45] border border-[#deddd3]" />
                   <span>+ Antique Gold</span>
@@ -547,7 +723,11 @@ export default function AddProductPage() {
                 <p className="text-xs font-bold uppercase tracking-wider text-[#404945]">
                   GENERATED COMBINATIONS MATRIX
                 </p>
-                <span className="text-[11px] text-[#717975]">4 Active SKUs</span>
+                <span className="text-[11px] text-[#717975] font-mono">
+                  {productVariants.length > 0
+                    ? `${productVariants.length} Active Atelier SKUs`
+                    : `${selectedSizes.length > 0 ? selectedSizes.length : 1} Configured`}
+                </span>
               </div>
 
               <div className="border border-[#deddd3] overflow-x-auto">
@@ -558,82 +738,41 @@ export default function AddProductPage() {
                       <th className="p-3">GENERATED SKU</th>
                       <th className="p-3">PRICE (BDT)</th>
                       <th className="p-3">IN-STOCK</th>
-                      <th className="p-3 text-right">ACTION</th>
+                      <th className="p-3 text-right">STATUS</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#f0eee7]">
-                    <tr>
-                      <td className="p-3 flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-[#073a2d]" />
-                        <span>Olive Green x Size M (40)</span>
-                      </td>
-                      <td className="p-3 font-mono text-[#717975]">RL-PNJ-25-OG-M</td>
-                      <td className="p-3 font-medium">৳3,450</td>
-                      <td className="p-3">
-                        <input
-                          type="number"
-                          defaultValue={12}
-                          className="w-16 px-2 py-1 border border-[#deddd3] text-center font-mono"
-                        />
-                      </td>
-                      <td className="p-3 text-right">
-                        <CheckCircle2 className="w-4 h-4 text-[#073a2d] inline-block" />
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-[#073a2d]" />
-                        <span>Olive Green x Size L (42)</span>
-                      </td>
-                      <td className="p-3 font-mono text-[#717975]">RL-PNJ-25-OG-L</td>
-                      <td className="p-3 font-medium">৳3,450</td>
-                      <td className="p-3">
-                        <input
-                          type="number"
-                          defaultValue={15}
-                          className="w-16 px-2 py-1 border border-[#deddd3] text-center font-mono"
-                        />
-                      </td>
-                      <td className="p-3 text-right">
-                        <CheckCircle2 className="w-4 h-4 text-[#073a2d] inline-block" />
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-[#0f1a2c]" />
-                        <span>Midnight Noir x Size M (40)</span>
-                      </td>
-                      <td className="p-3 font-mono text-[#717975]">RL-PNJ-25-BLK-M</td>
-                      <td className="p-3 font-medium">৳3,450</td>
-                      <td className="p-3">
-                        <input
-                          type="number"
-                          defaultValue={8}
-                          className="w-16 px-2 py-1 border border-[#deddd3] text-center font-mono"
-                        />
-                      </td>
-                      <td className="p-3 text-right">
-                        <CheckCircle2 className="w-4 h-4 text-[#073a2d] inline-block" />
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-[#fbf9f2] border border-[#deddd3]" />
-                        <span>Raw Silk White x Size L (42)</span>
-                      </td>
-                      <td className="p-3 font-mono text-[#717975]">RL-PNJ-25-WHT-L</td>
-                      <td className="p-3 font-medium">৳3,450</td>
-                      <td className="p-3">
-                        <input
-                          type="number"
-                          defaultValue={7}
-                          className="w-16 px-2 py-1 border border-[#deddd3] text-center font-mono"
-                        />
-                      </td>
-                      <td className="p-3 text-right">
-                        <CheckCircle2 className="w-4 h-4 text-[#073a2d] inline-block" />
-                      </td>
-                    </tr>
+                    {productVariants.length > 0 ? (
+                      productVariants.map((v: any, idx: number) => (
+                        <tr key={v.id || idx}>
+                          <td className="p-3 flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-[#073a2d]" />
+                            <span className="font-medium text-[#1b1c18]">
+                              {v.color || 'Standard'} x Size {v.size}
+                            </span>
+                          </td>
+                          <td className="p-3 font-mono text-[#717975]">{v.sku || `${sku}-${v.size}`}</td>
+                          <td className="p-3 font-medium">৳{(v.price || v.priceOverride || regularPrice || 0).toLocaleString()}</td>
+                          <td className="p-3 font-mono font-semibold">{v.stock} pcs</td>
+                          <td className="p-3 text-right">
+                            <CheckCircle2 className="w-4 h-4 text-[#073a2d] inline-block" />
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td className="p-3 flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#073a2d]" />
+                          <span>Standard Atelier Cut x Size {selectedSizes[0] || '40"'}</span>
+                        </td>
+                        <td className="p-3 font-mono text-[#717975]">{sku || 'RL-NEW-STD'}</td>
+                        <td className="p-3 font-medium">৳{(promotionalPrice || regularPrice || '0')}</td>
+                        <td className="p-3 font-mono">{aggregateStock || '0'} pcs</td>
+                        <td className="p-3 text-right">
+                          <CheckCircle2 className="w-4 h-4 text-[#073a2d] inline-block" />
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -684,7 +823,7 @@ export default function AddProductPage() {
                     <button
                       type="button"
                       onClick={() => removeImage(0)}
-                      className="absolute top-2 right-2 p-1 bg-black/60 text-white hover:bg-[#ba1a1a] opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      className="absolute top-2 right-2 p-1 bg-black/60 text-white hover:bg-[#ba1a1a] opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer"
                       title="Remove image"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -713,7 +852,7 @@ export default function AddProductPage() {
                     <button
                       type="button"
                       onClick={() => removeImage(1)}
-                      className="absolute top-2 right-2 p-1 bg-black/60 text-white hover:bg-[#ba1a1a] opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      className="absolute top-2 right-2 p-1 bg-black/60 text-white hover:bg-[#ba1a1a] opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer"
                       title="Remove image"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -742,7 +881,7 @@ export default function AddProductPage() {
                     <button
                       type="button"
                       onClick={() => removeImage(2)}
-                      className="absolute top-2 right-2 p-1 bg-black/60 text-white hover:bg-[#ba1a1a] opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      className="absolute top-2 right-2 p-1 bg-black/60 text-white hover:bg-[#ba1a1a] opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer"
                       title="Remove image"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -771,7 +910,7 @@ export default function AddProductPage() {
                     <button
                       type="button"
                       onClick={() => removeImage(3)}
-                      className="absolute top-2 right-2 p-1 bg-black/60 text-white hover:bg-[#ba1a1a] opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      className="absolute top-2 right-2 p-1 bg-black/60 text-white hover:bg-[#ba1a1a] opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer"
                       title="Remove image"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -787,7 +926,7 @@ export default function AddProductPage() {
                       onChange={handleFileUpload}
                     />
                     <Plus className="w-4 h-4 text-[#073a2d] mb-1" />
-                    <span className="text-[10px] font-semibold uppercase">CUSTOM LOOKBOOK ANGLE</span>
+                    <span className="text-[10px] font-semibold uppercase">CUSTOM ANGLE</span>
                   </label>
                 )}
               </div>
@@ -812,16 +951,6 @@ export default function AddProductPage() {
                 <option value="Active">Active • Live on Storefront</option>
                 <option value="Draft">Draft • Hidden from Storefront</option>
                 <option value="Archived">Archived • Private Atelier</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#404945]">
-                Audience Visibility
-              </label>
-              <select className="w-full mt-1.5 px-3 py-2 bg-[#fbf9f2] border border-[#deddd3] text-xs text-[#1b1c18] focus:border-[#073a2d] outline-hidden">
-                <option>Public (All Store Visitors)</option>
-                <option>VIP Patrons Only (Exclusive Preview)</option>
               </select>
             </div>
 
@@ -863,9 +992,9 @@ export default function AddProductPage() {
                   <button
                     type="button"
                     onClick={() => removeTag(tag)}
-                    className="hover:text-[#ba1a1a]"
+                    className="hover:text-[#ba1a1a] cursor-pointer"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 </span>
               ))}
@@ -887,7 +1016,11 @@ export default function AddProductPage() {
       <div className="fixed bottom-0 left-64 right-0 bg-[#fbf9f2] border-t border-[#deddd3] px-8 py-3.5 flex items-center justify-between z-20 shadow-md">
         <div className="flex items-center gap-2 text-xs text-[#717975]">
           <span className="w-2 h-2 rounded-full bg-[#c79a45]" />
-          <span>Auto-saved draft at 10:42 • Atelier Admin Dhaka</span>
+          <span>
+            {isEditing
+              ? `Editing Atelier Consignment: ${sku || title || editId}`
+              : 'Auto-saved draft • Atelier Admin Dhaka'}
+          </span>
         </div>
 
         <div className="flex items-center gap-3">
@@ -898,20 +1031,43 @@ export default function AddProductPage() {
             DISCARD CHANGES
           </Link>
           <button
+            type="button"
+            disabled={isSubmitting}
             onClick={() => handleSave(false)}
-            className="px-4 py-2 border border-[#deddd3] bg-white text-xs font-semibold uppercase tracking-wider text-[#404945] hover:bg-[#f0eee7]"
+            className="px-4 py-2 border border-[#deddd3] bg-white text-xs font-semibold uppercase tracking-wider text-[#404945] hover:bg-[#f0eee7] cursor-pointer disabled:opacity-50"
           >
             SAVE AS DRAFT
           </button>
           <button
+            type="button"
+            disabled={isSubmitting}
             onClick={() => handleSave(true)}
-            className="flex items-center gap-1.5 px-6 py-2 bg-[#00231a] hover:bg-[#073a2d] text-white text-xs font-bold uppercase tracking-wider"
+            className="flex items-center gap-1.5 px-6 py-2 bg-[#00231a] hover:bg-[#073a2d] text-white text-xs font-bold uppercase tracking-wider shadow-xs cursor-pointer disabled:opacity-50"
           >
-            <Sparkles className="w-3.5 h-3.5 text-[#c79a45]" />
-            <span>SAVE PRODUCT</span>
+            {isSubmitting ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5 text-[#c79a45]" />
+            )}
+            <span>{isEditing ? 'UPDATE PRODUCT' : 'SAVE PRODUCT'}</span>
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AddProductPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-12 text-center text-xs text-[#717975] flex items-center justify-center gap-2">
+          <Loader2 className="w-4 h-4 animate-spin text-[#073a2d]" />
+          <span>Loading Atelier Catalogue specifications...</span>
+        </div>
+      }
+    >
+      <ProductFormContent />
+    </Suspense>
   );
 }

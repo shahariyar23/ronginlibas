@@ -38,6 +38,13 @@ let AdminOrdersController = class AdminOrdersController {
             data,
         };
     }
+    async updateOrder(id, dto) {
+        const data = await this.ordersService.updateStatus(id, dto);
+        return {
+            message: `Order status transitioned to ${dto.status} successfully`,
+            data,
+        };
+    }
     async updateStatus(id, dto) {
         const data = await this.ordersService.updateStatus(id, dto);
         return {
@@ -62,6 +69,15 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], AdminOrdersController.prototype, "findById", null);
+__decorate([
+    Patch(':id'),
+    ApiOperation({ summary: 'Update order stage or administrative notes' }),
+    __param(0, Param('id')),
+    __param(1, Body()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, UpdateOrderStatusDto]),
+    __metadata("design:returntype", Promise)
+], AdminOrdersController.prototype, "updateOrder", null);
 __decorate([
     Patch(':id/status'),
     ApiOperation({ summary: 'Advance order stage in the Sartorial Lifecycle flow' }),

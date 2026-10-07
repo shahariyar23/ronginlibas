@@ -12,19 +12,75 @@ export interface AdminProduct {
   fabricNote?: string;
   description?: string;
   variants?: {
+    id?: string;
     size: string;
-    shade: string;
+    shade?: string;
+    color?: string;
     sku: string;
-    price: number;
+    price?: number;
+    priceOverride?: number;
     stock: number;
-    active: boolean;
+    active?: boolean;
+    isActive?: boolean;
   }[];
   tags?: string[];
   featured?: boolean;
 }
 
+export interface AdminProductDetail {
+  id: string;
+  name: string;
+  slug: string;
+  sku: string;
+  description?: string | null;
+  shortDescription?: string | null;
+  price: number;
+  compareAtPrice?: number | null;
+  costPrice?: number | null;
+  gender?: string | null;
+  fabric?: string | null;
+  fabricOrigin?: string | null;
+  fit?: string | null;
+  gsm?: number | null;
+  careInstructions?: string | null;
+  tags?: string[];
+  isExpressAvailable?: boolean;
+  isActive: boolean;
+  isFeatured: boolean;
+  isNewArrival: boolean;
+  isBestSeller: boolean;
+  categoryId: string;
+  category?: {
+    id: string;
+    name: string;
+    slug: string;
+    description?: string | null;
+    image?: string | null;
+  } | null;
+  images: {
+    id: string;
+    url: string;
+    altText?: string | null;
+    sortOrder: number;
+    isPrimary: boolean;
+  }[];
+  variants: {
+    id: string;
+    size: string;
+    sizeLabel?: string | null;
+    color: string;
+    sku: string;
+    stock: number;
+    priceOverride?: number | null;
+    isActive: boolean;
+  }[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface AdminOrder {
   id: string;
+  orderNumber?: string;
   customerName: string;
   customerLocation: string;
   phone: string;
@@ -85,3 +141,4 @@ export const INITIAL_SETTINGS: StoreSettings = {
   nagadEnabled: true,
   nagadWallet: '01822-554499',
 };
+

@@ -4,11 +4,12 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
+import { apiRequest } from '@/lib/api';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -35,6 +36,7 @@ import { toast } from 'sonner';
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const {
     items,
     updateQuantity,
@@ -59,12 +61,24 @@ export default function CheckoutPage() {
     notes: '',
   });
 
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'bkash' | 'nagad' | 'card'>('cod');
-  const [giftWrap, setGiftWrap] = useState(false);
+  const paymentMethod = 'cod';
   const [couponInput, setCouponInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderConfirmed, setOrderConfirmed] = useState(false);
   const [orderId, setOrderId] = useState('');
+  const [trackingToken, setTrackingToken] = useState('');
+
+  React.useEffect(() => {
+    if (!user) return;
+    setFormData((previous) => ({
+      ...previous,
+      fullName: previous.fullName || user.name,
+      phone: previous.phone || user.phone,
+      email: previous.email || user.email,
+      division: previous.division || user.address.division || 'Dhaka',
+      address: previous.address || user.address.line1,
+    }));
+  }, [user]);
 
   const divisions = [
     'Dhaka',
@@ -77,15 +91,15 @@ export default function CheckoutPage() {
     'Mymensingh',
   ];
 
-  const handleApplyCoupon = (e: React.FormEvent) => {
+  const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!couponInput.trim()) return;
-    if (applyCoupon(couponInput)) {
+    if (await applyCoupon(couponInput)) {
       setCouponInput('');
     }
   };
 
-  const handleSubmitOrder = (e: React.FormEvent) => {
+  const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (items.length === 0) {
@@ -98,15 +112,54 @@ export default function CheckoutPage() {
       return;
     }
 
-    setIsSubmitting(true);
+    const orderItems = items.map((item) => ({
+      productId: item.product.id,
+      variantId: item.variantId,
+      quantity: item.quantity,
+    }));
+    if (orderItems.some((item) => !item.variantId)) {
+      toast.error('A cart item is missing a valid product size. Remove it and add it again.');
+      return;
+    }
 
-    setTimeout(() => {
-      const generatedId = `RL-${Math.floor(100000 + Math.random() * 900000)}`;
-      setOrderId(generatedId);
+    setIsSubmitting(true);
+    try {
+      const order = await apiRequest<{
+        orderNumber: string;
+        guestTrackingToken?: string;
+      }>('/orders', {
+        method: 'POST',
+        body: JSON.stringify({
+          items: orderItems,
+          shippingAddress: {
+            fullName: formData.fullName.trim(),
+            phone: formData.phone.replace(/\s/g, ''),
+            email: formData.email || undefined,
+            division: formData.division,
+            city: formData.division,
+            addressLine1: formData.address.trim(),
+            deliveryInstructions: formData.notes || undefined,
+          },
+          paymentMethod: paymentMethod.toUpperCase(),
+          couponCode: appliedCoupon || undefined,
+          customerNotes: formData.notes || undefined,
+          ...(!user
+            ? {
+                guestName: formData.fullName.trim(),
+                guestEmail: formData.email || undefined,
+              }
+            : {}),
+        }),
+      });
+      setOrderId(order.orderNumber);
+      setTrackingToken(order.guestTrackingToken || '');
       setIsSubmitting(false);
       setOrderConfirmed(true);
-      clearCart();
-    }, 1200);
+      await clearCart();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not place your order.');
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -354,18 +407,13 @@ export default function CheckoutPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* COD */}
                   <label
-                    onClick={() => setPaymentMethod('cod')}
-                    className={`p-4 border flex items-start gap-3 cursor-pointer transition-all ${
-                      paymentMethod === 'cod'
-                        ? 'border-[#073a2d] bg-[#f0eee7]'
-                        : 'border-[#deddd3] bg-[#fbf9f2] hover:border-[#717975]'
-                    }`}
+                    className="p-4 border flex items-start gap-3 border-[#073a2d] bg-[#f0eee7]"
                   >
                     <input
                       type="radio"
                       name="paymentMethod"
-                      checked={paymentMethod === 'cod'}
-                      onChange={() => setPaymentMethod('cod')}
+                      checked
+                      readOnly
                       className="mt-0.5 accent-[#073a2d]"
                     />
                     <div>
@@ -379,87 +427,10 @@ export default function CheckoutPage() {
                     </div>
                   </label>
 
-                  {/* bKash */}
-                  <label
-                    onClick={() => setPaymentMethod('bkash')}
-                    className={`p-4 border flex items-start gap-3 cursor-pointer transition-all ${
-                      paymentMethod === 'bkash'
-                        ? 'border-[#073a2d] bg-[#f0eee7]'
-                        : 'border-[#deddd3] bg-[#fbf9f2] hover:border-[#717975]'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      checked={paymentMethod === 'bkash'}
-                      onChange={() => setPaymentMethod('bkash')}
-                      className="mt-0.5 accent-[#073a2d]"
-                    />
-                    <div>
-                      <div className="flex items-center gap-1.5 font-sans font-bold text-xs uppercase text-[#e2136e]">
-                        <Smartphone className="w-4 h-4" />
-                        <span>bKash Direct</span>
-                      </div>
-                      <p className="text-[11px] text-[#69726d] mt-1 font-sans">
-                        Instant merchant transfer via bKash gateway.
-                      </p>
-                    </div>
-                  </label>
-
-                  {/* Nagad */}
-                  <label
-                    onClick={() => setPaymentMethod('nagad')}
-                    className={`p-4 border flex items-start gap-3 cursor-pointer transition-all ${
-                      paymentMethod === 'nagad'
-                        ? 'border-[#073a2d] bg-[#f0eee7]'
-                        : 'border-[#deddd3] bg-[#fbf9f2] hover:border-[#717975]'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      checked={paymentMethod === 'nagad'}
-                      onChange={() => setPaymentMethod('nagad')}
-                      className="mt-0.5 accent-[#073a2d]"
-                    />
-                    <div>
-                      <div className="flex items-center gap-1.5 font-sans font-bold text-xs uppercase text-[#f7941d]">
-                        <Smartphone className="w-4 h-4" />
-                        <span>Nagad Pay</span>
-                      </div>
-                      <p className="text-[11px] text-[#69726d] mt-1 font-sans">
-                        Secured payment through official Nagad checkout.
-                      </p>
-                    </div>
-                  </label>
-
-                  {/* Cards */}
-                  <label
-                    onClick={() => setPaymentMethod('card')}
-                    className={`p-4 border flex items-start gap-3 cursor-pointer transition-all ${
-                      paymentMethod === 'card'
-                        ? 'border-[#073a2d] bg-[#f0eee7]'
-                        : 'border-[#deddd3] bg-[#fbf9f2] hover:border-[#717975]'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      checked={paymentMethod === 'card'}
-                      onChange={() => setPaymentMethod('card')}
-                      className="mt-0.5 accent-[#073a2d]"
-                    />
-                    <div>
-                      <div className="flex items-center gap-1.5 font-sans font-bold text-xs uppercase text-[#073a2d]">
-                        <CreditCard className="w-4 h-4" />
-                        <span>Credit / Debit Cards</span>
-                      </div>
-                      <p className="text-[11px] text-[#69726d] mt-1 font-sans">
-                        Visa, Mastercard, AMEX with 3D Secure verification.
-                      </p>
-                    </div>
-                  </label>
                 </div>
+                <p className="mt-4 text-xs text-[#69726d]">
+                  Online payments are not available yet. Cash on delivery is the currently supported method.
+                </p>
               </div>
 
               {/* Submit CTA (Mobile / Form placement) */}
@@ -516,25 +487,6 @@ export default function CheckoutPage() {
                       </Button>
                     </form>
                   )}
-                </div>
-
-                {/* Gift Wrap Option */}
-                <div className="p-3 bg-[#fbf9f2] border border-[#deddd3]">
-                  <label className="flex items-center gap-3 cursor-pointer text-xs font-sans">
-                    <Checkbox
-                      checked={giftWrap}
-                      onCheckedChange={(c) => setGiftWrap(!!c)}
-                      className="rounded-none border-[#deddd3] data-[state=checked]:bg-[#073a2d]"
-                    />
-                    <div>
-                      <span className="font-semibold text-[#073a2d]">
-                        Artisanal Muslin Gift Wrap Packaging (Free)
-                      </span>
-                      <p className="text-[11px] text-[#717975]">
-                        Tied with gilded Bengal cotton ribbons and a personalized note.
-                      </p>
-                    </div>
-                  </label>
                 </div>
 
                 {/* Calculations */}
@@ -651,12 +603,10 @@ export default function CheckoutPage() {
               Continue Exploring
             </Button>
             <a
-              href={`https://wa.me/8801916664011?text=Hello%20Rongin%20Libas,%20I%20just%20placed%20order%20${orderId}.`}
-              target="_blank"
-              rel="noreferrer"
+              href={`/track-order?id=${encodeURIComponent(orderId)}${trackingToken ? `&phone=${encodeURIComponent(formData.phone)}&trackingToken=${encodeURIComponent(trackingToken)}` : ''}`}
               className="text-xs font-sans text-[#073a2d] hover:underline py-2"
             >
-              Track on WhatsApp
+              Track this order
             </a>
           </div>
         </DialogContent>

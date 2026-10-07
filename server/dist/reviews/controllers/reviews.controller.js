@@ -10,38 +10,72 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { ReviewsService } from '../services/reviews.service.js';
-import { CreateReviewDto } from '../dto/create-review.dto.js';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { Body, Controller, Delete, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { CustomerAuthGuard } from '../../auth/guards/customer-auth.guard.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import { ReviewVoteDto } from '../dto/review-vote.dto.js';
+import { UpdateReviewDto } from '../dto/update-review.dto.js';
+import { ReviewsService } from '../services/reviews.service.js';
 let ReviewsController = class ReviewsController {
     reviewsService;
     constructor(reviewsService) {
         this.reviewsService = reviewsService;
     }
-    async create(dto, customerId) {
-        const data = await this.reviewsService.create(dto, customerId);
+    async update(reviewId, customerId, dto) {
         return {
-            message: 'Review submitted for atelier curation',
-            data,
+            message: 'Review updated and returned to moderation',
+            data: await this.reviewsService.updateOwned(reviewId, customerId, dto),
+        };
+    }
+    async remove(reviewId, customerId) {
+        return {
+            message: 'Review deleted successfully',
+            data: await this.reviewsService.deleteOwned(reviewId, customerId),
+        };
+    }
+    async vote(reviewId, customerId, dto) {
+        return {
+            message: 'Review feedback recorded successfully',
+            data: await this.reviewsService.vote(reviewId, customerId, dto.helpful),
         };
     }
 };
 __decorate([
-    Post(),
-    ApiOperation({ summary: 'Submit verified customer feedback and review for a garment' }),
-    __param(0, Body()),
+    Patch(':reviewId'),
+    ApiOperation({ summary: 'Edit an owned review and return it to moderation' }),
+    __param(0, Param('reviewId')),
+    __param(1, CurrentUser('id')),
+    __param(2, Body()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, UpdateReviewDto]),
+    __metadata("design:returntype", Promise)
+], ReviewsController.prototype, "update", null);
+__decorate([
+    Delete(':reviewId'),
+    ApiOperation({ summary: 'Delete an owned review' }),
+    __param(0, Param('reviewId')),
     __param(1, CurrentUser('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [CreateReviewDto, String]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
-], ReviewsController.prototype, "create", null);
+], ReviewsController.prototype, "remove", null);
+__decorate([
+    Post(':reviewId/helpful'),
+    Throttle({ default: { limit: 20, ttl: 60_000 } }),
+    ApiOperation({ summary: 'Record an authenticated helpful or not-helpful vote' }),
+    __param(0, Param('reviewId')),
+    __param(1, CurrentUser('id')),
+    __param(2, Body()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, ReviewVoteDto]),
+    __metadata("design:returntype", Promise)
+], ReviewsController.prototype, "vote", null);
 ReviewsController = __decorate([
-    ApiTags('Storefront - Reviews'),
+    ApiTags('Reviews'),
     ApiBearerAuth(),
-    UseGuards(JwtAuthGuard),
+    UseGuards(CustomerAuthGuard),
     Controller('reviews'),
     __metadata("design:paramtypes", [ReviewsService])
 ], ReviewsController);

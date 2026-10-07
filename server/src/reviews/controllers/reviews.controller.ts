@@ -1,24 +1,52 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { ReviewsService } from '../services/reviews.service.js';
-import { CreateReviewDto } from '../dto/create-review.dto.js';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { Body, Controller, Delete, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { CustomerAuthGuard } from '../../auth/guards/customer-auth.guard.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import { ReviewVoteDto } from '../dto/review-vote.dto.js';
+import { UpdateReviewDto } from '../dto/update-review.dto.js';
+import { ReviewsService } from '../services/reviews.service.js';
 
-@ApiTags('Storefront - Reviews')
+@ApiTags('Reviews')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(CustomerAuthGuard)
 @Controller('reviews')
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
-  @Post()
-  @ApiOperation({ summary: 'Submit verified customer feedback and review for a garment' })
-  async create(@Body() dto: CreateReviewDto, @CurrentUser('id') customerId: string) {
-    const data = await this.reviewsService.create(dto, customerId);
+  @Patch(':reviewId')
+  @ApiOperation({ summary: 'Edit an owned review and return it to moderation' })
+  async update(
+    @Param('reviewId') reviewId: string,
+    @CurrentUser('id') customerId: string,
+    @Body() dto: UpdateReviewDto,
+  ) {
     return {
-      message: 'Review submitted for atelier curation',
-      data,
+      message: 'Review updated and returned to moderation',
+      data: await this.reviewsService.updateOwned(reviewId, customerId, dto),
+    };
+  }
+
+  @Delete(':reviewId')
+  @ApiOperation({ summary: 'Delete an owned review' })
+  async remove(@Param('reviewId') reviewId: string, @CurrentUser('id') customerId: string) {
+    return {
+      message: 'Review deleted successfully',
+      data: await this.reviewsService.deleteOwned(reviewId, customerId),
+    };
+  }
+
+  @Post(':reviewId/helpful')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Record an authenticated helpful or not-helpful vote' })
+  async vote(
+    @Param('reviewId') reviewId: string,
+    @CurrentUser('id') customerId: string,
+    @Body() dto: ReviewVoteDto,
+  ) {
+    return {
+      message: 'Review feedback recorded successfully',
+      data: await this.reviewsService.vote(reviewId, customerId, dto.helpful),
     };
   }
 }

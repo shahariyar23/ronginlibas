@@ -14,6 +14,7 @@ import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/co
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { InventoryService } from '../services/inventory.service.js';
 import { AdjustStockDto } from '../dto/adjust-stock.dto.js';
+import { InventoryQueryDto } from '../dto/inventory-query.dto.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
@@ -51,7 +52,7 @@ __decorate([
     ApiOperation({ summary: 'List inventory stock levels across all garment variants' }),
     __param(0, Query()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [InventoryQueryDto]),
     __metadata("design:returntype", Promise)
 ], AdminInventoryController.prototype, "getInventoryList", null);
 __decorate([

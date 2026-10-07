@@ -8,6 +8,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
@@ -17,21 +18,21 @@ let UsersService = class UsersService {
         this.prisma = prisma;
     }
     async create(dto) {
+        const existing = await this.prisma.user.findUnique({
+            where: { email: dto.email.toLowerCase() },
+            select: { id: true },
+        });
+        if (existing) {
+            throw new ConflictException('A staff user with this email already exists');
+        }
         try {
-            const existing = await this.prisma.user.findUnique({
-                where: { email: dto.email.toLowerCase() },
-            });
-            if (existing) {
-                throw new ConflictException('A staff user with this email already exists');
-            }
-            const passwordHash = await bcrypt.hash(dto.password, 10);
-            const user = await this.prisma.user.create({
+            return await this.prisma.user.create({
                 data: {
                     email: dto.email.toLowerCase(),
-                    passwordHash,
+                    passwordHash: await bcrypt.hash(dto.password, 10),
                     firstName: dto.firstName,
                     lastName: dto.lastName,
-                    role: dto.role || UserRole.MANAGER,
+                    role: (dto.role ?? UserRole.MANAGER),
                 },
                 select: {
                     id: true,
@@ -43,81 +44,43 @@ let UsersService = class UsersService {
                     createdAt: true,
                 },
             });
-            return user;
         }
-        catch (err) {
-            if (err instanceof ConflictException)
-                throw err;
-            return {
-                id: `user-${Date.now()}`,
-                email: dto.email,
-                firstName: dto.firstName,
-                lastName: dto.lastName,
-                role: dto.role || UserRole.MANAGER,
-                isActive: true,
-                createdAt: new Date(),
-            };
+        catch (error) {
+            if (isUniqueConstraintError(error)) {
+                throw new ConflictException('A staff user with this email already exists');
+            }
+            throw error;
         }
     }
     async findAll() {
-        try {
-            return await this.prisma.user.findMany({
-                select: {
-                    id: true,
-                    email: true,
-                    firstName: true,
-                    lastName: true,
-                    role: true,
-                    isActive: true,
-                    createdAt: true,
-                },
-            });
-        }
-        catch {
-            return [
-                {
-                    id: '00000000-0000-0000-0000-000000000001',
-                    email: 'admin@ronginlibas.com',
-                    firstName: 'Master',
-                    lastName: 'Tailor Admin',
-                    role: UserRole.SUPER_ADMIN,
-                    isActive: true,
-                    createdAt: new Date(),
-                },
-            ];
-        }
+        return this.prisma.user.findMany({
+            select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                role: true,
+                isActive: true,
+                createdAt: true,
+            },
+        });
     }
     async findById(id) {
-        try {
-            const user = await this.prisma.user.findUnique({
-                where: { id },
-                select: {
-                    id: true,
-                    email: true,
-                    firstName: true,
-                    lastName: true,
-                    role: true,
-                    isActive: true,
-                    createdAt: true,
-                },
-            });
-            if (!user)
-                throw new NotFoundException('Staff user not found');
-            return user;
-        }
-        catch (err) {
-            if (err instanceof NotFoundException)
-                throw err;
-            return {
-                id,
-                email: 'admin@ronginlibas.com',
-                firstName: 'Master',
-                lastName: 'Tailor Admin',
-                role: UserRole.SUPER_ADMIN,
+        const user = await this.prisma.user.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                role: true,
                 isActive: true,
-                createdAt: new Date(),
-            };
-        }
+                createdAt: true,
+            },
+        });
+        if (!user)
+            throw new NotFoundException('Staff user not found');
+        return user;
     }
 };
 UsersService = __decorate([
@@ -125,4 +88,8 @@ UsersService = __decorate([
     __metadata("design:paramtypes", [PrismaService])
 ], UsersService);
 export { UsersService };
+function isUniqueConstraintError(error) {
+    return (error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002');
+}
 //# sourceMappingURL=users.service.js.map

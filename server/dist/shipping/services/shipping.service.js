@@ -4,17 +4,37 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
 import { Injectable } from '@nestjs/common';
+import { SettingsService } from '../../settings/services/settings.service.js';
 let ShippingService = class ShippingService {
+    settingsService;
+    constructor(settingsService) {
+        this.settingsService = settingsService;
+    }
     async getDeliveryZones() {
+        const settings = await this.settingsService.getPublicSettings();
         return [
-            { id: 'dhaka-metro', name: 'Dhaka Metropolitan', charge: 80, tat: '24-48 Hours' },
-            { id: 'nationwide', name: 'Outside Dhaka (64 Districts)', charge: 150, tat: '72 Hours' },
+            {
+                id: 'dhaka-metro',
+                name: 'Dhaka Metropolitan',
+                charge: settings.dhakaDeliveryCharge,
+                freeDeliveryThreshold: settings.freeDeliveryThreshold,
+            },
+            {
+                id: 'nationwide',
+                name: 'Bangladesh-wide',
+                charge: settings.outsideDhakaDeliveryCharge,
+                freeDeliveryThreshold: settings.freeDeliveryThreshold,
+            },
         ];
     }
 };
 ShippingService = __decorate([
-    Injectable()
+    Injectable(),
+    __metadata("design:paramtypes", [SettingsService])
 ], ShippingService);
 export { ShippingService };
 //# sourceMappingURL=shipping.service.js.map

@@ -1,17 +1,30 @@
 import { Injectable } from '@nestjs/common';
+import { SettingsService } from '../../settings/services/settings.service.js';
 
 export interface CourierProvider {
-  createShipment(orderId: string, details: any): Promise<any>;
-  trackShipment(consignmentId: string): Promise<any>;
+  createShipment(orderNumber: string, details: Record<string, unknown>): Promise<unknown>;
+  trackShipment(consignmentId: string): Promise<unknown>;
 }
 
 @Injectable()
 export class ShippingService {
-  // Prepared abstraction for Phase 2 Steadfast and Pathao logistics integrations
+  constructor(private readonly settingsService: SettingsService) {}
+
   async getDeliveryZones() {
+    const settings = await this.settingsService.getPublicSettings();
     return [
-      { id: 'dhaka-metro', name: 'Dhaka Metropolitan', charge: 80, tat: '24-48 Hours' },
-      { id: 'nationwide', name: 'Outside Dhaka (64 Districts)', charge: 150, tat: '72 Hours' },
+      {
+        id: 'dhaka-metro',
+        name: 'Dhaka Metropolitan',
+        charge: settings.dhakaDeliveryCharge,
+        freeDeliveryThreshold: settings.freeDeliveryThreshold,
+      },
+      {
+        id: 'nationwide',
+        name: 'Bangladesh-wide',
+        charge: settings.outsideDhakaDeliveryCharge,
+        freeDeliveryThreshold: settings.freeDeliveryThreshold,
+      },
     ];
   }
 }

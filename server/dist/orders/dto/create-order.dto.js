@@ -7,7 +7,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { IsString, IsNotEmpty, IsArray, ValidateNested, IsInt, Min, IsOptional, IsEnum, IsObject, } from 'class-validator';
+import { IsString, IsNotEmpty, IsArray, ValidateNested, IsInt, Min, IsOptional, IsEnum, IsObject, IsEmail, MaxLength, Matches, } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export class CreateOrderItemDto {
@@ -39,6 +39,11 @@ export class ShippingAddressDto {
     city;
     division;
     phone;
+    fullName;
+    email;
+    area;
+    postalCode;
+    deliveryInstructions;
 }
 __decorate([
     ApiProperty({ example: 'House 42, Road 11, Block D' }),
@@ -67,15 +72,53 @@ __decorate([
 __decorate([
     ApiProperty({ example: '01711234567' }),
     IsString(),
+    Matches(/^(?:01[3-9]\d{8}|\+8801[3-9]\d{8})$/),
     IsNotEmpty(),
     __metadata("design:type", String)
 ], ShippingAddressDto.prototype, "phone", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    IsString(),
+    MaxLength(120),
+    IsOptional(),
+    __metadata("design:type", String)
+], ShippingAddressDto.prototype, "fullName", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    IsEmail(),
+    IsOptional(),
+    __metadata("design:type", String)
+], ShippingAddressDto.prototype, "email", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    IsString(),
+    MaxLength(100),
+    IsOptional(),
+    __metadata("design:type", String)
+], ShippingAddressDto.prototype, "area", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    IsString(),
+    MaxLength(20),
+    IsOptional(),
+    __metadata("design:type", String)
+], ShippingAddressDto.prototype, "postalCode", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    IsString(),
+    MaxLength(500),
+    IsOptional(),
+    __metadata("design:type", String)
+], ShippingAddressDto.prototype, "deliveryInstructions", void 0);
 export class CreateOrderDto {
     items;
     shippingAddress;
     paymentMethod = 'COD';
     couponCode;
     customerNotes;
+    guestName;
+    guestEmail;
+    customTailoringNote;
 }
 __decorate([
     ApiProperty({ type: [CreateOrderItemDto] }),
@@ -106,7 +149,28 @@ __decorate([
 __decorate([
     ApiPropertyOptional(),
     IsString(),
+    MaxLength(1000),
     IsOptional(),
     __metadata("design:type", String)
 ], CreateOrderDto.prototype, "customerNotes", void 0);
+__decorate([
+    ApiPropertyOptional({ description: 'Required for guest checkout; ignored when authenticated' }),
+    IsString(),
+    MaxLength(120),
+    IsOptional(),
+    __metadata("design:type", String)
+], CreateOrderDto.prototype, "guestName", void 0);
+__decorate([
+    ApiPropertyOptional({ description: 'Required for guest checkout' }),
+    IsEmail(),
+    IsOptional(),
+    __metadata("design:type", String)
+], CreateOrderDto.prototype, "guestEmail", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    IsString(),
+    MaxLength(1000),
+    IsOptional(),
+    __metadata("design:type", String)
+], CreateOrderDto.prototype, "customTailoringNote", void 0);
 //# sourceMappingURL=create-order.dto.js.map

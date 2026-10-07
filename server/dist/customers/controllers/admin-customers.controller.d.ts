@@ -18,25 +18,37 @@ export declare class AdminCustomersController {
             isActive: boolean;
             createdAt: Date;
             addresses: {
+                email: string | null;
                 phone: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                customerId: string;
+                fullName: string | null;
                 addressLine1: string;
                 addressLine2: string | null;
                 city: string;
                 division: string;
+                area: string | null;
                 postalCode: string | null;
-                country: string;
+                deliveryInstructions: string | null;
                 isDefault: boolean;
+                customerId: string;
+                country: string;
             }[];
             orders: {
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                customerId: string;
+                customerId: string | null;
                 orderNumber: string;
+                guestName: string | null;
+                guestEmail: string | null;
+                guestPhone: string | null;
+                trackingTokenHash: string | null;
+                courierName: string | null;
+                trackingNumber: string | null;
+                trackingUrl: string | null;
+                estimatedDelivery: Date | null;
                 status: import("@prisma/client").$Enums.OrderStatus;
                 paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
                 paymentMethod: import("@prisma/client").$Enums.PaymentMethod;
@@ -48,15 +60,6 @@ export declare class AdminCustomersController {
                 customerNotes: string | null;
                 adminNotes: string | null;
             }[];
-        } | {
-            id: string;
-            firstName: string;
-            lastName: string;
-            phone: string;
-            email: string;
-            isActive: boolean;
-            addresses: never[];
-            orders: never[];
         };
     }>;
 }

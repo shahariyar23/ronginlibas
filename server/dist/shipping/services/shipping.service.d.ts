@@ -1,12 +1,15 @@
+import { SettingsService } from '../../settings/services/settings.service.js';
 export interface CourierProvider {
-    createShipment(orderId: string, details: any): Promise<any>;
-    trackShipment(consignmentId: string): Promise<any>;
+    createShipment(orderNumber: string, details: Record<string, unknown>): Promise<unknown>;
+    trackShipment(consignmentId: string): Promise<unknown>;
 }
 export declare class ShippingService {
+    private readonly settingsService;
+    constructor(settingsService: SettingsService);
     getDeliveryZones(): Promise<{
         id: string;
         name: string;
-        charge: number;
-        tat: string;
+        charge: unknown;
+        freeDeliveryThreshold: unknown;
     }[]>;
 }

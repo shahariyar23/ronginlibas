@@ -15,162 +15,113 @@ let DashboardService = class DashboardService {
         this.prisma = prisma;
     }
     async getAdminDashboardMetrics() {
-        try {
-            const [totalOrders, pendingOrders, totalProducts, totalCustomers, salesSum, lowStockCount, recentOrders, lowStockItems,] = await Promise.all([
-                this.prisma.order.count(),
-                this.prisma.order.count({ where: { status: 'PENDING' } }),
-                this.prisma.product.count({ where: { isActive: true } }),
-                this.prisma.customer.count({ where: { isActive: true } }),
-                this.prisma.order.aggregate({
-                    where: { status: { not: 'CANCELLED' } },
-                    _sum: { totalAmount: true },
-                }),
-                this.prisma.productVariant.count({
-                    where: { stock: { lte: 5 } },
-                }),
-                this.prisma.order.findMany({
-                    take: 5,
-                    orderBy: { createdAt: 'desc' },
-                    include: {
-                        customer: { select: { firstName: true, phone: true } },
-                    },
-                }),
-                this.prisma.productVariant.findMany({
-                    where: { stock: { lte: 5 } },
-                    take: 4,
-                    orderBy: { stock: 'asc' },
-                    include: {
-                        product: { select: { name: true, images: { take: 1 } } },
-                    },
-                }),
-            ]);
-            const totalSales = Number(salesSum._sum.totalAmount || 85400);
-            return {
-                metrics: {
-                    totalSales: totalSales || 85400,
-                    salesGrowth: '+12%',
-                    totalOrders: totalOrders || 42,
-                    pendingOrders: pendingOrders || 6,
-                    deliveryRate: '94.3%',
-                    totalProducts: totalProducts || 128,
-                    activeCatalog: 114,
-                    totalCustomers: totalCustomers || 326,
-                    vipMembersCount: 48,
-                    lowStockCount: lowStockCount || 14,
-                    stockoutCount: 4,
+        const [totalOrders, pendingOrders, cancelledOrders, deliveredOrders, totalProducts, totalCustomers, salesSum, salesOrderCount, lowStockCount, stockoutCount, recentOrders, lowStockItems, recentSales,] = await Promise.all([
+            this.prisma.order.count(),
+            this.prisma.order.count({ where: { status: 'PENDING' } }),
+            this.prisma.order.count({ where: { status: 'CANCELLED' } }),
+            this.prisma.order.count({ where: { status: 'DELIVERED' } }),
+            this.prisma.product.count({ where: { isActive: true } }),
+            this.prisma.customer.count({ where: { isActive: true } }),
+            this.prisma.order.aggregate({
+                where: { status: { not: 'CANCELLED' } },
+                _sum: { totalAmount: true },
+            }),
+            this.prisma.order.count({ where: { status: { not: 'CANCELLED' } } }),
+            this.prisma.productVariant.count({
+                where: { isActive: true, product: { isActive: true }, stock: { lte: 5 } },
+            }),
+            this.prisma.productVariant.count({
+                where: { isActive: true, product: { isActive: true }, stock: 0 },
+            }),
+            this.prisma.order.findMany({
+                take: 5,
+                orderBy: { createdAt: 'desc' },
+                select: {
+                    orderNumber: true,
+                    guestName: true,
+                    guestPhone: true,
+                    totalAmount: true,
+                    status: true,
+                    paymentMethod: true,
+                    createdAt: true,
+                    customer: { select: { firstName: true, phone: true } },
                 },
-                salesOverview: {
-                    peakPoint: {
-                        label: 'Peak: ৳18,200 on Thursday Atelier Showcase',
-                        amount: 18200,
-                        day: 'Thu',
-                    },
-                    chartData: [
-                        { day: 'Sat', dhakaSales: 5200, nationalSales: 8200 },
-                        { day: 'Sun', dhakaSales: 7100, nationalSales: 11500 },
-                        { day: 'Mon', dhakaSales: 6000, nationalSales: 9800 },
-                        { day: 'Tue', dhakaSales: 9500, nationalSales: 13800 },
-                        { day: 'Wed', dhakaSales: 10800, nationalSales: 15200 },
-                        { day: 'Thu', dhakaSales: 14500, nationalSales: 18200 },
-                        { day: 'Fri', dhakaSales: 8900, nationalSales: 12100 },
-                    ],
-                    kpis: {
-                        averageOrderValue: 2033,
-                        conversionRate: '3.8%',
-                        conversionGrowth: '+0.6%',
-                        fulfillmentVelocity: '21.4 hrs',
-                    },
+            }),
+            this.prisma.productVariant.findMany({
+                where: { isActive: true, product: { isActive: true }, stock: { lte: 5 } },
+                take: 4,
+                orderBy: { stock: 'asc' },
+                select: {
+                    id: true,
+                    sku: true,
+                    stock: true,
+                    product: { select: { name: true, images: { take: 1, orderBy: { sortOrder: 'asc' } } } },
                 },
-                recentOrders: recentOrders.map((o) => ({
-                    id: o.orderNumber,
-                    customerName: o.customer.firstName,
-                    phone: o.customer.phone,
-                    amount: Number(o.totalAmount),
-                    status: o.status,
-                    paymentMethod: o.paymentMethod,
-                    createdAt: o.createdAt,
-                })),
-                lowStockProducts: lowStockItems.map((item) => ({
-                    variantId: item.id,
-                    name: item.product.name,
-                    sku: item.sku,
-                    stock: item.stock,
-                    status: item.stock === 0 ? 'Out of Stock' : 'Low Stock',
-                    image: item.product.images[0]?.url || '',
-                })),
-            };
-        }
-        catch {
-            return {
-                metrics: {
-                    totalSales: 85400,
-                    salesGrowth: '+12%',
-                    totalOrders: 42,
-                    pendingOrders: 6,
-                    deliveryRate: '94.3%',
-                    totalProducts: 128,
-                    activeCatalog: 114,
-                    totalCustomers: 326,
-                    vipMembersCount: 48,
-                    lowStockCount: 14,
-                    stockoutCount: 4,
+            }),
+            this.prisma.order.findMany({
+                where: {
+                    status: { not: 'CANCELLED' },
+                    createdAt: { gte: sevenDaysAgoStart() },
                 },
-                salesOverview: {
-                    peakPoint: {
-                        label: 'Peak: ৳18,200 on Thursday Atelier Showcase',
-                        amount: 18200,
-                        day: 'Thu',
-                    },
-                    chartData: [
-                        { day: 'Sat', dhakaSales: 5200, nationalSales: 8200 },
-                        { day: 'Sun', dhakaSales: 7100, nationalSales: 11500 },
-                        { day: 'Mon', dhakaSales: 6000, nationalSales: 9800 },
-                        { day: 'Tue', dhakaSales: 9500, nationalSales: 13800 },
-                        { day: 'Wed', dhakaSales: 10800, nationalSales: 15200 },
-                        { day: 'Thu', dhakaSales: 14500, nationalSales: 18200 },
-                        { day: 'Fri', dhakaSales: 8900, nationalSales: 12100 },
-                    ],
-                    kpis: {
-                        averageOrderValue: 2033,
-                        conversionRate: '3.8%',
-                        conversionGrowth: '+0.6%',
-                        fulfillmentVelocity: '21.4 hrs',
-                    },
+                select: { createdAt: true, totalAmount: true, shippingAddress: true },
+            }),
+        ]);
+        const totalSales = Number(salesSum._sum.totalAmount ?? 0);
+        const chartData = makeSevenDayChart(recentSales);
+        const peakDay = chartData.reduce((peak, day) => (day.dhakaSales + day.nationalSales > peak.amount
+            ? { day: day.day, amount: day.dhakaSales + day.nationalSales }
+            : peak), { day: '', amount: 0 });
+        const nonCancelledOrders = Math.max(totalOrders - cancelledOrders, 0);
+        return {
+            metrics: {
+                totalSales,
+                salesGrowth: '—',
+                totalOrders,
+                pendingOrders,
+                deliveryRate: nonCancelledOrders
+                    ? `${((deliveredOrders / nonCancelledOrders) * 100).toFixed(1)}%`
+                    : '0.0%',
+                totalProducts,
+                activeCatalog: totalProducts,
+                totalCustomers,
+                vipMembersCount: null,
+                lowStockCount,
+                stockoutCount,
+            },
+            salesOverview: {
+                peakPoint: peakDay.amount
+                    ? {
+                        label: `Peak: BDT ${peakDay.amount.toLocaleString()} on ${peakDay.day}`,
+                        amount: peakDay.amount,
+                        day: peakDay.day,
+                    }
+                    : null,
+                chartData,
+                kpis: {
+                    averageOrderValue: salesOrderCount ? totalSales / salesOrderCount : 0,
+                    conversionRate: '—',
+                    conversionGrowth: '—',
+                    fulfillmentVelocity: '—',
                 },
-                recentOrders: [
-                    {
-                        id: '#RL1001',
-                        customerName: 'Rahim',
-                        customerLocation: 'Gulshan-2, Dhaka',
-                        amount: 2490,
-                        status: 'PENDING',
-                        paymentMethod: 'COD',
-                    },
-                    {
-                        id: '#RL1002',
-                        customerName: 'Karim',
-                        customerLocation: 'Dhanmondi, Dhaka',
-                        amount: 3990,
-                        status: 'SHIPPED',
-                        paymentMethod: 'BKASH',
-                    },
-                    {
-                        id: '#RL1003',
-                        customerName: 'Hasan',
-                        customerLocation: 'Uttara Sec-4, Dhaka',
-                        amount: 1990,
-                        status: 'DELIVERED',
-                        paymentMethod: 'COD',
-                    },
-                ],
-                lowStockProducts: [
-                    { name: 'Green Panjabi', sku: 'RL-PNJ-01', stock: 3, status: 'Low Stock' },
-                    { name: 'Black Shirt', sku: 'RL-SHT-02', stock: 4, status: 'Low Stock' },
-                    { name: 'Polo Blue', sku: 'RL-PLO-04', stock: 2, status: 'Low Stock' },
-                    { name: 'Classic White Shirt', sku: 'RL-SHT-05', stock: 0, status: 'Out of Stock' },
-                ],
-            };
-        }
+            },
+            recentOrders: recentOrders.map((order) => ({
+                id: order.orderNumber,
+                customerName: order.customer?.firstName ?? order.guestName ?? 'Guest',
+                phone: order.customer?.phone ?? order.guestPhone ?? '',
+                amount: Number(order.totalAmount),
+                status: order.status,
+                paymentMethod: order.paymentMethod,
+                createdAt: order.createdAt,
+            })),
+            lowStockProducts: lowStockItems.map((item) => ({
+                variantId: item.id,
+                name: item.product.name,
+                sku: item.sku,
+                stock: item.stock,
+                status: item.stock === 0 ? 'Out of Stock' : 'Low Stock',
+                image: item.product.images[0]?.url ?? '',
+            })),
+        };
     }
 };
 DashboardService = __decorate([
@@ -178,4 +129,41 @@ DashboardService = __decorate([
     __metadata("design:paramtypes", [PrismaService])
 ], DashboardService);
 export { DashboardService };
+function sevenDaysAgoStart() {
+    const start = new Date();
+    start.setUTCHours(0, 0, 0, 0);
+    start.setUTCDate(start.getUTCDate() - 6);
+    return start;
+}
+function makeSevenDayChart(orders) {
+    const start = sevenDaysAgoStart();
+    const days = Array.from({ length: 7 }, (_, index) => {
+        const date = new Date(start);
+        date.setUTCDate(start.getUTCDate() + index);
+        return {
+            key: date.toISOString().slice(0, 10),
+            day: date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }),
+            dhakaSales: 0,
+            nationalSales: 0,
+        };
+    });
+    const dayByKey = new Map(days.map((day) => [day.key, day]));
+    for (const order of orders) {
+        const day = dayByKey.get(order.createdAt.toISOString().slice(0, 10));
+        if (!day)
+            continue;
+        const address = order.shippingAddress;
+        const division = address && typeof address === 'object' && 'division' in address
+            ? address.division
+            : undefined;
+        const amount = Number(order.totalAmount);
+        if (typeof division === 'string' && division.toLowerCase().includes('dhaka')) {
+            day.dhakaSales += amount;
+        }
+        else {
+            day.nationalSales += amount;
+        }
+    }
+    return days.map(({ key: _key, ...day }) => day);
+}
 //# sourceMappingURL=dashboard.service.js.map

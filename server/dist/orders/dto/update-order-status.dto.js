@@ -9,6 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { OrderStatus } from '@prisma/client';
 export class UpdateOrderStatusDto {
     status;
     adminNotes;
@@ -29,19 +30,7 @@ __decorate([
             'REFUNDED',
         ],
     }),
-    IsEnum([
-        'PENDING',
-        'CONFIRMED',
-        'PROCESSING',
-        'PACKED',
-        'SHIPPED',
-        'OUT_FOR_DELIVERY',
-        'DELIVERED',
-        'CANCELLED',
-        'RETURN_REQUESTED',
-        'RETURNED',
-        'REFUNDED',
-    ]),
+    IsEnum(OrderStatus),
     IsNotEmpty(),
     __metadata("design:type", String)
 ], UpdateOrderStatusDto.prototype, "status", void 0);

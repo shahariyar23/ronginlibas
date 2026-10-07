@@ -23,6 +23,21 @@ class EnvironmentVariables {
     JWT_REFRESH_SECRET;
     WEB_FRONTEND_URL;
     ADMIN_FRONTEND_URL;
+    SMTP_HOST;
+    SMTP_PORT;
+    SMTP_USER;
+    SMTP_PASS;
+    SMTP_FROM;
+    SMTP_SECURE;
+    BKASH_APP_KEY;
+    BKASH_APP_SECRET;
+    NAGAD_MERCHANT_ID;
+    NAGAD_MERCHANT_PRIVATE_KEY;
+    SSLCOMMERZ_STORE_ID;
+    SSLCOMMERZ_STORE_PASSWORD;
+    CLOUDINARY_CLOUD_NAME;
+    CLOUDINARY_API_KEY;
+    CLOUDINARY_API_SECRET;
 }
 __decorate([
     IsEnum(Environment),
@@ -59,6 +74,81 @@ __decorate([
     IsOptional(),
     __metadata("design:type", String)
 ], EnvironmentVariables.prototype, "ADMIN_FRONTEND_URL", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "SMTP_HOST", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "SMTP_PORT", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "SMTP_USER", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "SMTP_PASS", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "SMTP_FROM", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "SMTP_SECURE", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "BKASH_APP_KEY", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "BKASH_APP_SECRET", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "NAGAD_MERCHANT_ID", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "NAGAD_MERCHANT_PRIVATE_KEY", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "SSLCOMMERZ_STORE_ID", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "SSLCOMMERZ_STORE_PASSWORD", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "CLOUDINARY_CLOUD_NAME", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "CLOUDINARY_API_KEY", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "CLOUDINARY_API_SECRET", void 0);
 export function validateEnv(config) {
     const validatedConfig = plainToInstance(EnvironmentVariables, config, {
         enableImplicitConversion: true,
@@ -68,6 +158,16 @@ export function validateEnv(config) {
     });
     if (errors.length > 0) {
         throw new Error(errors.toString());
+    }
+    if (validatedConfig.NODE_ENV === Environment.Production) {
+        for (const [key, value] of [
+            ['JWT_ACCESS_SECRET', validatedConfig.JWT_ACCESS_SECRET],
+            ['JWT_REFRESH_SECRET', validatedConfig.JWT_REFRESH_SECRET],
+        ]) {
+            if (!value || value.length < 32 || value.includes('change_in_production')) {
+                throw new Error(`${key} must be set to a unique secret with at least 32 characters in production`);
+            }
+        }
     }
     return validatedConfig;
 }

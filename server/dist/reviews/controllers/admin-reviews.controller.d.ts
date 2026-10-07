@@ -5,7 +5,10 @@ export declare class AdminReviewsController {
     constructor(reviewsService: ReviewsService);
     findAll(query: PaginationQueryDto, status?: string): Promise<{
         message: string;
-        data: import("../../common/dto/pagination-query.dto.js").PaginatedResult<any>;
+        data: import("../../common/dto/pagination-query.dto.js").PaginatedResult<any> & {
+            hasNext: boolean;
+            hasPrevious: boolean;
+        };
     }>;
     updateStatus(id: string, status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'HIDDEN'): Promise<{
         message: string;
@@ -18,10 +21,6 @@ export declare class AdminReviewsController {
             productId: string;
             rating: number;
             comment: string;
-        } | {
-            id: string;
-            status: "PENDING" | "APPROVED" | "REJECTED" | "HIDDEN";
-            updatedAt: Date;
         };
     }>;
 }

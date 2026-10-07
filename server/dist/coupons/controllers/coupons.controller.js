@@ -14,13 +14,14 @@ import { Controller, Post, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { CouponsService } from '../services/coupons.service.js';
 import { Public } from '../../common/decorators/public.decorator.js';
+import { ValidateCouponDto } from '../dto/validate-coupon.dto.js';
 let CouponsController = class CouponsController {
     couponsService;
     constructor(couponsService) {
         this.couponsService = couponsService;
     }
-    async validate(body) {
-        const data = await this.couponsService.validateCoupon(body.code, body.cartTotal);
+    async validate(dto) {
+        const data = await this.couponsService.validateCoupon(dto.code, dto.items);
         return {
             message: 'Voucher applied successfully',
             data,
@@ -32,7 +33,7 @@ __decorate([
     ApiOperation({ summary: 'Validate discount voucher code against cart total' }),
     __param(0, Body()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [ValidateCouponDto]),
     __metadata("design:returntype", Promise)
 ], CouponsController.prototype, "validate", null);
 CouponsController = __decorate([
