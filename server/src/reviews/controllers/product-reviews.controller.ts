@@ -25,6 +25,20 @@ export class ProductReviewsController {
     };
   }
 
+  @Get('eligibility')
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Check if authenticated customer can review this product' })
+  async checkEligibility(
+    @Param('productId') productId: string,
+    @CurrentUser('id') customerId: string,
+  ) {
+    return {
+      message: 'Review eligibility checked',
+      data: await this.reviewsService.checkEligibility(productId, customerId),
+    };
+  }
+
   @Post()
   @UseGuards(CustomerAuthGuard)
   @ApiBearerAuth()

@@ -7,7 +7,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, NotFoundException, } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 let CouponsService = class CouponsService {
     prisma;
@@ -113,6 +113,17 @@ let CouponsService = class CouponsService {
     async update(id, partial) {
         return this.prisma.coupon.update({ where: { id }, data: partial });
     }
+    async remove(id) {
+        try {
+            return await this.prisma.coupon.delete({ where: { id } });
+        }
+        catch (error) {
+            if (isPrismaError(error, 'P2025')) {
+                throw new NotFoundException('Voucher not found');
+            }
+            throw error;
+        }
+    }
 };
 CouponsService = __decorate([
     Injectable(),
@@ -120,9 +131,9 @@ CouponsService = __decorate([
 ], CouponsService);
 export { CouponsService };
 function isUniqueConstraintError(error) {
-    return (typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        error.code === 'P2002');
+    return isPrismaError(error, 'P2002');
+}
+function isPrismaError(error, code) {
+    return typeof error === 'object' && error !== null && 'code' in error && error.code === code;
 }
 //# sourceMappingURL=coupons.service.js.map

@@ -6,14 +6,16 @@ export declare class ProductQueryDto extends PaginationQueryDto {
     gender?: Gender;
     size?: string[];
     color?: string[];
-    fabric?: string;
-    fit?: string;
+    fabric?: string[];
+    fabricOrigin?: string[];
+    fit?: string[];
     minPrice?: number;
     maxPrice?: number;
     inStock?: boolean;
     featured?: boolean;
     newArrival?: boolean;
     bestSeller?: boolean;
+    onSale?: boolean;
     expressAvailable?: boolean;
     sort?: 'featured' | 'newest' | 'price-asc' | 'price-desc' | 'best-selling';
 }

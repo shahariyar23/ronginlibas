@@ -7,79 +7,25 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+var ProductsService_1;
+import { Logger, Injectable, BadRequestException, NotFoundException, ConflictException, } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
-let ProductsService = class ProductsService {
+import { CloudinaryService } from './cloudinary.service.js';
+let ProductsService = ProductsService_1 = class ProductsService {
     prisma;
-    constructor(prisma) {
+    cloudinary;
+    logger = new Logger(ProductsService_1.name);
+    constructor(prisma, cloudinary) {
         this.prisma = prisma;
+        this.cloudinary = cloudinary;
     }
     async findAll(query, isAdmin = false) {
+        this.validatePriceRange(query);
         const page = query.page || 1;
         const limit = query.limit || 20;
         const skip = (page - 1) * limit;
-        const where = {};
-        if (!isAdmin)
-            where.isActive = true;
-        if (query.search) {
-            where.OR = [
-                { name: { contains: query.search, mode: 'insensitive' } },
-                { sku: { contains: query.search, mode: 'insensitive' } },
-                { description: { contains: query.search, mode: 'insensitive' } },
-            ];
-        }
-        if (query.category) {
-            where.category = {
-                OR: [
-                    { slug: { equals: query.category, mode: 'insensitive' } },
-                    { name: { equals: query.category, mode: 'insensitive' } },
-                ],
-            };
-        }
-        if (query.gender)
-            where.gender = query.gender;
-        if (query.featured !== undefined)
-            where.isFeatured = query.featured;
-        if (query.newArrival !== undefined)
-            where.isNewArrival = query.newArrival;
-        if (query.bestSeller !== undefined)
-            where.isBestSeller = query.bestSeller;
-        if (query.expressAvailable !== undefined)
-            where.isExpressAvailable = query.expressAvailable;
-        if (query.minPrice !== undefined || query.maxPrice !== undefined) {
-            where.price = {
-                ...(query.minPrice !== undefined ? { gte: query.minPrice } : {}),
-                ...(query.maxPrice !== undefined ? { lte: query.maxPrice } : {}),
-            };
-        }
-        if (query.fabric)
-            where.fabric = { contains: query.fabric, mode: 'insensitive' };
-        if (query.fit)
-            where.fit = { contains: query.fit, mode: 'insensitive' };
-        if (query.size?.length || query.color?.length || query.inStock !== undefined) {
-            const variantWhere = { isActive: true };
-            if (query.size?.length) {
-                variantWhere.OR = [
-                    { size: { in: query.size, mode: 'insensitive' } },
-                    { sizeLabel: { in: query.size, mode: 'insensitive' } },
-                ];
-            }
-            if (query.color?.length) {
-                variantWhere.color = { in: query.color, mode: 'insensitive' };
-            }
-            if (query.inStock === true)
-                variantWhere.stock = { gt: 0 };
-            where.variants = query.inStock === false
-                ? { none: { isActive: true, stock: { gt: 0 } } }
-                : { some: variantWhere };
-        }
-        if (query.status === 'Active')
-            where.isActive = true;
-        if (query.status === 'Out of Stock')
-            where.variants = { none: { isActive: true, stock: { gt: 0 } } };
-        if (query.status === 'Low Stock')
-            where.variants = { some: { isActive: true, stock: { gt: 0, lte: 5 } } };
+        const where = buildProductWhere(query, isAdmin);
         const orderBy = query.sort === 'price-asc'
             ? { price: 'asc' }
             : query.sort === 'price-desc'
@@ -87,7 +33,7 @@ let ProductsService = class ProductsService {
                 : query.sort === 'best-selling'
                     ? [{ orderItems: { _count: 'desc' } }, { createdAt: 'desc' }]
                     : query.sort === 'featured'
-                        ? { isFeatured: 'desc' }
+                        ? [{ isFeatured: 'desc' }, { createdAt: 'desc' }]
                         : { createdAt: 'desc' };
         const [items, total] = await Promise.all([
             this.prisma.product.findMany({
@@ -103,6 +49,8 @@ let ProductsService = class ProductsService {
                             id: true,
                             size: true,
                             sizeLabel: true,
+                            sizeType: true,
+                            measurements: true,
                             color: true,
                             sku: true,
                             stock: true,
@@ -115,7 +63,124 @@ let ProductsService = class ProductsService {
             }),
             this.prisma.product.count({ where }),
         ]);
-        return { items, page, limit, total, totalPages: Math.ceil(total / limit) || 1 };
+        return {
+            items: isAdmin ? items : items.map(normalizeStorefrontSizeLabels),
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit) || 1,
+        };
+    }
+    async getFilters(query) {
+        this.validatePriceRange(query);
+        const productWhere = buildProductWhere(query, false);
+        const categoryWhere = buildProductWhere(query, false, 'category');
+        const sizeWhere = buildProductWhere(query, false, 'size');
+        const colorWhere = buildProductWhere(query, false, 'color');
+        const fabricWhere = buildProductWhere(query, false, 'fabric');
+        const originWhere = buildProductWhere(query, false, 'fabricOrigin');
+        const fitWhere = buildProductWhere(query, false, 'fit');
+        const [categories, sizes, colors, fabrics, fabricOrigins, fits, price] = await Promise.all([
+            this.prisma.category.findMany({
+                where: { isActive: true, products: { some: categoryWhere } },
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    _count: { select: { products: { where: categoryWhere } } },
+                },
+                orderBy: { sortOrder: 'asc' },
+            }),
+            this.prisma.productVariant.findMany({
+                where: { isActive: true, product: sizeWhere },
+                select: {
+                    size: true,
+                    sizeLabel: true,
+                    sizeType: true,
+                    product: { select: { category: { select: { slug: true } } } },
+                },
+            }),
+            this.prisma.productVariant.groupBy({
+                by: ['color'],
+                where: { isActive: true, product: colorWhere },
+                _count: { _all: true },
+                orderBy: { color: 'asc' },
+            }),
+            this.prisma.product.groupBy({
+                by: ['fabric'],
+                where: { ...fabricWhere, fabric: { not: null } },
+                _count: { _all: true },
+                orderBy: { fabric: 'asc' },
+            }),
+            this.prisma.product.groupBy({
+                by: ['fabricOrigin'],
+                where: { ...originWhere, fabricOrigin: { not: null } },
+                _count: { _all: true },
+                orderBy: { fabricOrigin: 'asc' },
+            }),
+            this.prisma.product.groupBy({
+                by: ['fit'],
+                where: { ...fitWhere, fit: { not: null } },
+                _count: { _all: true },
+                orderBy: { fit: 'asc' },
+            }),
+            this.prisma.product.aggregate({
+                where: productWhere,
+                _min: { price: true },
+                _max: { price: true },
+            }),
+        ]);
+        const sizeCounts = new Map();
+        for (const variant of sizes) {
+            const value = getShopSizeLabel(variant);
+            if (!value)
+                continue;
+            const type = getShopSizeType(variant, value);
+            const key = `${type}:${value}`;
+            const current = sizeCounts.get(key);
+            sizeCounts.set(key, { value, type, count: (current?.count ?? 0) + 1 });
+        }
+        const sizeTypeOrder = { APPAREL: 0, WAIST: 1, CUSTOM: 2 };
+        const sizeOptions = [...sizeCounts.values()].sort((a, b) => sizeTypeOrder[a.type] - sizeTypeOrder[b.type] ||
+            a.value.localeCompare(b.value, undefined, { numeric: true }));
+        return {
+            categories: categories.map((category) => ({
+                id: category.id,
+                name: category.name,
+                slug: category.slug,
+                count: category._count.products,
+            })),
+            sizes: sizeOptions,
+            colors: colors.map((item) => ({
+                name: item.color,
+                slug: toSlug(item.color),
+                count: item._count._all,
+            })),
+            fabrics: fabrics.flatMap((item) => item.fabric
+                ? [{ name: item.fabric, slug: toSlug(item.fabric), count: item._count._all }]
+                : []),
+            fabricOrigins: fabricOrigins.flatMap((item) => item.fabricOrigin
+                ? [
+                    {
+                        name: item.fabricOrigin,
+                        slug: toSlug(item.fabricOrigin),
+                        count: item._count._all,
+                    },
+                ]
+                : []),
+            fits: fits.flatMap((item) => item.fit ? [{ name: item.fit, slug: toSlug(item.fit), count: item._count._all }] : []),
+            price: {
+                min: Number(price._min.price ?? 0),
+                max: Number(price._max.price ?? 0),
+            },
+        };
+    }
+    validatePriceRange(query) {
+        if (query.minPrice !== undefined &&
+            query.maxPrice !== undefined &&
+            query.minPrice > query.maxPrice) {
+            throw new BadRequestException('minPrice cannot be greater than maxPrice');
+        }
     }
     async findBySlug(slug) {
         const product = await this.prisma.product.findFirst({
@@ -133,7 +198,7 @@ let ProductsService = class ProductsService {
         });
         if (!product)
             throw new NotFoundException(`Garment not found with slug or ID: ${slug}`);
-        return product;
+        return normalizeStorefrontSizeLabels(product);
     }
     async findById(id) {
         const product = await this.prisma.product.findFirst({
@@ -150,7 +215,7 @@ let ProductsService = class ProductsService {
     }
     async findRelated(slug, relationType) {
         const product = await this.prisma.product.findFirst({
-            where: { slug, isActive: true },
+            where: { OR: [{ slug }, { id: slug }], isActive: true },
             select: { id: true, categoryId: true },
         });
         if (!product)
@@ -173,10 +238,15 @@ let ProductsService = class ProductsService {
                 },
             },
         });
-        if (relations.length)
-            return relations.map((relation) => relation.targetProduct);
-        return this.prisma.product.findMany({
-            where: { isActive: true, categoryId: product.categoryId, id: { not: product.id } },
+        if (relations.length) {
+            return relations.map((relation) => normalizeStorefrontSizeLabels(relation.targetProduct));
+        }
+        const relatedProducts = await this.prisma.product.findMany({
+            where: {
+                isActive: true,
+                categoryId: product.categoryId,
+                id: { not: product.id },
+            },
             take: 8,
             orderBy: { createdAt: 'desc' },
             include: {
@@ -185,9 +255,14 @@ let ProductsService = class ProductsService {
                 variants: { where: { isActive: true } },
             },
         });
+        return relatedProducts.map(normalizeStorefrontSizeLabels);
     }
     async create(dto) {
-        const slug = dto.slug || dto.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+        const slug = dto.slug ||
+            dto.name
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/(^-|-$)+/g, '');
         try {
             const existing = await this.prisma.product.findFirst({
                 where: { OR: [{ slug }, { sku: dto.sku }] },
@@ -212,11 +287,15 @@ let ProductsService = class ProductsService {
                     isNewArrival: dto.isNewArrival ?? true,
                     isBestSeller: dto.isBestSeller ?? false,
                     categoryId: dto.categoryId,
+                    alertThreshold: dto.alertThreshold ?? 5,
                     variants: dto.variants?.length
                         ? {
                             create: dto.variants.map((v) => ({
-                                size: v.size,
-                                sizeLabel: v.sizeLabel,
+                                size: v.sizeLabel ? normalizeCanonicalSizeLabel(v.sizeLabel) : v.size,
+                                sizeLabel: v.sizeLabel
+                                    ? normalizeCanonicalSizeLabel(v.sizeLabel)
+                                    : undefined,
+                                sizeType: v.sizeType,
                                 color: v.color,
                                 sku: v.sku,
                                 stock: v.stock,
@@ -229,6 +308,7 @@ let ProductsService = class ProductsService {
                         ? {
                             create: dto.images.map((img) => ({
                                 url: img.url,
+                                publicId: img.publicId,
                                 altText: img.altText,
                                 sortOrder: img.sortOrder ?? 0,
                                 isPrimary: img.isPrimary ?? false,
@@ -259,16 +339,24 @@ let ProductsService = class ProductsService {
         if (!existing)
             throw new NotFoundException(`Garment not found: ${id}`);
         const targetId = existing.id;
-        return this.prisma.$transaction(async (transaction) => {
+        const previousImages = await this.prisma.productImage.findMany({
+            where: { productId: targetId },
+            select: { publicId: true },
+        });
+        const updatedProduct = await this.prisma.$transaction(async (transaction) => {
             await transaction.product.update({
                 where: { id: targetId },
                 data: {
                     ...(dto.name && { name: dto.name }),
                     ...(dto.slug && { slug: dto.slug }),
                     ...(dto.categoryId !== undefined && { categoryId: dto.categoryId }),
-                    ...(dto.description !== undefined && { description: dto.description }),
+                    ...(dto.description !== undefined && {
+                        description: dto.description,
+                    }),
                     ...(dto.price !== undefined && { price: dto.price }),
-                    ...(dto.compareAtPrice !== undefined && { compareAtPrice: dto.compareAtPrice }),
+                    ...(dto.compareAtPrice !== undefined && {
+                        compareAtPrice: dto.compareAtPrice,
+                    }),
                     ...(dto.costPrice !== undefined && { costPrice: dto.costPrice }),
                     ...(dto.sku && { sku: dto.sku }),
                     ...(dto.gender && { gender: dto.gender }),
@@ -276,23 +364,41 @@ let ProductsService = class ProductsService {
                     ...(dto.fit !== undefined && { fit: dto.fit }),
                     ...(dto.isActive !== undefined && { isActive: dto.isActive }),
                     ...(dto.isFeatured !== undefined && { isFeatured: dto.isFeatured }),
-                    ...(dto.isNewArrival !== undefined && { isNewArrival: dto.isNewArrival }),
-                    ...(dto.isBestSeller !== undefined && { isBestSeller: dto.isBestSeller }),
-                    ...(dto.isExpressAvailable !== undefined && { isExpressAvailable: dto.isExpressAvailable }),
-                    ...(dto.fabricOrigin !== undefined && { fabricOrigin: dto.fabricOrigin }),
+                    ...(dto.isNewArrival !== undefined && {
+                        isNewArrival: dto.isNewArrival,
+                    }),
+                    ...(dto.isBestSeller !== undefined && {
+                        isBestSeller: dto.isBestSeller,
+                    }),
+                    ...(dto.isExpressAvailable !== undefined && {
+                        isExpressAvailable: dto.isExpressAvailable,
+                    }),
+                    ...(dto.fabricOrigin !== undefined && {
+                        fabricOrigin: dto.fabricOrigin,
+                    }),
                     ...(dto.gsm !== undefined && { gsm: dto.gsm }),
-                    ...(dto.careInstructions !== undefined && { careInstructions: dto.careInstructions }),
+                    ...(dto.careInstructions !== undefined && {
+                        careInstructions: dto.careInstructions,
+                    }),
                     ...(dto.tags !== undefined && { tags: dto.tags }),
-                    ...(dto.shortDescription !== undefined && { shortDescription: dto.shortDescription }),
+                    ...(dto.alertThreshold !== undefined && {
+                        alertThreshold: dto.alertThreshold,
+                    }),
+                    ...(dto.shortDescription !== undefined && {
+                        shortDescription: dto.shortDescription,
+                    }),
                 },
             });
             if (dto.images !== undefined) {
-                await transaction.productImage.deleteMany({ where: { productId: targetId } });
+                await transaction.productImage.deleteMany({
+                    where: { productId: targetId },
+                });
                 if (dto.images.length) {
                     await transaction.productImage.createMany({
                         data: dto.images.map((img, idx) => ({
                             productId: targetId,
                             url: img.url,
+                            publicId: img.publicId,
                             altText: img.altText ?? `${dto.name || 'Product'} image ${idx + 1}`,
                             sortOrder: img.sortOrder ?? idx,
                             isPrimary: img.isPrimary ?? idx === 0,
@@ -324,8 +430,13 @@ let ProductsService = class ProductsService {
                     throw new ConflictException('A product variant with this SKU already exists');
                 }
                 const data = {
-                    size: variant.size,
-                    sizeLabel: variant.sizeLabel,
+                    size: variant.sizeLabel
+                        ? normalizeCanonicalSizeLabel(variant.sizeLabel)
+                        : variant.size,
+                    sizeLabel: variant.sizeLabel
+                        ? normalizeCanonicalSizeLabel(variant.sizeLabel)
+                        : undefined,
+                    sizeType: variant.sizeType,
                     color: variant.color,
                     sku: variant.sku,
                     stock: variant.stock,
@@ -334,64 +445,333 @@ let ProductsService = class ProductsService {
                     isActive: true,
                 };
                 if (current) {
-                    await transaction.productVariant.update({ where: { id: current.id }, data });
+                    await transaction.productVariant.update({
+                        where: { id: current.id },
+                        data,
+                    });
                 }
                 else {
-                    await transaction.productVariant.create({ data: { ...data, productId: targetId } });
+                    await transaction.productVariant.create({
+                        data: { ...data, productId: targetId },
+                    });
                 }
             }
             return transaction.product.findUniqueOrThrow({
                 where: { id: targetId },
                 include: { category: true, variants: true, images: true },
             });
+        }, {
+            maxWait: 10000,
+            timeout: 30000,
         });
+        if (dto.images !== undefined) {
+            const retainedPublicIds = new Set(dto.images
+                .map((image) => image.publicId)
+                .filter((value) => Boolean(value)));
+            const removedPublicIds = previousImages
+                .map((image) => image.publicId)
+                .filter((publicId) => publicId !== null && !retainedPublicIds.has(publicId));
+            const cleanupResults = await Promise.allSettled(removedPublicIds.map((publicId) => this.cloudinary.destroyProductImage(publicId)));
+            const failedPublicIds = removedPublicIds.filter((_, index) => cleanupResults[index]?.status === 'rejected');
+            if (failedPublicIds.length) {
+                this.logger.error(`Product image cleanup failed for: ${failedPublicIds.join(', ')}`);
+                return {
+                    ...updatedProduct,
+                    imageCleanupWarning: `Product saved, but Cloudinary cleanup failed for ${failedPublicIds.join(', ')}`,
+                };
+            }
+        }
+        return updatedProduct;
     }
     async delete(id) {
         const existing = await this.prisma.product.findFirst({
             where: { OR: [{ id }, { slug: id }] },
-            select: { id: true, name: true, sku: true },
+            select: {
+                id: true,
+                name: true,
+                images: { select: { publicId: true } },
+            },
         });
         if (!existing) {
             throw new NotFoundException(`Product not found with identifier: ${id}`);
         }
         const targetId = existing.id;
-        await this.prisma.productRelation.deleteMany({
-            where: { OR: [{ sourceProductId: targetId }, { targetProductId: targetId }] },
+        await this.prisma.$transaction(async (transaction) => {
+            await transaction.productRelation.deleteMany({
+                where: {
+                    OR: [{ sourceProductId: targetId }, { targetProductId: targetId }],
+                },
+            });
+            await transaction.reviewVote.deleteMany({
+                where: { review: { productId: targetId } },
+            });
+            await transaction.review.deleteMany({
+                where: { productId: targetId },
+            });
+            await transaction.cartItem.deleteMany({
+                where: { productId: targetId },
+            });
+            await transaction.wishlistItem.deleteMany({
+                where: { productId: targetId },
+            });
+            await transaction.productImage.deleteMany({
+                where: { productId: targetId },
+            });
+            await transaction.orderItem.deleteMany({
+                where: { productId: targetId },
+            });
+            await transaction.productVariant.deleteMany({
+                where: { productId: targetId },
+            });
+            await transaction.product.delete({
+                where: { id: targetId },
+            });
+        }, {
+            maxWait: 10000,
+            timeout: 30000,
         });
-        await this.prisma.reviewVote.deleteMany({
-            where: { review: { productId: targetId } },
-        });
-        await this.prisma.review.deleteMany({
-            where: { productId: targetId },
-        });
-        await this.prisma.cartItem.deleteMany({
-            where: { productId: targetId },
-        });
-        await this.prisma.wishlistItem.deleteMany({
-            where: { productId: targetId },
-        });
-        await this.prisma.productImage.deleteMany({
-            where: { productId: targetId },
-        });
-        await this.prisma.orderItem.deleteMany({
-            where: { productId: targetId },
-        });
-        await this.prisma.productVariant.deleteMany({
-            where: { productId: targetId },
-        });
-        await this.prisma.product.delete({
-            where: { id: targetId },
-        });
-        return { message: `Product "${existing.name}" permanently deleted from database` };
+        const publicIds = existing.images
+            .map((image) => image.publicId)
+            .filter((publicId) => publicId !== null);
+        const cleanup = await Promise.allSettled(publicIds.map((publicId) => this.cloudinary.destroyProductImage(publicId)));
+        const failedPublicIds = publicIds.filter((_, index) => cleanup[index].status === 'rejected');
+        if (failedPublicIds.length) {
+            this.logger.error(`Product image cleanup failed for: ${failedPublicIds.join(', ')}`);
+            return {
+                message: `Product "${existing.name}" deleted from the database`,
+                cleanupWarning: `Cloudinary cleanup failed for ${failedPublicIds.join(', ')}`,
+            };
+        }
+        return {
+            message: `Product "${existing.name}" permanently deleted from database`,
+        };
     }
 };
-ProductsService = __decorate([
+ProductsService = ProductsService_1 = __decorate([
     Injectable(),
-    __metadata("design:paramtypes", [PrismaService])
+    __metadata("design:paramtypes", [PrismaService,
+        CloudinaryService])
 ], ProductsService);
 export { ProductsService };
 function isUniqueConstraintError(error) {
     return (error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002');
+}
+function buildProductWhere(query, isAdmin, excludedFacet) {
+    const where = {};
+    const andConditions = [];
+    if (!isAdmin) {
+        where.isActive = true;
+        where.category = { is: { isActive: true } };
+    }
+    if (query.search) {
+        andConditions.push({
+            OR: [
+                { name: { contains: query.search.trim(), mode: 'insensitive' } },
+                { sku: { contains: query.search.trim(), mode: 'insensitive' } },
+                { description: { contains: query.search.trim(), mode: 'insensitive' } },
+            ],
+        });
+    }
+    if (query.category && excludedFacet !== 'category') {
+        where.category = {
+            is: {
+                ...(isAdmin ? {} : { isActive: true }),
+                OR: [
+                    { slug: { equals: query.category, mode: 'insensitive' } },
+                    { name: { equals: query.category, mode: 'insensitive' } },
+                ],
+            },
+        };
+    }
+    if (query.gender)
+        where.gender = query.gender;
+    if (query.featured !== undefined)
+        where.isFeatured = query.featured;
+    if (query.newArrival !== undefined)
+        where.isNewArrival = query.newArrival;
+    if (query.bestSeller !== undefined)
+        where.isBestSeller = query.bestSeller;
+    if (query.onSale)
+        where.compareAtPrice = { not: null };
+    if (query.expressAvailable !== undefined)
+        where.isExpressAvailable = query.expressAvailable;
+    if (query.minPrice !== undefined || query.maxPrice !== undefined) {
+        where.price = {
+            ...(query.minPrice !== undefined ? { gte: query.minPrice } : {}),
+            ...(query.maxPrice !== undefined ? { lte: query.maxPrice } : {}),
+        };
+    }
+    if (query.fabric?.length && excludedFacet !== 'fabric') {
+        andConditions.push({
+            OR: query.fabric.map((fabric) => ({
+                fabric: { contains: fabric, mode: 'insensitive' },
+            })),
+        });
+    }
+    if (query.fabricOrigin?.length && excludedFacet !== 'fabricOrigin') {
+        andConditions.push({
+            OR: query.fabricOrigin.map((fabricOrigin) => ({
+                fabricOrigin: { contains: fabricOrigin, mode: 'insensitive' },
+            })),
+        });
+    }
+    if (query.fit?.length && excludedFacet !== 'fit') {
+        andConditions.push({
+            OR: query.fit.map((fit) => ({
+                fit: { contains: fit, mode: 'insensitive' },
+            })),
+        });
+    }
+    if (query.status === 'Active')
+        where.isActive = true;
+    if (query.status === 'Out of Stock') {
+        where.variants = { none: { isActive: true, stock: { gt: 0 } } };
+    }
+    else if (query.status === 'Low Stock') {
+        where.variants = { some: { isActive: true, stock: { gt: 0, lte: 5 } } };
+    }
+    else {
+        const sizes = excludedFacet === 'size' ? undefined : query.size;
+        const colors = excludedFacet === 'color' ? undefined : query.color;
+        if (sizes?.length || colors?.length || query.inStock !== undefined) {
+            const variantWhere = { isActive: true };
+            if (sizes?.length) {
+                const sizeSearchLabels = sizes.flatMap((size) => /^\d+(?:\.\d+)?$/.test(size) ? [size, `${size}"`, `${size}″`] : [size]);
+                const alphabeticLabels = sizeSearchLabels.filter((size) => !/^\d+(?:\.\d+)?(?:\s*["″])?$/.test(size));
+                const numericLabels = sizeSearchLabels.filter((size) => /^\d+(?:\.\d+)?(?:\s*["″])?$/.test(size));
+                const sizeConditions = [];
+                if (alphabeticLabels.length) {
+                    sizeConditions.push({
+                        sizeLabel: { in: alphabeticLabels, mode: 'insensitive' },
+                    });
+                    sizeConditions.push({
+                        AND: [
+                            { sizeLabel: null },
+                            { size: { in: alphabeticLabels, mode: 'insensitive' } },
+                        ],
+                    });
+                }
+                if (numericLabels.length) {
+                    const waistSizeCondition = {
+                        OR: [
+                            { sizeType: 'WAIST' },
+                            {
+                                product: {
+                                    category: {
+                                        slug: { contains: 'trouser', mode: 'insensitive' },
+                                    },
+                                },
+                            },
+                            {
+                                product: {
+                                    category: {
+                                        slug: { contains: 'pant', mode: 'insensitive' },
+                                    },
+                                },
+                            },
+                        ],
+                    };
+                    sizeConditions.push({
+                        AND: [
+                            { sizeLabel: { in: numericLabels, mode: 'insensitive' } },
+                            waistSizeCondition,
+                        ],
+                    });
+                    sizeConditions.push({
+                        AND: [
+                            { sizeLabel: null },
+                            { size: { in: numericLabels, mode: 'insensitive' } },
+                            waistSizeCondition,
+                        ],
+                    });
+                }
+                variantWhere.OR = sizeConditions;
+            }
+            if (colors?.length) {
+                variantWhere.color = { in: colors, mode: 'insensitive' };
+            }
+            if (query.inStock === true)
+                variantWhere.stock = { gt: 0 };
+            where.variants =
+                query.inStock === false
+                    ? { none: { isActive: true, stock: { gt: 0 } } }
+                    : { some: variantWhere };
+        }
+    }
+    if (andConditions.length)
+        where.AND = andConditions;
+    return where;
+}
+function toSlug(value) {
+    return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+const apparelSizeLabels = new Set([
+    'XS',
+    'S',
+    'M',
+    'L',
+    'XL',
+    'XXL',
+    '3XL',
+    '4XL',
+    '5XL',
+]);
+function normalizeStorefrontSizeLabels(product) {
+    if (!product.category || !product.variants)
+        return product;
+    const category = { slug: product.category.slug };
+    return {
+        ...product,
+        variants: product.variants.map((variant) => ({
+            ...variant,
+            sizeLabel: getShopSizeLabel({ ...variant, product: { category } }) ?? null,
+        })),
+    };
+}
+function normalizeCanonicalSizeLabel(value) {
+    const normalized = value.trim().replace(/\s+/g, ' ');
+    const upperLabel = normalized.toUpperCase();
+    return apparelSizeLabels.has(upperLabel) ? upperLabel : normalized;
+}
+function getShopSizeLabel(variant) {
+    const rawLabel = (variant.sizeLabel || variant.size).trim().replace(/\s+/g, ' ');
+    if (!rawLabel)
+        return undefined;
+    const upperLabel = rawLabel.toUpperCase();
+    const canonicalLabel = apparelSizeLabels.has(upperLabel) ? upperLabel : rawLabel;
+    const isNumeric = /^\d+(?:\.\d+)?(?:\s*["″])?$/.test(rawLabel);
+    const numericLabel = rawLabel.replace(/\s*["″]$/, '');
+    const isTrouser = /trouser|pant/.test(variant.product.category.slug.toLowerCase());
+    if (variant.sizeType === 'APPAREL') {
+        return isNumeric || upperLabel === 'STANDARD' ? undefined : canonicalLabel;
+    }
+    if (variant.sizeType === 'WAIST') {
+        return isNumeric ? numericLabel : undefined;
+    }
+    if (variant.sizeType === 'CUSTOM') {
+        return isNumeric || upperLabel === 'STANDARD' ? undefined : canonicalLabel;
+    }
+    if (apparelSizeLabels.has(upperLabel))
+        return upperLabel;
+    if (isNumeric && isTrouser)
+        return numericLabel;
+    if (isNumeric || upperLabel === 'STANDARD')
+        return undefined;
+    return canonicalLabel;
+}
+function getShopSizeType(variant, label) {
+    if (variant.sizeType === 'APPAREL' ||
+        variant.sizeType === 'WAIST' ||
+        variant.sizeType === 'CUSTOM') {
+        return variant.sizeType;
+    }
+    if (apparelSizeLabels.has(label.toUpperCase()))
+        return 'APPAREL';
+    if (/^\d+(?:\.\d+)?$/.test(label) &&
+        /trouser|pant/.test(variant.product.category.slug.toLowerCase())) {
+        return 'WAIST';
+    }
+    return 'CUSTOM';
 }
 //# sourceMappingURL=products.service.js.map

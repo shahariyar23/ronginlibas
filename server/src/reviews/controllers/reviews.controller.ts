@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CustomerAuthGuard } from '../../auth/guards/customer-auth.guard.js';
@@ -13,6 +13,24 @@ import { ReviewsService } from '../services/reviews.service.js';
 @Controller('reviews')
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
+
+  @Get('mine')
+  @ApiOperation({ summary: 'Retrieve reviews submitted by the authenticated customer' })
+  async findMine(@CurrentUser('id') customerId: string) {
+    return {
+      message: 'My reviews retrieved successfully',
+      data: await this.reviewsService.findCustomerReviews(customerId),
+    };
+  }
+
+  @Get('eligible')
+  @ApiOperation({ summary: 'List delivered products eligible for review by the customer' })
+  async findEligible(@CurrentUser('id') customerId: string) {
+    return {
+      message: 'Eligible review products retrieved successfully',
+      data: await this.reviewsService.findEligibleProducts(customerId),
+    };
+  }
 
   @Patch(':reviewId')
   @ApiOperation({ summary: 'Edit an owned review and return it to moderation' })

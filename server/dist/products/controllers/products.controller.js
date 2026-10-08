@@ -27,6 +27,12 @@ let ProductsController = class ProductsController {
             data,
         };
     }
+    async getFilters(query) {
+        return {
+            message: 'Product filters retrieved successfully',
+            data: await this.productsService.getFilters(query),
+        };
+    }
     async findBySlug(slug) {
         const data = await this.productsService.findBySlug(slug);
         return {
@@ -55,6 +61,14 @@ __decorate([
     __metadata("design:paramtypes", [ProductQueryDto]),
     __metadata("design:returntype", Promise)
 ], ProductsController.prototype, "findAll", null);
+__decorate([
+    Get('filters'),
+    ApiOperation({ summary: 'Retrieve dynamic filters for the active product catalogue' }),
+    __param(0, Query()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [ProductQueryDto]),
+    __metadata("design:returntype", Promise)
+], ProductsController.prototype, "getFilters", null);
 __decorate([
     Get(':slug'),
     ApiOperation({ summary: 'Retrieve garment product details by slug' }),

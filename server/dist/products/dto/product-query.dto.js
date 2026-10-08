@@ -14,8 +14,17 @@ import { Gender } from '@prisma/client';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto.js';
 const toStringArray = ({ value }) => value === undefined
     ? undefined
-    : (Array.isArray(value) ? value : [value]).map(String);
-const toBoolean = ({ value }) => value === undefined ? undefined : value === true || value === 'true';
+    : (Array.isArray(value) ? value : [value])
+        .flatMap((item) => String(item).split(','))
+        .map((item) => item.trim())
+        .filter(Boolean);
+const toBoolean = ({ value }) => value === undefined || value === true || value === false
+    ? value
+    : value === 'true'
+        ? true
+        : value === 'false'
+            ? false
+            : value;
 export class ProductQueryDto extends PaginationQueryDto {
     category;
     status;
@@ -23,6 +32,7 @@ export class ProductQueryDto extends PaginationQueryDto {
     size;
     color;
     fabric;
+    fabricOrigin;
     fit;
     minPrice;
     maxPrice;
@@ -30,6 +40,7 @@ export class ProductQueryDto extends PaginationQueryDto {
     featured;
     newArrival;
     bestSeller;
+    onSale;
     expressAvailable;
     sort;
 }
@@ -66,16 +77,25 @@ __decorate([
     __metadata("design:type", Array)
 ], ProductQueryDto.prototype, "color", void 0);
 __decorate([
-    ApiPropertyOptional(),
-    IsString(),
+    ApiPropertyOptional({ type: [String] }),
+    Transform(toStringArray),
+    IsString({ each: true }),
     IsOptional(),
-    __metadata("design:type", String)
+    __metadata("design:type", Array)
 ], ProductQueryDto.prototype, "fabric", void 0);
 __decorate([
-    ApiPropertyOptional(),
-    IsString(),
+    ApiPropertyOptional({ type: [String] }),
+    Transform(toStringArray),
+    IsString({ each: true }),
     IsOptional(),
-    __metadata("design:type", String)
+    __metadata("design:type", Array)
+], ProductQueryDto.prototype, "fabricOrigin", void 0);
+__decorate([
+    ApiPropertyOptional({ type: [String] }),
+    Transform(toStringArray),
+    IsString({ each: true }),
+    IsOptional(),
+    __metadata("design:type", Array)
 ], ProductQueryDto.prototype, "fit", void 0);
 __decorate([
     ApiPropertyOptional({ minimum: 0 }),
@@ -127,13 +147,20 @@ __decorate([
     IsBoolean(),
     IsOptional(),
     __metadata("design:type", Boolean)
+], ProductQueryDto.prototype, "onSale", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    Transform(toBoolean),
+    IsBoolean(),
+    IsOptional(),
+    __metadata("design:type", Boolean)
 ], ProductQueryDto.prototype, "expressAvailable", void 0);
 __decorate([
     ApiPropertyOptional({
         enum: ['featured', 'newest', 'price-asc', 'price-desc', 'best-selling'],
         default: 'newest',
     }),
-    IsString(),
+    IsEnum(['featured', 'newest', 'price-asc', 'price-desc', 'best-selling']),
     IsOptional(),
     __metadata("design:type", String)
 ], ProductQueryDto.prototype, "sort", void 0);

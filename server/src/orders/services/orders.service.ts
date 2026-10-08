@@ -101,6 +101,7 @@ export class OrdersService {
           orderNumber: true,
           customerId: true,
           guestName: true,
+          guestEmail: true,
           guestPhone: true,
           status: true,
           paymentStatus: true,
@@ -109,17 +110,39 @@ export class OrdersService {
           discountAmount: true,
           deliveryCharge: true,
           totalAmount: true,
+          shippingAddress: true,
+          customerNotes: true,
+          adminNotes: true,
+          courierName: true,
+          trackingNumber: true,
+          trackingUrl: true,
+          estimatedDelivery: true,
           createdAt: true,
           updatedAt: true,
-          customer: { select: { firstName: true, lastName: true, phone: true } },
+          customer: { select: { firstName: true, lastName: true, email: true, phone: true } },
           items: {
             select: {
               id: true,
+              productId: true,
+              variantId: true,
               productName: true,
               variantName: true,
+              sku: true,
+              size: true,
+              color: true,
               quantity: true,
               unitPrice: true,
               subtotal: true,
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  images: {
+                    select: { url: true, isPrimary: true },
+                    orderBy: { sortOrder: 'asc' },
+                  },
+                },
+              },
             },
           },
         },
@@ -135,7 +158,17 @@ export class OrdersService {
       where: { OR: [{ id }, { orderNumber: id }, { orderNumber: `#${id.replace(/^#/, '')}` }] },
       include: {
         customer: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
-        items: { include: { product: true, variant: true } },
+        items: {
+          include: {
+            product: {
+              include: {
+                images: { orderBy: { sortOrder: 'asc' } },
+              },
+            },
+            variant: true,
+          },
+        },
+        trackingEvents: { orderBy: { createdAt: 'asc' } },
       },
     });
     if (!order) throw new NotFoundException(`Order not found: ${id}`);
@@ -170,7 +203,8 @@ export class OrdersService {
   }
 
   async updateStatus(id: string, dto: UpdateOrderStatusDto) {
-    return this.prisma.$transaction(async (transaction) => {
+    return this.prisma.$transaction(
+      async (transaction) => {
       const order = await transaction.order.findFirst({
         where: { OR: [{ id }, { orderNumber: id }, { orderNumber: this.normalizeOrderNumber(id) }] },
         include: { items: { select: { variantId: true, quantity: true } } },
@@ -228,12 +262,22 @@ export class OrdersService {
         },
       });
       return updated;
-    });
+    }, { maxWait: 10000, timeout: 30000 });
   }
 
   async create(dto: CreateOrderDto, customerId?: string) {
     if (!dto.items.length) throw new BadRequestException('Order must contain at least one item');
-    if (!customerId && (!dto.guestName?.trim() || !dto.shippingAddress.phone)) {
+    const guestName = customerId
+      ? null
+      : (dto.guestName?.trim() || dto.shippingAddress.fullName?.trim() || null);
+    const guestPhone = customerId
+      ? null
+      : (dto.shippingAddress.phone?.trim() || null);
+    const guestEmail = customerId
+      ? null
+      : (dto.guestEmail?.toLowerCase().trim() || dto.shippingAddress.email?.toLowerCase().trim() || null);
+
+    if (!customerId && (!guestName || !guestPhone)) {
       throw new BadRequestException('Guest checkout requires a name and contact phone');
     }
     const paymentMethod = dto.paymentMethod ?? 'COD';
@@ -251,8 +295,9 @@ export class OrdersService {
     const outsideDhakaDeliveryCharge = Number(settings.outsideDhakaDeliveryCharge);
     const trackingToken = customerId ? undefined : randomBytes(32).toString('base64url');
     const orderNumber = `#RL${Date.now().toString().slice(-8)}${randomBytes(2).toString('hex').toUpperCase()}`;
-    const createdOrder = await this.prisma.$transaction(async (transaction) => {
-      const orderItems = [];
+    const createdOrder = await this.prisma.$transaction(
+      async (transaction) => {
+        const orderItems = [];
       let subtotal = 0;
       for (const item of dto.items) {
         const variant = await transaction.productVariant.findFirst({
@@ -345,6 +390,7 @@ export class OrdersService {
 
       const isDhaka = dto.shippingAddress.division.toLowerCase().includes('dhaka');
       const deliveryCharge =
+        settings.freeShippingEnabled !== false &&
         subtotal - discountAmount >= freeDeliveryThreshold
           ? 0
           : isDhaka
@@ -354,9 +400,9 @@ export class OrdersService {
         data: {
           orderNumber,
           customerId: customerId ?? null,
-          guestName: customerId ? null : dto.guestName?.trim(),
-          guestEmail: customerId ? null : dto.guestEmail?.toLowerCase(),
-          guestPhone: customerId ? null : dto.shippingAddress.phone,
+          guestName,
+          guestEmail,
+          guestPhone,
           trackingTokenHash: trackingToken ? hashToken(trackingToken) : null,
           status: 'PENDING',
           paymentStatus: 'PENDING',
@@ -398,7 +444,7 @@ export class OrdersService {
         select: customerOrderDetailSelect,
       });
       return { order, couponId };
-    });
+    }, { maxWait: 10000, timeout: 30000 });
     return {
       id: createdOrder.order.id,
       orderNumber: createdOrder.order.orderNumber,

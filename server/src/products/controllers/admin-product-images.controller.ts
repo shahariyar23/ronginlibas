@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Delete,
   Post,
@@ -52,7 +53,9 @@ export class AdminProductImagesController {
       },
     }),
   )
-  async upload(@UploadedFile() file?: Express.Multer.File) {
+  async upload(
+    @UploadedFile() file?: { buffer: Buffer; mimetype: string },
+  ) {
     if (!file) throw new BadRequestException('An image file is required');
     const uploaded = await this.cloudinary.uploadProductImage(file.buffer);
     return {
@@ -61,9 +64,11 @@ export class AdminProductImagesController {
     };
   }
 
-  @Delete()
+  @Delete('cleanup')
+  @ApiBody({ type: DeleteProductImageDto })
   @ApiOperation({ summary: 'Delete an unassociated product image from Cloudinary' })
-  async destroy(@UploadedFile() _unused?: Express.Multer.File) {
-    throw new BadRequestException('Use the product image deletion payload');
+  async destroy(@Body() dto: DeleteProductImageDto) {
+    await this.cloudinary.destroyProductImage(dto.publicId);
+    return { message: 'Product image deleted successfully' };
   }
 }

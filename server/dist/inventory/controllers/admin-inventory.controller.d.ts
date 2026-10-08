@@ -22,6 +22,7 @@ export declare class AdminInventoryController {
                 size: string;
                 color: string;
                 sizeLabel: string | null;
+                sizeType: string | null;
                 stock: number;
                 priceOverride: import("@prisma/client/runtime/library").Decimal | null;
             };

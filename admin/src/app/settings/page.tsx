@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAdmin } from '@/context/AdminContext';
-import { Settings, Save, CheckCircle2, Shield, Phone, Globe, CreditCard, Truck, RefreshCw } from 'lucide-react';
+import { Settings, Save, CheckCircle2, Shield, Phone, Globe, CreditCard, Truck, RefreshCw, Tag } from 'lucide-react';
+import { SettingsSkeleton } from '@/components/common/Skeleton';
 
 export default function SettingsPage() {
-  const { settings, updateSettings, backendConnected, refreshData } = useAdmin();
+  const { settings, updateSettings, backendConnected, refreshData, isLoading } = useAdmin();
   const [form, setForm] = useState(settings);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -32,6 +33,10 @@ export default function SettingsPage() {
       setIsSaving(false);
     }
   };
+
+  if (isLoading) {
+    return <SettingsSkeleton />;
+  }
 
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-8">
@@ -136,6 +141,22 @@ export default function SettingsPage() {
                 className="w-full px-3 py-2 bg-[#fbf9f2] border border-[#deddd3] text-xs text-[#1b1c18] focus:border-[#073a2d] outline-hidden font-mono"
               />
             </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[#717975] mb-1.5">
+                Official Facebook Page URL
+              </label>
+              <input
+                type="url"
+                value={form.facebook || ''}
+                onChange={(e) => handleChange('facebook', e.target.value)}
+                placeholder="https://facebook.com/ronginlibasofficial"
+                className="w-full px-3 py-2 bg-[#fbf9f2] border border-[#deddd3] text-xs text-[#1b1c18] focus:border-[#073a2d] outline-hidden font-mono"
+              />
+              <span className="text-[10px] text-[#717975] mt-1 block">
+                Linked in storefront header, footer, and community editorial gallery
+              </span>
+            </div>
           </div>
         </div>
 
@@ -186,6 +207,94 @@ export default function SettingsPage() {
               <span className="text-[10px] text-[#717975] mt-1 block">Free delivery above this cart value</span>
             </div>
           </div>
+        </div>
+
+        {/* Storefront Announcements */}
+        <div className="bg-white border border-[#deddd3] p-6 shadow-xs space-y-5">
+          <div className="flex items-center gap-2 pb-3 border-b border-[#f0eee7]">
+            <Tag className="w-4 h-4 text-[#073a2d]" />
+            <div>
+              <h2 className="font-serif text-base font-medium text-[#1b1c18]">Storefront Announcements</h2>
+              <p className="text-[11px] text-[#717975] mt-0.5">
+                Control which store offers and contact links appear in the customer site header.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <label className="flex items-center justify-between gap-4 p-3.5 border border-[#deddd3] bg-[#fbf9f2] cursor-pointer">
+              <span>
+                <span className="block text-xs font-semibold text-[#1b1c18]">Free shipping announcement</span>
+                <span className="block text-[11px] text-[#717975] mt-1">
+                  Uses the threshold configured in Shipping &amp; Delivery Tariffs.
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                checked={form.freeShippingEnabled}
+                onChange={(e) => handleChange('freeShippingEnabled', e.target.checked)}
+                className="h-4 w-4 accent-[#073a2d]"
+              />
+            </label>
+
+            <label className="flex items-center justify-between gap-4 p-3.5 border border-[#deddd3] bg-[#fbf9f2] cursor-pointer">
+              <span>
+                <span className="block text-xs font-semibold text-[#1b1c18]">Promotion announcement</span>
+                <span className="block text-[11px] text-[#717975] mt-1">
+                  The coupon system still validates and calculates the discount.
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                checked={form.promoEnabled}
+                onChange={(e) => handleChange('promoEnabled', e.target.checked)}
+                className="h-4 w-4 accent-[#073a2d]"
+              />
+            </label>
+
+            <label className="flex items-center justify-between gap-4 p-3.5 border border-[#deddd3] bg-[#fbf9f2] cursor-pointer">
+              <span>
+                <span className="block text-xs font-semibold text-[#1b1c18]">WhatsApp order link</span>
+                <span className="block text-[11px] text-[#717975] mt-1">
+                  Uses the VIP Concierge WhatsApp number above.
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                checked={form.whatsappOrderEnabled}
+                onChange={(e) => handleChange('whatsappOrderEnabled', e.target.checked)}
+                className="h-4 w-4 accent-[#073a2d]"
+              />
+            </label>
+          </div>
+
+          {form.promoEnabled && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#717975] mb-1.5">
+                  Announcement Coupon Code
+                </label>
+                <input
+                  type="text"
+                  value={form.promoCode || ''}
+                  onChange={(e) => handleChange('promoCode', e.target.value.toUpperCase())}
+                  className="w-full px-3 py-2 bg-[#fbf9f2] border border-[#deddd3] text-xs text-[#1b1c18] focus:border-[#073a2d] outline-hidden font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#717975] mb-1.5">
+                  Discount Display Text
+                </label>
+                <input
+                  type="text"
+                  value={form.promoDiscountText || ''}
+                  onChange={(e) => handleChange('promoDiscountText', e.target.value)}
+                  placeholder="For example, 15% OFF"
+                  className="w-full px-3 py-2 bg-[#fbf9f2] border border-[#deddd3] text-xs text-[#1b1c18] focus:border-[#073a2d] outline-hidden"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Payment Gateways */}

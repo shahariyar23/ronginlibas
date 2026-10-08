@@ -2,6 +2,7 @@ export interface Product {
   id: string;
   slug: string;
   name: string;
+  sku?: string;
   category: 'panjabi' | 'shirts' | 'polos' | 't-shirts' | 'trousers' | 'casual' | 'accessories';
   categoryLabel: string;
   price: number;
@@ -10,10 +11,16 @@ export interface Product {
   tag?: string;
   images: string[];
   description: string;
+  shortDescription?: string;
   fabric: string;
   fabricOrigin?: string;
   fit: string;
+  gsm?: number;
+  careInstructions?: string;
   careGuide: string[];
+  gender?: 'MEN' | 'WOMEN' | 'UNISEX';
+  tags?: string[];
+  isExpressAvailable?: boolean;
   sizes: string[];
   colors: {
     name: string;
@@ -28,10 +35,13 @@ export interface Product {
     id: string;
     size: string;
     sizeLabel?: string | null;
+    sizeType?: 'APPAREL' | 'WAIST' | 'CUSTOM' | null;
+    measurements?: Record<string, number | string> | null;
     color: string;
     stock: number;
     priceOverride?: number | string | null;
     isActive?: boolean;
+    sku?: string;
   }[];
 }
 

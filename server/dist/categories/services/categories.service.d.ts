@@ -8,53 +8,53 @@ export declare class CategoriesService {
     constructor(prisma: PrismaService, productsService: ProductsService);
     findAll(isAdmin?: boolean): Promise<{
         description: string | null;
-        sortOrder: number;
-        name: string;
-        slug: string;
         id: string;
+        name: string;
+        _count: {
+            products: number;
+        };
+        sortOrder: number;
+        slug: string;
         image: string | null;
         parentId: string | null;
         children: {
             description: string | null;
-            sortOrder: number;
-            name: string;
-            slug: string;
             id: string;
+            name: string;
+            sortOrder: number;
+            slug: string;
             image: string | null;
         }[];
-        _count: {
-            products: number;
-        };
     }[]>;
     findBySlug(slug: string): Promise<{
         description: string | null;
-        name: string;
-        slug: string;
         id: string;
+        name: string;
+        _count: {
+            products: number;
+        };
+        slug: string;
         image: string | null;
         parentId: string | null;
         children: {
             description: string | null;
+            id: string;
             name: string;
             slug: string;
-            id: string;
             image: string | null;
         }[];
-        _count: {
-            products: number;
-        };
     }>;
     findProductsBySlug(slug: string, query: ProductQueryDto): Promise<import("../../common/dto/pagination-query.dto.js").PaginatedResult<any>>;
     create(dto: CreateCategoryDto): Promise<{
         description: string | null;
-        sortOrder: number;
-        name: string;
-        slug: string;
-        isActive: boolean;
         id: string;
-        image: string | null;
-        parentId: string | null;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        sortOrder: number;
+        slug: string;
+        image: string | null;
+        parentId: string | null;
     }>;
 }

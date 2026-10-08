@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 import {
   Eye,
   EyeOff,
@@ -30,7 +31,7 @@ export const LoginClient: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') === 'register' ? 'register' : 'signin';
-  const { login, register, isLoggedIn } = useAuth();
+  const { login, register, isLoggedIn, isLoading, user, logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'signin' | 'register'>(initialTab);
 
@@ -57,6 +58,20 @@ export const LoginClient: React.FC = () => {
     }
   }, [searchParams]);
 
+  // If user is already logged in, redirect them away from login & register
+  useEffect(() => {
+    if (!isLoading && isLoggedIn) {
+      const nextParam = searchParams.get('next');
+      const target =
+        nextParam &&
+        !nextParam.startsWith('/login') &&
+        !nextParam.startsWith('/register')
+          ? nextParam
+          : '/profile';
+      router.replace(target);
+    }
+  }, [isLoading, isLoggedIn, router, searchParams]);
+
   // Password strength calculation
   const getPasswordStrength = (pw: string) => {
     if (!pw) return { score: 0, label: 'Enter Password', color: 'bg-[#deddd3]' };
@@ -73,7 +88,16 @@ export const LoginClient: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      if (await login(signInEmail, signInPassword)) router.push('/profile');
+      if (await login(signInEmail, signInPassword)) {
+        const nextParam = searchParams.get('next');
+        const target =
+          nextParam &&
+          !nextParam.startsWith('/login') &&
+          !nextParam.startsWith('/register')
+            ? nextParam
+            : '/profile';
+        router.push(target);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -100,11 +124,80 @@ export const LoginClient: React.FC = () => {
         regPassword,
         termsAccepted,
       );
-      if (registered) router.push('/profile');
+      if (registered) {
+        const nextParam = searchParams.get('next');
+        const target =
+          nextParam &&
+          !nextParam.startsWith('/login') &&
+          !nextParam.startsWith('/register')
+            ? nextParam
+            : '/profile';
+        router.push(target);
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen pt-32 pb-20 flex items-center justify-center bg-[#fbf9f2]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-[#073a2d] border-t-transparent rounded-full animate-spin" />
+          <span className="font-sans text-xs uppercase tracking-widest text-[#717975]">
+            Verifying Patron Credentials...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // Logged-in user cannot view or access login or register forms
+  if (isLoggedIn) {
+    return (
+      <div className="min-h-screen pt-28 pb-20 bg-[#fbf9f2] flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white border border-[#deddd3] p-8 sm:p-10 text-center shadow-xl">
+          <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-[#073a2d]/10 text-[#073a2d] flex items-center justify-center">
+            <ShieldCheck className="w-8 h-8 text-[#073a2d]" />
+          </div>
+          <Badge className="bg-[#073a2d] text-white text-[10px] font-sans uppercase tracking-widest px-2.5 py-0.5 mb-3">
+            Active Patron Session
+          </Badge>
+          <h1 className="font-serif text-2xl sm:text-3xl text-[#073a2d] mb-2 font-normal">
+            Already Signed In
+          </h1>
+          <p className="font-sans text-xs sm:text-sm text-[#69726d] leading-relaxed mb-6">
+            You are currently signed in as <span className="font-semibold text-[#073a2d]">{user?.name || user?.email || 'Patron'}</span>. You cannot visit the login or register page while signed in.
+          </p>
+          <div className="space-y-3">
+            <Link
+              href="/profile"
+              className="w-full inline-flex items-center justify-center gap-2 bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-widest py-3.5 px-6 font-semibold shadow-md transition-all cursor-pointer"
+            >
+              <User className="w-4 h-4 text-[#c79a45]" />
+              <span>Go to Patron Sanctuary</span>
+            </Link>
+            <Link
+              href="/shop"
+              className="w-full inline-flex items-center justify-center gap-2 bg-[#f5f4ed] hover:bg-[#eae8e1] text-[#073a2d] font-sans text-xs uppercase tracking-wider py-3 px-6 font-semibold transition-all cursor-pointer"
+            >
+              <span>Explore Collection</span>
+            </Link>
+            <button
+              type="button"
+              onClick={async () => {
+                await logout();
+                toast.info('You have signed out.');
+              }}
+              className="w-full text-xs text-[#ba1a1a] hover:underline font-sans pt-2 cursor-pointer"
+            >
+              Sign out to use another account
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pt-8 sm:pt-10 pb-20 bg-[#fbf9f2]">
@@ -198,13 +291,30 @@ export const LoginClient: React.FC = () => {
           {/* Right Dual-Tabbed Auth Sanctuary (7 Cols) */}
           <div className="lg:col-span-7 p-6 sm:p-10 md:p-12 flex flex-col justify-center bg-white">
             {/* Crest & Title */}
-            <div className="text-center pb-8">
+            <div className="text-center pb-6">
               <div className="flex justify-center mb-4">
                 <Logo className="h-11 w-auto" />
               </div>
               <h2 className="font-serif text-2xl sm:text-3xl text-[#073a2d] mt-1 font-normal">
                 Patron Sanctuary Portal
               </h2>
+            </div>
+
+            {/* Unauthenticated Alert Banner */}
+            <div className="max-w-md mx-auto w-full mb-6 p-4 bg-[#fdf8ed] border border-[#e8d5aa] text-[#073a2d] flex items-start gap-3 shadow-xs">
+              <div className="w-8 h-8 rounded-full bg-[#c79a45]/20 text-[#073a2d] flex items-center justify-center shrink-0 mt-0.5">
+                <Lock className="w-4 h-4 text-[#073a2d]" />
+              </div>
+              <div>
+                <h3 className="font-serif text-sm font-semibold text-[#073a2d]">
+                  You are not logged in. Please login first.
+                </h3>
+                <p className="font-sans text-xs text-[#69726d] mt-0.5">
+                  {searchParams.get('next')
+                    ? 'Please sign in or join the atelier to continue to your requested page.'
+                    : 'Sign in to access your bespoke orders, doorstep tailoring records, and patron privileges.'}
+                </p>
+              </div>
             </div>
 
             {/* Dual Tab Switcher */}

@@ -45,7 +45,7 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-64 bg-[#00231a] text-[#deddd3] flex flex-col min-h-screen border-r border-[#12503e]/40 shrink-0 select-none">
+    <aside className="flex h-full w-64 shrink-0 flex-col overflow-hidden border-r border-[#12503e]/40 bg-[#00231a] text-[#deddd3] select-none">
       {/* Brand Header */}
       <div className="p-6 border-b border-[#12503e]/30 flex items-center gap-3">
         <div className="w-14 h-14 bg-white border border-[#c79a45]/40 flex items-center justify-center p-1 shrink-0">
@@ -68,7 +68,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation list */}
-      <div className="flex-1 px-3 py-5 overflow-y-auto space-y-6">
+      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-3 py-5">
         <div>
           <div className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-[#76a493]">
             NAVIGATION

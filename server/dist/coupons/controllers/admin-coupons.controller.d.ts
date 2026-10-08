@@ -60,4 +60,23 @@ export declare class AdminCouponsController {
             usageCount: number;
         };
     }>;
+    remove(id: string): Promise<{
+        message: string;
+        data: {
+            value: import("@prisma/client/runtime/library").Decimal;
+            type: import("@prisma/client").$Enums.CouponType;
+            description: string | null;
+            id: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string;
+            minimumOrderAmount: import("@prisma/client/runtime/library").Decimal;
+            maximumDiscount: import("@prisma/client/runtime/library").Decimal | null;
+            startDate: Date;
+            expiryDate: Date;
+            usageLimit: number | null;
+            usageCount: number;
+        };
+    }>;
 }

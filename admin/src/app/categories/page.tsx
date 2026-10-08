@@ -17,9 +17,13 @@ interface CategoryItem {
 const INITIAL_CATEGORIES: CategoryItem[] = [];
 
 import { adminApi } from '@/lib/api';
+import { useAdmin } from '@/context/AdminContext';
+import { CategoriesSkeleton } from '@/components/common/Skeleton';
 
 export default function CategoriesPage() {
+  const { refreshData } = useAdmin();
   const [categories, setCategories] = useState<CategoryItem[]>(INITIAL_CATEGORIES);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newName, setNewName] = useState('');
   const [newTagline, setNewTagline] = useState('');
@@ -45,6 +49,8 @@ export default function CategoriesPage() {
         }
       } catch (err) {
         console.warn('Categories API fetch fallback:', err);
+      } finally {
+        setIsLoadingCategories(false);
       }
     }
     loadCategories();
@@ -67,15 +73,33 @@ export default function CategoriesPage() {
     setNewTagline('');
 
     try {
-      await adminApi.categories.create({
+      const res = await adminApi.categories.create({
         name: newName,
         description: newTagline || undefined,
         image: item.image,
       });
+      if (res.success && res.data) {
+        setCategories((prev) =>
+          prev.map((cat) =>
+            cat.id === item.id
+              ? {
+                  ...cat,
+                  id: res.data.id,
+                  slug: res.data.slug || cat.slug,
+                }
+              : cat,
+          ),
+        );
+      }
+      await refreshData();
     } catch (err) {
       console.warn('Error saving category to backend:', err);
     }
   };
+
+  if (isLoadingCategories) {
+    return <CategoriesSkeleton />;
+  }
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">

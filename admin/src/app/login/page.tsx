@@ -11,7 +11,6 @@ import {
   LockKeyhole,
   Mail,
   ShieldCheck,
-  KeyRound,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
@@ -22,12 +21,6 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-
-  const handleQuickFill = () => {
-    setEmail('admin@ronginlibas.com');
-    setPassword('AtelierSecret2026!');
-    setErrorMessage('');
-  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -234,30 +227,6 @@ export default function AdminLoginPage() {
               {!isSubmitting && <ArrowRight className="h-4 w-4" />}
             </button>
           </form>
-
-          {/* Quick Demo Credentials for Atelier Staff */}
-          <div className="mt-6 border border-[#deddd3] bg-white p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <KeyRound className="h-4 w-4 text-[#c79a45] shrink-0" />
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#073a2d]">
-                    Master Staff Credentials
-                  </p>
-                  <p className="text-[11px] text-[#717975]">
-                    admin@ronginlibas.com
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleQuickFill}
-                className="border border-[#c79a45]/60 bg-[#fbf9f2] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#8c6722] hover:bg-[#073a2d] hover:text-[#f8f6ef] hover:border-[#073a2d] transition-colors"
-              >
-                Auto-fill
-              </button>
-            </div>
-          </div>
 
           <div className="mt-8 flex items-start gap-3 border-t border-[#deddd3] pt-5">
             <LockKeyhole

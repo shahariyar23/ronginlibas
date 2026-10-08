@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Plus, Minus, Trash2, ArrowRight, ShieldCheck, Tag, ShoppingCart } from 'lucide-react';
+import { useStorefront } from '@/context/StorefrontContext';
 
 export const CartDrawer: React.FC = () => {
   const {
@@ -32,12 +33,18 @@ export const CartDrawer: React.FC = () => {
     applyCoupon,
     removeCoupon,
   } = useCart();
+  const { settings } = useStorefront();
 
   const [couponInput, setCouponInput] = useState('');
 
-  const freeShippingThreshold = 3000;
+  const freeShippingThreshold = Number(settings?.freeDeliveryThreshold ?? 0);
+  const showFreeShippingProgress =
+    settings?.freeShippingEnabled && Number.isFinite(freeShippingThreshold);
   const remainingForFreeShipping = Math.max(0, freeShippingThreshold - subtotal);
-  const freeShippingProgress = Math.min(100, (subtotal / freeShippingThreshold) * 100);
+  const freeShippingProgress =
+    freeShippingThreshold > 0
+      ? Math.min(100, (subtotal / freeShippingThreshold) * 100)
+      : 100;
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,26 +78,28 @@ export const CartDrawer: React.FC = () => {
           </div>
 
           {/* Free Shipping Progress Indicator */}
-          <div className="mt-4 pt-4 border-t border-[#f0eee7]">
-            <div className="flex items-center justify-between text-xs mb-1.5 font-sans">
-              {remainingForFreeShipping > 0 ? (
-                <span className="text-[#69726d]">
-                  Add <strong className="text-[#073a2d]">৳{remainingForFreeShipping.toLocaleString()}</strong> more for complimentary shipping
-                </span>
-              ) : (
-                <span className="text-[#073a2d] font-semibold flex items-center gap-1">
-                  ✓ Complimentary Nationwide Delivery Unlocked
-                </span>
-              )}
-              <span className="font-bold text-[#073a2d]">{Math.round(freeShippingProgress)}%</span>
+          {showFreeShippingProgress && (
+            <div className="mt-4 pt-4 border-t border-[#f0eee7]">
+              <div className="flex items-center justify-between text-xs mb-1.5 font-sans">
+                {remainingForFreeShipping > 0 ? (
+                  <span className="text-[#69726d]">
+                    Add <strong className="text-[#073a2d]">৳{remainingForFreeShipping.toLocaleString()}</strong> more for complimentary shipping
+                  </span>
+                ) : (
+                  <span className="text-[#073a2d] font-semibold flex items-center gap-1">
+                    ✓ Complimentary Nationwide Delivery Unlocked
+                  </span>
+                )}
+                <span className="font-bold text-[#073a2d]">{Math.round(freeShippingProgress)}%</span>
+              </div>
+              <div className="w-full h-1.5 bg-[#eae8e1] overflow-hidden">
+                <div
+                  className="h-full bg-[#073a2d] transition-all duration-500 ease-out"
+                  style={{ width: `${freeShippingProgress}%` }}
+                />
+              </div>
             </div>
-            <div className="w-full h-1.5 bg-[#eae8e1] overflow-hidden">
-              <div
-                className="h-full bg-[#073a2d] transition-all duration-500 ease-out"
-                style={{ width: `${freeShippingProgress}%` }}
-              />
-            </div>
-          </div>
+          )}
         </SheetHeader>
 
         {/* Bag Content */}
@@ -211,7 +220,7 @@ export const CartDrawer: React.FC = () => {
               ) : (
                 <form onSubmit={handleApplyCoupon} className="flex gap-2">
                   <Input
-                    placeholder="Enter Coupon (e.g. RONGINLAUNCH)"
+                    placeholder="Enter Coupon Code"
                     value={couponInput}
                     onChange={(e) => setCouponInput(e.target.value)}
                     className="h-10 text-xs bg-[#fbf9f2] border-[#deddd3] rounded-none focus-visible:ring-[#073a2d]"

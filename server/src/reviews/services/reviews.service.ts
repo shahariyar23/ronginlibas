@@ -62,15 +62,16 @@ export class ReviewsService {
 
   async findProductReviews(productId: string, query: PaginationQueryDto) {
     const product = await this.prisma.product.findFirst({
-      where: { id: productId, isActive: true },
+      where: { OR: [{ id: productId }, { slug: productId }], isActive: true },
       select: { id: true },
     });
     if (!product) throw new NotFoundException('Product not found');
+    const resolvedProductId = product.id;
 
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
-    const where = { productId, status: 'APPROVED' as const };
-    const [reviews, total, ratingSummary] = await Promise.all([
+    const where = { productId: resolvedProductId, status: 'APPROVED' as const };
+    const [reviews, total, ratingSummary, distribution] = await Promise.all([
       this.prisma.review.findMany({
         where,
         skip: (page - 1) * limit,
@@ -87,12 +88,17 @@ export class ReviewsService {
       }),
       this.prisma.review.count({ where }),
       this.prisma.review.aggregate({ where, _avg: { rating: true } }),
+      this.prisma.review.groupBy({
+        by: ['rating'],
+        where,
+        _count: { _all: true },
+      }),
     ]);
     const reviewIds = reviews.map((review) => review.id);
     const [verifiedOrders, votes] = await Promise.all([
       this.prisma.orderItem.findMany({
         where: {
-          productId,
+          productId: resolvedProductId,
           order: {
             status: 'DELIVERED',
             customerId: { in: [...new Set(reviews.map((review) => review.customerId))] },
@@ -112,6 +118,15 @@ export class ReviewsService {
     const verifiedCustomerIds = new Set(
       verifiedOrders.map((item) => item.order.customerId).filter((id): id is string => Boolean(id)),
     );
+
+    const ratingDistribution = {
+      5: distribution.find((d) => d.rating === 5)?._count._all ?? 0,
+      4: distribution.find((d) => d.rating === 4)?._count._all ?? 0,
+      3: distribution.find((d) => d.rating === 3)?._count._all ?? 0,
+      2: distribution.find((d) => d.rating === 2)?._count._all ?? 0,
+      1: distribution.find((d) => d.rating === 1)?._count._all ?? 0,
+    };
+
     return {
       items: reviews.map((review) => ({
         id: review.id,
@@ -125,14 +140,170 @@ export class ReviewsService {
         helpfulNo:
           votes.find((vote) => vote.reviewId === review.id && !vote.helpful)?._count._all ?? 0,
       })),
-      averageRating: ratingSummary._avg.rating ?? 0,
+      averageRating: ratingSummary._avg.rating ? Number(ratingSummary._avg.rating.toFixed(1)) : 0,
+      ratingDistribution,
       page,
       limit,
       total,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(total / limit) || 1,
       hasNext: (page - 1) * limit + reviews.length < total,
       hasPrevious: page > 1,
     };
+  }
+
+  async checkEligibility(productId: string, customerId: string) {
+    const product = await this.prisma.product.findFirst({
+      where: { OR: [{ id: productId }, { slug: productId }], isActive: true },
+      select: { id: true },
+    });
+    if (!product) throw new NotFoundException('Product not found');
+    const resolvedProductId = product.id;
+
+    const previous = await this.prisma.review.findFirst({
+      where: { productId: resolvedProductId, customerId },
+      select: { id: true, status: true, rating: true, createdAt: true },
+    });
+    if (previous) {
+      return {
+        canReview: false,
+        reason: 'ALREADY_REVIEWED',
+        existingReview: previous,
+      };
+    }
+
+    const purchase = await this.prisma.orderItem.findFirst({
+      where: {
+        productId: resolvedProductId,
+        order: { customerId, status: 'DELIVERED' },
+      },
+      select: {
+        id: true,
+        order: { select: { id: true, orderNumber: true, updatedAt: true } },
+      },
+    });
+
+    if (!purchase) {
+      return {
+        canReview: false,
+        reason: 'NO_DELIVERED_PURCHASE',
+      };
+    }
+
+    return {
+      canReview: true,
+      reason: 'ELIGIBLE',
+      orderNumber: purchase.order.orderNumber,
+    };
+  }
+
+  async findCustomerReviews(customerId: string) {
+    const reviews = await this.prisma.review.findMany({
+      where: { customerId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            images: {
+              where: { isPrimary: true },
+              select: { url: true, altText: true },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+    return reviews.map((r) => ({
+      id: r.id,
+      productId: r.productId,
+      productName: r.product.name,
+      productSlug: r.product.slug,
+      productImage: r.product.images[0]?.url ?? null,
+      rating: r.rating,
+      comment: r.comment,
+      status: r.status,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    }));
+  }
+
+  async findEligibleProducts(customerId: string) {
+    const deliveredItems = await this.prisma.orderItem.findMany({
+      where: {
+        order: {
+          customerId,
+          status: 'DELIVERED',
+        },
+      },
+      include: {
+        order: {
+          select: {
+            id: true,
+            orderNumber: true,
+            updatedAt: true,
+          },
+        },
+        product: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            images: {
+              where: { isPrimary: true },
+              select: { url: true, altText: true },
+              take: 1,
+            },
+          },
+        },
+      },
+      orderBy: { order: { createdAt: 'desc' } },
+    });
+
+    const customerReviews = await this.prisma.review.findMany({
+      where: { customerId },
+      select: { productId: true },
+    });
+    const reviewedProductIds = new Set(customerReviews.map((r) => r.productId));
+
+    const eligibleList: Array<{
+      orderId: string;
+      orderNumber: string;
+      deliveredAt: Date;
+      product: {
+        id: string;
+        name: string;
+        slug: string;
+        image: string | null;
+      };
+      size: string;
+      color: string;
+    }> = [];
+
+    const seenProducts = new Set<string>();
+
+    for (const item of deliveredItems) {
+      if (reviewedProductIds.has(item.productId)) continue;
+      if (seenProducts.has(item.productId)) continue;
+      seenProducts.add(item.productId);
+
+      eligibleList.push({
+        orderId: item.order.id,
+        orderNumber: item.order.orderNumber,
+        deliveredAt: item.order.updatedAt,
+        product: {
+          id: item.product.id,
+          name: item.product.name,
+          slug: item.product.slug,
+          image: item.product.images[0]?.url ?? null,
+        },
+        size: item.size ?? '',
+        color: item.color ?? '',
+      });
+    }
+
+    return eligibleList;
   }
 
   async createForProduct(
@@ -141,16 +312,18 @@ export class ReviewsService {
     customerId: string,
   ) {
     const product = await this.prisma.product.findFirst({
-      where: { id: productId, isActive: true },
+      where: { OR: [{ id: productId }, { slug: productId }], isActive: true },
       select: { id: true },
     });
     if (!product) throw new NotFoundException('Product not found');
+    const resolvedProductId = product.id;
+
     try {
       return await this.prisma.$transaction(
         async (transaction) => {
           const purchase = await transaction.orderItem.findFirst({
             where: {
-              productId,
+              productId: resolvedProductId,
               order: { customerId, status: 'DELIVERED' },
             },
             select: { id: true },
@@ -159,7 +332,7 @@ export class ReviewsService {
             throw new ForbiddenException('A delivered purchase is required to review this product');
           }
           const previous = await transaction.review.findFirst({
-            where: { productId, customerId },
+            where: { productId: resolvedProductId, customerId },
             select: { id: true },
           });
           if (previous) {
@@ -167,7 +340,7 @@ export class ReviewsService {
           }
           return transaction.review.create({
             data: {
-              productId,
+              productId: resolvedProductId,
               customerId,
               rating: dto.rating,
               comment: dto.comment,
@@ -218,15 +391,11 @@ export class ReviewsService {
       select: { id: true },
     });
     if (!review) throw new NotFoundException('Review not found');
-    try {
-      await this.prisma.reviewVote.create({ data: { reviewId, customerId, helpful } });
-    } catch (error) {
-      if (isUniqueConstraintError(error)) {
-        throw new ConflictException('Feedback has already been recorded for this review');
-      }
-      throw error;
-    }
-    return { recorded: true };
+    return this.prisma.reviewVote.upsert({
+      where: { reviewId_customerId: { reviewId, customerId } },
+      create: { reviewId, customerId, helpful },
+      update: { helpful },
+    });
   }
 
   async updateStatus(id: string, status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'HIDDEN') {

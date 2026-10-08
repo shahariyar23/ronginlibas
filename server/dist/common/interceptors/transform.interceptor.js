@@ -48,11 +48,16 @@ let TransformInterceptor = class TransformInterceptor {
         if (!data || typeof data !== 'object') {
             return data ?? null;
         }
+        if ('cartId' in data || 'subtotal' in data || 'orderNumber' in data) {
+            return data;
+        }
         if (Array.isArray(data.items)) {
             if (data.meta && typeof data.meta === 'object') {
                 return data;
             }
-            if ('page' in data || 'total' in data || 'limit' in data) {
+            if (('page' in data && 'limit' in data) ||
+                ('page' in data && 'total' in data) ||
+                'totalPages' in data) {
                 const page = Number(data.page) || 1;
                 const limit = Number(data.limit) || (data.items.length || 20);
                 const total = Number(data.total) || data.items.length;
@@ -72,6 +77,7 @@ let TransformInterceptor = class TransformInterceptor {
                     hasPrevious,
                 };
                 return {
+                    ...data,
                     items: data.items,
                     meta,
                 };

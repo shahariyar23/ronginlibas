@@ -4,11 +4,22 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
 var PrismaService_1;
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 let PrismaService = PrismaService_1 = class PrismaService extends PrismaClient {
     logger = new Logger(PrismaService_1.name);
+    constructor() {
+        super({
+            transactionOptions: {
+                maxWait: 10000,
+                timeout: 30000,
+            },
+        });
+    }
     async onModuleInit() {
         try {
             await this.$connect();
@@ -24,7 +35,8 @@ let PrismaService = PrismaService_1 = class PrismaService extends PrismaClient {
     }
 };
 PrismaService = PrismaService_1 = __decorate([
-    Injectable()
+    Injectable(),
+    __metadata("design:paramtypes", [])
 ], PrismaService);
 export { PrismaService };
 //# sourceMappingURL=prisma.service.js.map

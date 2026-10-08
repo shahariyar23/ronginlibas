@@ -18,12 +18,43 @@ export declare class ProductReviewsController {
                 helpfulNo: number;
             }[];
             averageRating: number;
+            ratingDistribution: {
+                5: number;
+                4: number;
+                3: number;
+                2: number;
+                1: number;
+            };
             page: number;
             limit: number;
             total: number;
             totalPages: number;
             hasNext: boolean;
             hasPrevious: boolean;
+        };
+    }>;
+    checkEligibility(productId: string, customerId: string): Promise<{
+        message: string;
+        data: {
+            canReview: boolean;
+            reason: string;
+            existingReview: {
+                id: string;
+                createdAt: Date;
+                status: import("@prisma/client").$Enums.ReviewStatus;
+                rating: number;
+            };
+            orderNumber?: undefined;
+        } | {
+            canReview: boolean;
+            reason: string;
+            existingReview?: undefined;
+            orderNumber?: undefined;
+        } | {
+            canReview: boolean;
+            reason: string;
+            orderNumber: string;
+            existingReview?: undefined;
         };
     }>;
     create(productId: string, customerId: string, dto: CreateProductReviewDto): Promise<{

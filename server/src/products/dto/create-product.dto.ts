@@ -11,21 +11,27 @@ import {
   IsInt,
   MaxLength,
   IsObject,
+  IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Prisma } from '@prisma/client';
 
 export class CreateVariantDto {
-  @ApiProperty({ example: '40' })
+  @ApiProperty({ example: 'L', description: 'Canonical size label; do not put measurements here' })
   @IsString()
   @IsNotEmpty()
   size: string;
 
-  @ApiPropertyOptional({ example: 'M' })
+  @ApiPropertyOptional({ example: 'L', description: 'Canonical size label shown to customers' })
   @IsString()
   @IsOptional()
   sizeLabel?: string;
+
+  @ApiPropertyOptional({ enum: ['APPAREL', 'WAIST', 'CUSTOM'], example: 'APPAREL' })
+  @IsIn(['APPAREL', 'WAIST', 'CUSTOM'])
+  @IsOptional()
+  sizeType?: 'APPAREL' | 'WAIST' | 'CUSTOM';
 
   @ApiProperty({ example: 'Heritage Olive' })
   @IsString()
@@ -47,7 +53,9 @@ export class CreateVariantDto {
   @IsOptional()
   priceOverride?: number;
 
-  @ApiPropertyOptional({ description: 'Optional size-specific garment measurements' })
+  @ApiPropertyOptional({
+    description: 'Optional size-specific measurements, e.g. { chest: 40, unit: "IN" }',
+  })
   @IsObject()
   @IsOptional()
   measurements?: Prisma.InputJsonObject;
@@ -160,6 +168,12 @@ export class CreateProductDto {
   @IsString({ each: true })
   @IsOptional()
   tags?: string[];
+
+  @ApiPropertyOptional({ example: 5, default: 5 })
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  alertThreshold?: number;
 
   @ApiPropertyOptional()
   @IsBoolean()

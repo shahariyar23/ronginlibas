@@ -7,38 +7,38 @@ export declare class AdminCategoriesController {
         message: string;
         data: {
             description: string | null;
-            sortOrder: number;
-            name: string;
-            slug: string;
             id: string;
+            name: string;
+            _count: {
+                products: number;
+            };
+            sortOrder: number;
+            slug: string;
             image: string | null;
             parentId: string | null;
             children: {
                 description: string | null;
-                sortOrder: number;
-                name: string;
-                slug: string;
                 id: string;
+                name: string;
+                sortOrder: number;
+                slug: string;
                 image: string | null;
             }[];
-            _count: {
-                products: number;
-            };
         }[];
     }>;
     create(dto: CreateCategoryDto): Promise<{
         message: string;
         data: {
             description: string | null;
-            sortOrder: number;
-            name: string;
-            slug: string;
-            isActive: boolean;
             id: string;
-            image: string | null;
-            parentId: string | null;
+            isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            name: string;
+            sortOrder: number;
+            slug: string;
+            image: string | null;
+            parentId: string | null;
         };
     }>;
 }

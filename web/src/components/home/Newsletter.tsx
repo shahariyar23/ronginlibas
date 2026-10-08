@@ -6,8 +6,10 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Check, Mail } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
+import { useStorefront } from '@/context/StorefrontContext';
 
 export const Newsletter: React.FC = () => {
+  const { settings } = useStorefront();
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
 
@@ -46,7 +48,9 @@ export const Newsletter: React.FC = () => {
           <div className="p-4 bg-[#073a2d] border border-[#c79a45]/40 text-[#fbf9f2] max-w-md mx-auto flex items-center justify-center gap-3">
             <Check className="w-5 h-5 text-[#c79a45]" />
             <span className="font-sans text-xs uppercase tracking-wider font-semibold">
-              Thank you. Use code <strong>RONGINLAUNCH</strong> for 15% off.
+              {settings?.promoEnabled && settings.promoCode.trim()
+                ? <>Thank you. Use code <strong>{settings.promoCode}</strong>{settings.promoDiscountText.trim() ? ` for ${settings.promoDiscountText}.` : '.'}</>
+                : 'Thank you for joining Rongin Libas updates.'}
             </span>
           </div>
         ) : (

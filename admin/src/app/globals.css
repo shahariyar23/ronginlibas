@@ -88,3 +88,50 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #717975;
 }
+
+/* Atelier Luxury Skeleton Shimmer */
+@keyframes atelier-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.atelier-skeleton {
+  background: linear-gradient(
+    90deg,
+    #edebe3 0%,
+    #f8f6f0 50%,
+    #edebe3 100%
+  );
+  background-size: 200% 100%;
+  animation: atelier-shimmer 2s ease-in-out infinite;
+}
+
+/* Parcel Shipping Slip & Courier Invoice Print Styles */
+@media print {
+  @page {
+    size: auto;
+    margin: 8mm;
+  }
+  
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  header,
+  aside,
+  nav,
+  footer,
+  .print-hidden,
+  .print\:hidden {
+    display: none !important;
+  }
+}
+
+

@@ -29,6 +29,12 @@ let ProductReviewsController = class ProductReviewsController {
             data: await this.reviewsService.findProductReviews(productId, query),
         };
     }
+    async checkEligibility(productId, customerId) {
+        return {
+            message: 'Review eligibility checked',
+            data: await this.reviewsService.checkEligibility(productId, customerId),
+        };
+    }
     async create(productId, customerId, dto) {
         return {
             message: 'Review submitted for moderation',
@@ -46,6 +52,17 @@ __decorate([
     __metadata("design:paramtypes", [String, PaginationQueryDto]),
     __metadata("design:returntype", Promise)
 ], ProductReviewsController.prototype, "findForProduct", null);
+__decorate([
+    Get('eligibility'),
+    UseGuards(CustomerAuthGuard),
+    ApiBearerAuth(),
+    ApiOperation({ summary: 'Check if authenticated customer can review this product' }),
+    __param(0, Param('productId')),
+    __param(1, CurrentUser('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], ProductReviewsController.prototype, "checkEligibility", null);
 __decorate([
     Post(),
     UseGuards(CustomerAuthGuard),

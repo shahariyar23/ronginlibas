@@ -20,6 +20,30 @@ export interface AdminUser {
   type: string;
 }
 
+export type CouponDiscountType = 'PERCENTAGE' | 'FIXED';
+
+export interface AdminCoupon {
+  id: string;
+  code: string;
+  type: CouponDiscountType;
+  value: number | string;
+  minimumOrderAmount: number | string;
+  usageCount: number;
+  startDate: string;
+  expiryDate: string;
+  isActive: boolean;
+}
+
+export interface CreateCouponPayload {
+  code: string;
+  type: CouponDiscountType;
+  value: number;
+  minimumOrderAmount: number;
+  startDate: string;
+  expiryDate: string;
+  isActive: boolean;
+}
+
 export const getStoredToken = (): string | null => {
   if (typeof window === 'undefined') return memoryToken;
   try {
@@ -142,10 +166,12 @@ async function request<T>(
     let token = getStoredToken();
 
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
       Accept: 'application/json',
       ...((options.headers as Record<string, string>) || {}),
     };
+    if (typeof FormData === 'undefined' || !(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
@@ -243,6 +269,19 @@ export const adminApi = {
         method: 'POST',
         body: JSON.stringify(payload),
       }),
+    uploadImage: (file: File) => {
+      const body = new FormData();
+      body.append('file', file);
+      return request<{ url: string; publicId: string }>('/admin/products/images/upload', {
+        method: 'POST',
+        body,
+      });
+    },
+    destroyImage: (publicId: string) =>
+      request<void>('/admin/products/images/cleanup', {
+        method: 'DELETE',
+        body: JSON.stringify({ publicId }),
+      }),
     update: (id: string, payload: any) =>
       request<any>(`/admin/products/${id}`, {
         method: 'PATCH',
@@ -321,16 +360,20 @@ export const adminApi = {
 
   // Coupons
   coupons: {
-    getAll: () => request<any[]>('/admin/coupons'),
-    create: (payload: any) =>
-      request<any>('/admin/coupons', {
+    getAll: () => request<AdminCoupon[]>('/admin/coupons'),
+    create: (payload: CreateCouponPayload) =>
+      request<AdminCoupon>('/admin/coupons', {
         method: 'POST',
         body: JSON.stringify(payload),
       }),
-    update: (id: string, payload: any) =>
-      request<any>(`/admin/coupons/${id}`, {
+    update: (id: string, payload: Partial<CreateCouponPayload>) =>
+      request<AdminCoupon>(`/admin/coupons/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(payload),
+      }),
+    delete: (id: string) =>
+      request<AdminCoupon>(`/admin/coupons/${id}`, {
+        method: 'DELETE',
       }),
   },
 

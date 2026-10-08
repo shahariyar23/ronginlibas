@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { CreateCouponDto } from '../dto/create-coupon.dto.js';
 import { CouponCartItemDto } from '../dto/validate-coupon.dto.js';
@@ -113,13 +118,23 @@ export class CouponsService {
   async update(id: string, partial: Partial<CreateCouponDto>) {
     return this.prisma.coupon.update({ where: { id }, data: partial });
   }
+
+  async remove(id: string) {
+    try {
+      return await this.prisma.coupon.delete({ where: { id } });
+    } catch (error) {
+      if (isPrismaError(error, 'P2025')) {
+        throw new NotFoundException('Voucher not found');
+      }
+      throw error;
+    }
+  }
 }
 
 function isUniqueConstraintError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === 'P2002'
-  );
+  return isPrismaError(error, 'P2002');
+}
+
+function isPrismaError(error: unknown, code: string): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === code;
 }

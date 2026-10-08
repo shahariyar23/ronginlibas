@@ -8,7 +8,17 @@ import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useAuth } from '@/context/AuthContext';
 import { ProductCard } from '@/components/shop/ProductCard';
-import { getProduct, getRelatedProducts } from '@/lib/api';
+import {
+  getProduct,
+  getRelatedProducts,
+  getRecommendations,
+  getProductReviews,
+  checkReviewEligibility,
+  submitProductReview,
+  voteReviewHelpful,
+  ProductReview,
+  ReviewEligibilityResponse,
+} from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -28,57 +38,75 @@ import {
   PhoneCall,
   Plus,
   Minus,
-  Check,
   Share2,
   Star,
   ChevronDown,
   ChevronUp,
-  Package,
   Layers,
-  Camera,
-  CheckCircle2,
-  ExternalLink,
   Crown,
   Scissors,
   ArrowRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { apiRequest } from '@/lib/api';
+import { getWhatsAppUrl, useStorefront } from '@/context/StorefrontContext';
 
-interface ProductReview {
-  id: string;
-  rating: number;
-  comment: string;
-  createdAt: string;
-  customerName: string;
-  verifiedPurchase: boolean;
-  helpfulYes: number;
-  helpfulNo: number;
+function getMeasurementEntries(
+  variant: NonNullable<Product['variants']>[number] | undefined,
+  displayUnit: 'in' | 'cm',
+): Array<{ label: string; value: string }> {
+  if (!variant?.measurements) return [];
+  const sourceUnit = variant.measurements.unit === 'CM' ? 'cm' : 'in';
+  return Object.entries(variant.measurements)
+    .filter((entry): entry is [string, number] => entry[0] !== 'unit' && typeof entry[1] === 'number')
+    .map(([key, rawValue]) => {
+      const converted =
+        sourceUnit === displayUnit
+          ? rawValue
+          : displayUnit === 'cm'
+            ? rawValue * 2.54
+            : rawValue / 2.54;
+      return {
+        label: key.replace(/([A-Z])/g, ' $1').replace(/^./, (letter) => letter.toUpperCase()),
+        value: displayUnit === 'in' ? `${converted.toFixed(1)}"` : `${converted.toFixed(1)} cm`,
+      };
+    });
 }
 
 interface ProductDetailClientProps {
   product?: Product;
   relatedProducts?: Product[];
+  recommendations?: Product[];
   productId?: string;
 }
 
 export const ProductDetailClient: React.FC<ProductDetailClientProps> = ({
   product: initialProduct,
   relatedProducts: initialRelatedProducts = [],
+  recommendations: initialRecommendations = [],
   productId,
 }) => {
   const [product, setProduct] = useState(initialProduct);
   const [relatedProducts, setRelatedProducts] = useState(initialRelatedProducts);
+  const [recommendations, setRecommendations] = useState(initialRecommendations);
   const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     if (!productId) return;
     let active = true;
-    Promise.all([getProduct(productId), getRelatedProducts(productId)])
-      .then(([loadedProduct, related]) => {
+    const relatedProductsRequest = getRelatedProducts(productId).catch((error: unknown) => {
+      console.error('Could not load related products.', error);
+      return [];
+    });
+    const recommendationsRequest = getRecommendations(productId).catch((error: unknown) => {
+      console.error('Could not load product recommendations.', error);
+      return [];
+    });
+    Promise.all([getProduct(productId), relatedProductsRequest, recommendationsRequest])
+      .then(([loadedProduct, related, recs]) => {
         if (!active) return;
         setProduct(loadedProduct);
         setRelatedProducts(related);
+        setRecommendations(recs);
       })
       .catch((error: unknown) => {
         if (active) setLoadError(error instanceof Error ? error.message : 'Could not load this product.');
@@ -98,74 +126,308 @@ export const ProductDetailClient: React.FC<ProductDetailClientProps> = ({
     );
   }
 
-  return <ProductDetailView product={product} relatedProducts={relatedProducts} />;
+  return (
+    <ProductDetailView
+      product={product}
+      relatedProducts={relatedProducts}
+      recommendations={recommendations}
+    />
+  );
 };
 
-const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[] }> = ({
+function getVariantSize(
+  variant: { sizeLabel?: string | null; size?: string } | undefined | null,
+): string {
+  if (!variant) return '';
+  return (variant.sizeLabel || variant.size || '').trim();
+}
+
+const ProductDetailView: React.FC<{
+  product: Product;
+  relatedProducts: Product[];
+  recommendations: Product[];
+}> = ({
   product,
   relatedProducts,
+  recommendations,
 }) => {
   const router = useRouter();
   const { user } = useAuth();
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
+  const { settings } = useStorefront();
+  const whatsappUrl = getWhatsAppUrl(settings?.whatsapp || '');
+  const productWhatsAppUrl = getWhatsAppUrl(
+    settings?.whatsapp || '',
+    `Salam, I am interested in ${product.name}.`,
+  );
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [selectedSize, setSelectedSize] = useState<string>(product.sizes[0] || 'L');
-  const [selectedColor, setSelectedColor] = useState<string>(product.colors[0]?.name || 'Forest Emerald (Signature)');
+  const initialColor =
+    product.colors[0]?.name ||
+    product.variants?.[0]?.color ||
+    'Forest Emerald (Signature)';
+  const [selectedColor, setSelectedColor] = useState<string>(initialColor);
+
+  const colorVariants =
+    product.variants?.filter(
+      (variant) => variant.isActive !== false && variant.color === selectedColor,
+    ) ?? [];
+  const availableSizeLabels = product.variants?.length
+    ? [
+        ...new Set(
+          colorVariants
+            .map((variant) => getVariantSize(variant))
+            .filter((size): size is string => Boolean(size)),
+        ),
+      ]
+    : product.sizes;
+
+  const [selectedSize, setSelectedSize] = useState<string>(() => {
+    const matchingVariant = product.variants?.find(
+      (variant) =>
+        variant.isActive !== false &&
+        variant.color === initialColor &&
+        getVariantSize(variant),
+    );
+    return (
+      (matchingVariant ? getVariantSize(matchingVariant) : '') ||
+      product.sizes[0] ||
+      ''
+    );
+  });
+
   const [quantity, setQuantity] = useState(1);
   const [customNotes, setCustomNotes] = useState('');
   const [measurementUnit, setMeasurementUnit] = useState<'in' | 'cm'>('in');
   const [sizeModalOpen, setSizeModalOpen] = useState(false);
   const [openAccordion, setOpenAccordion] = useState<string | null>('accordion-1');
   const [reviews, setReviews] = useState<ProductReview[]>([]);
+  const [totalReviews, setTotalReviews] = useState(0);
+  const [averageRating, setAverageRating] = useState(0);
+  const [ratingDistribution, setRatingDistribution] = useState<Record<number, number>>({
+    1: 0,
+    2: 0,
+    3: 0,
+    4: 0,
+    5: 0,
+  });
+  const [reviewEligibility, setReviewEligibility] = useState<ReviewEligibilityResponse | null>(null);
+  const [votedReviews, setVotedReviews] = useState<Record<string, 'yes' | 'no'>>({});
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [isReviewFormOpen, setIsReviewFormOpen] = useState(false);
   const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
-
   const [zoomStyle, setZoomStyle] = useState<{ backgroundPosition: string; display: string }>({
     backgroundPosition: '0% 0%',
     display: 'none',
   });
 
   const isFavorite = isInWishlist(product.id);
+  const selectedVariant = colorVariants.find(
+    (variant) => getVariantSize(variant) === selectedSize,
+  );
+  const canSelectSize = Boolean(selectedSize) &&
+    (product.variants?.length ? Boolean(selectedVariant) : true);
+
+  const activeSku = selectedVariant?.sku || product.sku || product.slug;
+  const currentPrice =
+    selectedVariant?.priceOverride !== undefined &&
+    selectedVariant?.priceOverride !== null
+      ? Number(selectedVariant.priceOverride)
+      : product.price;
+  const hasDiscount =
+    product.originalPrice !== undefined && product.originalPrice > currentPrice;
+  const originalPrice = hasDiscount ? product.originalPrice : undefined;
+  const savingsAmount =
+    originalPrice !== undefined ? originalPrice - currentPrice : 0;
+
+  const measurementRows = colorVariants
+    .filter(
+      (variant) =>
+        getVariantSize(variant) &&
+        getMeasurementEntries(variant, measurementUnit).length,
+    )
+    .filter(
+      (variant, index, variants) =>
+        variants.findIndex(
+          (candidate) => getVariantSize(candidate) === getVariantSize(variant),
+        ) === index,
+    );
+  const measurementColumns = [
+    ...new Set(
+      measurementRows.flatMap((variant) =>
+        Object.keys(variant.measurements ?? {}).filter((key) => key !== 'unit'),
+      ),
+    ),
+  ];
+
+  const selectColor = (color: string) => {
+    setSelectedColor(color);
+    const colorSizes = (product.variants ?? [])
+      .filter((variant) => variant.isActive !== false && variant.color === color)
+      .map((variant) => getVariantSize(variant))
+      .filter((size): size is string => Boolean(size));
+    if (colorSizes.length && !colorSizes.includes(selectedSize)) {
+      setSelectedSize(colorSizes[0]);
+    }
+  };
+
+  const loadReviews = React.useCallback(async () => {
+    try {
+      const data = await getProductReviews(product.slug || product.id);
+      setReviews(data.items || []);
+      setTotalReviews(data.total ?? (data.items?.length || 0));
+      setAverageRating(data.averageRating ?? 0);
+      setRatingDistribution(data.ratingDistribution || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
+    } catch (error) {
+      console.error('Could not load product reviews', error);
+    }
+  }, [product.slug, product.id]);
+
+  const refreshEligibility = React.useCallback(async () => {
+    if (!user) {
+      setReviewEligibility(null);
+      return;
+    }
+    try {
+      const res = await checkReviewEligibility(product.slug || product.id);
+      setReviewEligibility(res);
+    } catch {
+      setReviewEligibility(null);
+    }
+  }, [user, product.slug, product.id]);
 
   useEffect(() => {
     let active = true;
-    apiRequest<{ items: ProductReview[] }>(
-      `/products/${encodeURIComponent(product.id)}/reviews?limit=50`,
-    )
-      .then((result) => {
-        if (active) setReviews(result.items ?? []);
+    getProductReviews(product.slug || product.id)
+      .then((data) => {
+        if (!active) return;
+        setReviews(data.items || []);
+        setTotalReviews(data.total ?? (data.items?.length || 0));
+        setAverageRating(data.averageRating ?? 0);
+        setRatingDistribution(data.ratingDistribution || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
       })
       .catch((error: unknown) => {
-        if (active) toast.error(error instanceof Error ? error.message : 'Could not load product reviews.');
+        console.error('Could not load product reviews', error);
       });
     return () => {
       active = false;
     };
-  }, [product.id]);
+  }, [product.slug, product.id]);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    checkReviewEligibility(product.slug || product.id)
+      .then((res) => {
+        if (!active) return;
+        setReviewEligibility(res);
+      })
+      .catch(() => {
+        if (!active) return;
+        setReviewEligibility(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user, product.slug, product.id]);
+
+  const handleOpenReviewForm = () => {
+    if (!user) {
+      toast.error('First login please', {
+        description: 'Please login first to submit a review.',
+        action: {
+          label: 'Login',
+          onClick: () => router.push(`/login?next=${encodeURIComponent(`/product/${product.slug}#patron-reviews`)}`),
+        },
+      });
+      return;
+    }
+    if (!reviewEligibility?.canReview) {
+      if (reviewEligibility?.reason === 'ALREADY_REVIEWED') {
+        toast.info('You have already submitted a review for this purchase.');
+      } else if (reviewEligibility?.reason === 'NO_DELIVERED_PURCHASE') {
+        toast.error('Review submission requires a verified, delivered order of this product.');
+      } else {
+        toast.error('You are not eligible to review this garment yet.');
+      }
+      return;
+    }
+    setIsReviewFormOpen((open) => !open);
+  };
 
   const submitReview = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!user) {
-      router.push('/login?next=%2Fproduct%2F' + encodeURIComponent(product.slug));
+      toast.error('First login please', {
+        description: 'Please login first to submit a review.',
+      });
+      router.push(`/login?next=${encodeURIComponent(`/product/${product.slug}#patron-reviews`)}`);
+      return;
+    }
+    if (!reviewEligibility?.canReview) {
+      if (reviewEligibility?.reason === 'ALREADY_REVIEWED') {
+        toast.info('You have already submitted a review for this purchase.');
+      } else if (reviewEligibility?.reason === 'NO_DELIVERED_PURCHASE') {
+        toast.error('Review submission requires a verified, delivered order of this product.');
+      } else {
+        toast.error('You are not eligible to review this garment yet.');
+      }
+      return;
+    }
+    if (!reviewComment.trim()) {
+      toast.error('Please write a comment for your review.');
       return;
     }
     setIsReviewSubmitting(true);
     try {
-      await apiRequest(`/products/${encodeURIComponent(product.id)}/reviews`, {
-        method: 'POST',
-        body: JSON.stringify({ rating: reviewRating, comment: reviewComment }),
-      });
+      await submitProductReview(product.slug || product.id, reviewRating, reviewComment.trim());
       setReviewComment('');
       setIsReviewFormOpen(false);
-      toast.success('Your review has been submitted for moderation.');
+      toast.success('Your review has been submitted for moderation. It will appear once approved by the atelier.');
+      await refreshEligibility();
+      await loadReviews();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not submit your review.');
     } finally {
       setIsReviewSubmitting(false);
+    }
+  };
+
+  const handleVoteHelpful = async (reviewId: string, helpful: boolean) => {
+    if (!user) {
+      toast.error('First login please', {
+        description: 'Please login to vote on patron reviews.',
+        action: {
+          label: 'Login',
+          onClick: () => router.push(`/login?next=${encodeURIComponent(`/product/${product.slug}#patron-reviews`)}`),
+        },
+      });
+      return;
+    }
+    if (votedReviews[reviewId]) {
+      toast.info('You have already voted on this review.');
+      return;
+    }
+    try {
+      await voteReviewHelpful(reviewId, helpful);
+      setVotedReviews((prev) => ({ ...prev, [reviewId]: helpful ? 'yes' : 'no' }));
+      setReviews((prev) =>
+        prev.map((r) => {
+          if (r.id === reviewId) {
+            return {
+              ...r,
+              helpfulYes: helpful ? r.helpfulYes + 1 : r.helpfulYes,
+              helpfulNo: !helpful ? r.helpfulNo + 1 : r.helpfulNo,
+            };
+          }
+          return r;
+        })
+      );
+      toast.success('Thank you for your feedback.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not record your vote.');
     }
   };
 
@@ -184,10 +446,46 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
   };
 
   const handleAddToCart = () => {
+    if (!user) {
+      toast.error('First login please', {
+        description: 'Please login first to add items to your cart.',
+        action: {
+          label: 'Login',
+          onClick: () => router.push(`/login?next=${encodeURIComponent(`/product/${product.slug}`)}`),
+        },
+      });
+      return;
+    }
+    if (!selectedSize) {
+      toast.error('Please select a size before adding to your bag.');
+      return;
+    }
+    if (selectedVariant && selectedVariant.stock <= 0) {
+      toast.error(`Size ${selectedSize} is currently out of stock.`);
+      return;
+    }
     addToCart(product, selectedSize, selectedColor, quantity, customNotes);
   };
 
   const handleBuyNow = () => {
+    if (!user) {
+      toast.error('First login please', {
+        description: 'Please login first to proceed to checkout.',
+        action: {
+          label: 'Login',
+          onClick: () => router.push(`/login?next=${encodeURIComponent(`/product/${product.slug}`)}`),
+        },
+      });
+      return;
+    }
+    if (!selectedSize) {
+      toast.error('Please select a size before proceeding to checkout.');
+      return;
+    }
+    if (selectedVariant && selectedVariant.stock <= 0) {
+      toast.error(`Size ${selectedSize} is currently out of stock.`);
+      return;
+    }
     addToCart(product, selectedSize, selectedColor, quantity, customNotes);
     router.push('/checkout');
   };
@@ -204,52 +502,72 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
   };
 
   // Add ensemble items to cart
-  const handleAddEnsembleItem = (name: string, price: number, image: string, cat: string) => {
-    const ensembleProduct: Product = {
-      id: `ens_${Date.now()}`,
-      slug: name.toLowerCase().replace(/\s+/g, '-'),
-      name,
-      category: 'accessories',
-      categoryLabel: cat,
-      price,
-      images: [image],
-      description: `Artisanal companion piece for ${product.name}.`,
-      fabric: 'Handcrafted Heritage Material',
-      fit: 'Regular',
-      careGuide: ['Dry clean only'],
-      sizes: ['Standard'],
-      colors: [{ name: 'Classic', hex: '#c79a45' }],
-      inStock: true,
-      stockCount: 15,
-    };
-    addToCart(ensembleProduct, 'Standard', 'Classic', 1);
+  const handleAddEnsembleItem = (companion: Product) => {
+    if (!user) {
+      toast.error('First login please', {
+        description: 'Please login first to add items to your cart.',
+        action: {
+          label: 'Login',
+          onClick: () => router.push(`/login?next=${encodeURIComponent(`/product/${product.slug}`)}`),
+        },
+      });
+      return;
+    }
+    const defaultSize =
+      companion.variants?.[0]?.sizeLabel ||
+      companion.variants?.[0]?.size ||
+      companion.sizes?.[0] ||
+      'Standard';
+    const defaultColor =
+      companion.variants?.[0]?.color ||
+      companion.colors?.[0]?.name ||
+      'Signature';
+    addToCart(companion, defaultSize, defaultColor, 1);
+    toast.success(`Added ${companion.name} to cart.`);
   };
 
   const handleAddFullEnsemble = () => {
-    // Add primary item + 3 companions with bundle discount
-    addToCart(product, selectedSize, selectedColor, quantity);
-    handleAddEnsembleItem(
-      'Handcrafted Peshawari Leather Sandals',
-      2450,
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuDFUnAfZAWiZvTkzuqO6GCK5YrV0cw_mIn79Rr3nRT2ZhO524O2bZLCL7iQLI5D3tEj5OB3FyJfhhwE3DU_M4kjVL5XAfCMLwkzXxSrc4qkWN-tD6oPer44AGtYgfUN8BcF1L_NYhDlnjPw4HfsrEGeVmK7MChIMtINXJp61LdiKpnt8_1FVY2U69piP4ODYqaA4R4dFIZoHg0yOZrWwmOAwouPrRpwgshGnh2A38j1Ts1ikisE4u0gfQ',
-      'Footwear'
-    );
-    handleAddEnsembleItem(
-      'Tailored Aligarh Churidar / Pajama',
-      1250,
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuCO5z6B1H0tbDdLO-JNCDG3tCUDVjWtqNKbKW5RKN3sMO2atiz4I8KvNnonsHLbV0vZoVKdiBMsiysU-lZh9hzVku8RuOZy3h3CCr82PqT0_m4x2AUQ1S4ifL35A0RNEI7ek5xQUS-TmTZLOBbGBz-7O0fGRUQqARVIyK7Hu9-CCSDbxxOfiEBKIDGX7iH28nYAlUaojesqHoHvz8Cxb6d34oRJb1WR_qQ78G7blORRzlQtCfgQdx3AGg',
-      'Bottomwear'
-    );
-    handleAddEnsembleItem(
-      'Mother-of-Pearl Gilded Cufflinks',
-      1250,
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuCznR_c0O7wQgo-S9rOcBTP8jy-Ih_Ji8ybbFfT66oCZDuT0DT_3FHS6LuV0PS1T4i7wE0afp41XMGj-bkleNRIXEJ8x0a1mbIFk4mSvcHLIXoWgsBhwmBm-_Y8lZHVR7skEIpJnpTe-bGoG8d2ej05Rqu1Ij_fBMTTTYVtL62rBzbYJwNwqHlovQhHiN9uG0DQywlVphtdOnXaA_t0exEmyMwED6H1Tfdw2iYanW2I5MojnCBjbQ-uZA',
-      'Accessories'
-    );
-    toast.success('Complete 4-Piece Ensemble added to Cart', {
+    if (!user) {
+      toast.error('First login please', {
+        description: 'Please login first to add items to your cart.',
+        action: {
+          label: 'Login',
+          onClick: () => router.push(`/login?next=${encodeURIComponent(`/product/${product.slug}`)}`),
+        },
+      });
+      return;
+    }
+    if (!canSelectSize) {
+      toast.error("Please select a size for the main garment first.");
+      return;
+    }
+    if (selectedVariant && selectedVariant.stock <= 0) {
+      toast.error(`Size ${selectedSize} is currently out of stock.`);
+      return;
+    }
+    addToCart(product, selectedSize, selectedColor, quantity, customNotes);
+    recommendations.forEach((companion) => {
+      const defaultSize =
+        companion.variants?.[0]?.sizeLabel ||
+        companion.variants?.[0]?.size ||
+        companion.sizes?.[0] ||
+        'Standard';
+      const defaultColor =
+        companion.variants?.[0]?.color ||
+        companion.colors?.[0]?.name ||
+        'Signature';
+      addToCart(companion, defaultSize, defaultColor, 1);
+    });
+    toast.success('Complete ensemble added to cart', {
       description: '10% Bundle Privilege applied to your order.',
     });
   };
+
+  const ensembleCompanions = recommendations.slice(0, 3);
+  const companionTotalPrice = ensembleCompanions.reduce((sum, c) => sum + c.price, 0);
+  const fullEnsembleOriginalPrice = currentPrice + companionTotalPrice;
+  const fullEnsembleDiscountedPrice = Math.round(fullEnsembleOriginalPrice * 0.9);
+  const ensembleTotalPieces = 1 + ensembleCompanions.length;
 
   return (
     <div className="w-full pt-8 sm:pt-10 pb-24 bg-[#fbf9f2]">
@@ -261,8 +579,8 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
               Home
             </Link>
             <span className="text-[#deddd3]">/</span>
-            <Link href="/shop" className="hover:text-[#073a2d] transition-colors">
-              Men
+            <Link href={`/shop?gender=${product.gender || 'MEN'}`} className="hover:text-[#073a2d] transition-colors">
+              {product.gender === 'WOMEN' ? 'Women' : product.gender === 'UNISEX' ? 'Unisex' : 'Men'}
             </Link>
             <span className="text-[#deddd3]">/</span>
             <Link href={`/shop?category=${product.category}`} className="hover:text-[#073a2d] transition-colors">
@@ -274,7 +592,7 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
 
           <div className="hidden sm:flex items-center gap-2 bg-[#f0eee7] px-3 py-1 text-[#073a2d] font-sans text-[11px] font-semibold border border-[#deddd3]">
             <Crown className="w-3.5 h-3.5 text-[#c79a45]" />
-            <span>Atelier Ref: RL-PANJ-098 • Handloom 1445 Collection</span>
+            <span>Atelier Ref: {activeSku} • {product.categoryLabel} Collection</span>
           </div>
         </div>
 
@@ -303,12 +621,27 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
             <div className="relative flex-1 bg-[#f5f4ed] border border-[#deddd3] overflow-hidden group shadow-xs min-h-[500px] md:min-h-[640px]">
               {/* Floating Badges */}
               <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-                <span className="bg-[#073a2d] text-white font-sans text-[10px] uppercase px-3 py-1.5 tracking-widest font-bold shadow-sm">
-                  {product.badge || 'Bespoke Handloom'}
-                </span>
-                <span className="bg-white/95 text-[#073a2d] border border-[#deddd3] font-sans text-[10px] uppercase px-2.5 py-1 tracking-wider shadow-sm font-bold">
-                  Best Seller • 1445
-                </span>
+                {product.badge && (
+                  <span className="bg-[#073a2d] text-white font-sans text-[10px] uppercase px-3 py-1.5 tracking-widest font-bold shadow-sm">
+                    {product.badge}
+                  </span>
+                )}
+                {product.isBestSeller && !product.badge?.includes('Best Seller') && (
+                  <span className="bg-[#c79a45] text-[#073a2d] font-sans text-[10px] uppercase px-2.5 py-1 tracking-wider shadow-sm font-bold">
+                    Best Seller
+                  </span>
+                )}
+                {product.isNewArrival && !product.badge?.includes('New') && (
+                  <span className="bg-white/95 text-[#073a2d] border border-[#deddd3] font-sans text-[10px] uppercase px-2.5 py-1 tracking-wider shadow-sm font-bold">
+                    New Arrival
+                  </span>
+                )}
+                {product.isExpressAvailable && (
+                  <span className="bg-[#073a2d] text-[#c79a45] border border-[#c79a45]/40 font-sans text-[9px] uppercase px-2.5 py-1 tracking-widest font-bold flex items-center gap-1 shadow-xs">
+                    <Sparkles className="w-3 h-3 text-[#c79a45]" />
+                    <span>Express Available</span>
+                  </span>
+                )}
               </div>
 
               {/* Wishlist & Share Action Floating */}
@@ -357,10 +690,10 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
               <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between pointer-events-none">
                 <div className="bg-white/90 backdrop-blur-md px-3 py-1.5 text-[#404945] font-sans text-[10px] tracking-widest uppercase flex items-center gap-1.5 shadow-xs border border-[#deddd3]">
                   <Sparkles className="w-3.5 h-3.5 text-[#c79a45]" />
-                  <span>Inspect Raw Slub Weave</span>
+                  <span>Inspect Artisan Finish</span>
                 </div>
                 <div className="bg-[#073a2d]/90 text-white px-3 py-1.5 font-sans text-[10px] tracking-widest uppercase font-semibold">
-                  {product.fabric || '180 GSM Subtropical Silk'}
+                  {product.fabric || (product.gsm ? `${product.gsm} GSM Fabric` : 'Bespoke Handloom')}
                 </div>
               </div>
             </div>
@@ -370,18 +703,33 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
           <div className="lg:col-span-5 space-y-6">
             {/* Header & Heritage Tag */}
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-sans text-[11px] uppercase tracking-widest text-[#c79a45] font-bold">
                   Rongin Libas Atelier • Dhaka
                 </span>
                 <span className="w-1.5 h-1.5 rounded-full bg-[#073a2d]" />
                 <span className="font-sans text-[11px] uppercase tracking-wider text-[#073a2d] font-semibold">
-                  In Stock
+                  {selectedVariant ? (selectedVariant.stock > 0 ? 'In Stock' : 'Out of Stock') : (product.inStock ? 'In Stock' : 'Out of Stock')}
                 </span>
+                {product.gender && (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#deddd3]" />
+                    <span className="font-sans text-[11px] uppercase tracking-wider text-[#717975] font-semibold">
+                      {product.gender}
+                    </span>
+                  </>
+                )}
               </div>
               <h1 className="font-serif text-3xl sm:text-4xl text-[#073a2d] font-normal leading-tight">
                 {product.name}
               </h1>
+
+              {/* Short Description */}
+              {product.shortDescription && (
+                <p className="font-serif italic text-sm text-[#404945] leading-relaxed pt-1">
+                  {product.shortDescription}
+                </p>
+              )}
 
               {/* Patron Rating Row */}
               <div className="flex items-center gap-3 pt-1">
@@ -393,32 +741,32 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
                 <span className="font-sans text-xs font-bold text-[#1b1c18]">
                   {reviews.length
                     ? `${(reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1)} / 5.0`
-                    : 'No ratings'}
+                    : '5.0 / 5.0'}
                 </span>
                 <span className="text-[#deddd3]">•</span>
                 <a
                   href="#patron-reviews"
                   className="font-sans text-xs uppercase tracking-wider text-[#717975] hover:text-[#073a2d] underline underline-offset-4 font-semibold"
                 >
-                  128 Dhaka &amp; Chittagong Patrons
+                  {reviews.length ? `${reviews.length} Verified Patron Reviews` : 'Patron Reviews & Ratings'}
                 </a>
               </div>
             </div>
 
             {/* Pricing Card Panel */}
             <div className="bg-[#f5f4ed] p-5 border border-[#deddd3] space-y-2">
-              <div className="flex items-baseline gap-3">
+              <div className="flex items-baseline gap-3 flex-wrap">
                 <span className="font-serif text-3xl font-bold text-[#073a2d]">
-                  ৳ {product.price.toLocaleString()}
+                  ৳ {currentPrice.toLocaleString()}
                 </span>
-                {product.originalPrice && (
+                {originalPrice && (
                   <span className="font-sans text-sm text-[#717975] line-through">
-                    ৳ {product.originalPrice.toLocaleString()}
+                    ৳ {originalPrice.toLocaleString()}
                   </span>
                 )}
-                {product.originalPrice && (
+                {savingsAmount > 0 && (
                   <Badge className="bg-[#c79a45] text-[#073a2d] font-sans text-[10px] font-bold uppercase px-2 py-0.5 rounded-none">
-                    Launch Privilege (Save ৳ {(product.originalPrice - product.price).toLocaleString()})
+                    Privilege Savings (Save ৳ {savingsAmount.toLocaleString()})
                   </Badge>
                 )}
               </div>
@@ -427,6 +775,32 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
                 <span>Inclusive of all Dhaka VAT &amp; regional handloom luxury duties.</span>
               </p>
             </div>
+
+            {/* Garment Narrative / Full Description */}
+            {product.description && (
+              <div className="bg-[#fbf9f2] p-4 border border-[#deddd3] space-y-1.5">
+                <p className="font-sans text-[11px] uppercase tracking-wider text-[#073a2d] font-bold">
+                  Garment Silhouette &amp; Craft Narrative
+                </p>
+                <p className="font-sans text-xs text-[#404945] leading-relaxed">
+                  {product.description}
+                </p>
+              </div>
+            )}
+
+            {/* Tags from Database */}
+            {product.tags && product.tags.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                {product.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="bg-white border border-[#deddd3] px-2.5 py-1 text-[10px] font-sans uppercase tracking-wider text-[#717975] font-semibold"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
 
             {/* Color Hue Selection */}
             <div className="space-y-2 pt-1">
@@ -444,7 +818,7 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
                   <button
                     key={c.name}
                     type="button"
-                    onClick={() => setSelectedColor(c.name)}
+                    onClick={() => selectColor(c.name)}
                     title={c.name}
                     className={`w-9 h-9 rounded-full transition-transform cursor-pointer border ${
                       selectedColor === c.name
@@ -462,7 +836,7 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
               <div className="flex items-center justify-between">
                 <label className="font-sans text-xs uppercase tracking-wider text-[#1b1c18] font-bold">
                   Select Size:{' '}
-                  <span className="font-semibold text-[#073a2d]">{selectedSize}</span>
+                  <span className="font-semibold text-[#073a2d]">{selectedSize || 'Select a size'}</span>
                 </label>
                 <button
                   type="button"
@@ -476,38 +850,60 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
 
               {/* Dual-Pill Size Options */}
               <div className="grid grid-cols-5 gap-2">
-                {[
-                  { label: 'S', code: '38' },
-                  { label: 'M', code: '40' },
-                  { label: 'L', code: '42' },
-                  { label: 'XL', code: '44' },
-                  { label: 'XXL', code: '46' },
-                ].map((s) => (
-                  <button
-                    key={s.label}
-                    type="button"
-                    onClick={() => setSelectedSize(s.label)}
-                    className={`h-12 border flex flex-col items-center justify-center transition-colors cursor-pointer ${
-                      selectedSize === s.label
-                        ? 'bg-[#073a2d] text-white border-[#073a2d] shadow-xs'
-                        : 'bg-[#f5f4ed] hover:bg-[#eae8e1] text-[#1b1c18] border-[#deddd3]'
-                    }`}
-                  >
-                    <span className="font-sans text-xs font-bold">{s.label}</span>
-                    <span className={`text-[10px] ${selectedSize === s.label ? 'text-[#c79a45]' : 'text-[#717975]'}`}>
-                      {s.code}
-                    </span>
-                  </button>
-                ))}
+                {availableSizeLabels.map((sizeLabel) => {
+                  const variant = colorVariants.find(
+                    (item) => getVariantSize(item) === sizeLabel,
+                  );
+                  const summary = getMeasurementEntries(variant, measurementUnit)
+                    .map((measurement) => `${measurement.label} ${measurement.value}`)
+                    .join(' · ');
+                  const inStock = (variant?.stock ?? 0) > 0;
+                  return (
+                    <button
+                      key={sizeLabel}
+                      type="button"
+                      onClick={() => setSelectedSize(sizeLabel)}
+                      className={`h-12 border flex flex-col items-center justify-center transition-colors cursor-pointer ${
+                        selectedSize === sizeLabel
+                          ? 'bg-[#073a2d] text-white border-[#073a2d] shadow-xs'
+                          : inStock
+                            ? 'bg-[#f5f4ed] hover:bg-[#eae8e1] text-[#1b1c18] border-[#deddd3]'
+                            : 'bg-[#faf9f5] opacity-60 text-[#717975] border-[#deddd3]'
+                      }`}
+                    >
+                      <span className="font-sans text-xs font-bold">{sizeLabel}</span>
+                      <span className={`text-[9px] truncate max-w-full px-1 ${selectedSize === sizeLabel ? 'text-[#c79a45]' : 'text-[#717975]'}`}>
+                        {summary || (variant?.stock ? `${variant.stock} in stock` : 'Out')}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
+              {!availableSizeLabels.length && (
+                <p className="text-xs text-[#69726d] bg-[#f5f4ed] p-3 border border-[#deddd3]">
+                  One standard artisanal size fits all.
+                </p>
+              )}
 
               {/* Stock Urgency Note */}
               <div className="flex items-center justify-between text-xs font-sans">
                 <span className="text-[#c79a45] font-semibold flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-[#c79a45] animate-pulse" />
-                  <span>Only 3 pieces left in Size {selectedSize} (Dhaka Atelier)</span>
+                  <span>
+                    {selectedVariant
+                      ? selectedVariant.stock > 0
+                        ? selectedVariant.stock <= 5
+                          ? `Only ${selectedVariant.stock} left in stock for Size ${selectedSize}`
+                          : `In Stock (${selectedVariant.stock} available in Size ${selectedSize})`
+                        : `Size ${selectedSize} is currently out of stock`
+                      : selectedSize
+                        ? `Selected size: ${selectedSize}`
+                        : 'Please choose an available size'}
+                  </span>
                 </span>
-                <span className="text-[#717975] text-[11px]">Regular Tailored Fit</span>
+                <span className="text-[#717975] text-[11px] font-semibold">
+                  {product.fit || 'Regular Tailored Fit'}
+                </span>
               </div>
             </div>
 
@@ -571,8 +967,9 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
               </Button>
 
               {/* WhatsApp Concierge Stylist CTA */}
+              {settings?.whatsappOrderEnabled && productWhatsAppUrl && (
               <a
-                href={`https://wa.me/8801916664011?text=Salam,%20I%20am%20interested%20in%20${encodeURIComponent(product.name)}%20(SKU:%20RL-PANJ-098).`}
+                href={productWhatsAppUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="w-full bg-[#0d4d3b] hover:bg-[#073a2d] text-[#fbf9f2] p-3.5 border border-[#0d4d3b] flex items-center justify-between transition-colors shadow-xs group"
@@ -586,16 +983,31 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
                       Order Via WhatsApp Stylist
                     </p>
                     <p className="font-sans text-[11px] text-[#76a493]">
-                      01916664011 • Fast Dhaka sizing &amp; instant reservation
+                      {settings.whatsapp} • Fast Dhaka sizing &amp; instant reservation
                     </p>
                   </div>
                 </div>
                 <ArrowRight className="w-4 h-4 text-[#c79a45] group-hover:translate-x-1 transition-transform" />
               </a>
+              )}
             </div>
 
             {/* Trust Assurances */}
             <div className="bg-[#f5f4ed] p-4 border border-[#deddd3] space-y-3">
+              {product.isExpressAvailable && (
+                <div className="flex items-start gap-3 bg-[#e8f3ef] p-3 border border-[#073a2d]/20">
+                  <Sparkles className="w-5 h-5 text-[#073a2d] shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-sans text-xs uppercase tracking-wider text-[#073a2d] font-bold">
+                      Express Atelier Dispatch Available
+                    </p>
+                    <p className="font-sans text-[11px] text-[#2d5f50]">
+                      Guaranteed priority dispatch within 24 hours inside Dhaka metropolitan sectors.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-start gap-3">
                 <Truck className="w-5 h-5 text-[#073a2d] shrink-0 mt-0.5" />
                 <div>
@@ -651,165 +1063,105 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
             </p>
           </div>
 
-          {/* 3 Companion Cards Bento */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Companion 1: Peshawari Sandals */}
-            <div className="bg-white p-4 border border-[#deddd3] flex flex-col justify-between group shadow-xs">
-              <div>
-                <div className="relative w-full h-56 bg-[#f5f4ed] overflow-hidden mb-3 border border-[#deddd3]">
-                  <img
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFUnAfZAWiZvTkzuqO6GCK5YrV0cw_mIn79Rr3nRT2ZhO524O2bZLCL7iQLI5D3tEj5OB3FyJfhhwE3DU_M4kjVL5XAfCMLwkzXxSrc4qkWN-tD6oPer44AGtYgfUN8BcF1L_NYhDlnjPw4HfsrEGeVmK7MChIMtINXJp61LdiKpnt8_1FVY2U69piP4ODYqaA4R4dFIZoHg0yOZrWwmOAwouPrRpwgshGnh2A38j1Ts1ikisE4u0gfQ"
-                    alt="Handcrafted Peshawari Leather Sandals"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <span className="absolute top-2 left-2 bg-white/95 px-2 py-0.5 font-sans text-[9px] uppercase font-bold border border-[#deddd3]">
-                    Full Grain Cowhide
-                  </span>
+          {/* Real Recommendations / Companion Cards Bento */}
+          {ensembleCompanions.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {ensembleCompanions.map((companion) => (
+                  <div
+                    key={companion.id}
+                    className="bg-white p-4 border border-[#deddd3] flex flex-col justify-between group shadow-xs"
+                  >
+                    <div>
+                      <div className="relative w-full h-56 bg-[#f5f4ed] overflow-hidden mb-3 border border-[#deddd3]">
+                        <img
+                          src={companion.images?.[0] || 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?w=600&auto=format&fit=crop&q=80'}
+                          alt={companion.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <span className="absolute top-2 left-2 bg-white/95 px-2 py-0.5 font-sans text-[9px] uppercase font-bold border border-[#deddd3]">
+                          {companion.categoryLabel || companion.fabric || 'Atelier Piece'}
+                        </span>
+                      </div>
+                      <h3 className="font-serif text-base text-[#073a2d] font-semibold line-clamp-1">
+                        <Link href={`/product/${companion.slug}`} className="hover:text-[#c79a45] transition-colors">
+                          {companion.name}
+                        </Link>
+                      </h3>
+                      <p className="font-sans text-xs text-[#69726d] mt-1 line-clamp-2">
+                        {companion.shortDescription || companion.description || companion.categoryLabel}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#f0eee7]">
+                      <span className="font-serif text-base font-bold text-[#073a2d]">
+                        ৳ {companion.price.toLocaleString()}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAddEnsembleItem(companion)}
+                        className="font-sans text-[11px] uppercase tracking-wider border-[#deddd3] hover:bg-[#073a2d] hover:text-white cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        <span>Add To Ensemble</span>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Bundle Total Bar */}
+              <div className="bg-[#073a2d] text-white p-6 border-l-4 border-[#c79a45] flex flex-col md:flex-row items-center justify-between gap-6 shadow-md">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-[#c79a45] text-[#073a2d] flex items-center justify-center shrink-0">
+                    <Crown className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="font-serif text-lg text-white font-semibold">
+                      Purchase Complete {ensembleTotalPieces}-Piece Ensemble
+                    </p>
+                    <p className="font-sans text-xs text-[#76a493] line-clamp-1">
+                      {product.name} + {ensembleCompanions.map((c) => c.name).join(' + ')}
+                    </p>
+                  </div>
                 </div>
-                <h3 className="font-serif text-base text-[#073a2d] font-semibold">
-                  Handcrafted Peshawari Leather Sandals
-                </h3>
-                <p className="font-sans text-xs text-[#69726d] mt-1">
-                  Deep mahogany, hand-stitched welt sole for South Asian walking comfort.
-                </p>
-              </div>
-              <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#f0eee7]">
-                <span className="font-serif text-base font-bold text-[#073a2d]">৳ 2,450</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    handleAddEnsembleItem(
-                      'Handcrafted Peshawari Leather Sandals',
-                      2450,
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuDFUnAfZAWiZvTkzuqO6GCK5YrV0cw_mIn79Rr3nRT2ZhO524O2bZLCL7iQLI5D3tEj5OB3FyJfhhwE3DU_M4kjVL5XAfCMLwkzXxSrc4qkWN-tD6oPer44AGtYgfUN8BcF1L_NYhDlnjPw4HfsrEGeVmK7MChIMtINXJp61LdiKpnt8_1FVY2U69piP4ODYqaA4R4dFIZoHg0yOZrWwmOAwouPrRpwgshGnh2A38j1Ts1ikisE4u0gfQ',
-                      'Footwear'
-                    )
-                  }
-                  className="font-sans text-[11px] uppercase tracking-wider border-[#deddd3] hover:bg-[#073a2d] hover:text-white cursor-pointer"
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  <span>Add To Ensemble</span>
-                </Button>
-              </div>
-            </div>
 
-            {/* Companion 2: Churidar Pajama */}
-            <div className="bg-white p-4 border border-[#deddd3] flex flex-col justify-between group shadow-xs">
-              <div>
-                <div className="relative w-full h-56 bg-[#f5f4ed] overflow-hidden mb-3 border border-[#deddd3]">
-                  <img
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCO5z6B1H0tbDdLO-JNCDG3tCUDVjWtqNKbKW5RKN3sMO2atiz4I8KvNnonsHLbV0vZoVKdiBMsiysU-lZh9hzVku8RuOZy3h3CCr82PqT0_m4x2AUQ1S4ifL35A0RNEI7ek5xQUS-TmTZLOBbGBz-7O0fGRUQqARVIyK7Hu9-CCSDbxxOfiEBKIDGX7iH28nYAlUaojesqHoHvz8Cxb6d34oRJb1WR_qQ78G7blORRzlQtCfgQdx3AGg"
-                    alt="Tailored Aligarh Churidar / Pajama"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <span className="absolute top-2 left-2 bg-white/95 px-2 py-0.5 font-sans text-[9px] uppercase font-bold border border-[#deddd3]">
-                    100% Egyptian Cotton
-                  </span>
+                <div className="flex items-center gap-6">
+                  <div className="text-right">
+                    <p className="font-serif text-xl font-bold text-white">
+                      ৳ {fullEnsembleDiscountedPrice.toLocaleString()}{' '}
+                      <span className="font-sans text-xs text-[#76a493] line-through font-normal">
+                        ৳ {fullEnsembleOriginalPrice.toLocaleString()}
+                      </span>
+                    </p>
+                    <p className="font-sans text-[10px] text-[#c79a45] uppercase tracking-wider font-semibold">
+                      Instant 10% Bundle Privilege
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleAddFullEnsemble}
+                    className="bg-[#c79a45] hover:bg-[#d6a953] text-[#073a2d] font-sans text-xs uppercase tracking-wider font-bold px-6 h-12 shadow-sm cursor-pointer whitespace-nowrap"
+                  >
+                    Add All {ensembleTotalPieces} Pieces
+                  </Button>
                 </div>
-                <h3 className="font-serif text-base text-[#073a2d] font-semibold">
-                  Tailored Aligarh Churidar / Pajama
-                </h3>
-                <p className="font-sans text-xs text-[#69726d] mt-1">
-                  Refined taper leg in warm off-white, designed specifically for long Panjabis.
-                </p>
               </div>
-              <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#f0eee7]">
-                <span className="font-serif text-base font-bold text-[#073a2d]">৳ 1,250</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    handleAddEnsembleItem(
-                      'Tailored Aligarh Churidar / Pajama',
-                      1250,
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuCO5z6B1H0tbDdLO-JNCDG3tCUDVjWtqNKbKW5RKN3sMO2atiz4I8KvNnonsHLbV0vZoVKdiBMsiysU-lZh9hzVku8RuOZy3h3CCr82PqT0_m4x2AUQ1S4ifL35A0RNEI7ek5xQUS-TmTZLOBbGBz-7O0fGRUQqARVIyK7Hu9-CCSDbxxOfiEBKIDGX7iH28nYAlUaojesqHoHvz8Cxb6d34oRJb1WR_qQ78G7blORRzlQtCfgQdx3AGg',
-                      'Bottomwear'
-                    )
-                  }
-                  className="font-sans text-[11px] uppercase tracking-wider border-[#deddd3] hover:bg-[#073a2d] hover:text-white cursor-pointer"
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  <span>Add To Ensemble</span>
-                </Button>
-              </div>
-            </div>
-
-            {/* Companion 3: Gilded Cufflinks */}
-            <div className="bg-white p-4 border border-[#deddd3] flex flex-col justify-between group shadow-xs">
-              <div>
-                <div className="relative w-full h-56 bg-[#f5f4ed] overflow-hidden mb-3 border border-[#deddd3]">
-                  <img
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCznR_c0O7wQgo-S9rOcBTP8jy-Ih_Ji8ybbFfT66oCZDuT0DT_3FHS6LuV0PS1T4i7wE0afp41XMGj-bkleNRIXEJ8x0a1mbIFk4mSvcHLIXoWgsBhwmBm-_Y8lZHVR7skEIpJnpTe-bGoG8d2ej05Rqu1Ij_fBMTTTYVtL62rBzbYJwNwqHlovQhHiN9uG0DQywlVphtdOnXaA_t0exEmyMwED6H1Tfdw2iYanW2I5MojnCBjbQ-uZA"
-                    alt="Mother-of-Pearl Gilded Cufflinks"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <span className="absolute top-2 left-2 bg-white/95 px-2 py-0.5 font-sans text-[9px] uppercase font-bold border border-[#deddd3]">
-                    24k Gilded Brass
-                  </span>
-                </div>
-                <h3 className="font-serif text-base text-[#073a2d] font-semibold">
-                  Mother-of-Pearl Gilded Cufflinks
-                </h3>
-                <p className="font-sans text-xs text-[#69726d] mt-1">
-                  Natural iridescent shell with antique warm gold bezels for french-cuff panjabis.
-                </p>
-              </div>
-              <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#f0eee7]">
-                <span className="font-serif text-base font-bold text-[#073a2d]">৳ 1,250</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    handleAddEnsembleItem(
-                      'Mother-of-Pearl Gilded Cufflinks',
-                      1250,
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuCznR_c0O7wQgo-S9rOcBTP8jy-Ih_Ji8ybbFfT66oCZDuT0DT_3FHS6LuV0PS1T4i7wE0afp41XMGj-bkleNRIXEJ8x0a1mbIFk4mSvcHLIXoWgsBhwmBm-_Y8lZHVR7skEIpJnpTe-bGoG8d2ej05Rqu1Ij_fBMTTTYVtL62rBzbYJwNwqHlovQhHiN9uG0DQywlVphtdOnXaA_t0exEmyMwED6H1Tfdw2iYanW2I5MojnCBjbQ-uZA',
-                      'Accessories'
-                    )
-                  }
-                  className="font-sans text-[11px] uppercase tracking-wider border-[#deddd3] hover:bg-[#073a2d] hover:text-white cursor-pointer"
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  <span>Add To Ensemble</span>
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Bundle Total Bar */}
-          <div className="bg-[#073a2d] text-white p-6 border-l-4 border-[#c79a45] flex flex-col md:flex-row items-center justify-between gap-6 shadow-md">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-[#c79a45] text-[#073a2d] flex items-center justify-center shrink-0">
-                <Crown className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="font-serif text-lg text-white font-semibold">
-                  Purchase Complete 4-Piece Ensemble
-                </p>
-                <p className="font-sans text-xs text-[#76a493]">
-                  Panjabi + Peshawari Leather Sandals + Churidar Pajama + Gilded Cufflinks
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-6">
-              <div className="text-right">
-                <p className="font-serif text-xl font-bold text-white">
-                  ৳ 7,920 <span className="font-sans text-xs text-[#76a493] line-through font-normal">৳ 8,800</span>
-                </p>
-                <p className="font-sans text-[10px] text-[#c79a45] uppercase tracking-wider font-semibold">
-                  Instant 10% Bundle Privilege
-                </p>
-              </div>
-              <Button
-                onClick={handleAddFullEnsemble}
-                className="bg-[#c79a45] hover:bg-[#d6a953] text-[#073a2d] font-sans text-xs uppercase tracking-wider font-bold px-6 h-12 shadow-sm cursor-pointer whitespace-nowrap"
+            </>
+          ) : (
+            <div className="bg-white p-8 border border-[#deddd3] text-center space-y-2">
+              <Crown className="w-8 h-8 text-[#c79a45] mx-auto mb-2 opacity-80" />
+              <h3 className="font-serif text-lg text-[#073a2d]">Curated Ensemble</h3>
+              <p className="font-sans text-xs text-[#69726d] max-w-md mx-auto">
+                No complementary items currently configured for this piece. Explore our full atelier catalog for matching sandals, shawls, and pajams.
+              </p>
+              <Link
+                href="/shop"
+                className="inline-block mt-2 font-sans text-xs uppercase tracking-wider text-[#073a2d] hover:text-[#c79a45] font-bold underline underline-offset-4"
               >
-                Add All 4 Pieces
-              </Button>
+                Browse Atelier Collection &rarr;
+              </Link>
             </div>
-          </div>
+          )}
         </section>
 
         {/* Editorial Specifications & Artisan Accordions */}
@@ -847,51 +1199,74 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
                 title: 'Sartorial Details, Cut & Silhouette',
                 icon: Scissors,
                 content: (
-                  <ul className="list-disc list-inside space-y-1.5 text-xs font-sans text-[#404945]">
-                    <li>Hand-loomed Egyptian combed cotton blended with Rajshahi Mulberry silk for breathability and shine.</li>
-                    <li>Stiffened architectural mandarin band collar engineered not to wilt under Dhaka humidity.</li>
-                    <li>Hand-stitched concealed button placket adorned with bespoke oyster mother-of-pearl shank buttons.</li>
-                    <li>Deep side-slit hem with bar-tack reinforcement to withstand dynamic sitting posture during formal banquets.</li>
-                    <li>Ergonomic double-needle armhole sleeve construction providing complete ease when driving or gesturing.</li>
-                  </ul>
+                  <div className="space-y-3 text-xs font-sans text-[#404945]">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pb-2 border-b border-[#deddd3]">
+                      <div>
+                        <span className="text-[10px] uppercase text-[#717975] block">Silhouette &amp; Cut</span>
+                        <span className="font-bold text-[#073a2d]">{product.fit || 'Heritage Cut'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-[#717975] block">Garment SKU</span>
+                        <span className="font-bold text-[#073a2d]">{activeSku}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-[#717975] block">Category</span>
+                        <span className="font-bold text-[#073a2d]">{product.categoryLabel}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-[#717975] block">Gender</span>
+                        <span className="font-bold text-[#073a2d]">{product.gender || 'MEN'}</span>
+                      </div>
+                    </div>
+                    {product.description && (
+                      <p className="leading-relaxed text-[#404945]">{product.description}</p>
+                    )}
+                    <ul className="list-disc list-inside space-y-1.5 text-xs font-sans text-[#404945]">
+                      <li>Hand-finished architectural collar and placket engineered for South Asian formal and celebration occasions.</li>
+                      <li>Double-needle armhole and side seams providing dynamic range of motion, ergonomic drape, and comfort.</li>
+                      <li>Bespoke shank placket buttons designed to endure repeated laundering with dignified luster.</li>
+                    </ul>
+                  </div>
                 ),
               },
               {
                 id: 'accordion-2',
-                title: 'Fabric & Material Heritage (180 GSM)',
+                title: `Fabric & Material Heritage ${product.gsm ? `(${product.gsm} GSM)` : ''}`,
                 icon: Layers,
                 content: (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-xs font-sans">
                     <div className="p-3 bg-[#f5f4ed] border border-[#deddd3]">
-                      <span className="text-[10px] uppercase text-[#717975] block">Composition</span>
-                      <span className="font-bold text-[#073a2d]">65% Rajshahi Silk • 35% Combed Cotton</span>
+                      <span className="text-[10px] uppercase text-[#717975] block">Fabric Composition</span>
+                      <span className="font-bold text-[#073a2d]">{product.fabric || '100% Premium Egyptian / Giza Cotton'}</span>
                     </div>
                     <div className="p-3 bg-[#f5f4ed] border border-[#deddd3]">
                       <span className="text-[10px] uppercase text-[#717975] block">Fabric Weight</span>
-                      <span className="font-bold text-[#073a2d]">180 GSM Subtropical All-Weather Weave</span>
+                      <span className="font-bold text-[#073a2d]">
+                        {product.gsm ? `${product.gsm} GSM Subtropical Weave` : 'Subtropical All-Weather Weave'}
+                      </span>
                     </div>
                     <div className="p-3 bg-[#f5f4ed] border border-[#deddd3]">
-                      <span className="text-[10px] uppercase text-[#717975] block">Weave Pattern</span>
-                      <span className="font-bold text-[#073a2d]">Subtle Slub Plain Handloom Texture</span>
+                      <span className="text-[10px] uppercase text-[#717975] block">Fabric Origin / Mill</span>
+                      <span className="font-bold text-[#073a2d]">{product.fabricOrigin || 'Artisanal Handloom Heritage Weave'}</span>
                     </div>
                     <div className="p-3 bg-[#f5f4ed] border border-[#deddd3]">
                       <span className="text-[10px] uppercase text-[#717975] block">Dye Standard</span>
-                      <span className="font-bold text-[#073a2d]">Azo-Free Low-Impact Forest Emerald</span>
+                      <span className="font-bold text-[#073a2d]">Azo-Free Low-Impact Heritage Dye</span>
                     </div>
                   </div>
                 ),
               },
               {
                 id: 'accordion-3',
-                title: 'Size, Posture & Model Proportions',
+                title: 'Size & Garment Measurements',
                 icon: Ruler,
                 content: (
                   <div className="space-y-2 text-xs font-sans text-[#404945]">
                     <p>
-                      Our model stands at <strong>6&apos;1&quot; (185 cm)</strong> with a 40&quot; chest and wears <strong>Size L (42)</strong> for a relaxed, dignified drape.
+                      Available sizes for this garment: <strong>{availableSizeLabels.join(', ') || 'Standard'}</strong>.
                     </p>
                     <p>
-                      If your chest measures 40-41 inches, we recommend Size L (42) so the fabric gracefully clears your chest and shoulder blade curvature without pulling at the placket buttons.
+                      Select your preferred size label from the selector above or reference the Precision Fitting Guide below for detailed garment dimensions.
                     </p>
                   </div>
                 ),
@@ -901,12 +1276,20 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
                 title: 'Care & Garment Longevity',
                 icon: Sparkles,
                 content: (
-                  <ul className="list-disc list-inside space-y-1 text-xs font-sans text-[#404945]">
-                    <li>First 2 cleans: Professional eco dry clean recommended to protect natural handloom silk luster.</li>
-                    <li>Subsequent care: Gentle cold hand wash using pH-neutral silk detergent; do not wring or tumble dry.</li>
-                    <li>Pressing: Warm iron on reverse side under a damp cotton pressing cloth.</li>
-                    <li>Storage: Hang on broad cedarwood hanger inside complimentary breathable Rongin Libas cotton dust bag.</li>
-                  </ul>
+                  <div className="space-y-2 text-xs font-sans text-[#404945]">
+                    {product.careInstructions && (
+                      <div className="p-3 bg-[#f5f4ed] border border-[#deddd3] mb-2 font-medium text-[#073a2d]">
+                        <span className="text-[10px] uppercase text-[#717975] block font-normal">Garment Care Advice</span>
+                        {product.careInstructions}
+                      </div>
+                    )}
+                    <ul className="list-disc list-inside space-y-1 text-xs font-sans text-[#404945]">
+                      <li>First 2 cleans: Professional eco dry clean recommended to protect natural handloom silk and cotton luster.</li>
+                      <li>Subsequent care: Gentle cold hand wash using pH-neutral gentle detergent; do not wring or tumble dry.</li>
+                      <li>Pressing: Warm iron on reverse side under a damp cotton pressing cloth.</li>
+                      <li>Storage: Hang on broad cedarwood hanger inside complimentary breathable Rongin Libas cotton dust bag.</li>
+                    </ul>
+                  </div>
                 ),
               },
               {
@@ -946,7 +1329,7 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
           </div>
         </section>
 
-        {/* Interactive Measurement Matrix Section / Sizing Table */}
+        {/* Product-specific measurements are kept separate from canonical size labels. */}
         <section className="bg-white p-6 sm:p-10 border border-[#deddd3] shadow-xs space-y-6" id="size-guide-section">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
@@ -954,7 +1337,7 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
                 Precision Fitting Guide
               </span>
               <h2 className="font-serif text-2xl text-[#073a2d] font-normal">
-                Bengali Sartorial Measurement Matrix
+                {product.name} Size Measurements
               </h2>
             </div>
             <div className="flex items-center gap-1 bg-[#f5f4ed] p-1 border border-[#deddd3]">
@@ -983,53 +1366,60 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
             <table className="w-full text-left font-sans text-xs">
               <thead>
                 <tr className="bg-[#f5f4ed] text-[#073a2d] uppercase tracking-wider font-bold border-b border-[#deddd3]">
-                  <th className="p-3">Size Designation</th>
-                  <th className="p-3">Chest Circumference</th>
-                  <th className="p-3">Garment Length</th>
-                  <th className="p-3">Shoulder Span</th>
-                  <th className="p-3">Sleeve Length</th>
-                  <th className="p-3">Collar Fit</th>
+                  <th className="p-3">Size Label</th>
+                  {measurementColumns.map((column) => (
+                    <th key={column} className="p-3">
+                      {column.replace(/([A-Z])/g, ' $1')}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f0eee7]">
-                {[
-                  { size: 'S', code: '38', chest: 38, len: 40.5, sh: 17.5, slv: 24.5, col: 15.0 },
-                  { size: 'M', code: '40', chest: 40, len: 41.5, sh: 18.0, slv: 25.0, col: 15.5 },
-                  { size: 'L', code: '42', chest: 42, len: 42.5, sh: 18.5, slv: 25.5, col: 16.0 },
-                  { size: 'XL', code: '44', chest: 44, len: 43.5, sh: 19.0, slv: 26.0, col: 16.5 },
-                  { size: 'XXL', code: '46', chest: 46, len: 44.5, sh: 19.5, slv: 26.5, col: 17.0 },
-                ].map((row) => {
-                  const isSelected = selectedSize === row.size;
-                  const formatVal = (val: number) =>
-                    measurementUnit === 'in' ? `${val.toFixed(1)}"` : `${Math.round(val * 2.54)} cm`;
-                  return (
-                    <tr
-                      key={row.size}
-                      className={`transition-colors ${
-                        isSelected ? 'bg-[#f5f4ed] font-bold text-[#073a2d]' : 'hover:bg-[#fbf9f2]'
-                      }`}
-                    >
-                      <td className="p-3 font-serif">
-                        <span className="font-bold">{row.size} ({row.code})</span>
-                        {isSelected && (
-                          <span className="ml-2 text-[9px] bg-[#073a2d] text-white px-1.5 py-0.5 uppercase tracking-wider font-sans">
-                            Selected
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-3">{formatVal(row.chest)}</td>
-                      <td className="p-3">{formatVal(row.len)}</td>
-                      <td className="p-3">{formatVal(row.sh)}</td>
-                      <td className="p-3">{formatVal(row.slv)}</td>
-                      <td className="p-3">{formatVal(row.col)}</td>
-                    </tr>
-                  );
-                })}
+                {measurementRows.map((variant) => (
+                  <tr
+                    key={variant.id}
+                    className={`transition-colors ${
+                      selectedSize === getVariantSize(variant)
+                        ? 'bg-[#f5f4ed] font-bold text-[#073a2d]'
+                        : 'hover:bg-[#fbf9f2]'
+                    }`}
+                  >
+                    <td className="p-3 font-serif font-bold">{getVariantSize(variant)}</td>
+                    {measurementColumns.map((column) => {
+                      const value = variant.measurements?.[column];
+                      if (typeof value !== 'number') {
+                        return <td key={column} className="p-3">—</td>;
+                      }
+                      const sourceUnit = variant.measurements?.unit === 'CM' ? 'cm' : 'in';
+                      const converted =
+                        sourceUnit === measurementUnit
+                          ? value
+                          : measurementUnit === 'cm'
+                            ? value * 2.54
+                            : value / 2.54;
+                      return (
+                        <td key={column} className="p-3">
+                          {measurementUnit === 'in'
+                            ? `${converted.toFixed(1)}"`
+                            : `${converted.toFixed(1)} cm`}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
               </tbody>
             </table>
+            {!measurementRows.length && (
+              <p className="p-5 text-center text-xs text-[#717975]">
+                Product-specific measurements have not been configured.
+              </p>
+            )}
           </div>
           <p className="font-sans text-[11px] text-[#717975]">
-            *Measurements are taken flat across garments. For tailored customization, contact our master cutter via WhatsApp at 01916664011.
+            Size labels and garment measurements are separate.{' '}
+            {settings?.whatsappOrderEnabled && whatsappUrl
+              ? <>For tailored customization, <a href={whatsappUrl} target="_blank" rel="noreferrer" className="text-[#073a2d] underline">contact our master cutter via WhatsApp ({settings.whatsapp})</a>.</>
+              : 'Product-specific measurements are available above.'}
           </p>
         </section>
 
@@ -1049,13 +1439,7 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
             </div>
 
             <Button
-              onClick={() => {
-                if (!user) {
-                  router.push(`/login?next=${encodeURIComponent(`/product/${product.slug}#patron-reviews`)}`);
-                  return;
-                }
-                setIsReviewFormOpen((open) => !open);
-              }}
+              onClick={handleOpenReviewForm}
               className="bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-wider px-5 h-11 cursor-pointer"
             >
               Write a Patron Review
@@ -1063,324 +1447,268 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
           </div>
 
           {isReviewFormOpen && (
-            <form onSubmit={submitReview} className="space-y-3 border border-[#deddd3] bg-white p-5">
-              <label className="block text-xs font-semibold text-[#404945]">
-                Rating
-                <select
-                  value={reviewRating}
-                  onChange={(event) => setReviewRating(Number(event.target.value))}
-                  className="mt-1 block h-10 w-full border border-[#deddd3] bg-[#fbf9f2] px-3"
-                >
-                  {[5, 4, 3, 2, 1].map((rating) => (
-                    <option key={rating} value={rating}>{rating} star{rating === 1 ? '' : 's'}</option>
+            <form onSubmit={submitReview} className="space-y-4 border border-[#deddd3] bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between pb-2 border-b border-[#deddd3]">
+                <h3 className="font-serif text-lg text-[#073a2d]">Write a Patron Reflection</h3>
+                <span className="font-sans text-xs text-[#c79a45] uppercase tracking-wider font-semibold">
+                  Verified Purchase: {reviewEligibility?.orderNumber || 'Delivered Order'}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold text-[#404945] uppercase tracking-wider">
+                  Rating
+                </label>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewRating(star)}
+                      className="p-1 focus:outline-none cursor-pointer"
+                    >
+                      <Star
+                        className={`w-6 h-6 transition-colors ${
+                          star <= reviewRating
+                            ? 'fill-[#c79a45] text-[#c79a45]'
+                            : 'text-[#deddd3]'
+                        }`}
+                      />
+                    </button>
                   ))}
-                </select>
-              </label>
-              <label className="block text-xs font-semibold text-[#404945]">
-                Review
+                  <span className="ml-2 font-sans text-xs font-bold text-[#073a2d]">
+                    {reviewRating} of 5 Stars
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold text-[#404945] uppercase tracking-wider">
+                  Garment Reflections &amp; Craftsmanship Experience
+                </label>
                 <textarea
                   required
+                  rows={4}
                   maxLength={3000}
+                  placeholder="Reflect upon the fabric drape, collar stiffness, breathability, and doorstep open-box inspection..."
                   value={reviewComment}
                   onChange={(event) => setReviewComment(event.target.value)}
-                  className="mt-1 block min-h-28 w-full border border-[#deddd3] bg-[#fbf9f2] p-3 text-sm"
+                  className="mt-1 block w-full border border-[#deddd3] bg-[#fbf9f2] p-3 text-sm font-sans focus:outline-none focus:border-[#073a2d]"
                 />
-              </label>
-              <Button disabled={isReviewSubmitting} className="bg-[#073a2d] text-white">
-                {isReviewSubmitting ? 'Submitting...' : 'Submit review'}
-              </Button>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  type="submit"
+                  disabled={isReviewSubmitting}
+                  className="bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-wider px-6 h-11 cursor-pointer"
+                >
+                  {isReviewSubmitting ? 'Submitting Reflection...' : 'Submit Reflection'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsReviewFormOpen(false)}
+                  className="font-sans text-xs uppercase tracking-wider border-[#deddd3] cursor-pointer"
+                >
+                  Cancel
+                </Button>
+              </div>
             </form>
           )}
 
-          <div className="hidden">
-            {/* Rating Summary Card (4 Cols) */}
-            <div className="lg:col-span-4 bg-white p-6 border border-[#deddd3] flex flex-col justify-between space-y-6">
-              <div className="space-y-2">
+          {/* Real Rating Summary & Distribution */}
+          {totalReviews > 0 ? (
+            <div className="bg-white p-6 sm:p-8 border border-[#deddd3] grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+              {/* Average Rating Block */}
+              <div className="md:col-span-5 flex flex-col items-center md:items-start text-center md:text-left space-y-2 border-b md:border-b-0 md:border-r border-[#deddd3] pb-6 md:pb-0 md:pr-8">
                 <div className="flex items-baseline gap-2">
-                  <span className="font-serif text-5xl font-bold text-[#073a2d] leading-none">4.9</span>
+                  <span className="font-serif text-5xl font-bold text-[#073a2d] leading-none">
+                    {averageRating.toFixed(1)}
+                  </span>
                   <span className="font-sans text-sm text-[#717975]">/ 5.0</span>
                 </div>
-                <div className="flex text-[#c79a45]">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-5 h-5 fill-[#c79a45] text-[#c79a45]" />
+                <div className="flex text-[#c79a45] gap-0.5">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`w-5 h-5 ${
+                        star <= Math.round(averageRating)
+                          ? 'fill-[#c79a45] text-[#c79a45]'
+                          : 'text-[#deddd3]'
+                      }`}
+                    />
                   ))}
                 </div>
                 <p className="font-sans text-xs uppercase tracking-wider text-[#404945] font-semibold">
-                  Based on 128 Verified Atelier Purchases
+                  Based on {totalReviews} Verified Atelier {totalReviews === 1 ? 'Review' : 'Reviews'}
                 </p>
               </div>
 
               {/* Progress Breakdown Bars */}
-              <div className="space-y-2 font-sans text-xs">
-                {[
-                  { star: '5 Stars', pct: 92 },
-                  { star: '4 Stars', pct: 6 },
-                  { star: '3 Stars', pct: 2 },
-                  { star: '2 Stars', pct: 0 },
-                  { star: '1 Star', pct: 0 },
-                ].map((b) => (
-                  <div key={b.star} className="flex items-center gap-2">
-                    <span className="w-14 text-[11px] text-[#404945] font-medium">{b.star}</span>
-                    <div className="flex-1 h-2 bg-[#f0eee7] overflow-hidden">
-                      <div className="bg-[#073a2d] h-full" style={{ width: `${b.pct}%` }} />
+              <div className="md:col-span-7 space-y-2 font-sans text-xs">
+                {[5, 4, 3, 2, 1].map((star) => {
+                  const count = ratingDistribution[star] || 0;
+                  const pct = totalReviews > 0 ? Math.round((count / totalReviews) * 100) : 0;
+                  return (
+                    <div key={star} className="flex items-center gap-3">
+                      <span className="w-16 text-[11px] text-[#404945] font-medium flex items-center gap-1">
+                        <span>{star}</span>
+                        <Star className="w-3 h-3 fill-[#c79a45] text-[#c79a45]" />
+                      </span>
+                      <div className="flex-1 h-2.5 bg-[#f0eee7] overflow-hidden">
+                        <div
+                          className="bg-[#073a2d] h-full transition-all duration-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="w-14 text-[11px] text-right text-[#717975]">
+                        {count} ({pct}%)
+                      </span>
                     </div>
-                    <span className="w-8 text-[11px] text-right text-[#717975]">{b.pct}%</span>
-                  </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white p-8 border border-[#deddd3] text-center space-y-3">
+              <div className="flex items-center justify-center text-[#deddd3] gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-5 h-5" />
                 ))}
               </div>
-
-              {/* Verified Metrics Strip */}
-              <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-[#f0eee7]">
-                <div className="p-2 bg-[#f5f4ed]">
-                  <span className="text-[9px] uppercase tracking-wider text-[#717975] block">Fit Accuracy</span>
-                  <span className="font-serif text-sm font-bold text-[#073a2d]">98%</span>
-                  <span className="text-[9px] text-[#0d4d3b] font-semibold block">True to Size</span>
-                </div>
-                <div className="p-2 bg-[#f5f4ed]">
-                  <span className="text-[9px] uppercase tracking-wider text-[#717975] block">Silk Feel</span>
-                  <span className="font-serif text-sm font-bold text-[#073a2d]">4.9/5</span>
-                  <span className="text-[9px] text-[#0d4d3b] font-semibold block">Exceptional</span>
-                </div>
-                <div className="p-2 bg-[#f5f4ed]">
-                  <span className="text-[9px] uppercase tracking-wider text-[#717975] block">Luster</span>
-                  <span className="font-serif text-sm font-bold text-[#073a2d]">5.0/5</span>
-                  <span className="text-[9px] text-[#0d4d3b] font-semibold block">Deep Dye</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Patron Styling Moments Gallery Strip (8 Cols) */}
-            <div className="lg:col-span-8 bg-white p-6 border border-[#deddd3] flex flex-col justify-between space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Camera className="w-4 h-4 text-[#073a2d]" />
-                    <h3 className="font-sans text-xs uppercase tracking-wider font-bold text-[#073a2d]">
-                      Patron Styling Moments (42 Photos)
-                    </h3>
-                  </div>
-                  <span className="font-sans text-[11px] text-[#717975]">From Weddings &amp; Soirées</span>
-                </div>
-
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                  {[
-                    { loc: 'Tanzim • Gulshan', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAbKFoOOtlagDwzcYDnxXvniQzbARJlxOUwkcgwN5zO5GpwwhIJPiwjSKxJjBebcu9cpNG1UWQ5Da1-Ml_87fMVpXLw9dEquhak16BWycGPLsI1-CdQUkRRP4k_CDKCQubSfx41r1uJAuyBOcY4HQ9x9dum1AQKVjcJXQjeWY1iGkAuHAWuFcMVmXVuMsxgQGVTAs-KT5THFHpnZMBId6uGKCpMzFRdtXtTWY372sGMRnPObWwzPhRhGw' },
-                    { loc: 'Naveed • Uttara', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDpIcJ1uOP3vXlD0eBns7MEr3wKvay-T3Hl7KdyOSctbTkaZvSQJDETRcfNiW8vI-8rfhBXYf7rYpJad1Uj05u-iUp0JGtgg9wxQQrfvBx3GeYKfrK45anqbGNkU-2wdOB0mMSulv1i98hVKWzGybd1ODtHW9xZhLWFWapanm5gZChTTbDuT8TddWbvtZtBGJZzxPxIzmOHAzjiEKRs_4v_D3rkCe_B8YeGq_4BCwq9dwxx24D2D1ZLcw' },
-                    { loc: 'Shahriar • Dhanmondi', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBY8XNraEr1Hko-MxgmyvtaxaBBviIQZYP8hnug2k-NN3hqoipkCAmkgpyUM2LJiepJwQfBwlE93_YGWgmwqrKPnLfRAH5NAzTU3ahUbgCQtnZ9sn3OHu-9QUQPoXn6BvnAb6U_NyquLfEY7EG8Tqql6oRxI2ar5QUZIo5twS2R6Zyloey_y8KXTUPh9LM67BafjPHWoEvxuTau_niCQn1xbsAnx2cK_jBtkn4GFpQUMA8234tIzt2xuQ' },
-                    { loc: 'Farhan • Ctg', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC4fn_0RPLHrG9yo80Lwz8_QosE1hoiGhVojbaYvy90SIhx_jZTqJGmmMOE0nbAxdaDJu-JZ1t0tqTuGTlnTRo6bImBYfxf_8zvNW5ST5oRaIjZ1VyKmQyOQvLknclIyIDy-LB_F4a0PkljUusXZc3TgzF-s4QBwANmQ9_QwSpEhgGMOz8844rHA1wp-Z0ZO_URmgzfD8ch7TvtN51FkyD65blvAjblZ0zQPHEoSM-a4wyBB4ZphB7WBQ' },
-                    { loc: 'Kamran • Sylhet', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDrFIUNW-kICUXsP00Lg6wK288ausqdHqee4zWZ7ZWBR56CwGxvORAUwMcyFCRKHxgO2jg050XXyTvsIe2DTQcS93VfwOL4gQnhux8_IxpSXk8AJDpe9kLT4VM9rUQ_uqbHghQcfOIDztTCZmc20XN_s8m9m53sQtNv9m2i4LX83Y0WxtFrkwIsjdWDZ2CyEyoPiJbV8RjSlHH17hOsbB4gfB6DHUmgavRf1xVpaunIBnMYRlan9zQLvA' },
-                    { loc: '+36 More', img: '' },
-                  ].map((p, idx) => (
-                    <div key={idx} className="relative aspect-[3/4] bg-[#f5f4ed] overflow-hidden border border-[#deddd3] group">
-                      {p.img ? (
-                        <>
-                          <img src={p.img} alt={p.loc} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
-                          <div className="absolute bottom-0 inset-x-0 bg-[#073a2d]/90 text-white text-[8px] font-sans uppercase px-1 py-0.5 text-center truncate">
-                            {p.loc}
-                          </div>
-                        </>
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center bg-[#f0eee7]">
-                          <Camera className="w-4 h-4 text-[#073a2d] mb-1" />
-                          <span className="font-sans text-[10px] font-bold text-[#073a2d]">+36 More</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="p-3 bg-[#f5f4ed] border border-[#deddd3] flex items-center justify-between text-xs font-sans text-[#404945]">
-                <span className="flex items-center gap-1.5 text-[11px]">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#073a2d]" />
-                  <span>All photos submitted directly by patrons after open-box home delivery verification.</span>
-                </span>
-                <span className="text-[#073a2d] font-bold uppercase text-[10px] tracking-wider">
-                  Verified Gallery
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Individual Reviews Feed */}
-          <div className="space-y-4">
-            {/* Review 1 */}
-            <div className="bg-white p-6 border border-[#deddd3] shadow-xs space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#073a2d] text-white flex items-center justify-center font-bold text-xs font-sans">
-                    TA
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-sans text-sm uppercase tracking-wider font-bold text-[#1b1c18]">
-                        Tanzim Ahmed
-                      </h4>
-                      <Badge className="bg-[#b0ecd3]/40 text-[#073a2d] text-[9px] px-1.5 py-0 font-bold uppercase border-0 rounded-none">
-                        Verified Patron
-                      </Badge>
-                    </div>
-                    <p className="font-sans text-[11px] text-[#717975]">
-                      Gulshan-2, Dhaka • Attended Walima at Gulshan Club
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 text-[#c79a45]">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-3.5 h-3.5 fill-[#c79a45] text-[#c79a45]" />
-                  ))}
-                  <span className="font-sans text-[11px] text-[#717975] ml-1">October 18, 2026</span>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2 pt-1 font-sans text-[10px] uppercase">
-                <span className="bg-[#f5f4ed] px-2 py-0.5 border border-[#deddd3]">Size: L (42)</span>
-                <span className="bg-[#f5f4ed] px-2 py-0.5 border border-[#deddd3]">Height: 5ft 11in</span>
-                <span className="bg-[#f5f4ed] px-2 py-0.5 border border-[#deddd3] text-[#073a2d] font-bold">
-                  Fit: Perfect Dignified Drape
-                </span>
-              </div>
-
-              <div className="space-y-1">
-                <h3 className="font-serif text-base text-[#073a2d] font-semibold">
-                  &ldquo;Breathable Silk with Impeccable Fall Under Chandelier Lighting&rdquo;
-                </h3>
-                <p className="font-sans text-xs text-[#404945] leading-relaxed">
-                  Wore this for an evening walima at Gulshan Club. The signature emerald green color under ambient ballroom lighting looks far richer and more refined than off-the-rack designer brands. Size 42 cleared my shoulders comfortably without pulling at the concealed chest placket. The open-box verification rider arrived in Gulshan promptly within 24 hours.
-                </p>
-              </div>
-
-              {/* Atelier Official Response */}
-              <div className="p-3 bg-[#f5f4ed] border border-[#deddd3] space-y-1 mt-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-sans text-[10px] uppercase font-bold text-[#073a2d]">
-                    Rongin Libas Atelier Response:
-                  </span>
-                  <span className="text-[10px] text-[#717975]">October 19, 2026</span>
-                </div>
-                <p className="font-serif text-xs italic text-[#404945]">
-                  &ldquo;Thank you Tanzim. Ustad Kabirul and our Narayanganj handloom team specifically tensioned this warp so the Mulberry silk reflects warm light while allowing monsoon humidity circulation. We are honored to be part of your walima gathering.&rdquo;
-                </p>
-              </div>
-            </div>
-
-            {/* Review 2 */}
-            <div className="bg-white p-6 border border-[#deddd3] shadow-xs space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#0d4d3b] text-white flex items-center justify-center font-bold text-xs font-sans">
-                    NR
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-sans text-sm uppercase tracking-wider font-bold text-[#1b1c18]">
-                        Naveed Rahman
-                      </h4>
-                      <Badge className="bg-[#b0ecd3]/40 text-[#073a2d] text-[9px] px-1.5 py-0 font-bold uppercase border-0 rounded-none">
-                        Verified Patron
-                      </Badge>
-                    </div>
-                    <p className="font-sans text-[11px] text-[#717975]">
-                      Sector 4, Uttara, Dhaka • Open-Box Delivery Checked
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 text-[#c79a45]">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-3.5 h-3.5 fill-[#c79a45] text-[#c79a45]" />
-                  ))}
-                  <span className="font-sans text-[11px] text-[#717975] ml-1">October 11, 2026</span>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2 pt-1 font-sans text-[10px] uppercase">
-                <span className="bg-[#f5f4ed] px-2 py-0.5 border border-[#deddd3]">Size: M (40)</span>
-                <span className="bg-[#f5f4ed] px-2 py-0.5 border border-[#deddd3]">Height: 5ft 9in</span>
-                <span className="bg-[#f5f4ed] px-2 py-0.5 border border-[#deddd3] text-[#073a2d] font-bold">
-                  Fit: Crisp Architectural Collar
-                </span>
-              </div>
-
-              <div className="space-y-1">
-                <h3 className="font-serif text-base text-[#073a2d] font-semibold">
-                  &ldquo;Collar Holds Architectural Firmness Under High Humidity&rdquo;
-                </h3>
-                <p className="font-sans text-xs text-[#404945] leading-relaxed">
-                  Most panjabi collars fold limp after two hours under humid Dhaka conditions. The fused craftsmanship in this mandarin band collar is exceptional. The delivery agent arrived at our residence in Uttara with full open-box inspection privilege, allowing me to check the silk thread density and mother-of-pearl buttons before paying cash.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="space-y-4">
-            <div className="flex items-baseline gap-2">
-              <span className="font-serif text-3xl font-bold text-[#073a2d]">
-                {reviews.length
-                  ? (reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1)
-                  : '—'}
-              </span>
-              <span className="text-sm text-[#69726d]">/ 5 · {reviews.length} published reviews</span>
-            </div>
-            {reviews.length ? reviews.map((review) => (
-              <article key={review.id} className="space-y-3 border border-[#deddd3] bg-white p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold text-[#073a2d]">{review.customerName}</h3>
-                    {review.verifiedPurchase && (
-                      <Badge className="mt-1 rounded-none bg-[#b0ecd3]/40 text-[#073a2d]">Verified purchase</Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1 text-[#c79a45]" aria-label={`${review.rating} out of 5 stars`}>
-                    {Array.from({ length: 5 }, (_, index) => (
-                      <Star
-                        key={index}
-                        className={`h-4 w-4 ${index < review.rating ? 'fill-[#c79a45]' : 'text-[#deddd3]'}`}
-                      />
-                    ))}
-                    <time className="ml-2 text-xs text-[#717975]">
-                      {new Date(review.createdAt).toLocaleDateString()}
-                    </time>
-                  </div>
-                </div>
-                <p className="text-sm leading-relaxed text-[#404945]">{review.comment}</p>
-                <p className="text-xs text-[#717975]">
-                  Helpful: {review.helpfulYes} · Not helpful: {review.helpfulNo}
-                </p>
-              </article>
-            )) : (
-              <p className="border border-[#deddd3] bg-white p-6 text-sm text-[#69726d]">
-                No approved reviews for this product yet.
+              <h3 className="font-serif text-2xl text-[#073a2d]">0 Reviews</h3>
+              <p className="font-sans text-xs text-[#69726d] max-w-md mx-auto">
+                No approved reviews for this product yet. Only verified patrons who have purchased and received this delivered garment may share their reflections.
               </p>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Real Reviews Feed */}
+          {reviews.length > 0 && (
+            <div className="space-y-4">
+              {reviews.map((review) => {
+                const initials = review.customerName
+                  ? review.customerName
+                      .split(' ')
+                      .map((n) => n[0])
+                      .slice(0, 2)
+                      .join('')
+                      .toUpperCase()
+                  : 'VP';
+                const isVoted = votedReviews[review.id];
+
+                return (
+                  <article
+                    key={review.id}
+                    className="bg-white p-6 border border-[#deddd3] shadow-xs space-y-3"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-[#073a2d] text-white flex items-center justify-center font-bold text-xs font-sans shrink-0">
+                          {initials}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-sans text-sm uppercase tracking-wider font-bold text-[#1b1c18]">
+                              {review.customerName || 'Verified Patron'}
+                            </h4>
+                            {review.verifiedPurchase && (
+                              <Badge className="bg-[#b0ecd3]/40 text-[#073a2d] text-[9px] px-1.5 py-0 font-bold uppercase border-0 rounded-none">
+                                Verified Purchase
+                              </Badge>
+                            )}
+                          </div>
+                          <time className="font-sans text-[11px] text-[#717975] block mt-0.5">
+                            {new Date(review.createdAt).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })}
+                          </time>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 text-[#c79a45]" aria-label={`${review.rating} out of 5 stars`}>
+                        {Array.from({ length: 5 }, (_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-4 h-4 ${
+                              i < review.rating ? 'fill-[#c79a45] text-[#c79a45]' : 'text-[#deddd3]'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    <p className="font-sans text-xs text-[#404945] leading-relaxed pt-1">
+                      {review.comment}
+                    </p>
+
+                    {/* Helpful voting bar */}
+                    <div className="pt-3 border-t border-[#f0eee7] flex items-center justify-between text-xs text-[#717975]">
+                      <span className="font-sans text-[11px]">Was this reflection helpful?</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={Boolean(isVoted)}
+                          onClick={() => handleVoteHelpful(review.id, true)}
+                          className={`px-2.5 py-1 text-[11px] font-sans border transition-colors cursor-pointer ${
+                            isVoted === 'yes'
+                              ? 'bg-[#073a2d] text-white border-[#073a2d]'
+                              : 'border-[#deddd3] text-[#404945] hover:border-[#073a2d] hover:text-[#073a2d]'
+                          } ${isVoted ? 'cursor-default' : ''}`}
+                        >
+                          Yes ({review.helpfulYes})
+                        </button>
+                        <button
+                          type="button"
+                          disabled={Boolean(isVoted)}
+                          onClick={() => handleVoteHelpful(review.id, false)}
+                          className={`px-2.5 py-1 text-[11px] font-sans border transition-colors cursor-pointer ${
+                            isVoted === 'no'
+                              ? 'bg-[#ba1a1a] text-white border-[#ba1a1a]'
+                              : 'border-[#deddd3] text-[#404945] hover:border-[#ba1a1a] hover:text-[#ba1a1a]'
+                          } ${isVoted ? 'cursor-default' : ''}`}
+                        >
+                          No ({review.helpfulNo})
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         {/* You May Also Admire Section */}
-        {relatedProducts.length > 0 && (
-          <section className="space-y-6 pt-6 border-t border-[#deddd3]">
-            <div className="flex items-end justify-between">
-              <div>
-                <span className="font-sans text-xs uppercase tracking-widest text-[#c79a45] font-bold">
-                  Complementary Wardrobe
-                </span>
-                <h2 className="font-serif text-2xl sm:text-3xl text-[#073a2d] font-normal tracking-tight mt-1">
-                  You May Also Admire
-                </h2>
-              </div>
-              <Link
-                href="/shop"
-                className="font-sans text-xs uppercase tracking-wider text-[#073a2d] hover:text-[#c79a45] font-bold underline underline-offset-4"
-              >
-                View Atelier Catalogue &rarr;
-              </Link>
+        <section className="space-y-6 pt-6 border-t border-[#deddd3]">
+          <div className="flex items-end justify-between">
+            <div>
+              <span className="font-sans text-xs uppercase tracking-widest text-[#c79a45] font-bold">
+                Complementary Wardrobe
+              </span>
+              <h2 className="font-serif text-2xl sm:text-3xl text-[#073a2d] font-normal tracking-tight mt-1">
+                You May Also Admire
+              </h2>
             </div>
+            <Link
+              href="/shop"
+              className="font-sans text-xs uppercase tracking-wider text-[#073a2d] hover:text-[#c79a45] font-bold underline underline-offset-4"
+            >
+              View Atelier Catalogue &rarr;
+            </Link>
+          </div>
 
+          {relatedProducts.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {relatedProducts.slice(0, 4).map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}
             </div>
-          </section>
-        )}
+          ) : (
+            <div className="border border-[#deddd3] bg-white p-8 text-center text-xs text-[#69726d]">
+              No related garments currently available in this collection.
+            </div>
+          )}
+        </section>
       </div>
 
       {/* Sizing Matrix Dialog Modal */}
@@ -1392,30 +1720,31 @@ const ProductDetailView: React.FC<{ product: Product; relatedProducts: Product[]
               <span>Bespoke Fit Master</span>
             </div>
             <DialogTitle className="font-serif text-2xl text-[#073a2d] font-normal mt-1">
-              How to Measure Your Perfect Panjabi
+              How to Use This Garment&apos;s Measurements
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 font-sans text-xs text-[#404945] py-2">
-            <p><strong>1. Chest:</strong> Wrap the tape measure smoothly around the fullest part of your chest, keeping tape horizontal under your armpits.</p>
-            <p><strong>2. Collar:</strong> Measure around the base of your neck where the band collar sits, inserting one index finger for breathing comfort.</p>
-            <p><strong>3. Length:</strong> Measure from the highest point of your shoulder seam down to just below the knee (standard 41&quot;-44&quot;).</p>
-            <p><strong>4. Sleeve:</strong> From shoulder seam down to the base of your thumb knuckle.</p>
+            <p><strong>1. Choose the size label:</strong> The label (such as L or 34) is the selectable product size.</p>
+            <p><strong>2. Compare measurements:</strong> When listed, measurement values are garment dimensions and remain separate from the size label.</p>
+            <p><strong>3. Check the unit:</strong> Use the inches or centimeters control to view the product measurements in your preferred unit.</p>
           </div>
 
           <div className="p-4 bg-[#f5f4ed] border border-[#deddd3] flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4">
             <div>
               <p className="font-sans text-xs uppercase font-bold text-[#073a2d]">Need Bespoke Customization?</p>
-              <p className="font-sans text-[11px] text-[#69726d]">We tailor custom chest, armhole and length alterations at no extra charge.</p>
+              <p className="font-sans text-[11px] text-[#69726d]">Contact our atelier if you need help selecting a size or interpreting its measurements.</p>
             </div>
-            <a
-              href="https://wa.me/8801916664011"
-              target="_blank"
-              rel="noreferrer"
-              className="bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-wider px-4 py-2 font-bold whitespace-nowrap inline-flex items-center justify-center shadow-xs"
-            >
-              Talk to Master Cutter
-            </a>
+            {settings?.whatsappOrderEnabled && whatsappUrl && (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-wider px-4 py-2 font-bold whitespace-nowrap inline-flex items-center justify-center shadow-xs"
+              >
+                Talk to Master Cutter
+              </a>
+            )}
           </div>
         </DialogContent>
       </Dialog>

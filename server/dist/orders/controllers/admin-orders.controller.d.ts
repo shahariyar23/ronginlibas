@@ -20,6 +20,18 @@ export declare class AdminOrdersController {
             } | null;
             items: ({
                 product: {
+                    images: {
+                        url: string;
+                        id: string;
+                        createdAt: Date;
+                        updatedAt: Date;
+                        productId: string;
+                        publicId: string | null;
+                        altText: string | null;
+                        sortOrder: number;
+                        isPrimary: boolean;
+                    }[];
+                } & {
                     description: string | null;
                     id: string;
                     isActive: boolean;
@@ -39,6 +51,7 @@ export declare class AdminOrdersController {
                     fit: string | null;
                     gsm: number | null;
                     careInstructions: string | null;
+                    alertThreshold: number;
                     isExpressAvailable: boolean;
                     categoryId: string;
                     isFeatured: boolean;
@@ -56,6 +69,7 @@ export declare class AdminOrdersController {
                     size: string;
                     color: string;
                     sizeLabel: string | null;
+                    sizeType: string | null;
                     stock: number;
                     priceOverride: import("@prisma/client/runtime/library").Decimal | null;
                 };
@@ -75,6 +89,14 @@ export declare class AdminOrdersController {
                 size: string | null;
                 color: string | null;
             })[];
+            trackingEvents: {
+                description: string | null;
+                id: string;
+                createdAt: Date;
+                status: import("@prisma/client").$Enums.OrderStatus;
+                orderId: string;
+                customerVisible: boolean;
+            }[];
             id: string;
             createdAt: Date;
             updatedAt: Date;

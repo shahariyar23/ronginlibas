@@ -1,87 +1,187 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Ticket, Plus, Trash2, Calendar, Tag, CheckCircle2 } from 'lucide-react';
+import { Ticket, Plus, Calendar, CheckCircle2, Trash2 } from 'lucide-react';
+import { adminApi } from '@/lib/api';
+import type { AdminCoupon, CouponDiscountType, CreateCouponPayload } from '@/lib/api';
+import { TablePageSkeleton } from '@/components/common/Skeleton';
 
 interface Coupon {
   id: string;
   code: string;
-  discountType: 'PERCENTAGE' | 'FIXED' | 'FREE_DELIVERY';
+  discountType: CouponDiscountType;
   value: number;
   minSpend: number;
   usageCount: number;
+  startDate: string;
   expiryDate: string;
-  status: 'ACTIVE' | 'EXPIRED';
+  isActive: boolean;
 }
 
 const INITIAL_COUPONS: Coupon[] = [];
 
-import { adminApi } from '@/lib/api';
+function toDateInputValue(value: string | Date): string {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function toLocalDateStart(value: string): string {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day).toISOString();
+}
+
+function toLocalDateEnd(value: string): string {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day, 23, 59, 59, 999).toISOString();
+}
+
+function mapCoupon(coupon: AdminCoupon): Coupon {
+  return {
+    id: coupon.id,
+    code: coupon.code,
+    discountType: coupon.type,
+    value: Number(coupon.value),
+    minSpend: Number(coupon.minimumOrderAmount),
+    usageCount: coupon.usageCount,
+    startDate: coupon.startDate,
+    expiryDate: coupon.expiryDate,
+    isActive: coupon.isActive,
+  };
+}
 
 export default function CouponsPage() {
   const [coupons, setCoupons] = useState<Coupon[]>(INITIAL_COUPONS);
+  const [isLoadingCoupons, setIsLoadingCoupons] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newCode, setNewCode] = useState('');
   const [newDiscount, setNewDiscount] = useState('');
   const [newMinSpend, setNewMinSpend] = useState('');
+  const [newDiscountType, setNewDiscountType] = useState<CouponDiscountType>('PERCENTAGE');
+  const [newStartDate, setNewStartDate] = useState(() => toDateInputValue(new Date()));
+  const [newExpiryDate, setNewExpiryDate] = useState('');
+  const [newIsActive, setNewIsActive] = useState(true);
+  const [isSavingCoupon, setIsSavingCoupon] = useState(false);
+  const [savingCouponId, setSavingCouponId] = useState<string | null>(null);
+  const [deletingCouponId, setDeletingCouponId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState('');
+  const [mutationError, setMutationError] = useState('');
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
     async function loadCoupons() {
       try {
         const res = await adminApi.coupons.getAll();
-        if (res.success && res.data && res.data.length > 0) {
-          const mapped: Coupon[] = res.data.map((c: any) => ({
-            id: c.id,
-            code: c.code,
-            discountType: c.type || 'PERCENTAGE',
-            value: Number(c.value) || 0,
-            minSpend: Number(c.minimumOrderAmount) || 0,
-            usageCount: c.usageCount ?? 0,
-            expiryDate: c.expiryDate ? new Date(c.expiryDate).toISOString().split('T')[0] : 'No Expiry',
-            status: c.isActive ? 'ACTIVE' : 'EXPIRED',
-          }));
-          setCoupons(mapped);
+        if (!res.success || !res.data) {
+          setLoadError(res.error || 'Unable to load vouchers.');
+          return;
         }
-      } catch (err) {
-        console.warn('Coupons API fetch fallback:', err);
+
+        setCoupons(res.data.map(mapCoupon));
+        setLoadError('');
+      } catch {
+        setLoadError('Unable to load vouchers. Check your connection and try again.');
+      } finally {
+        setIsLoadingCoupons(false);
       }
     }
     loadCoupons();
-  }, []);
+  }, [loadAttempt]);
 
-  const handleAdd = async () => {
-    if (!newCode) return;
+  const handleAdd = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     const formattedCode = newCode.toUpperCase().trim();
-    const discountVal = parseInt(newDiscount, 10) || 10;
-    const minSpendVal = parseInt(newMinSpend, 10) || 3000;
+    if (newStartDate > newExpiryDate) {
+      setMutationError('Expiry date must be on or after the start date.');
+      return;
+    }
 
-    const item: Coupon = {
-      id: `c-${Date.now()}`,
+    const payload: CreateCouponPayload = {
       code: formattedCode,
-      discountType: 'PERCENTAGE',
-      value: discountVal,
-      minSpend: minSpendVal,
-      usageCount: 0,
-      expiryDate: '2026-12-31',
-      status: 'ACTIVE',
+      type: newDiscountType,
+      value: Number(newDiscount),
+      minimumOrderAmount: Number(newMinSpend),
+      startDate: toLocalDateStart(newStartDate),
+      expiryDate: toLocalDateEnd(newExpiryDate),
+      isActive: newIsActive,
     };
-    setCoupons((prev) => [item, ...prev]);
-    setShowAddModal(false);
-    setNewCode('');
 
+    setIsSavingCoupon(true);
+    setMutationError('');
     try {
-      await adminApi.coupons.create({
-        code: formattedCode,
-        description: `${discountVal}% privilege coupon code`,
-        type: 'PERCENTAGE',
-        value: discountVal,
-        minimumOrderAmount: minSpendVal,
-        expiryDate: new Date('2026-12-31T23:59:59Z').toISOString(),
-      });
-    } catch (err) {
-      console.warn('Error saving coupon to backend:', err);
+      const res = await adminApi.coupons.create(payload);
+      if (!res.success || !res.data) {
+        setMutationError(res.error || 'Unable to save this voucher.');
+        return;
+      }
+
+      const createdCoupon = res.data;
+      setCoupons((prev) => [mapCoupon(createdCoupon), ...prev]);
+      setShowAddModal(false);
+      setNewCode('');
+      setNewDiscount('');
+      setNewMinSpend('');
+      setNewDiscountType('PERCENTAGE');
+      setNewStartDate(toDateInputValue(new Date()));
+      setNewExpiryDate('');
+      setNewIsActive(true);
+    } catch {
+      setMutationError('Unable to save this voucher. Check your connection and try again.');
+    } finally {
+      setIsSavingCoupon(false);
     }
   };
+
+  const handleActiveChange = async (coupon: Coupon) => {
+    setSavingCouponId(coupon.id);
+    setMutationError('');
+    try {
+      const res = await adminApi.coupons.update(coupon.id, { isActive: !coupon.isActive });
+      if (!res.success || !res.data) {
+        setMutationError(res.error || `Unable to update ${coupon.code}.`);
+        return;
+      }
+      const updatedCoupon = res.data;
+      setCoupons((prev) =>
+        prev.map((item) => item.id === coupon.id ? mapCoupon(updatedCoupon) : item),
+      );
+    } catch {
+      setMutationError(`Unable to update ${coupon.code}. Check your connection and try again.`);
+    } finally {
+      setSavingCouponId(null);
+    }
+  };
+
+  const handleDelete = async (coupon: Coupon) => {
+    if (!window.confirm(`Delete voucher ${coupon.code}? This cannot be undone.`)) return;
+
+    setDeletingCouponId(coupon.id);
+    setMutationError('');
+    try {
+      const res = await adminApi.coupons.delete(coupon.id);
+      if (!res.success) {
+        setMutationError(res.error || `Unable to delete ${coupon.code}.`);
+        return;
+      }
+      setCoupons((prev) => prev.filter((item) => item.id !== coupon.id));
+    } catch {
+      setMutationError(`Unable to delete ${coupon.code}. Check your connection and try again.`);
+    } finally {
+      setDeletingCouponId(null);
+    }
+  };
+
+  if (isLoadingCoupons) {
+    return (
+      <TablePageSkeleton
+        title="Promotional Atelier Coupons"
+        showAddButton={true}
+        rowCount={6}
+      />
+    );
+  }
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
@@ -104,6 +204,27 @@ export default function CouponsPage() {
           <span>+ CREATE VOUCHER</span>
         </button>
       </div>
+
+      {(loadError || mutationError) && (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-4 border border-[#ba1a1a]/20 bg-[#ba1a1a]/5 px-4 py-3 text-sm text-[#9b1c1c]"
+        >
+          <span>{mutationError || loadError}</span>
+          {loadError && !mutationError && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsLoadingCoupons(true);
+                setLoadAttempt((attempt) => attempt + 1);
+              }}
+              className="font-semibold underline"
+            >
+              Retry
+            </button>
+          )}
+        </div>
+      )}
 
       {coupons.length === 0 ? (
         <div className="bg-white border border-[#deddd3] p-12 text-center space-y-3">
@@ -134,7 +255,13 @@ export default function CouponsPage() {
                   </span>
                   <span className="text-[10px] font-semibold text-[#0d4d3b] flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3" />
-                    {coupon.status}
+                    {!coupon.isActive
+                      ? 'INACTIVE'
+                      : new Date(coupon.expiryDate) < new Date()
+                      ? 'EXPIRED'
+                      : new Date(coupon.startDate) > new Date()
+                      ? 'SCHEDULED'
+                      : 'ACTIVE'}
                   </span>
                 </div>
 
@@ -154,17 +281,38 @@ export default function CouponsPage() {
                 <div className="pt-2 text-xs text-[#717975] space-y-1">
                   <p>Minimum Order: <strong className="text-[#1b1c18]">৳{coupon.minSpend}</strong></p>
                   <p>Redeemed: <strong className="text-[#1b1c18]">{coupon.usageCount} times</strong></p>
-                  <p>Expires: <span className="font-mono">{coupon.expiryDate}</span></p>
+                  <p className="flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    Starts: <span className="font-mono">{toDateInputValue(coupon.startDate)}</span>
+                  </p>
+                  <p className="flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    Expires: <span className="font-mono">{toDateInputValue(coupon.expiryDate)}</span>
+                  </p>
                 </div>
               </div>
 
-              <div className="mt-5 pt-3 border-t border-[#f0eee7] flex items-center justify-end">
+              <div className="mt-5 pt-3 border-t border-[#f0eee7] flex items-center justify-between">
                 <button
-                  onClick={() => setCoupons(coupons.filter((c) => c.id !== coupon.id))}
-                  className="text-xs text-[#ba1a1a] hover:underline flex items-center gap-1"
+                  type="button"
+                  onClick={() => handleActiveChange(coupon)}
+                  disabled={savingCouponId === coupon.id || deletingCouponId === coupon.id}
+                  className="text-xs text-[#ba1a1a] hover:underline disabled:opacity-50"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Revoke Voucher</span>
+                  {savingCouponId === coupon.id
+                    ? 'Saving...'
+                    : coupon.isActive
+                    ? 'Deactivate Voucher'
+                    : 'Activate Voucher'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(coupon)}
+                  disabled={savingCouponId === coupon.id || deletingCouponId === coupon.id}
+                  className="inline-flex items-center gap-1 text-xs text-[#ba1a1a] hover:underline disabled:opacity-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {deletingCouponId === coupon.id ? 'Deleting...' : 'Delete'}
                 </button>
               </div>
             </div>
@@ -174,8 +322,16 @@ export default function CouponsPage() {
 
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white border border-[#deddd3] shadow-2xl p-6 w-full max-w-sm">
+          <form
+            onSubmit={handleAdd}
+            className="bg-white border border-[#deddd3] shadow-2xl p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto"
+          >
             <h3 className="font-serif text-lg font-bold text-[#073a2d]">Create Atelier Voucher</h3>
+            {mutationError && (
+              <p role="alert" className="mt-3 text-xs text-[#9b1c1c]">
+                {mutationError}
+              </p>
+            )}
             <div className="mt-4 space-y-3">
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-[#717975]">
@@ -186,18 +342,35 @@ export default function CouponsPage() {
                   placeholder="e.g. MONSOON2026"
                   value={newCode}
                   onChange={(e) => setNewCode(e.target.value)}
+                  required
                   className="w-full mt-1 px-3 py-2 border border-[#deddd3] text-xs font-mono font-bold uppercase text-[#1b1c18] focus:border-[#073a2d] outline-hidden"
                 />
               </div>
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-[#717975]">
-                  Discount %
+                  Discount Type
+                </label>
+                <select
+                  value={newDiscountType}
+                  onChange={(e) => setNewDiscountType(e.target.value as CouponDiscountType)}
+                  className="w-full mt-1 px-3 py-2 border border-[#deddd3] text-xs text-[#1b1c18] focus:border-[#073a2d] outline-hidden"
+                >
+                  <option value="PERCENTAGE">Percentage</option>
+                  <option value="FIXED">Fixed Amount (BDT ৳)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-[#717975]">
+                  Discount Value{newDiscountType === 'PERCENTAGE' ? ' (%)' : ' (BDT ৳)'}
                 </label>
                 <input
                   type="number"
-                  placeholder="e.g. 15"
+                  placeholder={newDiscountType === 'PERCENTAGE' ? 'e.g. 15' : 'e.g. 500'}
                   value={newDiscount}
                   onChange={(e) => setNewDiscount(e.target.value)}
+                  min="0"
+                  step="0.01"
+                  required
                   className="w-full mt-1 px-3 py-2 border border-[#deddd3] text-xs text-[#1b1c18] focus:border-[#073a2d] outline-hidden font-mono"
                 />
               </div>
@@ -210,25 +383,88 @@ export default function CouponsPage() {
                   placeholder="e.g. 2500"
                   value={newMinSpend}
                   onChange={(e) => setNewMinSpend(e.target.value)}
+                  min="0"
+                  step="0.01"
+                  required
                   className="w-full mt-1 px-3 py-2 border border-[#deddd3] text-xs text-[#1b1c18] focus:border-[#073a2d] outline-hidden font-mono"
                 />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-[#717975]">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={newStartDate}
+                  onChange={(e) => setNewStartDate(e.target.value)}
+                  required
+                  className="w-full mt-1 px-3 py-2 border border-[#deddd3] text-xs text-[#1b1c18] focus:border-[#073a2d] outline-hidden font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-[#717975]">
+                  Expiry Date
+                </label>
+                <input
+                  type="date"
+                  value={newExpiryDate}
+                  onChange={(e) => setNewExpiryDate(e.target.value)}
+                  min={newStartDate}
+                  required
+                  className="w-full mt-1 px-3 py-2 border border-[#deddd3] text-xs text-[#1b1c18] focus:border-[#073a2d] outline-hidden font-mono"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#717975]">Active</span>
+                <div
+                  role="group"
+                  aria-label="Voucher active status"
+                  className="inline-flex rounded border border-[#deddd3] bg-[#f7f6f1] p-0.5"
+                >
+                  <button
+                    type="button"
+                    aria-pressed={newIsActive}
+                    onClick={() => setNewIsActive(true)}
+                    className={`min-w-12 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                      newIsActive
+                        ? 'bg-[#073a2d] text-white shadow-sm'
+                        : 'text-[#717975] hover:bg-white'
+                    }`}
+                  >
+                    On
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={!newIsActive}
+                    onClick={() => setNewIsActive(false)}
+                    className={`min-w-12 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                      !newIsActive
+                        ? 'bg-[#717975] text-white shadow-sm'
+                        : 'text-[#717975] hover:bg-white'
+                    }`}
+                  >
+                    Off
+                  </button>
+                </div>
               </div>
             </div>
             <div className="mt-6 flex items-center justify-end gap-2">
               <button
+                type="button"
                 onClick={() => setShowAddModal(false)}
                 className="px-4 py-2 border border-[#deddd3] text-xs text-[#717975] hover:bg-[#f0eee7]"
               >
                 Cancel
               </button>
               <button
-                onClick={handleAdd}
+                type="submit"
+                disabled={isSavingCoupon}
                 className="px-4 py-2 bg-[#00231a] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#073a2d]"
               >
-                Save Voucher
+                {isSavingCoupon ? 'Saving...' : 'Save Voucher'}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
     </div>

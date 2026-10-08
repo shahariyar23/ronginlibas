@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -9,7 +9,7 @@ import { apiRequest, downloadOrderInvoice, getProduct } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Download, MapPin, Package, Search, Truck } from 'lucide-react';
+import { Calendar, Download, MapPin, Package, Search, Truck, Lock, User } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface OrderItem {
@@ -45,10 +45,18 @@ export const OrdersClient: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
+  const hasNotifiedRef = useRef(false);
+  useEffect(() => {
+    if (!isAuthLoading && !user && !hasNotifiedRef.current) {
+      hasNotifiedRef.current = true;
+      toast.error('You are not logged in. Please login first.');
+    }
+  }, [isAuthLoading, user]);
+
   useEffect(() => {
     if (isAuthLoading) return;
     if (!user) {
-      router.replace('/login?next=%2Forders');
+      Promise.resolve().then(() => setIsLoading(false));
       return;
     }
     let active = true;
@@ -99,6 +107,55 @@ export const OrdersClient: React.FC = () => {
       toast.error(error instanceof Error ? error.message : 'Could not download the invoice.');
     }
   };
+
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen pt-32 pb-20 flex items-center justify-center bg-[#fbf9f2]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-[#073a2d] border-t-transparent rounded-full animate-spin" />
+          <span className="font-sans text-xs uppercase tracking-widest text-[#717975]">
+            Verifying Patron Credentials...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen pt-28 pb-20 bg-[#fbf9f2] flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white border border-[#deddd3] p-8 sm:p-10 text-center shadow-xl">
+          <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-[#fdf8ed] border border-[#e8d5aa] flex items-center justify-center text-[#073a2d]">
+            <Lock className="w-8 h-8 text-[#073a2d]" />
+          </div>
+          <Badge className="bg-[#ba1a1a] text-white text-[10px] font-sans uppercase tracking-widest px-2.5 py-0.5 mb-3">
+            Authentication Required
+          </Badge>
+          <h1 className="font-serif text-2xl sm:text-3xl text-[#073a2d] mb-2 font-normal">
+            You are not logged in
+          </h1>
+          <p className="font-sans text-xs sm:text-sm text-[#69726d] leading-relaxed mb-6">
+            Please login first to view your order history, live consignment statuses, and downloadable invoices.
+          </p>
+          <div className="space-y-3">
+            <Link
+              href="/login?next=%2Forders"
+              className="w-full inline-flex items-center justify-center gap-2 bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-widest py-3.5 px-6 font-semibold shadow-md transition-all cursor-pointer"
+            >
+              <User className="w-4 h-4 text-[#c79a45]" />
+              <span>Login First</span>
+            </Link>
+            <Link
+              href="/shop"
+              className="w-full inline-flex items-center justify-center gap-2 bg-[#f5f4ed] hover:bg-[#eae8e1] text-[#073a2d] font-sans text-xs uppercase tracking-wider py-3 px-6 font-semibold transition-all cursor-pointer"
+            >
+              <span>Explore Collection</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#fbf9f2] py-10">
@@ -190,6 +247,14 @@ export const OrdersClient: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-semibold">৳{(item.unitPrice * item.quantity).toLocaleString()}</span>
+                        {order.status === 'DELIVERED' && (
+                          <Link
+                            href="/profile"
+                            className="inline-flex items-center h-8 px-3 text-xs border border-[#c79a45] text-[#073a2d] hover:bg-[#073a2d] hover:text-white transition-colors"
+                          >
+                            Write Review
+                          </Link>
+                        )}
                         <Button variant="outline" size="sm" onClick={() => void handleReorder(item)}>
                           Reorder
                         </Button>

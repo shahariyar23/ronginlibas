@@ -29,6 +29,13 @@ export declare class ReviewsService {
             helpfulNo: number;
         }[];
         averageRating: number;
+        ratingDistribution: {
+            5: number;
+            4: number;
+            3: number;
+            2: number;
+            1: number;
+        };
         page: number;
         limit: number;
         total: number;
@@ -36,6 +43,52 @@ export declare class ReviewsService {
         hasNext: boolean;
         hasPrevious: boolean;
     }>;
+    checkEligibility(productId: string, customerId: string): Promise<{
+        canReview: boolean;
+        reason: string;
+        existingReview: {
+            id: string;
+            createdAt: Date;
+            status: import("@prisma/client").$Enums.ReviewStatus;
+            rating: number;
+        };
+        orderNumber?: undefined;
+    } | {
+        canReview: boolean;
+        reason: string;
+        existingReview?: undefined;
+        orderNumber?: undefined;
+    } | {
+        canReview: boolean;
+        reason: string;
+        orderNumber: string;
+        existingReview?: undefined;
+    }>;
+    findCustomerReviews(customerId: string): Promise<{
+        id: string;
+        productId: string;
+        productName: string;
+        productSlug: string;
+        productImage: string;
+        rating: number;
+        comment: string;
+        status: import("@prisma/client").$Enums.ReviewStatus;
+        createdAt: Date;
+        updatedAt: Date;
+    }[]>;
+    findEligibleProducts(customerId: string): Promise<{
+        orderId: string;
+        orderNumber: string;
+        deliveredAt: Date;
+        product: {
+            id: string;
+            name: string;
+            slug: string;
+            image: string | null;
+        };
+        size: string;
+        color: string;
+    }[]>;
     createForProduct(productId: string, dto: Pick<CreateReviewDto, 'rating' | 'comment'>, customerId: string): Promise<{
         id: string;
         createdAt: Date;
@@ -56,7 +109,11 @@ export declare class ReviewsService {
         deleted: boolean;
     }>;
     vote(reviewId: string, customerId: string, helpful: boolean): Promise<{
-        recorded: boolean;
+        id: string;
+        createdAt: Date;
+        customerId: string;
+        reviewId: string;
+        helpful: boolean;
     }>;
     updateStatus(id: string, status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'HIDDEN'): Promise<{
         id: string;

@@ -10,8 +10,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d;
-import { BadRequestException, Controller, Delete, Post, UploadedFile, UseGuards, UseInterceptors, } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Post, UploadedFile, UseGuards, UseInterceptors, } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { IsNotEmpty, IsString } from 'class-validator';
@@ -42,8 +41,9 @@ let AdminProductImagesController = class AdminProductImagesController {
             data: { url: uploaded.secure_url, publicId: uploaded.public_id },
         };
     }
-    async destroy(_unused) {
-        throw new BadRequestException('Use the product image deletion payload');
+    async destroy(dto) {
+        await this.cloudinary.destroyProductImage(dto.publicId);
+        return { message: 'Product image deleted successfully' };
     }
 };
 __decorate([
@@ -69,15 +69,16 @@ __decorate([
     })),
     __param(0, UploadedFile()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_b = typeof Express !== "undefined" && (_a = Express.Multer) !== void 0 && _a.File) === "function" ? _b : Object]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AdminProductImagesController.prototype, "upload", null);
 __decorate([
-    Delete(),
+    Delete('cleanup'),
+    ApiBody({ type: DeleteProductImageDto }),
     ApiOperation({ summary: 'Delete an unassociated product image from Cloudinary' }),
-    __param(0, UploadedFile()),
+    __param(0, Body()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_d = typeof Express !== "undefined" && (_c = Express.Multer) !== void 0 && _c.File) === "function" ? _d : Object]),
+    __metadata("design:paramtypes", [DeleteProductImageDto]),
     __metadata("design:returntype", Promise)
 ], AdminProductImagesController.prototype, "destroy", null);
 AdminProductImagesController = __decorate([

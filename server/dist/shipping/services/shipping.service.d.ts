@@ -10,6 +10,7 @@ export declare class ShippingService {
         id: string;
         name: string;
         charge: unknown;
+        freeShippingEnabled: unknown;
         freeDeliveryThreshold: unknown;
     }[]>;
 }

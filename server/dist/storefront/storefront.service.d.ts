@@ -12,23 +12,23 @@ export declare class StorefrontService {
         bestSellers: any[];
         categories: {
             description: string | null;
-            sortOrder: number;
-            name: string;
-            slug: string;
             id: string;
+            name: string;
+            _count: {
+                products: number;
+            };
+            sortOrder: number;
+            slug: string;
             image: string | null;
             parentId: string | null;
             children: {
                 description: string | null;
-                sortOrder: number;
-                name: string;
-                slug: string;
                 id: string;
+                name: string;
+                sortOrder: number;
+                slug: string;
                 image: string | null;
             }[];
-            _count: {
-                products: number;
-            };
         }[];
         promotionalBanner: {} | null;
         storeSettings: {
@@ -44,7 +44,12 @@ export declare class StorefrontService {
             currencySymbol: unknown;
             dhakaDeliveryCharge: unknown;
             outsideDhakaDeliveryCharge: unknown;
+            freeShippingEnabled: unknown;
             freeDeliveryThreshold: unknown;
+            promoEnabled: unknown;
+            promoCode: unknown;
+            promoDiscountText: unknown;
+            whatsappOrderEnabled: unknown;
             codEnabled: unknown;
             bkashEnabled: unknown;
             nagadEnabled: unknown;

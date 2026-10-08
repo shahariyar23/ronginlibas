@@ -50,6 +50,31 @@ export class UpdateSettingsDto {
   @ApiPropertyOptional({ default: true })
   @IsBoolean()
   @IsOptional()
+  freeShippingEnabled?: boolean;
+
+  @ApiPropertyOptional({ default: false })
+  @IsBoolean()
+  @IsOptional()
+  promoEnabled?: boolean;
+
+  @ApiPropertyOptional({ example: 'RONGINLAUNCH' })
+  @IsString()
+  @IsOptional()
+  promoCode?: string;
+
+  @ApiPropertyOptional({ example: '15% OFF' })
+  @IsString()
+  @IsOptional()
+  promoDiscountText?: string;
+
+  @ApiPropertyOptional({ default: true })
+  @IsBoolean()
+  @IsOptional()
+  whatsappOrderEnabled?: boolean;
+
+  @ApiPropertyOptional({ default: true })
+  @IsBoolean()
+  @IsOptional()
   codEnabled?: boolean;
 
   @ApiPropertyOptional({ default: true })

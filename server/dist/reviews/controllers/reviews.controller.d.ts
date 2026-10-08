@@ -4,6 +4,37 @@ import { ReviewsService } from '../services/reviews.service.js';
 export declare class ReviewsController {
     private readonly reviewsService;
     constructor(reviewsService: ReviewsService);
+    findMine(customerId: string): Promise<{
+        message: string;
+        data: {
+            id: string;
+            productId: string;
+            productName: string;
+            productSlug: string;
+            productImage: string;
+            rating: number;
+            comment: string;
+            status: import("@prisma/client").$Enums.ReviewStatus;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
+    }>;
+    findEligible(customerId: string): Promise<{
+        message: string;
+        data: {
+            orderId: string;
+            orderNumber: string;
+            deliveredAt: Date;
+            product: {
+                id: string;
+                name: string;
+                slug: string;
+                image: string | null;
+            };
+            size: string;
+            color: string;
+        }[];
+    }>;
     update(reviewId: string, customerId: string, dto: UpdateReviewDto): Promise<{
         message: string;
         data: {
@@ -24,7 +55,11 @@ export declare class ReviewsController {
     vote(reviewId: string, customerId: string, dto: ReviewVoteDto): Promise<{
         message: string;
         data: {
-            recorded: boolean;
+            id: string;
+            createdAt: Date;
+            customerId: string;
+            reviewId: string;
+            helpful: boolean;
         };
     }>;
 }

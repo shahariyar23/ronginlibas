@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CouponsService } from '../services/coupons.service.js';
 import { CreateCouponDto } from '../dto/create-coupon.dto.js';
@@ -41,6 +41,16 @@ export class AdminCouponsController {
     const data = await this.couponsService.update(id, body);
     return {
       message: 'Voucher updated successfully',
+      data,
+    };
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a promotional coupon code' })
+  async remove(@Param('id') id: string) {
+    const data = await this.couponsService.remove(id);
+    return {
+      message: 'Voucher deleted successfully',
       data,
     };
   }

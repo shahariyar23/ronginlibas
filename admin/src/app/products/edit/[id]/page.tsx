@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
@@ -24,16 +24,51 @@ import {
   Trash2,
   Palette,
   Layers,
+  RefreshCw,
 } from 'lucide-react';
 import { useAdmin } from '@/context/AdminContext';
-import { AdminProduct } from '@/data/adminData';
+import { AdminProduct, AdminProductDetail } from '@/data/adminData';
+import { ProductFormSkeleton } from '@/components/common/Skeleton';
+import {
+  cleanupUploadedProductImages,
+  ProductImageDraft,
+  uploadPendingProductImages,
+} from '@/lib/product-images';
+import {
+  normalizeSizeLabel,
+  STANDARD_APPAREL_SIZES,
+  TROUSER_WAIST_SIZES,
+  getConfiguredSizeType,
+  isProductSizeType,
+  ProductSizeType,
+} from '@/lib/product-size';
+
+function generateCategorySku(catName: string): string {
+  const clean = (catName || 'Panjabi').trim();
+  let prefix = 'PAN';
+  const words = clean.split(/\s+/);
+  if (words.length > 1) {
+    prefix = words.map((w) => w[0]?.toUpperCase() || '').join('').slice(0, 4);
+  } else {
+    const stripped = clean.replace(/[^A-Za-z]/g, '').toUpperCase();
+    prefix = stripped.slice(0, 3) || 'RL';
+  }
+  const randNum = Math.floor(1000 + Math.random() * 9000);
+  return `RL-${prefix}-${randNum}`;
+}
+
+function generateBarcode(): string {
+  const timePart = Date.now().toString().slice(-6);
+  const randPart = Math.floor(100 + Math.random() * 900).toString();
+  return `890${timePart}${randPart}`;
+}
 
 export default function EditProductPage() {
   const router = useRouter();
   const params = useParams();
   const productId = (params?.id as string) || '';
 
-  const { updateProduct, getProductDetails, products } = useAdmin();
+  const { updateProduct, getProductDetails, products, categories } = useAdmin();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,12 +87,16 @@ export default function EditProductPage() {
   // Inventory
   const [sku, setSku] = useState('');
   const [barcode, setBarcode] = useState('');
+  const [isSkuManuallyEdited, setIsSkuManuallyEdited] = useState(false);
   const [aggregateStock, setAggregateStock] = useState('0');
   const [alertThreshold, setAlertThreshold] = useState('5');
 
   // Sizing selections
+  const baseSizes = STANDARD_APPAREL_SIZES;
+  const [customSizes, setCustomSizes] = useState<string[]>([]);
+  const [customSizeTypes, setCustomSizeTypes] = useState<Record<string, ProductSizeType>>({});
+  const [customSizeType, setCustomSizeType] = useState<ProductSizeType>('CUSTOM');
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
-  const baseSizes = ['38"', '40"', '42"', '44"', 'XXL 46"', 'S', 'M', 'L', 'XL', 'XXL'];
   const [customSizeInput, setCustomSizeInput] = useState('');
   const [showCustomSize, setShowCustomSize] = useState(false);
 
@@ -79,11 +118,13 @@ export default function EditProductPage() {
   const [isFeatured, setIsFeatured] = useState(false);
 
   // Images
-  const [images, setImages] = useState<string[]>([]);
+  const [images, setImages] = useState<ProductImageDraft[]>([]);
+  const loadedProductIdRef = useRef<string | null>(null);
 
   // Load product details on mount
   useEffect(() => {
     if (!productId) return;
+    if (loadedProductIdRef.current === productId) return;
 
     let isMounted = true;
     setIsLoading(true);
@@ -101,16 +142,20 @@ export default function EditProductPage() {
         setCostOfGoods(cached.costOfGoods !== undefined ? cached.costOfGoods.toString() : '');
         setSku(cached.sku || '');
         setAggregateStock(cached.stock !== undefined ? cached.stock.toString() : '0');
+        if (cached.alertThreshold !== undefined && cached.alertThreshold !== null) {
+          setAlertThreshold(cached.alertThreshold.toString());
+        }
         setIsFeatured(cached.featured ?? false);
         setLifecycleState(cached.status === 'Active' ? 'Active' : 'Draft');
         if (cached.tags?.length) setTags(cached.tags);
-        if (cached.image) setImages([cached.image]);
+        setImages(cached.images ?? []);
       }
 
       // 2. Fetch authoritative data from database API
       try {
         const detailed = await getProductDetails(productId);
         if (detailed && isMounted) {
+          loadedProductIdRef.current = productId;
           setTitle(detailed.name || '');
           setCategory(detailed.category?.name || 'Panjabi');
           setFabricNote(detailed.fabric || '');
@@ -126,10 +171,17 @@ export default function EditProductPage() {
               ? detailed.costPrice.toString()
               : ''
           );
-          setSku(detailed.sku || '');
+          if (detailed.sku) {
+            setSku(detailed.sku);
+            setIsSkuManuallyEdited(true);
+          }
+          setBarcode((detailed as any).barcode || generateBarcode());
 
           const totalStock = detailed.variants?.reduce((sum: number, v: any) => sum + (v.stock || 0), 0) ?? 0;
           setAggregateStock(totalStock.toString());
+          if (detailed.alertThreshold !== undefined && detailed.alertThreshold !== null) {
+            setAlertThreshold(detailed.alertThreshold.toString());
+          }
 
           setIsFeatured(detailed.isFeatured ?? false);
           setLifecycleState(detailed.isActive ? 'Active' : 'Draft');
@@ -138,14 +190,43 @@ export default function EditProductPage() {
             setTags(detailed.tags);
           }
 
-          if (detailed.images && detailed.images.length > 0) {
-            setImages(detailed.images.map((img: any) => (typeof img === 'string' ? img : img.url)));
-          }
+          setImages((detailed.images ?? []).map((img: any) =>
+            typeof img === 'string' ? { url: img } : {
+              url: img.url,
+              publicId: img.publicId ?? undefined,
+              altText: img.altText ?? undefined,
+              sortOrder: img.sortOrder,
+              isPrimary: img.isPrimary,
+            },
+          ));
 
           if (detailed.variants && detailed.variants.length > 0) {
-            setProductVariants(detailed.variants);
-            const sizes = Array.from(new Set(detailed.variants.map((v: any) => v.size).filter(Boolean))) as string[];
+            const variants = detailed.variants.map((variant: AdminProductDetail['variants'][number]) => {
+              const measurements =
+                variant.measurements && typeof variant.measurements === 'object'
+                  ? variant.measurements as Record<string, unknown>
+                  : {};
+              const firstMeasurement = Object.entries(measurements).find(
+                ([key, value]) => key !== 'unit' && typeof value === 'number',
+              );
+              return {
+                ...variant,
+                measurementDimension: firstMeasurement?.[0] || '',
+                measurementValue: firstMeasurement?.[1]?.toString() || '',
+                measurementUnit: measurements.unit === 'CM' ? 'CM' : 'IN',
+              };
+            });
+            setProductVariants(variants);
+            const sizes = Array.from(new Set(variants.map((v) => normalizeSizeLabel(v.sizeLabel || v.size)).filter(Boolean)));
             if (sizes.length > 0) setSelectedSizes(sizes);
+            const configuredTypes: Record<string, ProductSizeType> = {};
+            for (const variant of variants) {
+              if (isProductSizeType(variant.sizeType)) {
+                configuredTypes[normalizeSizeLabel(variant.sizeLabel || variant.size)] =
+                  variant.sizeType;
+              }
+            }
+            setCustomSizeTypes(configuredTypes);
 
             const shades = detailed.variants
               .filter((v: any) => v.color)
@@ -172,90 +253,65 @@ export default function EditProductPage() {
     };
   }, [productId, getProductDetails, products]);
 
-  // Variant helper functions
-  const updateVariant = (index: number, field: string, value: any) => {
-    setProductVariants((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      if (field === 'stock') {
-        const total = updated.reduce((sum, v) => sum + (parseInt(v.stock, 10) || 0), 0);
-        setAggregateStock(total.toString());
-      }
-      return updated;
-    });
-  };
-
-  const removeVariant = (index: number) => {
-    setProductVariants((prev) => {
-      const updated = prev.filter((_, i) => i !== index);
-      const total = updated.reduce((sum, v) => sum + (parseInt(v.stock, 10) || 0), 0);
-      setAggregateStock(total.toString());
-      return updated;
-    });
-  };
-
-  const addVariantRow = (sizeParam?: string, colorParam?: string) => {
-    const chosenSize = sizeParam || (allAvailableSizes.find((s) => !productVariants.some((v) => v.size === s)) || '40"');
-    const chosenColor = colorParam || (selectedShades[0]?.name || 'Standard');
-    const cleanSize = chosenSize.replace(/"/g, '').replace(/\s+/g, '');
-    const cleanColor = chosenColor.split(' ')[0].toUpperCase();
-    const generatedSku = `${sku || 'RL'}-${cleanColor.slice(0, 3)}-${cleanSize}`;
-
-    const newVariant = {
-      id: `v-temp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      size: chosenSize,
-      color: chosenColor,
-      sku: generatedSku,
-      price: regularPrice ? parseFloat(regularPrice) : 0,
-      priceOverride: promotionalPrice ? parseFloat(promotionalPrice) : (regularPrice ? parseFloat(regularPrice) : 0),
-      stock: 10,
-      isActive: true,
-    };
-
-    setProductVariants((prev) => {
-      const updated = [...prev, newVariant];
-      const total = updated.reduce((sum, v) => sum + (parseInt(v.stock, 10) || 0), 0);
-      setAggregateStock(total.toString());
-      return updated;
-    });
-
-    if (!selectedSizes.includes(chosenSize)) {
-      setSelectedSizes((prev) => [...prev, chosenSize]);
+  const handleCategoryChange = (newCat: string) => {
+    setCategory(newCat);
+    if (!sku || !isSkuManuallyEdited) {
+      setSku(generateCategorySku(newCat));
     }
   };
 
   const toggleSize = (size: string) => {
-    const exists = productVariants.some((v) => v.size === size);
-    if (exists) {
-      setProductVariants((prev) => {
-        const updated = prev.filter((v) => v.size !== size);
-        const total = updated.reduce((sum, v) => sum + (parseInt(v.stock, 10) || 0), 0);
-        setAggregateStock(total.toString());
-        return updated;
-      });
-      setSelectedSizes((prev) => prev.filter((s) => s !== size));
+    if (selectedSizes.includes(size)) {
+      setSelectedSizes(selectedSizes.filter((s) => s !== size));
     } else {
-      setSelectedSizes((prev) => [...prev, size]);
-      addVariantRow(size);
+      const nextType = getConfiguredSizeType(size, productVariants, customSizeTypes, category);
+      const selectedTypes = selectedSizes
+        .map((selected) =>
+          getConfiguredSizeType(selected, productVariants, customSizeTypes, category),
+        )
+        .filter((type): type is ProductSizeType => Boolean(type));
+      if (nextType && selectedTypes.some((type) => type !== nextType)) {
+        window.alert('Use one sizing system per product matrix. Remove the selected sizes before switching systems.');
+        return;
+      }
+      setSelectedSizes([...selectedSizes, size]);
     }
   };
 
   const handleAddCustomSize = () => {
-    if (!customSizeInput.trim()) return;
-    const size = customSizeInput.trim();
-    if (!selectedSizes.includes(size)) {
-      setSelectedSizes((prev) => [...prev, size]);
-      addVariantRow(size);
+    const trimmed = normalizeSizeLabel(customSizeInput);
+    if (!trimmed) return;
+    const newType = STANDARD_APPAREL_SIZES.includes(trimmed) ? 'APPAREL' : customSizeType;
+    const selectedTypes = selectedSizes
+      .map((selected) =>
+        getConfiguredSizeType(selected, productVariants, customSizeTypes, category),
+      )
+      .filter((type): type is ProductSizeType => Boolean(type));
+    if (selectedTypes.some((type) => type !== newType)) {
+      window.alert('Use one sizing system per product matrix. Remove the selected sizes before switching systems.');
+      return;
+    }
+    if (!allAvailableSizes.includes(trimmed)) {
+      setCustomSizes((prev) => [...prev, trimmed]);
+    }
+    setCustomSizeTypes((prev) => ({ ...prev, [trimmed]: newType }));
+    if (!selectedSizes.includes(trimmed)) {
+      setSelectedSizes((prev) => [...prev, trimmed]);
     }
     setCustomSizeInput('');
     setShowCustomSize(false);
   };
 
+  const removeCustomSize = (sizeToRemove: string) => {
+    setCustomSizes((prev) => prev.filter((s) => s !== sizeToRemove));
+    setSelectedSizes((prev) => prev.filter((s) => s !== sizeToRemove));
+  };
+
   const handleAddShade = () => {
-    if (!newShadeName.trim()) return;
-    const name = newShadeName.trim();
-    if (!selectedShades.some((s) => s.name.toLowerCase() === name.toLowerCase())) {
-      setSelectedShades((prev) => [...prev, { name, hex: newShadeHex }]);
+    const trimmed = newShadeName.trim();
+    if (!trimmed) return;
+    if (!selectedShades.some((s) => s.name.toLowerCase() === trimmed.toLowerCase())) {
+      setSelectedShades((prev) => [...prev, { name: trimmed, hex: newShadeHex }]);
     }
     setNewShadeName('');
     setShowAddShade(false);
@@ -266,51 +322,161 @@ export default function EditProductPage() {
   };
 
   const generateCombinationsMatrix = () => {
-    const activeSizes = selectedSizes.length > 0 ? selectedSizes : ['38"', '40"', '42"', '44"'];
-    const activeShades = selectedShades.length > 0 ? selectedShades : [{ name: 'Standard', hex: '#00231A' }];
-    const basePrice = regularPrice ? parseFloat(regularPrice) : 0;
+    const sizesToUse = selectedSizes.length > 0 ? selectedSizes : ['Standard'];
+    const shadesToUse = selectedShades.length > 0 ? selectedShades : [{ name: 'Standard', hex: '#00231A' }];
+    const defaultPrice = promotionalPrice ? parseFloat(promotionalPrice) : (regularPrice ? parseFloat(regularPrice) : undefined);
+    const defaultStock = parseInt(aggregateStock, 10) || 10;
 
     const combinations: any[] = [];
-    activeShades.forEach((shade) => {
-      activeSizes.forEach((size) => {
-        const cleanSize = size.replace(/"/g, '').replace(/\s+/g, '');
-        const cleanColor = shade.name.split(' ')[0].toUpperCase();
+    for (const s of sizesToUse) {
+      for (const shade of shadesToUse) {
+        const normalizedSize = normalizeSizeLabel(s);
+        const existingVariant = productVariants.find(
+          (variant) =>
+            normalizeSizeLabel(variant.sizeLabel || variant.size) === normalizedSize &&
+            variant.color === shade.name,
+        );
+        const sizeType = getConfiguredSizeType(
+          normalizedSize,
+          productVariants,
+          customSizeTypes,
+          category,
+        );
+        const cleanSize = normalizedSize.replace(/[^A-Za-z0-9]/g, '');
+        const cleanShade = shade.name.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase();
         combinations.push({
-          id: `v-gen-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          size,
+          id: existingVariant?.id ?? `var-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          size: existingVariant?.size ?? normalizedSize,
+          sizeLabel:
+            existingVariant?.sizeLabel ??
+            (sizeType || STANDARD_APPAREL_SIZES.includes(normalizedSize)
+              ? normalizedSize
+              : undefined),
+          sizeType,
           color: shade.name,
-          sku: `${sku || 'RL'}-${cleanColor.slice(0, 3)}-${cleanSize}`,
-          price: basePrice,
-          priceOverride: promotionalPrice ? parseFloat(promotionalPrice) : basePrice,
-          stock: 10,
+          sku: existingVariant?.sku ?? `${sku || 'RL'}-${cleanShade || 'DEF'}-${cleanSize || 'STD'}`,
+          price: existingVariant?.price ?? defaultPrice,
+          priceOverride: existingVariant?.priceOverride ?? existingVariant?.price ?? defaultPrice,
+          stock: existingVariant?.stock ?? defaultStock,
           isActive: true,
         });
-      });
-    });
-
+      }
+    }
     setProductVariants(combinations);
-    const total = combinations.reduce((sum, v) => sum + (parseInt(v.stock, 10) || 0), 0);
+    const total = combinations.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
     setAggregateStock(total.toString());
+  };
+
+  const addVariantRow = () => {
+    const defaultSize = normalizeSizeLabel(selectedSizes[0] || 'M');
+    const defaultColor = selectedShades[0]?.name || 'Standard';
+    const defaultPrice = promotionalPrice ? parseFloat(promotionalPrice) : (regularPrice ? parseFloat(regularPrice) : undefined);
+    const sizeType = getConfiguredSizeType(defaultSize, productVariants, customSizeTypes, category);
+    const newVariant = {
+      id: `var-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      size: defaultSize,
+      sizeLabel:
+        sizeType || STANDARD_APPAREL_SIZES.includes(defaultSize) ? defaultSize : undefined,
+      sizeType,
+      color: defaultColor,
+      sku: `${sku || 'RL'}-${defaultColor.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase()}-${defaultSize.replace(/[^A-Za-z0-9]/g, '')}-${Date.now().toString().slice(-4)}`,
+      price: defaultPrice,
+      priceOverride: defaultPrice,
+      stock: 10,
+      isActive: true,
+    };
+    setProductVariants((prev) => {
+      const next = [...prev, newVariant];
+      const total = next.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+      setAggregateStock(total.toString());
+      return next;
+    });
+  };
+
+  const removeVariant = (index: number) => {
+    setProductVariants((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      const total = next.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+      setAggregateStock(total.toString());
+      return next;
+    });
+  };
+
+  const updateVariant = (index: number, field: string, value: any) => {
+    setProductVariants((prev) => {
+      const next = [...prev];
+      const variant = next[index];
+      if (field === 'size') {
+        const sizeLabel = normalizeSizeLabel(String(value));
+        next[index] = { ...variant, size: sizeLabel, sizeLabel };
+      } else if (
+        field === 'measurementDimension' ||
+        field === 'measurementValue' ||
+        field === 'measurementUnit'
+      ) {
+        const dimension =
+          field === 'measurementDimension' ? String(value).trim() : variant.measurementDimension;
+        const measurementValue =
+          field === 'measurementValue' ? String(value) : variant.measurementValue;
+        const measurementUnit =
+          field === 'measurementUnit' ? String(value) : variant.measurementUnit || 'IN';
+        const measurements =
+          variant.measurements && typeof variant.measurements === 'object'
+            ? { ...variant.measurements }
+            : {};
+        if (dimension && measurementValue !== '') {
+          measurements[dimension.toLowerCase()] = Number(measurementValue);
+          measurements.unit = measurementUnit;
+        } else if (dimension) {
+          delete measurements[dimension.toLowerCase()];
+        }
+        next[index] = {
+          ...variant,
+          [field]: value,
+          measurements: Object.keys(measurements).some((key) => key !== 'unit')
+            ? measurements
+            : undefined,
+        };
+      } else {
+        next[index] = { ...variant, [field]: value };
+      }
+      if (field === 'stock') {
+        const total = next.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+        setAggregateStock(total.toString());
+      }
+      return next;
+    });
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const url = event.target?.result as string;
-        if (url) {
-          setImages((prev) => [...prev, url]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    const selectedFiles = Array.from(files);
+    e.currentTarget.value = '';
+    if (images.length + selectedFiles.length > 4) {
+      window.alert('A product can have up to four images.');
+      return;
+    }
+    if (selectedFiles.some((file) =>
+      !['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(file.type) ||
+      file.size > 15 * 1024 * 1024,
+    )) {
+      window.alert('Choose JPEG, PNG, WEBP, or AVIF images smaller than 15 MB.');
+      return;
+    }
+    setImages((prev) => [
+      ...prev,
+      ...selectedFiles.map((file) => ({ url: URL.createObjectURL(file), file })),
+    ]);
   };
 
   const removeImage = (indexToRemove: number) => {
-    setImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+    setImages((prev) => {
+      const image = prev[indexToRemove];
+      if (image?.file) URL.revokeObjectURL(image.url);
+      return prev.filter((_, idx) => idx !== indexToRemove);
+    });
   };
 
   // Gross margin calculation
@@ -338,27 +504,44 @@ export default function EditProductPage() {
       return;
     }
     const finalPrice = parseFloat(promotionalPrice) || parseFloat(regularPrice) || 0;
-    const finalStock = parseInt(aggregateStock, 10) || 0;
+    const finalStock =
+      productVariants.length > 0
+        ? productVariants.reduce((sum: number, v: any) => sum + (Number(v.stock) || 0), 0)
+        : parseInt(aggregateStock, 10) || 0;
+    const parsedThreshold = parseInt(alertThreshold, 10);
+    const validAlertThreshold = !Number.isNaN(parsedThreshold) ? parsedThreshold : 5;
 
     setIsSubmitting(true);
     try {
+      const uploadedImages = await uploadPendingProductImages(images);
       const updatedProduct: Partial<AdminProduct> = {
         name: title,
         sku: sku,
+        barcode: barcode || undefined,
         category: category,
         price: finalPrice,
         promotionalPrice: promotionalPrice ? parseFloat(promotionalPrice) : undefined,
         costOfGoods: costOfGoods ? parseFloat(costOfGoods) : undefined,
         stock: finalStock,
-        status: finalStock <= 5 && finalStock > 0 ? 'Low Stock' : finalStock === 0 ? 'Out of Stock' : 'Active',
-        image: images[0] || undefined,
+        alertThreshold: validAlertThreshold,
+        status:
+          finalStock <= validAlertThreshold && finalStock > 0
+            ? 'Low Stock'
+            : finalStock === 0
+            ? 'Out of Stock'
+            : 'Active',
+        image: uploadedImages.images[0]?.url,
+        images: uploadedImages.images,
         fabricNote: fabricNote,
         description: description,
         tags: tags,
         featured: isFeatured,
         variants: productVariants.map((v) => ({
-          id: v.id?.startsWith('v-') ? undefined : v.id,
+          id: v.id?.startsWith('v-') || v.id?.startsWith('var-') ? undefined : v.id,
           size: v.size,
+          sizeLabel: v.sizeLabel,
+          sizeType: v.sizeType,
+          measurements: v.measurements,
           color: v.color || 'Standard',
           sku: v.sku || `${sku}-${v.size}`,
           stock: parseInt(v.stock, 10) || 0,
@@ -373,25 +556,35 @@ export default function EditProductPage() {
         })),
       };
 
-      await updateProduct(productId, updatedProduct);
+      const saved = await updateProduct(productId, updatedProduct);
+      if (!saved) {
+        await cleanupUploadedProductImages(uploadedImages.uploadedPublicIds);
+        return;
+      }
+      images.forEach((image) => {
+        if (image.file) URL.revokeObjectURL(image.url);
+      });
+      loadedProductIdRef.current = null;
       router.push('/products');
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Unable to save product images.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const allAvailableSizes = Array.from(new Set([...baseSizes, ...selectedSizes]));
+  const isTrouserCategory = /trouser|pant/i.test(category);
+  const allAvailableSizes = Array.from(
+    new Set([
+      ...baseSizes,
+      ...(isTrouserCategory ? TROUSER_WAIST_SIZES : []),
+      ...customSizes,
+      ...selectedSizes,
+    ]),
+  );
 
   if (isLoading && !title) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 space-y-4">
-        <Loader2 className="w-8 h-8 animate-spin text-[#073a2d]" />
-        <p className="font-serif text-lg text-[#1b1c18]">
-          Retrieving Atelier Product Specifications...
-        </p>
-        <p className="text-xs text-[#717975] font-mono">Product ID: {productId}</p>
-      </div>
-    );
+    return <ProductFormSkeleton isEdit={true} />;
   }
 
   return (
@@ -485,14 +678,17 @@ export default function EditProductPage() {
                 </label>
                 <select
                   value={category}
-                  onChange={(e) => setCategory(e.target.value)}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
                   className="w-full mt-1.5 px-3 py-2.5 bg-[#fbf9f2] border border-[#deddd3] text-xs text-[#1b1c18] focus:border-[#073a2d] outline-hidden cursor-pointer"
                 >
-                  <option value="Panjabi">Panjabi (Bespoke & RTW)</option>
-                  <option value="Shirts">Shirts (Formal & Atelier)</option>
-                  <option value="Polos">Polos (Mercerized Knit)</option>
-                  <option value="Trousers">Trousers (Churidar & Tailored)</option>
-                  <option value="T-Shirts">T-Shirts (Architectural Cotton)</option>
+                  {category && !categories.some((c) => c.name.toLowerCase() === category.toLowerCase()) && (
+                    <option value={category}>{category}</option>
+                  )}
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -646,25 +842,55 @@ export default function EditProductPage() {
                 <label className="block text-xs font-bold uppercase tracking-wider text-[#404945]">
                   SKU Identifier <span className="text-[#ba1a1a]">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={sku}
-                  onChange={(e) => setSku(e.target.value)}
-                  className="w-full mt-1.5 px-3 py-2 bg-[#fbf9f2] border border-[#deddd3] text-xs font-mono font-semibold text-[#1b1c18] focus:border-[#073a2d] outline-hidden"
-                />
+                <div className="relative mt-1.5 flex items-center">
+                  <input
+                    type="text"
+                    value={sku}
+                    onChange={(e) => {
+                      setSku(e.target.value);
+                      setIsSkuManuallyEdited(true);
+                    }}
+                    placeholder="RL-PAN-01"
+                    className="w-full pl-3 pr-8 py-2 bg-[#fbf9f2] border border-[#deddd3] text-xs font-mono font-semibold text-[#1b1c18] focus:border-[#073a2d] outline-hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newSku = generateCategorySku(category);
+                      setSku(newSku);
+                      setIsSkuManuallyEdited(false);
+                    }}
+                    title="Regenerate SKU based on category"
+                    className="absolute right-1 text-[#717975] hover:text-[#073a2d] p-1.5 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <span className="text-[10px] text-[#717975] mt-1 block">Category-based identifier</span>
               </div>
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-[#404945]">
                   Barcode / UPC
                 </label>
-                <input
-                  type="text"
-                  value={barcode}
-                  onChange={(e) => setBarcode(e.target.value)}
-                  placeholder="Barcode"
-                  className="w-full mt-1.5 px-3 py-2 bg-[#fbf9f2] border border-[#deddd3] text-xs font-mono text-[#1b1c18] focus:border-[#073a2d] outline-hidden"
-                />
+                <div className="relative mt-1.5 flex items-center">
+                  <input
+                    type="text"
+                    value={barcode}
+                    onChange={(e) => setBarcode(e.target.value)}
+                    placeholder="890123456789"
+                    className="w-full pl-3 pr-8 py-2 bg-[#fbf9f2] border border-[#deddd3] text-xs font-mono text-[#1b1c18] focus:border-[#073a2d] outline-hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setBarcode(generateBarcode())}
+                    title="Regenerate unique 12-digit barcode"
+                    className="absolute right-1 text-[#717975] hover:text-[#073a2d] p-1.5 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <span className="text-[10px] text-[#717975] mt-1 block">Auto-generated 12-digit barcode</span>
               </div>
 
               <div>
@@ -688,10 +914,15 @@ export default function EditProductPage() {
                 </label>
                 <input
                   type="number"
+                  min="0"
                   value={alertThreshold}
                   onChange={(e) => setAlertThreshold(e.target.value)}
-                  className="w-full mt-1.5 px-3 py-2 bg-[#fbf9f2] border border-[#deddd3] text-xs font-mono text-[#1b1c18] focus:border-[#073a2d] outline-hidden"
+                  placeholder="5"
+                  className="w-full mt-1.5 px-3 py-2 bg-[#fbf9f2] border border-[#deddd3] text-xs font-mono font-semibold text-[#1b1c18] focus:border-[#073a2d] outline-hidden"
                 />
+                <span className="text-[10px] text-[#717975] mt-1 block">
+                  Triggers &apos;Low Stock&apos; alert (default: 5 units)
+                </span>
               </div>
             </div>
           </div>
@@ -717,7 +948,7 @@ export default function EditProductPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-bold uppercase tracking-wider text-[#404945]">
-                  Standard Apparel Sizing (Click to toggle/add variant)
+                  Size Labels (choose all applicable sizes)
                 </p>
                 <button
                   type="button"
@@ -731,21 +962,32 @@ export default function EditProductPage() {
 
               <div className="flex flex-wrap items-center gap-2">
                 {allAvailableSizes.map((size) => {
-                  const active = productVariants.some((v) => v.size === size);
+                  const active = selectedSizes.includes(size);
+                  const isCustom = customSizes.includes(size);
                   return (
-                    <button
-                      key={size}
-                      type="button"
-                      onClick={() => toggleSize(size)}
-                      title={active ? 'Click to remove this size variant' : 'Click to add variant for this size'}
-                      className={`px-3.5 py-1.5 text-xs font-bold tracking-wider transition-colors border cursor-pointer ${
-                        active
-                          ? 'bg-[#00231a] text-white border-[#00231a] shadow-xs'
-                          : 'bg-white text-[#404945] border-[#deddd3] hover:border-[#073a2d]'
-                      }`}
-                    >
-                      {size}
-                    </button>
+                    <div key={size} className="relative inline-flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => toggleSize(size)}
+                        className={`px-3.5 py-1.5 text-xs font-bold tracking-wider transition-colors border cursor-pointer ${
+                          active
+                            ? 'bg-[#00231a] text-white border-[#00231a] shadow-xs'
+                            : 'bg-white text-[#404945] border-[#deddd3] hover:border-[#073a2d]'
+                        }`}
+                      >
+                        {size}
+                      </button>
+                      {isCustom && (
+                        <button
+                          type="button"
+                          onClick={() => removeCustomSize(size)}
+                          className="ml-1 text-[#ba1a1a] hover:bg-[#ffdad6]/40 p-1 rounded-xs"
+                          title="Remove custom size"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -757,13 +999,29 @@ export default function EditProductPage() {
                     type="text"
                     value={customSizeInput}
                     onChange={(e) => setCustomSizeInput(e.target.value)}
-                    placeholder="Enter custom size (e.g. 36, 48, Bespoke)"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddCustomSize();
+                      }
+                    }}
+                    placeholder="Canonical size label (e.g. Bespoke, 34)"
                     className="px-3 py-1.5 text-xs bg-[#fbf9f2] border border-[#deddd3] text-[#1b1c18] focus:border-[#073a2d] outline-hidden"
                   />
+                  <select
+                    value={customSizeType}
+                    onChange={(e) => setCustomSizeType(e.target.value as ProductSizeType)}
+                    className="px-2 py-1.5 text-xs bg-[#fbf9f2] border border-[#deddd3] text-[#1b1c18]"
+                    aria-label="Custom size type"
+                  >
+                    <option value="APPAREL">Apparel</option>
+                    <option value="WAIST">Waist</option>
+                    <option value="CUSTOM">Custom</option>
+                  </select>
                   <button
                     type="button"
                     onClick={handleAddCustomSize}
-                    className="px-3 py-1.5 bg-[#00231a] text-white text-xs font-bold uppercase tracking-wider cursor-pointer"
+                    className="px-3 py-1.5 bg-[#00231a] hover:bg-[#073a2d] text-white text-xs font-bold uppercase tracking-wider cursor-pointer"
                   >
                     Add Size
                   </button>
@@ -783,7 +1041,7 @@ export default function EditProductPage() {
               <div className="flex items-center justify-between">
                 <p className="text-xs font-bold uppercase tracking-wider text-[#404945] flex items-center gap-1.5">
                   <Palette className="w-3.5 h-3.5 text-[#073a2d]" />
-                  <span>Textile Shades / Colors</span>
+                  <span>Selected Textile Shades</span>
                 </p>
                 <button
                   type="button"
@@ -791,7 +1049,7 @@ export default function EditProductPage() {
                   className="text-xs text-[#073a2d] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
                 >
                   <Plus className="w-3 h-3" />
-                  <span>New Shade</span>
+                  <span>Custom Shade</span>
                 </button>
               </div>
 
@@ -818,28 +1076,29 @@ export default function EditProductPage() {
                 ))}
 
                 {/* Preset quick buttons */}
-                {['Navy Atelier', 'Raw Silk White', 'Royal Emerald', 'Midnight Noir'].map((preset) => {
-                  if (selectedShades.some((s) => s.name === preset)) return null;
-                  const hexMap: Record<string, string> = {
-                    'Navy Atelier': '#0F1A2C',
-                    'Raw Silk White': '#FBF9F2',
-                    'Royal Emerald': '#00231A',
-                    'Midnight Noir': '#1A1A1A',
-                  };
+                {[
+                  { name: 'Navy Atelier', hex: '#0F1A2C' },
+                  { name: 'Raw Silk White', hex: '#FBF9F2' },
+                  { name: 'Royal Emerald', hex: '#00231A' },
+                  { name: 'Antique Gold', hex: '#C79A45' },
+                  { name: 'Midnight Noir', hex: '#1A1A1A' },
+                  { name: 'Heritage Olive', hex: '#4B5320' },
+                ].map((preset) => {
+                  if (selectedShades.some((s) => s.name === preset.name)) return null;
                   return (
                     <button
-                      key={preset}
+                      key={preset.name}
                       type="button"
                       onClick={() => {
-                        setSelectedShades((prev) => [...prev, { name: preset, hex: hexMap[preset] }]);
+                        setSelectedShades((prev) => [...prev, preset]);
                       }}
                       className="flex items-center gap-1.5 px-2.5 py-1 border border-[#deddd3] bg-white text-xs text-[#717975] hover:border-[#073a2d] hover:text-[#073a2d] transition-colors cursor-pointer"
                     >
                       <span
                         className="w-2.5 h-2.5 rounded-full border border-black/20"
-                        style={{ backgroundColor: hexMap[preset] }}
+                        style={{ backgroundColor: preset.hex }}
                       />
-                      <span>+ {preset}</span>
+                      <span>+ {preset.name}</span>
                     </button>
                   );
                 })}
@@ -853,18 +1112,25 @@ export default function EditProductPage() {
                     value={newShadeHex}
                     onChange={(e) => setNewShadeHex(e.target.value)}
                     className="w-8 h-8 p-0.5 border border-[#deddd3] rounded-xs cursor-pointer"
+                    title="Pick shade color"
                   />
                   <input
                     type="text"
                     value={newShadeName}
                     onChange={(e) => setNewShadeName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddShade();
+                      }
+                    }}
                     placeholder="Shade Name (e.g. Vintage Beige)"
                     className="px-3 py-1.5 text-xs bg-[#fbf9f2] border border-[#deddd3] text-[#1b1c18] focus:border-[#073a2d] outline-hidden"
                   />
                   <button
                     type="button"
                     onClick={handleAddShade}
-                    className="px-3 py-1.5 bg-[#00231a] text-white text-xs font-bold uppercase tracking-wider cursor-pointer"
+                    className="px-3 py-1.5 bg-[#00231a] hover:bg-[#073a2d] text-white text-xs font-bold uppercase tracking-wider cursor-pointer"
                   >
                     Add Shade
                   </button>
@@ -881,45 +1147,45 @@ export default function EditProductPage() {
 
             {/* Editable Variants Table */}
             <div className="space-y-3 border-t border-[#f0eee7] pt-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-2">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-wider text-[#404945] flex items-center gap-1.5">
                     <Layers className="w-3.5 h-3.5 text-[#073a2d]" />
-                    <span>Active Atelier Variants ({productVariants.length} Variants)</span>
+                    <span>GENERATED COMBINATIONS MATRIX ({productVariants.length} Active Atelier SKUs)</span>
                   </p>
                   <span className="text-[11px] text-[#717975]">
-                    Directly modify SKU, price overrides, and stock levels below.
+                    Size is the label customers choose (e.g. M). Add an optional actual measurement, such as Chest 40 in.
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={generateCombinationsMatrix}
-                    className="px-3 py-1.5 border border-[#deddd3] bg-white hover:bg-[#f0eee7] text-[11px] font-semibold text-[#404945] uppercase tracking-wider transition-colors cursor-pointer"
+                    className="shrink-0 whitespace-nowrap px-3 py-1.5 border border-[#deddd3] bg-white hover:bg-[#f0eee7] text-[11px] font-semibold text-[#404945] uppercase tracking-wider transition-colors cursor-pointer"
                   >
                     Generate Matrix
                   </button>
                   <button
                     type="button"
                     onClick={() => addVariantRow()}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-[#00231a] hover:bg-[#073a2d] text-white text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                    className="flex shrink-0 items-center gap-1 whitespace-nowrap px-3 py-1.5 bg-[#00231a] hover:bg-[#073a2d] text-white text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer"
                   >
                     <Plus className="w-3 h-3" />
-                    <span>Add Variant</span>
+                    <span>Add Custom Variant</span>
                   </button>
                 </div>
               </div>
 
               <div className="border border-[#deddd3] overflow-x-auto">
-                <table className="w-full text-xs text-left">
+                <table className="w-full min-w-[960px] table-fixed text-xs text-left">
                   <thead className="bg-[#fbf9f2] text-[#717975] uppercase text-[10px] tracking-wider border-b border-[#deddd3]">
                     <tr>
-                      <th className="p-3 w-36">COLOR / SHADE</th>
-                      <th className="p-3 w-28">SIZE</th>
-                      <th className="p-3">VARIANT SKU</th>
+                      <th className="p-3 w-40">COLOR / SHADE</th>
+                      <th className="p-3 w-72">SIZE LABEL / MEASUREMENT</th>
+                      <th className="p-3 w-48">VARIANT SKU</th>
                       <th className="p-3 w-36">PRICE (BDT ৳)</th>
-                      <th className="p-3 w-28">STOCK</th>
+                      <th className="p-3 w-28">IN-STOCK</th>
                       <th className="p-3 text-right w-16">REMOVE</th>
                     </tr>
                   </thead>
@@ -938,13 +1204,47 @@ export default function EditProductPage() {
                           </td>
 
                           {/* Size */}
-                          <td className="p-2.5">
-                            <input
-                              type="text"
-                              value={v.size || ''}
-                              onChange={(e) => updateVariant(idx, 'size', e.target.value)}
-                              className="w-full px-2 py-1.5 bg-[#fbf9f2] border border-[#deddd3] text-xs font-bold text-[#1b1c18] text-center focus:border-[#073a2d] outline-hidden"
-                            />
+                          <td className="min-w-[288px] p-2.5">
+                            <div className="space-y-1.5">
+                              <input
+                                type="text"
+                                value={v.sizeLabel || v.size || ''}
+                                onChange={(e) => updateVariant(idx, 'size', e.target.value)}
+                                aria-label="Canonical size label"
+                                placeholder="e.g. M or 34"
+                                className="w-full px-2 py-1.5 bg-[#fbf9f2] border border-[#deddd3] text-xs font-bold text-[#1b1c18] focus:border-[#073a2d] outline-hidden"
+                              />
+                              <p className="text-[10px] font-medium text-[#717975]">Actual measurement (optional)</p>
+                              <div className="grid grid-cols-[minmax(0,1fr)_72px_62px] gap-1.5">
+                                <input
+                                  type="text"
+                                  value={v.measurementDimension || ''}
+                                  onChange={(e) => updateVariant(idx, 'measurementDimension', e.target.value)}
+                                  placeholder="Part (e.g. chest)"
+                                  aria-label="Measurement name"
+                                  className="min-w-0 px-2 py-1.5 bg-white border border-[#deddd3] text-xs focus:border-[#073a2d] outline-hidden"
+                                />
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.1"
+                                  value={v.measurementValue || ''}
+                                  onChange={(e) => updateVariant(idx, 'measurementValue', e.target.value)}
+                                  placeholder="40"
+                                  aria-label="Measurement value"
+                                  className="min-w-0 px-2 py-1.5 bg-white border border-[#deddd3] text-xs focus:border-[#073a2d] outline-hidden"
+                                />
+                                <select
+                                  value={v.measurementUnit || 'IN'}
+                                  onChange={(e) => updateVariant(idx, 'measurementUnit', e.target.value)}
+                                  aria-label="Measurement unit"
+                                  className="min-w-0 px-1.5 py-1.5 bg-white border border-[#deddd3] text-xs focus:border-[#073a2d] outline-hidden"
+                                >
+                                  <option value="IN">in</option>
+                                  <option value="CM">cm</option>
+                                </select>
+                              </div>
+                            </div>
                           </td>
 
                           {/* SKU */}
@@ -989,9 +1289,9 @@ export default function EditProductPage() {
                               type="button"
                               onClick={() => removeVariant(idx)}
                               className="p-1.5 text-[#ba1a1a] hover:bg-[#ffdad6]/40 rounded-xs transition-colors cursor-pointer"
-                              title="Delete variant"
+                              title="Delete this variant combination"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-3.5 h-3.5 inline-block" />
                             </button>
                           </td>
                         </tr>
@@ -999,7 +1299,7 @@ export default function EditProductPage() {
                     ) : (
                       <tr>
                         <td colSpan={6} className="p-6 text-center text-xs text-[#717975]">
-                          No variants configured. Click <strong>+ Add Variant</strong> or <strong>Generate Matrix</strong> to create apparel combinations.
+                          No variants configured yet. Click <strong>+ Add Custom Variant</strong> or <strong>Generate Matrix</strong> to auto-generate combinations from selected sizes and shades.
                         </td>
                       </tr>
                     )}
@@ -1015,11 +1315,13 @@ export default function EditProductPage() {
                   className="flex items-center gap-1.5 text-xs text-[#073a2d] font-bold uppercase tracking-wider hover:underline cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Add Another Variant Row</span>
+                  <span>Add Another Combination</span>
                 </button>
-
-                <span className="font-mono text-[#717975] text-[11px]">
-                  Total Calculated Stock: <strong>{aggregateStock} pcs</strong>
+                <span className="text-[11px] text-[#717975]">
+                  Total variant stock:{' '}
+                  <strong className="text-[#1b1c18]">
+                    {productVariants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0)} pcs
+                  </strong>
                 </span>
               </div>
             </div>
@@ -1064,7 +1366,7 @@ export default function EditProductPage() {
                   >
                     {img ? (
                       <>
-                        <Image src={img} alt={`Angle ${slotIdx + 1}`} fill className="object-cover" unoptimized />
+                        <Image src={img.url} alt={`Angle ${slotIdx + 1}`} fill className="object-cover" unoptimized />
                         {slotIdx === 0 && (
                           <span className="absolute top-2 left-2 text-[9px] font-bold uppercase tracking-wider bg-[#00231a] text-white px-1.5 py-0.5 z-10">
                             FEATURED

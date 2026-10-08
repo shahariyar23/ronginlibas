@@ -10,7 +10,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-import { Controller, Get, Post, Patch, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CouponsService } from '../services/coupons.service.js';
 import { CreateCouponDto } from '../dto/create-coupon.dto.js';
@@ -44,6 +44,13 @@ let AdminCouponsController = class AdminCouponsController {
             data,
         };
     }
+    async remove(id) {
+        const data = await this.couponsService.remove(id);
+        return {
+            message: 'Voucher deleted successfully',
+            data,
+        };
+    }
 };
 __decorate([
     Get(),
@@ -69,6 +76,14 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], AdminCouponsController.prototype, "update", null);
+__decorate([
+    Delete(':id'),
+    ApiOperation({ summary: 'Delete a promotional coupon code' }),
+    __param(0, Param('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AdminCouponsController.prototype, "remove", null);
 AdminCouponsController = __decorate([
     ApiTags('Admin - Coupons'),
     ApiBearerAuth(),

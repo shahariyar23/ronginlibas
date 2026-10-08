@@ -15,13 +15,24 @@ import {
 import { adminApi } from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 
-interface AdminCategoryRecord {
+export interface AdminCategoryRecord {
   id: string;
   name: string;
   slug: string;
+  description?: string;
+  image?: string;
 }
 
+const DEFAULT_FALLBACK_CATEGORIES: AdminCategoryRecord[] = [
+  { id: 'cat-panjabi', name: 'Panjabi', slug: 'panjabi' },
+  { id: 'cat-shirts', name: 'Shirts', slug: 'shirts' },
+  { id: 'cat-polo', name: 'Polo', slug: 'polo' },
+  { id: 'cat-trousers', name: 'Trousers', slug: 'trousers' },
+  { id: 'cat-t-shirts', name: 'T-Shirts', slug: 't-shirts' },
+];
+
 interface AdminContextType {
+  categories: AdminCategoryRecord[];
   products: AdminProduct[];
   orders: AdminOrder[];
   inventory: InventoryItem[];
@@ -29,13 +40,14 @@ interface AdminContextType {
   dashboardMetrics: any;
   backendConnected: boolean;
   isLoading: boolean;
+  inventoryLoadError: string | null;
   refreshData: () => Promise<void>;
-  addProduct: (product: AdminProduct) => Promise<void>;
-  updateProduct: (id: string, product: Partial<AdminProduct>) => Promise<void>;
+  addProduct: (product: AdminProduct) => Promise<boolean>;
+  updateProduct: (id: string, product: Partial<AdminProduct>) => Promise<boolean>;
   deleteProduct: (id: string) => Promise<void>;
   getProductDetails: (id: string) => Promise<AdminProductDetail | null>;
   updateOrderStatus: (orderId: string, status: AdminOrder['status'], notes?: string) => Promise<void>;
-  updateInventoryStock: (id: string, newStock: number) => Promise<void>;
+  updateInventoryStock: (id: string, newStock: number) => Promise<boolean>;
   updateSettings: (newSettings: Partial<StoreSettings>) => Promise<void>;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -52,10 +64,13 @@ function adaptBackendProduct(p: any): AdminProduct {
       ? p.variants.reduce((sum: number, v: any) => sum + (v.stock || 0), 0)
       : p.stock ?? 0;
 
+  const threshold =
+    p.alertThreshold !== undefined && p.alertThreshold !== null ? Number(p.alertThreshold) : 5;
+
   let status: AdminProduct['status'] = 'Active';
   if (p.isActive === false || stock === 0) {
     status = 'Out of Stock';
-  } else if (stock <= 5) {
+  } else if (stock <= threshold) {
     status = 'Low Stock';
   }
 
@@ -68,10 +83,18 @@ function adaptBackendProduct(p: any): AdminProduct {
     promotionalPrice: p.compareAtPrice ? Number(p.compareAtPrice) : undefined,
     costOfGoods: p.costPrice ? Number(p.costPrice) : undefined,
     stock,
+    alertThreshold: threshold,
     status,
     image:
       p.images?.[0]?.url ||
       'https://lh3.googleusercontent.com/aida-public/AB6AXuCKIcKxrkusL16CkM0fjAd340aZTnxr8o_tmugD7XS3cCDAG8yST04u91rCr7OrIxBUE3yNHckrJmRo81EtZGj8lTJHQgDVroNkj2CKu-ot-pwOAH0mcutBcSZUQfz7_-Ar5PUCPtpyOke4D81SjQQyrYnZs7hzWHiKTY0UnNT3WJuv-NAxhFJD5qK4YN7AOBd5nyfFy6KXxGhKLvjxG_EWE4pBc61A0x4zW4Oz-Fnn2JvqDoxPl3_PKQ',
+    images: p.images?.map((image: any) => ({
+      url: image.url,
+      publicId: image.publicId ?? undefined,
+      altText: image.altText ?? undefined,
+      sortOrder: image.sortOrder,
+      isPrimary: image.isPrimary,
+    })),
     fabricNote: p.fabric || undefined,
     description: p.description,
     featured: p.isFeatured,
@@ -83,41 +106,99 @@ function adaptBackendOrder(o: any): AdminOrder {
   const dateStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   const timeDetail = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
+  const rawAddr = o.shippingAddress && typeof o.shippingAddress === 'object' ? o.shippingAddress : {};
   const customerName = o.customer
     ? `${o.customer.firstName || ''} ${o.customer.lastName || ''}`.trim()
-    : o.shippingAddress?.recipient || 'Patron Client';
+    : rawAddr.fullName || o.guestName || 'Patron Client';
 
-  const customerLocation =
-    o.shippingAddress?.address || o.shippingAddress?.city || 'Dhaka, Bangladesh';
+  const customerEmail = o.customer?.email || o.guestEmail || rawAddr.email || undefined;
+  const phone = o.customer?.phone || rawAddr.phone || o.guestPhone || '';
 
-  const phone = o.customer?.phone || o.shippingAddress?.phone || '';
-  const items = o.items || [];
+  const locationParts = [
+    rawAddr.addressLine1 || rawAddr.address,
+    rawAddr.city,
+    rawAddr.division,
+  ].filter(Boolean);
+  const customerLocation = locationParts.length > 0 ? locationParts.join(', ') : 'Dhaka, Bangladesh';
+
+  const items = (o.items || []).map((it: any) => {
+    const primaryImg =
+      it.product?.images?.find((img: any) => img.isPrimary)?.url ||
+      it.product?.images?.[0]?.url ||
+      (typeof it.product?.images?.[0] === 'string' ? it.product.images[0] : undefined) ||
+      (typeof it.image === 'string' ? it.image : undefined);
+
+    return {
+      id: it.id,
+      productId: it.productId,
+      variantId: it.variantId,
+      productName: it.productName || it.product?.name || 'Garment',
+      variantName: it.variantName || (it.size ? `Size ${it.size}` : undefined),
+      sku: it.sku,
+      size: it.size,
+      color: it.color,
+      quantity: Number(it.quantity) || 1,
+      unitPrice: Number(it.unitPrice) || 0,
+      subtotal: Number(it.subtotal) || (Number(it.unitPrice) || 0) * (Number(it.quantity) || 1),
+      image: primaryImg,
+    };
+  });
+
   const itemCount = items.reduce((sum: number, it: any) => sum + (it.quantity || 1), 0);
   const itemsSummary =
-    items.map((it: any) => `${it.productName || 'Garment'} (x${it.quantity})`).join(', ') ||
-    '';
+    items.map((it: any) => `${it.productName} (x${it.quantity})`).join(', ') || '';
 
   return {
     id: o.id || o.orderNumber,
     orderNumber: o.orderNumber || o.id,
     customerName,
+    customerEmail,
     customerLocation,
+    fullAddress: {
+      fullName: rawAddr.fullName || customerName,
+      phone: rawAddr.phone || phone,
+      email: rawAddr.email || customerEmail,
+      addressLine1: rawAddr.addressLine1 || rawAddr.address || '',
+      addressLine2: rawAddr.addressLine2 || '',
+      city: rawAddr.city || '',
+      division: rawAddr.division || '',
+      deliveryInstructions: rawAddr.deliveryInstructions || undefined,
+    },
     phone,
-    amount: Number(o.totalAmount || o.subtotal) || 0,
+    amount: Number(o.totalAmount ?? o.subtotal) || 0,
+    subtotal: Number(o.subtotal) || Number(o.totalAmount) || 0,
+    discountAmount: Number(o.discountAmount) || 0,
+    deliveryCharge: Number(o.deliveryCharge) || 0,
     paymentMethod: o.paymentMethod || 'COD',
+    paymentStatus: o.paymentStatus || 'PENDING',
     status: o.status || 'PENDING',
     dateStr,
     timeDetail,
     itemCount: itemCount || 1,
     itemsSummary,
+    items,
+    customerNotes: o.customerNotes || undefined,
+    adminNotes: o.adminNotes || undefined,
+    courierName: o.courierName || undefined,
+    trackingNumber: o.trackingNumber || undefined,
+    trackingUrl: o.trackingUrl || undefined,
     createdAt: o.createdAt,
   };
 }
 
 function adaptBackendInventory(item: any): InventoryItem {
   const stock = item.stock ?? 0;
+  const alertThreshold =
+    item.alertThreshold === undefined || item.alertThreshold === null
+      ? 5
+      : Number(item.alertThreshold);
   const status =
-    stock === 0 ? 'OUT OF STOCK' : stock <= 5 ? 'LOW STOCK' : 'IN STOCK';
+    item.status ||
+    (stock === 0
+      ? 'OUT OF STOCK'
+      : stock <= alertThreshold
+      ? 'LOW STOCK'
+      : 'IN STOCK');
 
   return {
     id: item.variantId || item.id,
@@ -126,6 +207,7 @@ function adaptBackendInventory(item: any): InventoryItem {
     sku: item.sku,
     category: item.category || 'Atelier Garments',
     stock,
+    alertThreshold,
     status: status as any,
     image:
       item.image ||
@@ -136,12 +218,13 @@ function adaptBackendInventory(item: any): InventoryItem {
 export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<AdminProduct[]>(INITIAL_PRODUCTS);
   const [orders, setOrders] = useState<AdminOrder[]>(INITIAL_ORDERS);
-  const [categories, setCategories] = useState<AdminCategoryRecord[]>([]);
+  const [categories, setCategories] = useState<AdminCategoryRecord[]>(DEFAULT_FALLBACK_CATEGORIES);
   const [inventory, setInventory] = useState<InventoryItem[]>(INITIAL_INVENTORY);
   const [settings, setSettings] = useState<StoreSettings>(INITIAL_SETTINGS);
   const [dashboardMetrics, setDashboardMetrics] = useState<any>(null);
   const [backendConnected, setBackendConnected] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [inventoryLoadError, setInventoryLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { toast } = useToast();
@@ -149,12 +232,13 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   // Fetch all primary operational streams from the NestJS Backend including executive dashboard API
   const refreshData = useCallback(async () => {
     setIsLoading(true);
+    setInventoryLoadError(null);
     try {
       const [dashRes, prodRes, ordRes, invRes, setRes, categoriesRes] = await Promise.all([
         adminApi.dashboard.getMetrics(),
         adminApi.products.getAll({ limit: 50 }),
         adminApi.orders.getAll({ limit: 50 }),
-        adminApi.inventory.getAll({ limit: 50 }),
+        adminApi.inventory.getAll({ page: 1, limit: 100 }),
         adminApi.settings.get(),
         adminApi.categories.getAll(),
       ]);
@@ -166,19 +250,50 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         anySuccess = true;
       }
 
-      if (prodRes.success && prodRes.data?.items?.length) {
+      if (prodRes.success && Array.isArray(prodRes.data?.items)) {
         setProducts(prodRes.data.items.map(adaptBackendProduct));
         anySuccess = true;
       }
 
-      if (ordRes.success && ordRes.data?.items?.length) {
+      if (ordRes.success && Array.isArray(ordRes.data?.items)) {
         setOrders(ordRes.data.items.map(adaptBackendOrder));
         anySuccess = true;
       }
 
-      if (invRes.success && invRes.data?.items?.length) {
-        setInventory(invRes.data.items.map(adaptBackendInventory));
+      if (invRes.success && Array.isArray(invRes.data?.items)) {
+        const inventoryItems = [...invRes.data.items];
+        const totalPages = Number(invRes.data.totalPages) || 1;
+        let inventoryComplete = true;
+
+        for (let page = 2; page <= totalPages; page += 5) {
+          const pageNumbers = Array.from(
+            { length: Math.min(5, totalPages - page + 1) },
+            (_, index) => page + index,
+          );
+          const pageResults = await Promise.all(
+            pageNumbers.map((pageNumber) =>
+              adminApi.inventory.getAll({ page: pageNumber, limit: 100 }),
+            ),
+          );
+          const failedPage = pageResults.find(
+            (result) => !result.success || !Array.isArray(result.data?.items),
+          );
+
+          if (failedPage) {
+            setInventoryLoadError(failedPage.error || 'Unable to load all inventory records.');
+            inventoryComplete = false;
+            break;
+          }
+          inventoryItems.push(...pageResults.flatMap((result) => result.data!.items));
+        }
+
+        if (inventoryComplete) {
+          setInventory(inventoryItems.map(adaptBackendInventory));
+          setInventoryLoadError(null);
+        }
         anySuccess = true;
+      } else {
+        setInventoryLoadError(invRes.error || 'Unable to load inventory from the database.');
       }
 
       if (setRes.success && setRes.data) {
@@ -192,8 +307,13 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
           dhakaDeliveryCharge: setRes.data.dhakaDeliveryCharge ?? prev.dhakaDeliveryCharge,
           outsideDhakaDeliveryCharge:
             setRes.data.outsideDhakaDeliveryCharge ?? prev.outsideDhakaDeliveryCharge,
+          freeShippingEnabled: setRes.data.freeShippingEnabled ?? prev.freeShippingEnabled,
           freeDeliveryThreshold:
             setRes.data.freeDeliveryThreshold ?? prev.freeDeliveryThreshold,
+          promoEnabled: setRes.data.promoEnabled ?? prev.promoEnabled,
+          promoCode: setRes.data.promoCode ?? prev.promoCode,
+          promoDiscountText: setRes.data.promoDiscountText ?? prev.promoDiscountText,
+          whatsappOrderEnabled: setRes.data.whatsappOrderEnabled ?? prev.whatsappOrderEnabled,
           codEnabled: setRes.data.codEnabled ?? prev.codEnabled,
           bkashEnabled: setRes.data.bkashEnabled ?? prev.bkashEnabled,
           bkashWallet: setRes.data.bkashWallet || prev.bkashWallet,
@@ -207,10 +327,13 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         anySuccess = true;
       }
 
-      setBackendConnected(anySuccess || dashRes.success || prodRes.success || ordRes.success);
+      setBackendConnected(
+        anySuccess || dashRes.success || prodRes.success || ordRes.success || invRes.success,
+      );
     } catch (err) {
       console.warn('[AdminContext] Backend synchronization error, using local fallback:', err);
       setBackendConnected(false);
+      setInventoryLoadError('Unable to load inventory from the database. Try refreshing the page.');
     } finally {
       setIsLoading(false);
     }
@@ -221,15 +344,46 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   }, [refreshData]);
 
   // Create Product: Sync to NestJS + PostgreSQL
-  const addProduct = async (product: AdminProduct) => {
-    const selectedCategory = categories.find(
+  const addProduct = async (product: AdminProduct): Promise<boolean> => {
+    let currentCategories = categories;
+    let selectedCategory = currentCategories.find(
       (category) =>
         category.name.trim().toLowerCase() === product.category.trim().toLowerCase() ||
         category.slug.trim().toLowerCase() === product.category.trim().toLowerCase(),
     );
+
+    if (!selectedCategory) {
+      try {
+        const catRes = await adminApi.categories.getAll();
+        if (catRes.success && Array.isArray(catRes.data) && catRes.data.length > 0) {
+          setCategories(catRes.data);
+          currentCategories = catRes.data;
+          selectedCategory = currentCategories.find(
+            (category: any) =>
+              category.name?.trim().toLowerCase() === product.category.trim().toLowerCase() ||
+              category.slug?.trim().toLowerCase() === product.category.trim().toLowerCase(),
+          );
+        }
+      } catch {
+        // Fallback continues
+      }
+    }
+
+    if (!selectedCategory) {
+      try {
+        const createCatRes = await adminApi.categories.create({ name: product.category });
+        if (createCatRes.success && createCatRes.data) {
+          selectedCategory = createCatRes.data;
+          setCategories((prev) => [...prev, createCatRes.data]);
+        }
+      } catch {
+        // Fallback continues
+      }
+    }
+
     if (!selectedCategory) {
       toast.error(`Create or select a valid product category for "${product.category}" first`);
-      return;
+      return false;
     }
 
     // Send payload to backend
@@ -243,47 +397,62 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         categoryId: selectedCategory.id,
         description: product.description,
         fabric: product.fabricNote,
+        alertThreshold: product.alertThreshold !== undefined ? Number(product.alertThreshold) : 5,
         isActive: product.status !== 'Out of Stock',
         isFeatured: product.featured ?? false,
         variants: product.variants?.length
           ? product.variants.map((v) => ({
               size: v.size,
-              color: v.shade,
+              sizeLabel: v.sizeLabel,
+              sizeType: v.sizeType,
+              measurements: v.measurements,
+              color: v.color || v.shade,
               sku: v.sku,
               stock: v.stock,
-              priceOverride: v.price,
+              priceOverride: v.priceOverride ?? v.price,
             }))
           : [
               {
                 size: 'Standard',
+                sizeLabel: 'Standard',
+                sizeType: 'CUSTOM',
                 color: 'Heritage Collection',
                 sku: `${product.sku}-STD`,
                 stock: product.stock,
                 priceOverride: product.price,
               },
             ],
-        images: [{ url: product.image, isPrimary: true, sortOrder: 0 }],
+        images: (product.images ??
+          (product.image && !product.image.startsWith('data:')
+            ? [{ url: product.image }]
+            : [])
+        ).map((image, index) => ({
+          url: image.url,
+          publicId: image.publicId,
+          altText: image.altText,
+          isPrimary: image.isPrimary ?? index === 0,
+          sortOrder: image.sortOrder ?? index,
+        })),
       };
 
       const res = await adminApi.products.create(payload);
       if (res.success && res.data) {
         toast.success(res.message || `Consignment "${product.name}" created successfully`, 'PRODUCT CREATED');
         await refreshData();
+        return true;
       } else {
         toast.error(res.error || 'Failed to create product consignment');
+        return false;
       }
     } catch (err: any) {
       console.warn('[AdminContext] Error pushing product to backend:', err);
       toast.error(err?.message || 'Error pushing product to backend');
+      return false;
     }
   };
 
   // Update Product
-  const updateProduct = async (id: string, updated: Partial<AdminProduct>) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updated } : p))
-    );
-
+  const updateProduct = async (id: string, updated: Partial<AdminProduct>): Promise<boolean> => {
     try {
       const payload: Record<string, any> = {
         name: updated.name,
@@ -295,15 +464,27 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         fabric: updated.fabricNote,
         isFeatured: updated.featured,
         tags: updated.tags,
+        ...(updated.alertThreshold !== undefined && { alertThreshold: Number(updated.alertThreshold) }),
       };
 
-      if (updated.image) {
+      if (updated.images !== undefined) {
+        payload.images = updated.images.map((image, index) => ({
+          url: image.url,
+          publicId: image.publicId,
+          altText: image.altText,
+          isPrimary: image.isPrimary ?? index === 0,
+          sortOrder: image.sortOrder ?? index,
+        }));
+      } else if (updated.image) {
         payload.images = [{ url: updated.image, isPrimary: true, sortOrder: 0 }];
       }
 
       if (updated.variants && Array.isArray(updated.variants)) {
         payload.variants = updated.variants.map((v: any) => ({
           size: v.size,
+          sizeLabel: v.sizeLabel,
+          sizeType: v.sizeType,
+          measurements: v.measurements,
           color: v.color || v.shade || 'Standard',
           sku: v.sku,
           stock: Number(v.stock) || 0,
@@ -313,14 +494,32 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
       const res = await adminApi.products.update(id, payload);
       if (res.success) {
-        toast.success(res.message || `Product "${updated.name || id}" updated successfully`, 'PRODUCT UPDATED');
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === id || (p as any).slug === id
+              ? {
+                  ...p,
+                  ...updated,
+                  ...(updated.alertThreshold !== undefined && { alertThreshold: Number(updated.alertThreshold) }),
+                }
+              : p
+          )
+        );
+        if (res.data?.imageCleanupWarning) {
+          toast.info(res.data.imageCleanupWarning, 'IMAGE CLEANUP NEEDS ATTENTION');
+        } else {
+          toast.success(res.message || `Product "${updated.name || id}" updated successfully`, 'PRODUCT UPDATED');
+        }
         await refreshData();
+        return true;
       } else {
         toast.error(res.error || 'Failed to update product');
+        return false;
       }
     } catch (err: any) {
       console.warn('[AdminContext] Error updating product in backend:', err);
       toast.error(err?.message || 'Error updating product');
+      return false;
     }
   };
 
@@ -331,7 +530,11 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await adminApi.products.delete(id);
       if (res.success) {
-        toast.success(res.message || 'Product permanently deleted from database', 'PRODUCT DELETED');
+        if (res.data?.cleanupWarning) {
+          toast.info(res.data.cleanupWarning, 'IMAGE CLEANUP NEEDS ATTENTION');
+        } else {
+          toast.success(res.message || 'Product permanently deleted from database', 'PRODUCT DELETED');
+        }
         await refreshData();
       } else {
         toast.error(res.error || 'Failed to delete product from database');
@@ -344,7 +547,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const getProductDetails = async (id: string): Promise<AdminProductDetail | null> => {
+  const getProductDetails = useCallback(async (id: string): Promise<AdminProductDetail | null> => {
     try {
       const res = await adminApi.products.getById(id);
       if (res.success && res.data) {
@@ -354,7 +557,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       console.warn('[AdminContext] Error fetching product details:', err);
     }
     return null;
-  };
+  }, []);
 
   // Update Order Status (e.g. PENDING -> CONFIRMED -> PROCESSING -> SHIPPED -> DELIVERED)
   const updateOrderStatus = async (
@@ -385,44 +588,46 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Update Inventory Stock Count
-  const updateInventoryStock = async (id: string, newStock: number) => {
+  const updateInventoryStock = async (id: string, newStock: number): Promise<boolean> => {
     const stockVal = Math.max(0, newStock);
     const existing = inventory.find((it) => it.id === id);
     const prevStock = existing ? existing.stock : 0;
     const delta = stockVal - prevStock;
 
-    setInventory((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              stock: stockVal,
-              status: stockVal === 0 ? 'OUT OF STOCK' : stockVal <= 5 ? 'LOW STOCK' : 'IN STOCK',
-            }
-          : item
-      )
-    );
+    if (delta === 0) return true;
 
     try {
-      if (delta !== 0) {
-        const res = await adminApi.inventory.adjustStock(
-          id,
-          delta,
-          delta > 0 ? 'RESTOCK' : 'ADJUSTMENT',
-          `Manual stock adjustment via Atelier Admin (${delta > 0 ? '+' : ''}${delta})`
+      const res = await adminApi.inventory.adjustStock(
+        id,
+        delta,
+        delta > 0 ? 'RESTOCK' : 'ADJUSTMENT',
+        `Manual stock adjustment via Atelier Admin (${delta > 0 ? '+' : ''}${delta})`
+      );
+      if (res.success) {
+        setInventory((prev) =>
+          prev.map((item) => {
+            if (item.id !== id) return item;
+            const status =
+              stockVal === 0
+                ? 'OUT OF STOCK'
+                : stockVal <= (item.alertThreshold ?? 5)
+                ? 'LOW STOCK'
+                : 'IN STOCK';
+            return { ...item, stock: stockVal, status };
+          })
         );
-        if (res.success) {
-          toast.success(
-            res.message || `Inventory stock adjusted to ${stockVal} units`,
-            'INVENTORY UPDATED'
-          );
-        } else {
-          toast.error(res.error || 'Failed to update inventory stock');
-        }
+        toast.success(
+          res.message || `Inventory stock adjusted to ${stockVal} units`,
+          'INVENTORY UPDATED'
+        );
+        return true;
       }
+      toast.error(res.error || 'Failed to update inventory stock');
+      return false;
     } catch (err: any) {
       console.warn('[AdminContext] Error adjusting stock in backend:', err);
       toast.error(err?.message || 'Failed to adjust stock in backend');
+      return false;
     }
   };
 
@@ -446,6 +651,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   return (
     <AdminContext.Provider
       value={{
+        categories,
         products,
         orders,
         inventory,
@@ -453,6 +659,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         dashboardMetrics,
         backendConnected,
         isLoading,
+        inventoryLoadError,
         refreshData,
         addProduct,
         updateProduct,

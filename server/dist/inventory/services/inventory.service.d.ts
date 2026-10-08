@@ -19,6 +19,7 @@ export declare class InventoryService {
             size: string;
             color: string;
             sizeLabel: string | null;
+            sizeType: string | null;
             stock: number;
             priceOverride: Prisma.Decimal | null;
         };

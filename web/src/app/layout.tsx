@@ -7,6 +7,7 @@ import { Header } from '@/components/common/Header';
 import { Footer } from '@/components/common/Footer';
 import { CartDrawer } from '@/components/common/CartDrawer';
 import { Toaster } from '@/components/ui/sonner';
+import { StorefrontProvider } from '@/context/StorefrontContext';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://ronginlibas.com'),
@@ -49,17 +50,19 @@ export default function RootLayout({
         className="bg-[#fbf9f2] text-[#1b1c18] antialiased flex flex-col min-h-screen"
         suppressHydrationWarning
       >
-        <AuthProvider>
-          <CartProvider>
-            <WishlistProvider>
-              <Header />
-              <main className="flex-1 w-full">{children}</main>
-              <CartDrawer />
-              <Footer />
-              <Toaster position="top-right" richColors />
-            </WishlistProvider>
-          </CartProvider>
-        </AuthProvider>
+        <StorefrontProvider>
+          <AuthProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <Header />
+                <main className="flex-1 w-full">{children}</main>
+                <CartDrawer />
+                <Footer />
+                <Toaster position="top-right" richColors />
+              </WishlistProvider>
+            </CartProvider>
+          </AuthProvider>
+        </StorefrontProvider>
       </body>
     </html>
   );

@@ -20,7 +20,12 @@ export declare class AdminSettingsController {
             currencySymbol: string;
             dhakaDeliveryCharge: number;
             outsideDhakaDeliveryCharge: number;
+            freeShippingEnabled: boolean;
             freeDeliveryThreshold: number;
+            promoEnabled: boolean;
+            promoCode: string;
+            promoDiscountText: string;
+            whatsappOrderEnabled: boolean;
             codEnabled: boolean;
             bkashEnabled: boolean;
             nagadEnabled: boolean;
@@ -45,7 +50,12 @@ export declare class AdminSettingsController {
             currencySymbol: string;
             dhakaDeliveryCharge: number;
             outsideDhakaDeliveryCharge: number;
+            freeShippingEnabled: boolean;
             freeDeliveryThreshold: number;
+            promoEnabled: boolean;
+            promoCode: string;
+            promoDiscountText: string;
+            whatsappOrderEnabled: boolean;
             codEnabled: boolean;
             bkashEnabled: boolean;
             nagadEnabled: boolean;

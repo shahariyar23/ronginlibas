@@ -1,14 +1,30 @@
-import React from 'react';
+'use client';
 
-const InstagramIcon = () => (
-  <svg className="w-4 h-4 text-[#c79a45]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+import React from 'react';
+import { useStorefront } from '@/context/StorefrontContext';
+
+const FacebookIcon = () => (
+  <svg
+    className="w-4 h-4 shrink-0"
+    viewBox="0 0 24 24"
+    fill="none"
+    aria-hidden="true"
+  >
+    <path
+      fill="#1877F2"
+      d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
+    />
+    <path
+      fill="#FFFFFF"
+      d="M16.671 15.457l.532-3.47h-3.328v-2.25c0-.949.465-1.874 1.956-1.874h1.727V4.91s-1.374-.235-2.686-.235c-2.741 0-4.533 1.662-4.533 4.669v2.463H7.078v3.47h3.261v8.385c.67.105 1.355.161 2.052.161s1.382-.056 2.052-.161v-8.385h2.228z"
+    />
   </svg>
 );
 
-export const InstagramFeed: React.FC = () => {
+export const FacebookFeed: React.FC = () => {
+  const { settings } = useStorefront();
+  const facebookUrl = settings?.facebook || 'https://facebook.com/ronginlibasofficial';
+
   const posts = [
     {
       img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCKIcKxrkusL16CkM0fjAd340aZTnxr8o_tmugD7XS3cCDAG8yST04u91rCr7OrIxBUE3yNHckrJmRo81EtZGj8lTJHQgDVroNkj2CKu-ot-pwOAH0mcutBcSZUQfz7_-Ar5PUCPtpyOke4D81SjQQyrYnZs7hzWHiKTY0UnNT3WJuv-NAxhFJD5qK4YN7AOBd5nyfFy6KXxGhKLvjxG_EWE4pBc61A0x4zW4Oz-Fnn2JvqDoxPl3_PKQ',
@@ -41,13 +57,13 @@ export const InstagramFeed: React.FC = () => {
             </h2>
           </div>
           <a
-            href="https://instagram.com"
+            href={facebookUrl}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-2 text-xs font-sans uppercase tracking-widest text-[#073a2d] hover:text-[#0d4d3b] font-semibold"
           >
-            <InstagramIcon />
-            <span>View Instagram Gallery</span>
+            <FacebookIcon />
+            <span>View Facebook Gallery</span>
           </a>
         </div>
 
@@ -74,3 +90,5 @@ export const InstagramFeed: React.FC = () => {
     </section>
   );
 };
+
+export const InstagramFeed = FacebookFeed;

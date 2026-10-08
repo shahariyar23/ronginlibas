@@ -3,17 +3,20 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Product } from '@/types';
+import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { Heart, ShoppingCart, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 interface ProductCardProps {
   product: Product;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+  const { user } = useAuth();
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const [selectedColor, setSelectedColor] = useState(product.colors[0]?.name || 'Standard');
@@ -23,6 +26,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const isFavorite = isInWishlist(product.id);
 
   const handleQuickAdd = (size: string) => {
+    if (!user) {
+      toast.error('First login please', {
+        description: 'Please login first to add items to your cart.',
+        action: {
+          label: 'Login',
+          onClick: () => {
+            window.location.href = '/login';
+          },
+        },
+      });
+      setShowSizePicker(false);
+      return;
+    }
     addToCart(product, size, selectedColor, 1);
     setShowSizePicker(false);
   };
@@ -100,7 +116,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             </div>
           ) : (
             <Button
-              onClick={() => setShowSizePicker(true)}
+              onClick={() => {
+                if (!user) {
+                  toast.error('First login please', {
+                    description: 'Please login first to add items to your cart.',
+                    action: {
+                      label: 'Login',
+                      onClick: () => {
+                        window.location.href = '/login';
+                      },
+                    },
+                  });
+                  return;
+                }
+                setShowSizePicker(true);
+              }}
               className="w-full bg-[#073a2d] hover:bg-[#0d4d3b] text-[#fbf9f2] font-sans text-xs uppercase tracking-widest h-10 shadow-md flex items-center justify-center gap-2 cursor-pointer"
             >
               <ShoppingCart className="w-3.5 h-3.5" />

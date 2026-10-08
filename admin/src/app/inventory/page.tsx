@@ -9,7 +9,6 @@ import {
   AlertTriangle,
   XCircle,
   Download,
-  Upload,
   Check,
   Truck,
   CreditCard,
@@ -20,12 +19,30 @@ import {
 } from 'lucide-react';
 import { useAdmin } from '@/context/AdminContext';
 import { InventoryItem } from '@/data/adminData';
+import { TablePageSkeleton } from '@/components/common/Skeleton';
+
+function getInventoryStatus(
+  item: InventoryItem,
+  stock = item.stock,
+): InventoryItem['status'] {
+  if (stock === 0) return 'OUT OF STOCK';
+  return stock <= (item.alertThreshold ?? 5) ? 'LOW STOCK' : 'IN STOCK';
+}
 
 export default function InventoryPage() {
-  const { inventory, updateInventoryStock, settings, updateSettings } = useAdmin();
+  const {
+    inventory,
+    updateInventoryStock,
+    settings,
+    updateSettings,
+    isLoading,
+    inventoryLoadError,
+    refreshData,
+  } = useAdmin();
   const [search, setSearch] = useState('');
   const [filterTab, setFilterTab] = useState<'ALL' | 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK'>('ALL');
   const [stockEdits, setStockEdits] = useState<{ [id: string]: number }>({});
+  const [savingStockId, setSavingStockId] = useState<string | null>(null);
 
   // Settings form states
   const [storeName, setStoreName] = useState(settings.storeName);
@@ -44,22 +61,16 @@ export default function InventoryPage() {
 
   // Compute stat counts
   const totalCount = inventory.length;
-  const inStockCount = inventory.filter((i) => i.stock > 5).length;
-  const lowStockCount = inventory.filter((i) => i.stock > 0 && i.stock <= 5).length;
-  const outOfStockCount = inventory.filter((i) => i.stock === 0).length;
+  const inStockCount = inventory.filter((item) => getInventoryStatus(item) === 'IN STOCK').length;
+  const lowStockCount = inventory.filter((item) => getInventoryStatus(item) === 'LOW STOCK').length;
+  const outOfStockCount = inventory.filter((item) => getInventoryStatus(item) === 'OUT OF STOCK').length;
 
   const filteredInventory = inventory.filter((item) => {
     const matchesSearch =
       item.name.toLowerCase().includes(search.toLowerCase()) ||
       item.sku.toLowerCase().includes(search.toLowerCase());
-    const matchesTab =
-      filterTab === 'ALL'
-        ? true
-        : filterTab === 'IN_STOCK'
-        ? item.stock > 5
-        : filterTab === 'LOW_STOCK'
-        ? item.stock > 0 && item.stock <= 5
-        : item.stock === 0;
+    const status = getInventoryStatus(item);
+    const matchesTab = filterTab === 'ALL' || status === filterTab.replaceAll('_', ' ');
     return matchesSearch && matchesTab;
   });
 
@@ -75,15 +86,23 @@ export default function InventoryPage() {
     }));
   };
 
-  const handleSaveStock = (id: string) => {
-    const updated = getStockValue(inventory.find((i) => i.id === id)!);
-    updateInventoryStock(id, updated);
-    setStockEdits((prev) => {
-      const copy = { ...prev };
-      delete copy[id];
-      return copy;
-    });
-    alert('Atelier Suite: Stock level updated in live ledger.');
+  const handleSaveStock = async (id: string) => {
+    const item = inventory.find((inventoryItem) => inventoryItem.id === id);
+    if (!item) return;
+
+    setSavingStockId(id);
+    try {
+      const saved = await updateInventoryStock(id, getStockValue(item));
+      if (saved) {
+        setStockEdits((prev) => {
+          const copy = { ...prev };
+          delete copy[id];
+          return copy;
+        });
+      }
+    } finally {
+      setSavingStockId(null);
+    }
   };
 
   const handleSaveStoreInfo = () => {
@@ -110,6 +129,16 @@ export default function InventoryPage() {
     });
     alert('Atelier Suite: Payment gateways saved successfully.');
   };
+
+  if (isLoading) {
+    return (
+      <TablePageSkeleton
+        title="Atelier Inventory & Warehousing"
+        showAddButton={false}
+        rowCount={8}
+      />
+    );
+  }
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-10 pb-20">
@@ -139,7 +168,7 @@ export default function InventoryPage() {
               ACTIVE CATALOG
             </p>
             <h3 className="text-2xl font-serif font-medium text-[#1b1c18] mt-1">
-              128 <span className="text-xs font-sans text-[#717975]">SKUs</span>
+              {totalCount} <span className="text-xs font-sans text-[#717975]">variants</span>
             </h3>
           </div>
           <div className="w-10 h-10 bg-[#fbf9f2] border border-[#deddd3] flex items-center justify-center text-[#073a2d]">
@@ -153,7 +182,7 @@ export default function InventoryPage() {
               IN STOCK READY
             </p>
             <h3 className="text-2xl font-serif font-medium text-[#073a2d] mt-1">
-              110 <span className="text-xs font-sans text-[#0d4d3b]">Healthy</span>
+              {inStockCount} <span className="text-xs font-sans text-[#0d4d3b]">Healthy</span>
             </h3>
           </div>
           <div className="w-10 h-10 bg-[#bcedda]/40 flex items-center justify-center text-[#0d4d3b]">
@@ -167,7 +196,7 @@ export default function InventoryPage() {
               LOW STOCK ALERT
             </p>
             <h3 className="text-2xl font-serif font-medium text-[#8c6722] mt-1">
-              14 <span className="text-xs font-sans text-[#8c6722]">Restock soon</span>
+              {lowStockCount} <span className="text-xs font-sans text-[#8c6722]">Restock soon</span>
             </h3>
           </div>
           <div className="w-10 h-10 bg-[#f5eedf] flex items-center justify-center text-[#8c6722]">
@@ -181,7 +210,7 @@ export default function InventoryPage() {
               STOCK OUT
             </p>
             <h3 className="text-2xl font-serif font-medium text-[#ba1a1a] mt-1">
-              4 <span className="text-xs font-sans text-[#ba1a1a]">Replenish</span>
+              {outOfStockCount} <span className="text-xs font-sans text-[#ba1a1a]">Replenish</span>
             </h3>
           </div>
           <div className="w-10 h-10 bg-[#ffdad6]/60 flex items-center justify-center text-[#ba1a1a]">
@@ -192,6 +221,21 @@ export default function InventoryPage() {
 
       {/* Inventory & Stock Levels Table Section */}
       <div className="bg-white border border-[#deddd3] p-6 shadow-xs space-y-6">
+        {inventoryLoadError && (
+          <div
+            role="alert"
+            className="flex flex-col gap-2 border border-[#ba1a1a]/20 bg-[#ba1a1a]/5 px-4 py-3 text-sm text-[#9b1c1c] sm:flex-row sm:items-center sm:justify-between"
+          >
+            <span>{inventoryLoadError}</span>
+            <button
+              type="button"
+              onClick={refreshData}
+              className="self-start font-semibold underline sm:self-auto"
+            >
+              Retry
+            </button>
+          </div>
+        )}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h2 className="font-serif text-xl font-medium text-[#1b1c18]">
@@ -263,11 +307,11 @@ export default function InventoryPage() {
             <span className="uppercase font-bold">LEGEND:</span>
             <div className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-[#0d4d3b]" />
-              <span>In Stock (&gt;5)</span>
+              <span>In Stock (above alert threshold)</span>
             </div>
             <div className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-[#c79a45]" />
-              <span>Low Stock (1-5)</span>
+              <span>Low Stock (at/below alert threshold)</span>
             </div>
             <div className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-[#ba1a1a]" />
@@ -304,6 +348,7 @@ export default function InventoryPage() {
                 filteredInventory.map((item) => {
                 const currentStock = getStockValue(item);
                 const isModified = stockEdits[item.id] !== undefined;
+                const currentStatus = getInventoryStatus(item, currentStock);
 
                 return (
                   <tr key={item.id} className="hover:bg-[#fbf9f2] transition-colors">
@@ -336,12 +381,12 @@ export default function InventoryPage() {
                       {currentStock}
                     </td>
                     <td className="py-3 px-4">
-                      {currentStock > 5 ? (
+                      {currentStatus === 'IN STOCK' ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[#b0ecd3]/40 text-[#073a2d]">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#0d4d3b]" />
                           IN STOCK
                         </span>
-                      ) : currentStock > 0 ? (
+                      ) : currentStatus === 'LOW STOCK' ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[#f5eedf] text-[#8c6722]">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#c79a45]" />
                           LOW STOCK
@@ -375,13 +420,14 @@ export default function InventoryPage() {
                         <button
                           type="button"
                           onClick={() => handleSaveStock(item.id)}
+                          disabled={!isModified || savingStockId === item.id}
                           className={`ml-2 px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
-                            isModified
+                            isModified && savingStockId !== item.id
                               ? 'bg-[#073a2d] text-white hover:bg-[#0d4d3b]'
-                              : 'bg-[#00231a] text-white hover:bg-[#073a2d]'
+                              : 'bg-[#b7b9b3] text-white'
                           }`}
                         >
-                          SAVE
+                          {savingStockId === item.id ? 'SAVING...' : 'SAVE'}
                         </button>
                       </div>
                     </td>

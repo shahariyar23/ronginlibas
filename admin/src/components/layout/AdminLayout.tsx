@@ -74,11 +74,13 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       <AdminProvider>
-        <div className="flex min-h-screen bg-[#fbf9f2]">
+        <div className="flex h-screen overflow-hidden bg-[#fbf9f2]">
           <Sidebar />
-          <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <Header />
-            <main className="flex-1 overflow-x-hidden">{children}</main>
+            <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
+              {children}
+            </main>
           </div>
         </div>
         <CommandPalette />
@@ -86,4 +88,3 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     </ToastProvider>
   );
 }
-

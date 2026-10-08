@@ -108,7 +108,8 @@ let CartService = class CartService {
         });
         const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
         const settings = await this.settingsService.getPublicSettings();
-        const deliveryCharge = subtotal >= Number(settings.freeDeliveryThreshold)
+        const deliveryCharge = settings.freeShippingEnabled !== false &&
+            subtotal >= Number(settings.freeDeliveryThreshold)
             ? 0
             : Number(settings.outsideDhakaDeliveryCharge);
         return {

@@ -17,12 +17,14 @@ export class ShippingService {
         id: 'dhaka-metro',
         name: 'Dhaka Metropolitan',
         charge: settings.dhakaDeliveryCharge,
+        freeShippingEnabled: settings.freeShippingEnabled,
         freeDeliveryThreshold: settings.freeDeliveryThreshold,
       },
       {
         id: 'nationwide',
         name: 'Bangladesh-wide',
         charge: settings.outsideDhakaDeliveryCharge,
+        freeShippingEnabled: settings.freeShippingEnabled,
         freeDeliveryThreshold: settings.freeDeliveryThreshold,
       },
     ];

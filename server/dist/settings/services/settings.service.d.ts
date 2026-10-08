@@ -19,7 +19,12 @@ export declare class SettingsService {
         currencySymbol: string;
         dhakaDeliveryCharge: number;
         outsideDhakaDeliveryCharge: number;
+        freeShippingEnabled: boolean;
         freeDeliveryThreshold: number;
+        promoEnabled: boolean;
+        promoCode: string;
+        promoDiscountText: string;
+        whatsappOrderEnabled: boolean;
         codEnabled: boolean;
         bkashEnabled: boolean;
         nagadEnabled: boolean;
@@ -39,7 +44,12 @@ export declare class SettingsService {
         currencySymbol: unknown;
         dhakaDeliveryCharge: unknown;
         outsideDhakaDeliveryCharge: unknown;
+        freeShippingEnabled: unknown;
         freeDeliveryThreshold: unknown;
+        promoEnabled: unknown;
+        promoCode: unknown;
+        promoDiscountText: unknown;
+        whatsappOrderEnabled: unknown;
         codEnabled: unknown;
         bkashEnabled: unknown;
         nagadEnabled: unknown;
@@ -62,7 +72,12 @@ export declare class SettingsService {
         currencySymbol: string;
         dhakaDeliveryCharge: number;
         outsideDhakaDeliveryCharge: number;
+        freeShippingEnabled: boolean;
         freeDeliveryThreshold: number;
+        promoEnabled: boolean;
+        promoCode: string;
+        promoDiscountText: string;
+        whatsappOrderEnabled: boolean;
         codEnabled: boolean;
         bkashEnabled: boolean;
         nagadEnabled: boolean;

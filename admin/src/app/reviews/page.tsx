@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Star, CheckCircle2, MessageSquare } from 'lucide-react';
+import { TablePageSkeleton } from '@/components/common/Skeleton';
 
 interface Review {
   id: string;
@@ -16,6 +17,7 @@ interface Review {
 
 export default function ReviewsPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [isLoadingReviews, setIsLoadingReviews] = useState(true);
 
   useEffect(() => {
     async function loadReviews() {
@@ -41,10 +43,22 @@ export default function ReviewsPage() {
         }
       } catch (err) {
         console.warn('Reviews fetch fallback:', err);
+      } finally {
+        setIsLoadingReviews(false);
       }
     }
     loadReviews();
   }, []);
+
+  if (isLoadingReviews) {
+    return (
+      <TablePageSkeleton
+        title="Patron Editorial Reviews & Curation"
+        showAddButton={false}
+        rowCount={6}
+      />
+    );
+  }
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">

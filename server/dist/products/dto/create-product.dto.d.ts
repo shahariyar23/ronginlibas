@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 export declare class CreateVariantDto {
     size: string;
     sizeLabel?: string;
+    sizeType?: 'APPAREL' | 'WAIST' | 'CUSTOM';
     color: string;
     sku: string;
     stock: number;
@@ -31,6 +32,7 @@ export declare class CreateProductDto {
     gsm?: number;
     careInstructions?: string;
     tags?: string[];
+    alertThreshold?: number;
     isExpressAvailable?: boolean;
     categoryId: string;
     isActive?: boolean;

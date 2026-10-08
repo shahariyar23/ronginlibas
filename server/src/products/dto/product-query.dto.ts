@@ -14,10 +14,19 @@ import { PaginationQueryDto } from '../../common/dto/pagination-query.dto.js';
 const toStringArray = ({ value }: { value: unknown }) =>
   value === undefined
     ? undefined
-    : (Array.isArray(value) ? value : [value]).map(String);
+    : (Array.isArray(value) ? value : [value])
+        .flatMap((item) => String(item).split(','))
+        .map((item) => item.trim())
+        .filter(Boolean);
 
 const toBoolean = ({ value }: { value: unknown }) =>
-  value === undefined ? undefined : value === true || value === 'true';
+  value === undefined || value === true || value === false
+    ? value
+    : value === 'true'
+      ? true
+      : value === 'false'
+        ? false
+        : value;
 
 export class ProductQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({ description: 'Category slug or name' })
@@ -47,15 +56,23 @@ export class ProductQueryDto extends PaginationQueryDto {
   @IsOptional()
   color?: string[];
 
-  @ApiPropertyOptional()
-  @IsString()
+  @ApiPropertyOptional({ type: [String] })
+  @Transform(toStringArray)
+  @IsString({ each: true })
   @IsOptional()
-  fabric?: string;
+  fabric?: string[];
 
-  @ApiPropertyOptional()
-  @IsString()
+  @ApiPropertyOptional({ type: [String] })
+  @Transform(toStringArray)
+  @IsString({ each: true })
   @IsOptional()
-  fit?: string;
+  fabricOrigin?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  @Transform(toStringArray)
+  @IsString({ each: true })
+  @IsOptional()
+  fit?: string[];
 
   @ApiPropertyOptional({ minimum: 0 })
   @Type(() => Number)
@@ -99,13 +116,19 @@ export class ProductQueryDto extends PaginationQueryDto {
   @Transform(toBoolean)
   @IsBoolean()
   @IsOptional()
+  onSale?: boolean;
+
+  @ApiPropertyOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  @IsOptional()
   expressAvailable?: boolean;
 
   @ApiPropertyOptional({
     enum: ['featured', 'newest', 'price-asc', 'price-desc', 'best-selling'],
     default: 'newest',
   })
-  @IsString()
+  @IsEnum(['featured', 'newest', 'price-asc', 'price-desc', 'best-selling'])
   @IsOptional()
   sort?: 'featured' | 'newest' | 'price-asc' | 'price-desc' | 'best-selling';
 }

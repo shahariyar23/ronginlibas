@@ -53,6 +53,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
         status = HttpStatus.BAD_REQUEST;
         message = 'Referenced entity does not exist';
         errorCode = 'FOREIGN_KEY_VIOLATION';
+      } else if (prismaCode === 'P2028') {
+        this.logger.error(`Prisma error [${prismaCode}]: ${(exception as Error).message}`);
+        status = HttpStatus.REQUEST_TIMEOUT;
+        message = 'Database operation timed out. Please try again.';
+        errorCode = 'TRANSACTION_TIMEOUT';
       } else {
         this.logger.error(`Prisma error [${prismaCode}]: ${(exception as Error).message}`);
         status = HttpStatus.INTERNAL_SERVER_ERROR;

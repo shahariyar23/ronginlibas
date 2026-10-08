@@ -154,6 +154,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     quantity = 1,
     _customNotes?: string,
   ) => {
+    if (!user) {
+      toast.error('First login please', {
+        description: 'Please login first to add items to your cart.',
+        action: {
+          label: 'Login',
+          onClick: () => {
+            if (typeof window !== 'undefined') {
+              window.location.href = '/login';
+            }
+          },
+        },
+      });
+      return;
+    }
+
     const variant = product.variants?.find(
       (item) =>
         item.isActive !== false &&

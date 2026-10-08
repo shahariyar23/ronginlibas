@@ -19,6 +19,11 @@ export class UpdateSettingsDto {
     dhakaDeliveryCharge;
     outsideDhakaDeliveryCharge;
     freeDeliveryThreshold;
+    freeShippingEnabled;
+    promoEnabled;
+    promoCode;
+    promoDiscountText;
+    whatsappOrderEnabled;
     codEnabled;
     bkashEnabled;
     bkashWallet;
@@ -80,6 +85,36 @@ __decorate([
     IsOptional(),
     __metadata("design:type", Number)
 ], UpdateSettingsDto.prototype, "freeDeliveryThreshold", void 0);
+__decorate([
+    ApiPropertyOptional({ default: true }),
+    IsBoolean(),
+    IsOptional(),
+    __metadata("design:type", Boolean)
+], UpdateSettingsDto.prototype, "freeShippingEnabled", void 0);
+__decorate([
+    ApiPropertyOptional({ default: false }),
+    IsBoolean(),
+    IsOptional(),
+    __metadata("design:type", Boolean)
+], UpdateSettingsDto.prototype, "promoEnabled", void 0);
+__decorate([
+    ApiPropertyOptional({ example: 'RONGINLAUNCH' }),
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], UpdateSettingsDto.prototype, "promoCode", void 0);
+__decorate([
+    ApiPropertyOptional({ example: '15% OFF' }),
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], UpdateSettingsDto.prototype, "promoDiscountText", void 0);
+__decorate([
+    ApiPropertyOptional({ default: true }),
+    IsBoolean(),
+    IsOptional(),
+    __metadata("design:type", Boolean)
+], UpdateSettingsDto.prototype, "whatsappOrderEnabled", void 0);
 __decorate([
     ApiPropertyOptional({ default: true }),
     IsBoolean(),

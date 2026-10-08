@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { Product } from '@/types';
-import { getProducts } from '@/lib/api';
+import { getProductFilters, getShopProducts, ProductFilters, ProductListQuery } from '@/lib/api';
+import { getWhatsAppUrl, useStorefront } from '@/context/StorefrontContext';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -21,195 +21,248 @@ import {
   SlidersHorizontal,
   X,
   PhoneCall,
-  Sparkles,
-  ArrowUpDown,
   LayoutGrid,
   Grid3X3,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
 
 export const ShopContent: React.FC = () => {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const initialCategory = searchParams.get('category') || 'all';
-  const initialFilter = searchParams.get('filter') || '';
-  const initialQuery = searchParams.get('q') || '';
-  const initialWishlist = searchParams.get('wishlist') === 'true';
+  const { settings } = useStorefront();
   const [products, setProducts] = useState<Product[]>([]);
+  const [filters, setFilters] = useState<ProductFilters | null>(null);
+  const [pageMeta, setPageMeta] = useState({ page: 1, limit: 12, total: 0, totalPages: 1, hasNext: false, hasPrevious: false });
   const [isLoading, setIsLoading] = useState(true);
+  const [completedRequestKey, setCompletedRequestKey] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [retryKey, setRetryKey] = useState(0);
+  const [searchEdit, setSearchEdit] = useState<{ query: string; value: string } | null>(null);
+  const [priceEdit, setPriceEdit] = useState<{
+    key: string;
+    value: [number, number];
+  } | null>(null);
+
+  const queryString = searchParams.toString();
+  const urlParams = useMemo(() => new URLSearchParams(queryString), [queryString]);
+  const selectedCategory = urlParams.get('category') || 'all';
+  const selectedSizes = useMemo(() => urlParams.getAll('size'), [urlParams]);
+  const selectedColors = useMemo(() => urlParams.getAll('color'), [urlParams]);
+  const selectedFabrics = useMemo(() => urlParams.getAll('fabric'), [urlParams]);
+  const selectedFabricOrigins = useMemo(() => urlParams.getAll('fabricOrigin'), [urlParams]);
+  const selectedFits = useMemo(() => urlParams.getAll('fit'), [urlParams]);
+  const inStockOnly = urlParams.get('inStock') === 'true';
+  const initialFilterFromUrl = urlParams.get('filter') || '';
+  const initialQueryFromUrl = urlParams.get('q') || '';
+  const genderParam = urlParams.get('gender');
+  const selectedGender =
+    genderParam === 'MEN' || genderParam === 'WOMEN' || genderParam === 'UNISEX'
+      ? genderParam
+      : undefined;
+  const newArrivalSelected = urlParams.get('newArrival') === 'true' || initialFilterFromUrl === 'new';
+  const bestSellerSelected =
+    urlParams.get('bestSeller') === 'true' || initialFilterFromUrl === 'bestseller';
+  const offersSelected =
+    urlParams.get('offers') === 'true' ||
+    initialFilterFromUrl === 'offers' ||
+    initialFilterFromUrl === 'sale';
+  const page = Math.max(1, Number(urlParams.get('page')) || 1);
+  const minAvailablePrice = filters?.price.min ?? 0;
+  const maxAvailablePrice = filters?.price.max ?? 0;
+  const priceRange: [number, number] = [
+    Number(urlParams.get('minPrice') ?? minAvailablePrice),
+    Number(urlParams.get('maxPrice') ?? maxAvailablePrice),
+  ];
+  const priceDraftKey = `${queryString}|${minAvailablePrice}|${maxAvailablePrice}`;
+  const priceDraft =
+    priceEdit?.key === priceDraftKey
+      ? priceEdit.value
+      : priceRange;
+  const searchDraft =
+    searchEdit?.query === initialQueryFromUrl ? searchEdit.value : initialQueryFromUrl;
+  const sortBy = urlParams.get('sort') || 'featured';
+  const [gridCols, setGridCols] = useState<3 | 4>(3);
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const whatsappUrl = getWhatsAppUrl(
+    settings?.whatsapp || '',
+    'Hello Rongin Libas Atelier, I would like to consult on a bespoke fit.',
+  );
+
+  const updateQuery = (updates: Record<string, string | string[] | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [key, value] of Object.entries(updates)) {
+      params.delete(key);
+      if (Array.isArray(value)) value.forEach((item) => params.append(key, item));
+      else if (value) params.set(key, value);
+    }
+    if (!('page' in updates)) params.delete('page');
+    const nextQuery = params.toString();
+    router.push(`/shop${nextQuery ? `?${nextQuery}` : ''}`, { scroll: false });
+  };
+
+  const productQuery = useMemo<ProductListQuery>(() => {
+    const query: ProductListQuery = {
+      page,
+      limit: 12,
+      sort: sortBy,
+      gender: selectedGender,
+      category: selectedCategory !== 'all' ? selectedCategory : undefined,
+      size: selectedSizes.length ? selectedSizes : undefined,
+      color: selectedColors.length ? selectedColors : undefined,
+      fabric: selectedFabrics.length ? selectedFabrics : undefined,
+      fabricOrigin: selectedFabricOrigins.length ? selectedFabricOrigins : undefined,
+      fit: selectedFits.length ? selectedFits : undefined,
+      search: initialQueryFromUrl || undefined,
+      inStock: inStockOnly ? true : undefined,
+    };
+    if (urlParams.has('minPrice')) query.minPrice = Number(urlParams.get('minPrice'));
+    if (urlParams.has('maxPrice')) query.maxPrice = Number(urlParams.get('maxPrice'));
+    if (newArrivalSelected) query.newArrival = true;
+    if (bestSellerSelected) query.bestSeller = true;
+    if (offersSelected) query.onSale = true;
+    return query;
+  }, [
+    page, sortBy, selectedCategory, selectedGender, selectedSizes, selectedColors,
+    selectedFabrics, selectedFabricOrigins, selectedFits,
+    initialQueryFromUrl, inStockOnly, urlParams,
+    newArrivalSelected, bestSellerSelected, offersSelected,
+  ]);
+  const requestKey = JSON.stringify(productQuery);
+
+  const filterQuery = useMemo<ProductListQuery>(
+    () => ({
+      category: selectedCategory !== 'all' ? selectedCategory : undefined,
+      size: selectedSizes.length ? selectedSizes : undefined,
+      color: selectedColors.length ? selectedColors : undefined,
+      fabric: selectedFabrics.length ? selectedFabrics : undefined,
+      fabricOrigin: selectedFabricOrigins.length ? selectedFabricOrigins : undefined,
+      fit: selectedFits.length ? selectedFits : undefined,
+      gender: selectedGender,
+      search: initialQueryFromUrl || undefined,
+      inStock: inStockOnly ? true : undefined,
+      newArrival: newArrivalSelected ? true : undefined,
+      bestSeller: bestSellerSelected ? true : undefined,
+      onSale: offersSelected ? true : undefined,
+    }),
+    [
+      selectedCategory,
+      selectedSizes,
+      selectedColors,
+      selectedFabrics,
+      selectedFabricOrigins,
+      selectedFits,
+      selectedGender,
+      initialQueryFromUrl,
+      inStockOnly,
+      newArrivalSelected,
+      bestSellerSelected,
+      offersSelected,
+    ],
+  );
+
+  const retryProducts = () => {
+    setLoadError('');
+    setIsLoading(true);
+    setRetryKey((value) => value + 1);
+  };
 
   useEffect(() => {
     let active = true;
-    getProducts({ limit: 100 })
-      .then((data) => {
-        if (active) setProducts(data);
+    getShopProducts(productQuery)
+      .then((result) => {
+        if (!active) return;
+        setProducts(result.items);
+        setPageMeta(result.meta);
+        setLoadError('');
       })
-      .catch((error: unknown) => {
-        if (active) toast.error(error instanceof Error ? error.message : 'Could not load products.');
+      .catch(() => {
+        if (!active) return;
+        const message = 'We could not load the collection. Please try again.';
+        setProducts([]);
+        setPageMeta((current) => ({ ...current, total: 0 }));
+        setLoadError(message);
+        toast.error(message);
       })
       .finally(() => {
-        if (active) setIsLoading(false);
+        if (active) {
+          setIsLoading(false);
+          setCompletedRequestKey(requestKey);
+        }
       });
-    return () => {
-      active = false;
-    };
-  }, []);
+    return () => { active = false; };
+  }, [productQuery, requestKey, retryKey]);
 
-  // Filters state
-  const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
-  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
-  const [selectedColors, setSelectedColors] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState<[number, number]>([1000, 8000]);
-  const [selectedFabrics, setSelectedFabrics] = useState<string[]>([]);
-  const [inStockOnly, setInStockOnly] = useState(false);
-  const [sortBy, setSortBy] = useState<'featured' | 'price-low' | 'price-high' | 'newest'>('featured');
-  const [gridCols, setGridCols] = useState<3 | 4>(3);
-  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  useEffect(() => {
+    let active = true;
+    getProductFilters(filterQuery)
+      .then((data) => {
+        if (active) setFilters(data);
+      })
+      .catch(() => {
+        if (active) toast.error('Filter options could not be loaded.');
+      });
+    return () => { active = false; };
+  }, [filterQuery]);
 
-  // Available Filter Options
-  const categories = [
-    { id: 'all', label: 'All Men' },
-    { id: 'panjabi', label: 'Imperial Panjabi' },
-    { id: 'shirts', label: 'Fine Shirts' },
-    { id: 'polos', label: 'Mercerized Polos' },
-    { id: 't-shirts', label: 'Heavyweight Tees' },
-    { id: 'trousers', label: 'Gurkha Trousers' },
-  ];
+  const isRefreshing = !isLoading && completedRequestKey !== requestKey;
 
-  const sizeOptions = ['S', 'M', 'L', 'XL', 'XXL', 'Bespoke'];
-
-  const colorOptions = [
-    { name: 'Emerald', hex: '#073A2D' },
-    { name: 'Onyx', hex: '#1B1C18' },
-    { name: 'Ivory', hex: '#FBF9F2' },
-    { name: 'Navy', hex: '#112244' },
-    { name: 'Terracotta', hex: '#9C4A2F' },
-  ];
-
-  const fabricOptions = [
-    'Rajshahi Silk',
-    'Egyptian Cotton',
-    'French Flax Linen',
-    'Organic Muslin Voile',
-    'Tropical Wool',
-  ];
-
-  // Filtering Logic
-  const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
-      // Search query
-      if (initialQuery) {
-        const q = initialQuery.toLowerCase();
-        const matchTitle = p.name.toLowerCase().includes(q);
-        const matchCat = p.categoryLabel.toLowerCase().includes(q);
-        const matchFab = p.fabric.toLowerCase().includes(q);
-        if (!matchTitle && !matchCat && !matchFab) return false;
-      }
-
-      // Special presets from URL
-      if (initialFilter === 'new' && !p.isNewArrival) return false;
-      if (initialFilter === 'bestseller' && !p.isBestSeller) return false;
-      if (
-        (initialFilter === 'offers' || initialFilter === 'sale') &&
-        (!p.originalPrice || p.originalPrice <= p.price)
-      ) {
-        return false;
-      }
-
-      // Category
-      if (selectedCategory !== 'all' && p.category !== selectedCategory) {
-        return false;
-      }
-
-      // Sizes
-      if (selectedSizes.length > 0) {
-        const hasSize = selectedSizes.some((s) => p.sizes.includes(s));
-        if (!hasSize) return false;
-      }
-
-      // Colors
-      if (selectedColors.length > 0) {
-        const hasColor = p.colors.some((c) =>
-          selectedColors.some((sc) => c.name.toLowerCase().includes(sc.toLowerCase()))
-        );
-        if (!hasColor) return false;
-      }
-
-      // Price Range
-      if (p.price < priceRange[0] || p.price > priceRange[1]) {
-        return false;
-      }
-
-      // Fabric Origin
-      if (selectedFabrics.length > 0) {
-        const hasFabric = selectedFabrics.some(
-          (fab) =>
-            p.fabric.toLowerCase().includes(fab.toLowerCase()) ||
-            (p.fabricOrigin && p.fabricOrigin.toLowerCase().includes(fab.toLowerCase()))
-        );
-        if (!hasFabric) return false;
-      }
-
-      // In-stock only
-      if (inStockOnly && !p.inStock) {
-        return false;
-      }
-
-      return true;
-    }).sort((a, b) => {
-      if (sortBy === 'price-low') return a.price - b.price;
-      if (sortBy === 'price-high') return b.price - a.price;
-      if (sortBy === 'newest') return (b.isNewArrival ? 1 : 0) - (a.isNewArrival ? 1 : 0);
-      return 0;
-    });
-  }, [
-    selectedCategory,
-    selectedSizes,
-    selectedColors,
-    priceRange,
-    selectedFabrics,
-    inStockOnly,
-    sortBy,
-    initialQuery,
-    initialFilter,
-    products,
-  ]);
-
-  const toggleSize = (size: string) => {
-    setSelectedSizes((prev) =>
-      prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size]
-    );
+  const toggleQueryValue = (key: string, value: string) => {
+    const current = searchParams.getAll(key);
+    updateQuery({ [key]: current.includes(value)
+      ? current.filter((item) => item !== value)
+      : [...current, value] });
   };
 
-  const toggleColor = (color: string) => {
-    setSelectedColors((prev) =>
-      prev.includes(color) ? prev.filter((c) => c !== color) : [...prev, color]
-    );
-  };
-
-  const toggleFabric = (fab: string) => {
-    setSelectedFabrics((prev) =>
-      prev.includes(fab) ? prev.filter((f) => f !== fab) : [...prev, fab]
-    );
-  };
-
-  const clearAllFilters = () => {
-    setSelectedCategory('all');
-    setSelectedSizes([]);
-    setSelectedColors([]);
-    setPriceRange([1000, 8000]);
-    setSelectedFabrics([]);
-    setInStockOnly(false);
-  };
+  const clearAllFilters = () => router.push('/shop', { scroll: false });
 
   const activeFiltersCount =
     (selectedCategory !== 'all' ? 1 : 0) +
+    (selectedGender ? 1 : 0) +
     selectedSizes.length +
     selectedColors.length +
-    (priceRange[0] > 1000 || priceRange[1] < 8000 ? 1 : 0) +
     selectedFabrics.length +
-    (inStockOnly ? 1 : 0);
+    selectedFabricOrigins.length +
+    selectedFits.length +
+    (urlParams.has('minPrice') || urlParams.has('maxPrice') ? 1 : 0) +
+    (inStockOnly ? 1 : 0) +
+    (initialQueryFromUrl ? 1 : 0) +
+    (newArrivalSelected || bestSellerSelected || offersSelected ? 1 : 0);
 
-  const FilterPanelContent = () => (
+  const categories = [
+    { id: 'all', name: selectedGender === 'WOMEN' ? 'All Women' : 'All Men', slug: 'all', count: pageMeta.total },
+    ...(filters?.categories ?? []),
+  ];
+  const sizeOptions = filters?.sizes ?? [];
+  const sizeGroups = [
+    { type: 'APPAREL', label: 'Apparel' },
+    { type: 'WAIST', label: 'Trouser Waist' },
+    { type: 'CUSTOM', label: 'Custom' },
+  ]
+    .map((group) => ({
+      ...group,
+      options: sizeOptions.filter((option) => option.type === group.type),
+    }))
+    .filter((group) => group.options.length);
+  const colorOptions = filters?.colors ?? [];
+  const fabricOptions = filters?.fabrics ?? [];
+  const fabricOriginOptions = filters?.fabricOrigins ?? [];
+  const fitOptions = filters?.fits ?? [];
+  const formatOption = (name: string, count: number) => `${name} (${count})`;
+  const commitPriceRange = (value: number | readonly number[]) => {
+    if (!Array.isArray(value) || value.length < 2) return;
+    const lower = Math.max(minAvailablePrice, Math.min(Number(value[0]), maxAvailablePrice));
+    const upper = Math.max(lower, Math.min(Number(value[1]), maxAvailablePrice));
+    updateQuery({
+      minPrice: lower > minAvailablePrice ? String(lower) : null,
+      maxPrice: upper < maxAvailablePrice ? String(upper) : null,
+    });
+  };
+
+  const renderFilterPanel = () => (
     <div className="space-y-8 text-xs font-sans">
       {/* Category List */}
       <div>
@@ -219,16 +272,16 @@ export const ShopContent: React.FC = () => {
         <div className="space-y-1.5">
           {categories.map((cat) => (
             <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
+              key={cat.slug}
+              onClick={() => updateQuery({ category: cat.slug === 'all' ? null : cat.slug })}
               className={`w-full text-left py-1.5 px-2.5 transition-colors flex items-center justify-between ${
-                selectedCategory === cat.id
+                selectedCategory === cat.slug
                   ? 'bg-[#073a2d] text-white font-semibold'
                   : 'text-[#404945] hover:bg-[#f0eee7]'
               }`}
             >
-              <span>{cat.label}</span>
-              {selectedCategory === cat.id && <span className="text-[10px]">●</span>}
+              <span>{cat.name} <span className="opacity-70">({cat.count})</span></span>
+              {selectedCategory === cat.slug && <span className="text-[10px]">●</span>}
             </button>
           ))}
         </div>
@@ -239,23 +292,35 @@ export const ShopContent: React.FC = () => {
         <h4 className="font-serif text-sm font-semibold uppercase tracking-wider text-[#073a2d] mb-3">
           Size
         </h4>
-        <div className="grid grid-cols-3 gap-2">
-          {sizeOptions.map((s) => {
-            const active = selectedSizes.includes(s);
-            return (
-              <button
-                key={s}
-                onClick={() => toggleSize(s)}
-                className={`py-2 text-center border font-semibold text-xs transition-all ${
-                  active
-                    ? 'bg-[#073a2d] text-white border-[#073a2d]'
-                    : 'bg-white border-[#deddd3] text-[#1b1c18] hover:border-[#073a2d]'
-                }`}
-              >
-                {s}
-              </button>
-            );
-          })}
+        <div className="space-y-3">
+          {sizeGroups.map((group) => (
+            <div key={group.type}>
+              {sizeGroups.length > 1 && (
+                <p className="mb-1.5 text-[10px] uppercase tracking-wider text-[#717975]">
+                  {group.label}
+                </p>
+              )}
+              <div className="grid grid-cols-3 gap-2">
+                {group.options.map((option) => {
+                  const active = selectedSizes.includes(option.value);
+                  return (
+                    <button
+                      key={`${group.type}-${option.value}`}
+                      onClick={() => toggleQueryValue('size', option.value)}
+                      className={`py-2 text-center border font-semibold text-xs transition-all ${
+                        active
+                          ? 'bg-[#073a2d] text-white border-[#073a2d]'
+                          : 'bg-white border-[#deddd3] text-[#1b1c18] hover:border-[#073a2d]'
+                      }`}
+                    >
+                      {option.value}
+                      <span className="block text-[9px] opacity-70">{option.count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -265,12 +330,12 @@ export const ShopContent: React.FC = () => {
           Color Story
         </h4>
         <div className="flex flex-wrap gap-2">
-          {colorOptions.map((c) => {
-            const active = selectedColors.includes(c.name);
+          {colorOptions.map((color) => {
+            const active = selectedColors.includes(color.name);
             return (
               <button
-                key={c.name}
-                onClick={() => toggleColor(c.name)}
+                key={color.slug}
+                onClick={() => toggleQueryValue('color', color.name)}
                 className={`flex items-center gap-2 px-2.5 py-1.5 border text-xs transition-all ${
                   active
                     ? 'border-[#073a2d] bg-[#073a2d] text-white'
@@ -279,9 +344,9 @@ export const ShopContent: React.FC = () => {
               >
                 <span
                   className="w-3 h-3 rounded-full border border-black/20"
-                  style={{ backgroundColor: c.hex }}
+                  style={{ backgroundColor: '#f0eee7' }}
                 />
-                <span>{c.name}</span>
+                <span>{formatOption(color.name, color.count)}</span>
               </button>
             );
           })}
@@ -300,20 +365,50 @@ export const ShopContent: React.FC = () => {
         </div>
         <Slider
           defaultValue={[priceRange[0], priceRange[1]]}
-          min={1000}
-          max={8000}
-          step={200}
-          value={[priceRange[0], priceRange[1]]}
-          onValueChange={(val: any) => {
-            if (Array.isArray(val) && val.length >= 2) {
-              setPriceRange([val[0], val[1]]);
+          min={minAvailablePrice}
+          max={Math.max(minAvailablePrice + 1, maxAvailablePrice)}
+          step={Math.max(1, Math.round((maxAvailablePrice - minAvailablePrice) / 100))}
+          disabled={!filters || maxAvailablePrice <= minAvailablePrice}
+          value={priceDraft}
+          onValueChange={(value) => {
+            if (Array.isArray(value) && value.length >= 2) {
+              setPriceEdit({
+                key: priceDraftKey,
+                value: [Number(value[0]), Number(value[1])],
+              });
             }
           }}
+          onValueCommitted={commitPriceRange}
           className="my-4"
         />
         <div className="flex justify-between text-[11px] text-[#717975]">
-          <span>৳1,000</span>
-          <span>৳8,000</span>
+          <span>৳{minAvailablePrice.toLocaleString()}</span>
+          <span>৳{maxAvailablePrice.toLocaleString()}</span>
+        </div>
+      </div>
+
+      {/* Fabrics */}
+      <div>
+        <h4 className="font-serif text-sm font-semibold uppercase tracking-wider text-[#073a2d] mb-3">
+          Fabric
+        </h4>
+        <div className="space-y-2">
+          {fabricOptions.map((fab) => {
+            const active = selectedFabrics.includes(fab.name);
+            return (
+              <label
+                key={fab.slug}
+                className="flex items-center gap-2.5 text-xs text-[#404945] cursor-pointer hover:text-[#073a2d]"
+              >
+                <Checkbox
+                  checked={active}
+                  onCheckedChange={() => toggleQueryValue('fabric', fab.name)}
+                  className="rounded-none border-[#deddd3] data-[state=checked]:bg-[#073a2d]"
+                />
+                <span>{formatOption(fab.name, fab.count)}</span>
+              </label>
+            );
+          })}
         </div>
       </div>
 
@@ -323,31 +418,49 @@ export const ShopContent: React.FC = () => {
           Fabric Origin
         </h4>
         <div className="space-y-2">
-          {fabricOptions.map((fab) => {
-            const active = selectedFabrics.includes(fab);
-            return (
-              <label
-                key={fab}
-                className="flex items-center gap-2.5 text-xs text-[#404945] cursor-pointer hover:text-[#073a2d]"
-              >
-                <Checkbox
-                  checked={active}
-                  onCheckedChange={() => toggleFabric(fab)}
-                  className="rounded-none border-[#deddd3] data-[state=checked]:bg-[#073a2d]"
-                />
-                <span>{fab}</span>
-              </label>
-            );
-          })}
+          {fabricOriginOptions.map((origin) => (
+            <label
+              key={origin.slug}
+              className="flex items-center gap-2.5 text-xs text-[#404945] cursor-pointer hover:text-[#073a2d]"
+            >
+              <Checkbox
+                checked={selectedFabricOrigins.includes(origin.name)}
+                onCheckedChange={() => toggleQueryValue('fabricOrigin', origin.name)}
+                className="rounded-none border-[#deddd3] data-[state=checked]:bg-[#073a2d]"
+              />
+              <span>{formatOption(origin.name, origin.count)}</span>
+            </label>
+          ))}
         </div>
       </div>
 
+      {/* Fit */}
+      <div>
+        <h4 className="font-serif text-sm font-semibold uppercase tracking-wider text-[#073a2d] mb-3">
+          Fit
+        </h4>
+        <div className="space-y-2">
+          {fitOptions.map((fit) => (
+            <label
+              key={fit.slug}
+              className="flex items-center gap-2.5 text-xs text-[#404945] cursor-pointer hover:text-[#073a2d]"
+            >
+              <Checkbox
+                checked={selectedFits.includes(fit.name)}
+                onCheckedChange={() => toggleQueryValue('fit', fit.name)}
+                className="rounded-none border-[#deddd3] data-[state=checked]:bg-[#073a2d]"
+              />
+              <span>{formatOption(fit.name, fit.count)}</span>
+            </label>
+          ))}
+        </div>
+      </div>
       {/* In-Stock Toggle */}
       <div className="pt-2 border-t border-[#deddd3]">
         <label className="flex items-center gap-2.5 text-xs text-[#404945] cursor-pointer hover:text-[#073a2d]">
           <Checkbox
             checked={inStockOnly}
-            onCheckedChange={(checked) => setInStockOnly(!!checked)}
+            onCheckedChange={(checked) => updateQuery({ inStock: checked ? 'true' : null })}
             className="rounded-none border-[#deddd3] data-[state=checked]:bg-[#073a2d]"
           />
           <span className="font-semibold text-[#073a2d]">In-Stock (Ready for 48h Dispatch)</span>
@@ -377,32 +490,43 @@ export const ShopContent: React.FC = () => {
               Home
             </Link>
             <span>/</span>
-            <Link href="/shop" className="hover:text-[#073a2d]">
-              Men
+            <Link
+              href={`/shop?gender=${selectedGender || 'MEN'}`}
+              className="hover:text-[#073a2d]"
+            >
+              {selectedGender === 'WOMEN' ? 'Women' : selectedGender === 'UNISEX' ? 'Unisex' : 'Men'}
             </Link>
             <span>/</span>
             <span className="text-[#073a2d] font-semibold">
-              {initialFilter === 'new'
+              {newArrivalSelected
                 ? 'New Arrivals'
-                : initialFilter === 'bestseller'
+                : bestSellerSelected
                 ? 'Best Sellers'
-                : initialFilter === 'offers' || initialFilter === 'sale'
+                : offersSelected
                 ? 'Offers & Archive'
                 : selectedCategory !== 'all'
-                ? categories.find((c) => c.id === selectedCategory)?.label
+                ? categories.find((c) => c.slug === selectedCategory)?.name
+                : selectedGender === 'WOMEN'
+                ? 'Women’s Collection'
+                : selectedGender === 'UNISEX'
+                ? 'Unisex Collection'
                 : 'All Sartorial Weaves'}
             </span>
           </nav>
 
           <h1 className="font-serif text-3xl sm:text-5xl font-normal text-[#073a2d] mb-3">
-            {initialFilter === 'new'
+            {newArrivalSelected
               ? 'NEW ARRIVALS'
-              : initialFilter === 'bestseller'
+              : bestSellerSelected
               ? 'BEST SELLERS'
-              : initialFilter === 'offers' || initialFilter === 'sale'
+              : offersSelected
               ? 'EXCLUSIVE OFFERS'
               : selectedCategory !== 'all'
-              ? categories.find((c) => c.id === selectedCategory)?.label.toUpperCase()
+              ? categories.find((c) => c.slug === selectedCategory)?.name.toUpperCase() ?? 'MEN’S COLLECTION'
+              : selectedGender === 'WOMEN'
+              ? 'WOMEN’S COLLECTION'
+              : selectedGender === 'UNISEX'
+              ? 'UNISEX COLLECTION'
               : 'MEN’S COLLECTION'}
           </h1>
           <p className="font-sans text-xs sm:text-sm text-[#69726d] max-w-2xl font-light">
@@ -435,13 +559,13 @@ export const ShopContent: React.FC = () => {
                   </SheetTitle>
                 </SheetHeader>
                 <div className="mt-6">
-                  <FilterPanelContent />
+                  {renderFilterPanel()}
                 </div>
               </SheetContent>
             </Sheet>
 
             <span className="text-xs font-sans text-[#69726d]">
-              Showing <strong className="text-[#073a2d]">{filteredProducts.length}</strong> Sartorial Pieces
+              Showing <strong className="text-[#073a2d]">{pageMeta.total}</strong> Sartorial Pieces
             </span>
           </div>
 
@@ -450,8 +574,8 @@ export const ShopContent: React.FC = () => {
             <div className="hidden sm:flex items-center gap-2 flex-wrap">
               {selectedCategory !== 'all' && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#deddd3] text-[11px] text-[#073a2d]">
-                  {categories.find((c) => c.id === selectedCategory)?.label}
-                  <button onClick={() => setSelectedCategory('all')}>
+                  {categories.find((c) => c.slug === selectedCategory)?.name}
+                  <button onClick={() => updateQuery({ category: null })}>
                     <X className="w-3 h-3 text-[#717975] hover:text-black" />
                   </button>
                 </span>
@@ -462,7 +586,7 @@ export const ShopContent: React.FC = () => {
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#deddd3] text-[11px] text-[#073a2d]"
                 >
                   Size: {s}
-                  <button onClick={() => toggleSize(s)}>
+                  <button onClick={() => toggleQueryValue('size', s)}>
                     <X className="w-3 h-3 text-[#717975] hover:text-black" />
                   </button>
                 </span>
@@ -478,18 +602,43 @@ export const ShopContent: React.FC = () => {
 
           {/* Right Layout & Sorting */}
           <div className="flex items-center gap-4">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                updateQuery({ q: searchDraft.trim() || null });
+              }}
+              className="flex items-center border border-[#deddd3] bg-white"
+              role="search"
+            >
+              <input
+                value={searchDraft}
+                onChange={(event) =>
+                  setSearchEdit({
+                    query: initialQueryFromUrl,
+                    value: event.target.value,
+                  })
+                }
+                placeholder="Search products"
+                aria-label="Search products"
+                className="w-28 sm:w-40 bg-transparent px-2 py-1.5 text-xs outline-none"
+              />
+              <button type="submit" aria-label="Submit product search" className="px-2 text-[#073a2d]">
+                <Search className="h-4 w-4" />
+              </button>
+            </form>
             {/* Sorting Dropdown */}
             <div className="flex items-center gap-2">
               <span className="text-xs font-sans text-[#717975] hidden sm:inline">Sort:</span>
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
+                onChange={(e) => updateQuery({ sort: e.target.value === 'featured' ? null : e.target.value })}
                 className="bg-white border border-[#deddd3] text-xs font-sans px-3 py-1.5 text-[#1b1c18] focus:outline-none focus:border-[#073a2d]"
               >
                 <option value="featured">Featured Atelier Pieces</option>
                 <option value="price-low">Price: Low to High</option>
                 <option value="price-high">Price: High to Low</option>
                 <option value="newest">Newest Loom Drops</option>
+                <option value="best-selling">Best Selling</option>
               </select>
             </div>
 
@@ -520,17 +669,27 @@ export const ShopContent: React.FC = () => {
           {/* Desktop Left Sidebar Filters (3 Cols) */}
           <div className="hidden lg:block lg:col-span-3">
             <div className="sticky top-38 p-6 bg-white border border-[#deddd3] shadow-xs">
-              <FilterPanelContent />
+              {renderFilterPanel()}
             </div>
           </div>
 
           {/* Right Product Grid (9 Cols) */}
           <div className="lg:col-span-9">
-            {isLoading ? (
-              <div className="p-16 bg-white border border-[#deddd3] text-center font-serif text-lg text-[#073a2d]">
-                Loading the current collection...
+            {loadError && products.length === 0 ? (
+              <div className="p-16 bg-white border border-[#deddd3] text-center space-y-4">
+                <h3 className="font-serif text-2xl text-[#073a2d]">The collection could not be loaded</h3>
+                <p className="font-sans text-xs text-[#69726d]">{loadError}</p>
+                <Button onClick={retryProducts} className="bg-[#073a2d] text-white">
+                  Try Again
+                </Button>
               </div>
-            ) : filteredProducts.length === 0 ? (
+            ) : isLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" aria-label="Loading products">
+                {Array.from({ length: 6 }, (_, index) => (
+                  <div key={index} className="aspect-[3/4] animate-pulse border border-[#deddd3] bg-white" />
+                ))}
+              </div>
+            ) : pageMeta.total === 0 ? (
               <div className="p-16 bg-white border border-[#deddd3] text-center space-y-4">
                 <h3 className="font-serif text-2xl text-[#073a2d]">
                   No Sartorial Pieces Matched Your Criteria
@@ -551,10 +710,40 @@ export const ShopContent: React.FC = () => {
                   gridCols === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
                 } gap-6`}
               >
-                {filteredProducts.map((p) => (
+                {products.map((p) => (
                   <ProductCard key={p.id} product={p} />
                 ))}
               </div>
+            )}
+
+            {isRefreshing && !isLoading && (
+              <div className="mt-3 flex items-center justify-center gap-2 text-xs text-[#69726d]" role="status">
+                <Loader2 className="h-4 w-4 animate-spin" /> Updating collection…
+              </div>
+            )}
+
+            {pageMeta.totalPages > 1 && (
+              <nav className="mt-8 flex items-center justify-center gap-4" aria-label="Product pages">
+                <Button
+                  variant="outline"
+                  disabled={!pageMeta.hasPrevious || isRefreshing}
+                  onClick={() => updateQuery({ page: String(pageMeta.page - 1) })}
+                  className="border-[#deddd3]"
+                >
+                  <ChevronLeft className="h-4 w-4" /> Previous
+                </Button>
+                <span className="text-xs text-[#69726d]">
+                  Page {pageMeta.page} of {pageMeta.totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  disabled={!pageMeta.hasNext || isRefreshing}
+                  onClick={() => updateQuery({ page: String(pageMeta.page + 1) })}
+                  className="border-[#deddd3]"
+                >
+                  Next <ChevronRight className="h-4 w-4" />
+                </Button>
+              </nav>
             )}
 
             {/* Mid-Catalogue Bespoke Tailoring Banner */}
@@ -571,15 +760,17 @@ export const ShopContent: React.FC = () => {
                 </p>
               </div>
 
-              <a
-                href="https://wa.me/8801916664011?text=Hello%20Rongin%20Libas%20Atelier,%20I%20would%20like%20to%20consult%20on%20a%20bespoke%20fit."
-                target="_blank"
-                rel="noreferrer"
-                className="px-6 py-3.5 bg-[#c79a45] hover:bg-[#b08535] text-[#073a2d] font-sans font-bold text-xs uppercase tracking-widest whitespace-nowrap shadow-sm flex items-center gap-2"
-              >
-                <PhoneCall className="w-4 h-4" />
-                <span>Chat with Master Cutter</span>
-              </a>
+              {settings?.whatsappOrderEnabled && whatsappUrl && (
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-6 py-3.5 bg-[#c79a45] hover:bg-[#b08535] text-[#073a2d] font-sans font-bold text-xs uppercase tracking-widest whitespace-nowrap shadow-sm flex items-center gap-2"
+                >
+                  <PhoneCall className="w-4 h-4" />
+                  <span>Chat with Master Cutter</span>
+                </a>
+              )}
             </div>
           </div>
         </div>

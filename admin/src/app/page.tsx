@@ -20,6 +20,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { useAdmin } from '@/context/AdminContext';
+import { DashboardSkeleton } from '@/components/common/Skeleton';
 
 export default function DashboardPage() {
   const { orders, inventory, products, updateInventoryStock, dashboardMetrics, isLoading } = useAdmin();
@@ -170,6 +171,10 @@ export default function DashboardPage() {
   const handleExport = () => {
     alert('Atelier Suite: Exporting Sartorial Performance Ledger (.CSV)...');
   };
+
+  if (!mounted || isLoading) {
+    return <DashboardSkeleton />;
+  }
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">

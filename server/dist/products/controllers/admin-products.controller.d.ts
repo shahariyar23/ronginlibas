@@ -12,46 +12,53 @@ export declare class AdminProductsController {
     findById(id: string): Promise<{
         message: string;
         data: {
-            variants: {
-                size: string;
-                sizeLabel: string | null;
-                color: string;
-                sku: string;
-                stock: number;
-                priceOverride: import("@prisma/client/runtime/library").Decimal | null;
-                measurements: import("@prisma/client/runtime/library").JsonValue | null;
-                isActive: boolean;
+            category: {
+                description: string | null;
                 id: string;
+                isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
+                name: string;
+                sortOrder: number;
+                slug: string;
+                image: string | null;
+                parentId: string | null;
+            };
+            variants: {
+                id: string;
+                isActive: boolean;
+                createdAt: Date;
+                updatedAt: Date;
+                measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 productId: string;
+                sku: string;
+                size: string;
+                color: string;
+                sizeLabel: string | null;
+                sizeType: string | null;
+                stock: number;
+                priceOverride: import("@prisma/client/runtime/library").Decimal | null;
             }[];
             images: {
                 url: string;
-                altText: string | null;
-                sortOrder: number;
-                isPrimary: boolean;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
                 productId: string;
-            }[];
-            category: {
-                description: string | null;
+                publicId: string | null;
+                altText: string | null;
                 sortOrder: number;
-                name: string;
-                slug: string;
-                isActive: boolean;
-                id: string;
-                image: string | null;
-                parentId: string | null;
-                createdAt: Date;
-                updatedAt: Date;
-            };
+                isPrimary: boolean;
+            }[];
         } & {
             description: string | null;
-            sku: string;
+            id: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
             name: string;
+            tags: string[];
+            sku: string;
             slug: string;
             shortDescription: string | null;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -63,49 +70,52 @@ export declare class AdminProductsController {
             fit: string | null;
             gsm: number | null;
             careInstructions: string | null;
-            tags: string[];
+            alertThreshold: number;
             isExpressAvailable: boolean;
             categoryId: string;
-            isActive: boolean;
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
         };
     }>;
     create(dto: CreateProductDto): Promise<{
         message: string;
         data: {
             variants: {
-                size: string;
-                sizeLabel: string | null;
-                color: string;
-                sku: string;
-                stock: number;
-                priceOverride: import("@prisma/client/runtime/library").Decimal | null;
-                measurements: import("@prisma/client/runtime/library").JsonValue | null;
-                isActive: boolean;
                 id: string;
+                isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
+                measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 productId: string;
+                sku: string;
+                size: string;
+                color: string;
+                sizeLabel: string | null;
+                sizeType: string | null;
+                stock: number;
+                priceOverride: import("@prisma/client/runtime/library").Decimal | null;
             }[];
             images: {
                 url: string;
-                altText: string | null;
-                sortOrder: number;
-                isPrimary: boolean;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
                 productId: string;
+                publicId: string | null;
+                altText: string | null;
+                sortOrder: number;
+                isPrimary: boolean;
             }[];
         } & {
             description: string | null;
-            sku: string;
+            id: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
             name: string;
+            tags: string[];
+            sku: string;
             slug: string;
             shortDescription: string | null;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -117,61 +127,64 @@ export declare class AdminProductsController {
             fit: string | null;
             gsm: number | null;
             careInstructions: string | null;
-            tags: string[];
+            alertThreshold: number;
             isExpressAvailable: boolean;
             categoryId: string;
-            isActive: boolean;
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
         };
     }>;
     update(id: string, dto: UpdateProductDto): Promise<{
         message: string;
-        data: {
-            variants: {
-                size: string;
-                sizeLabel: string | null;
-                color: string;
-                sku: string;
-                stock: number;
-                priceOverride: import("@prisma/client/runtime/library").Decimal | null;
-                measurements: import("@prisma/client/runtime/library").JsonValue | null;
-                isActive: boolean;
+        data: ({
+            category: {
+                description: string | null;
                 id: string;
+                isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
+                name: string;
+                sortOrder: number;
+                slug: string;
+                image: string | null;
+                parentId: string | null;
+            };
+            variants: {
+                id: string;
+                isActive: boolean;
+                createdAt: Date;
+                updatedAt: Date;
+                measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 productId: string;
+                sku: string;
+                size: string;
+                color: string;
+                sizeLabel: string | null;
+                sizeType: string | null;
+                stock: number;
+                priceOverride: import("@prisma/client/runtime/library").Decimal | null;
             }[];
             images: {
                 url: string;
-                altText: string | null;
-                sortOrder: number;
-                isPrimary: boolean;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
                 productId: string;
-            }[];
-            category: {
-                description: string | null;
+                publicId: string | null;
+                altText: string | null;
                 sortOrder: number;
-                name: string;
-                slug: string;
-                isActive: boolean;
-                id: string;
-                image: string | null;
-                parentId: string | null;
-                createdAt: Date;
-                updatedAt: Date;
-            };
+                isPrimary: boolean;
+            }[];
         } & {
             description: string | null;
-            sku: string;
+            id: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
             name: string;
+            tags: string[];
+            sku: string;
             slug: string;
             shortDescription: string | null;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -183,22 +196,87 @@ export declare class AdminProductsController {
             fit: string | null;
             gsm: number | null;
             careInstructions: string | null;
-            tags: string[];
+            alertThreshold: number;
             isExpressAvailable: boolean;
             categoryId: string;
-            isActive: boolean;
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
+        }) | {
+            imageCleanupWarning: string;
+            category: {
+                description: string | null;
+                id: string;
+                isActive: boolean;
+                createdAt: Date;
+                updatedAt: Date;
+                name: string;
+                sortOrder: number;
+                slug: string;
+                image: string | null;
+                parentId: string | null;
+            };
+            variants: {
+                id: string;
+                isActive: boolean;
+                createdAt: Date;
+                updatedAt: Date;
+                measurements: import("@prisma/client/runtime/library").JsonValue | null;
+                productId: string;
+                sku: string;
+                size: string;
+                color: string;
+                sizeLabel: string | null;
+                sizeType: string | null;
+                stock: number;
+                priceOverride: import("@prisma/client/runtime/library").Decimal | null;
+            }[];
+            images: {
+                url: string;
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                productId: string;
+                publicId: string | null;
+                altText: string | null;
+                sortOrder: number;
+                isPrimary: boolean;
+            }[];
+            description: string | null;
             id: string;
+            isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            name: string;
+            tags: string[];
+            sku: string;
+            slug: string;
+            shortDescription: string | null;
+            price: import("@prisma/client/runtime/library").Decimal;
+            compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
+            costPrice: import("@prisma/client/runtime/library").Decimal | null;
+            gender: import("@prisma/client").$Enums.Gender;
+            fabric: string | null;
+            fabricOrigin: string | null;
+            fit: string | null;
+            gsm: number | null;
+            careInstructions: string | null;
+            alertThreshold: number;
+            isExpressAvailable: boolean;
+            categoryId: string;
+            isFeatured: boolean;
+            isNewArrival: boolean;
+            isBestSeller: boolean;
         };
     }>;
     delete(id: string): Promise<{
         message: string;
         data: {
             message: string;
+            cleanupWarning: string;
+        } | {
+            message: string;
+            cleanupWarning?: undefined;
         };
     }>;
 }

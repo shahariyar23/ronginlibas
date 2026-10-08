@@ -2,18 +2,31 @@ export interface AdminProduct {
   id: string;
   name: string;
   sku: string;
+  barcode?: string;
   category: string;
   price: number;
   promotionalPrice?: number;
   costOfGoods?: number;
   stock: number;
+  alertThreshold?: number;
   status: 'Active' | 'Low Stock' | 'Out of Stock';
   image: string;
+  images?: {
+    url: string;
+    publicId?: string;
+    altText?: string;
+    sortOrder?: number;
+    isPrimary?: boolean;
+    file?: File;
+  }[];
   fabricNote?: string;
   description?: string;
   variants?: {
     id?: string;
     size: string;
+    sizeLabel?: string | null;
+    sizeType?: 'APPAREL' | 'WAIST' | 'CUSTOM' | null;
+    measurements?: Record<string, number | string> | null;
     shade?: string;
     color?: string;
     sku: string;
@@ -44,6 +57,7 @@ export interface AdminProductDetail {
   gsm?: number | null;
   careInstructions?: string | null;
   tags?: string[];
+  alertThreshold?: number | null;
   isExpressAvailable?: boolean;
   isActive: boolean;
   isFeatured: boolean;
@@ -60,6 +74,7 @@ export interface AdminProductDetail {
   images: {
     id: string;
     url: string;
+    publicId?: string | null;
     altText?: string | null;
     sortOrder: number;
     isPrimary: boolean;
@@ -68,6 +83,8 @@ export interface AdminProductDetail {
     id: string;
     size: string;
     sizeLabel?: string | null;
+    sizeType?: 'APPAREL' | 'WAIST' | 'CUSTOM' | null;
+    measurements?: Record<string, number | string> | null;
     color: string;
     sku: string;
     stock: number;
@@ -78,19 +95,57 @@ export interface AdminProductDetail {
   updatedAt?: string;
 }
 
+export interface AdminOrderItem {
+  id: string;
+  productId: string;
+  variantId?: string;
+  productName: string;
+  variantName?: string;
+  sku?: string;
+  size?: string;
+  color?: string;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+  image?: string;
+}
+
+export interface AdminOrderAddress {
+  fullName?: string;
+  phone?: string;
+  email?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  division?: string;
+  deliveryInstructions?: string;
+}
+
 export interface AdminOrder {
   id: string;
   orderNumber?: string;
   customerName: string;
+  customerEmail?: string;
   customerLocation: string;
+  fullAddress?: AdminOrderAddress;
   phone: string;
   amount: number;
+  subtotal?: number;
+  discountAmount?: number;
+  deliveryCharge?: number;
   paymentMethod: 'COD' | 'BKASH' | 'NAGAD' | 'CARD';
+  paymentStatus?: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
   status: 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
   dateStr: string;
   timeDetail: string;
   itemCount: number;
   itemsSummary: string;
+  items: AdminOrderItem[];
+  customerNotes?: string;
+  adminNotes?: string;
+  courierName?: string;
+  trackingNumber?: string;
+  trackingUrl?: string;
   createdAt?: string;
 }
 
@@ -101,6 +156,7 @@ export interface InventoryItem {
   sku: string;
   category: string;
   stock: number;
+  alertThreshold?: number;
   status: 'IN STOCK' | 'LOW STOCK' | 'OUT OF STOCK';
   image: string;
 }
@@ -113,7 +169,12 @@ export interface StoreSettings {
   facebook: string;
   dhakaDeliveryCharge: number;
   outsideDhakaDeliveryCharge: number;
+  freeShippingEnabled: boolean;
   freeDeliveryThreshold: number;
+  promoEnabled: boolean;
+  promoCode: string;
+  promoDiscountText: string;
+  whatsappOrderEnabled: boolean;
   codEnabled: boolean;
   bkashEnabled: boolean;
   bkashWallet: string;
@@ -131,14 +192,18 @@ export const INITIAL_SETTINGS: StoreSettings = {
   phone: '+880 1916-664011',
   whatsapp: '+880 1916-664011',
   website: 'https://ronginlibas.com',
-  facebook: 'https://facebook.com/ronginlibas.bd',
+  facebook: 'https://facebook.com/ronginlibas',
   dhakaDeliveryCharge: 80,
   outsideDhakaDeliveryCharge: 150,
+  freeShippingEnabled: true,
   freeDeliveryThreshold: 3000,
+  promoEnabled: false,
+  promoCode: '',
+  promoDiscountText: '',
+  whatsappOrderEnabled: true,
   codEnabled: true,
   bkashEnabled: true,
   bkashWallet: '01711-223344',
   nagadEnabled: true,
   nagadWallet: '01822-554499',
 };
-

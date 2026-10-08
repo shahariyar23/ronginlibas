@@ -72,13 +72,23 @@ export class TransformInterceptor<T>
       return data ?? null;
     }
 
+    // Do not alter cart, order, or financial objects that contain items
+    if ('cartId' in data || 'subtotal' in data || 'orderNumber' in data) {
+      return data;
+    }
+
     // Check if data is a paginated structure
     if (Array.isArray(data.items)) {
       if (data.meta && typeof data.meta === 'object') {
         return data;
       }
 
-      if ('page' in data || 'total' in data || 'limit' in data) {
+      // Only treat as pagination if explicit pagination fields are present
+      if (
+        ('page' in data && 'limit' in data) ||
+        ('page' in data && 'total' in data) ||
+        'totalPages' in data
+      ) {
         const page = Number(data.page) || 1;
         const limit = Number(data.limit) || (data.items.length || 20);
         const total = Number(data.total) || data.items.length;
@@ -103,6 +113,7 @@ export class TransformInterceptor<T>
         };
 
         return {
+          ...data,
           items: data.items,
           meta,
         };

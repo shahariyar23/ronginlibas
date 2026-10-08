@@ -20,6 +20,15 @@ export class ProductsController {
     };
   }
 
+  @Get('filters')
+  @ApiOperation({ summary: 'Retrieve dynamic filters for the active product catalogue' })
+  async getFilters(@Query() query: ProductQueryDto) {
+    return {
+      message: 'Product filters retrieved successfully',
+      data: await this.productsService.getFilters(query),
+    };
+  }
+
   @Get(':slug')
   @ApiOperation({ summary: 'Retrieve garment product details by slug' })
   async findBySlug(@Param('slug') slug: string) {

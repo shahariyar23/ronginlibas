@@ -7,13 +7,14 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsBoolean, IsArray, ValidateNested, IsEnum, Min, IsInt, MaxLength, IsObject, } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsNumber, IsBoolean, IsArray, ValidateNested, IsEnum, Min, IsInt, MaxLength, IsObject, IsIn, } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Prisma } from '@prisma/client';
 export class CreateVariantDto {
     size;
     sizeLabel;
+    sizeType;
     color;
     sku;
     stock;
@@ -21,17 +22,23 @@ export class CreateVariantDto {
     measurements;
 }
 __decorate([
-    ApiProperty({ example: '40' }),
+    ApiProperty({ example: 'L', description: 'Canonical size label; do not put measurements here' }),
     IsString(),
     IsNotEmpty(),
     __metadata("design:type", String)
 ], CreateVariantDto.prototype, "size", void 0);
 __decorate([
-    ApiPropertyOptional({ example: 'M' }),
+    ApiPropertyOptional({ example: 'L', description: 'Canonical size label shown to customers' }),
     IsString(),
     IsOptional(),
     __metadata("design:type", String)
 ], CreateVariantDto.prototype, "sizeLabel", void 0);
+__decorate([
+    ApiPropertyOptional({ enum: ['APPAREL', 'WAIST', 'CUSTOM'], example: 'APPAREL' }),
+    IsIn(['APPAREL', 'WAIST', 'CUSTOM']),
+    IsOptional(),
+    __metadata("design:type", String)
+], CreateVariantDto.prototype, "sizeType", void 0);
 __decorate([
     ApiProperty({ example: 'Heritage Olive' }),
     IsString(),
@@ -57,7 +64,9 @@ __decorate([
     __metadata("design:type", Number)
 ], CreateVariantDto.prototype, "priceOverride", void 0);
 __decorate([
-    ApiPropertyOptional({ description: 'Optional size-specific garment measurements' }),
+    ApiPropertyOptional({
+        description: 'Optional size-specific measurements, e.g. { chest: 40, unit: "IN" }',
+    }),
     IsObject(),
     IsOptional(),
     __metadata("design:type", Object)
@@ -115,6 +124,7 @@ export class CreateProductDto {
     gsm;
     careInstructions;
     tags;
+    alertThreshold;
     isExpressAvailable;
     categoryId;
     isActive = true;
@@ -219,6 +229,13 @@ __decorate([
     IsOptional(),
     __metadata("design:type", Array)
 ], CreateProductDto.prototype, "tags", void 0);
+__decorate([
+    ApiPropertyOptional({ example: 5, default: 5 }),
+    IsInt(),
+    Min(0),
+    IsOptional(),
+    __metadata("design:type", Number)
+], CreateProductDto.prototype, "alertThreshold", void 0);
 __decorate([
     ApiPropertyOptional(),
     IsBoolean(),

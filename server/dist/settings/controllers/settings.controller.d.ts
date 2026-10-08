@@ -17,7 +17,12 @@ export declare class SettingsController {
             currencySymbol: unknown;
             dhakaDeliveryCharge: unknown;
             outsideDhakaDeliveryCharge: unknown;
+            freeShippingEnabled: unknown;
             freeDeliveryThreshold: unknown;
+            promoEnabled: unknown;
+            promoCode: unknown;
+            promoDiscountText: unknown;
+            whatsappOrderEnabled: unknown;
             codEnabled: unknown;
             bkashEnabled: unknown;
             nagadEnabled: unknown;

@@ -47,6 +47,7 @@ export class InventoryService {
               id: true,
               name: true,
               fabric: true,
+              alertThreshold: true,
               category: { select: { name: true } },
               images: { where: { isPrimary: true }, take: 1 },
             },
@@ -69,7 +70,13 @@ export class InventoryService {
         color: v.color,
         sku: v.sku,
         stock: v.stock,
-        status: v.stock === 0 ? 'OUT OF STOCK' : v.stock <= 5 ? 'LOW STOCK' : 'IN STOCK',
+        alertThreshold: v.product.alertThreshold ?? 5,
+        status:
+          v.stock === 0
+            ? 'OUT OF STOCK'
+            : v.stock <= (v.product.alertThreshold ?? 5)
+            ? 'LOW STOCK'
+            : 'IN STOCK',
         image: v.product.images[0]?.url || '',
       })),
       page,

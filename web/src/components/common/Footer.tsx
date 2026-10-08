@@ -1,15 +1,10 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import { Logo } from './Logo';
 import { PhoneCall, Mail, MapPin, ShieldCheck } from 'lucide-react';
-
-const InstagramIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-  </svg>
-);
+import { getWhatsAppUrl, useStorefront } from '@/context/StorefrontContext';
 
 const FacebookIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -18,6 +13,9 @@ const FacebookIcon = () => (
 );
 
 export const Footer: React.FC = () => {
+  const { settings } = useStorefront();
+  const whatsappUrl = getWhatsAppUrl(settings?.whatsapp || '');
+
   return (
     <footer className="w-full bg-[#00231a] text-[#fbf9f2] pt-20 pb-12 border-t border-[#073a2d]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -38,17 +36,19 @@ export const Footer: React.FC = () => {
               <span>Nationwide Delivery</span>
             </div>
             {/* WhatsApp Direct */}
-            <div className="pt-2">
-              <a
-                href="https://wa.me/8801916664011"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2.5 px-4 py-2.5 bg-[#073a2d] hover:bg-[#0d4d3b] text-[#fbf9f2] text-xs font-sans uppercase tracking-widest transition-colors border border-[#76a493]/30"
-              >
-                <PhoneCall className="w-4 h-4 text-[#c79a45]" />
-                <span>Concierge & Orders: 01916664011</span>
-              </a>
-            </div>
+            {settings?.whatsappOrderEnabled && whatsappUrl && (
+              <div className="pt-2">
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2.5 px-4 py-2.5 bg-[#073a2d] hover:bg-[#0d4d3b] text-[#fbf9f2] text-xs font-sans uppercase tracking-widest transition-colors border border-[#76a493]/30"
+                >
+                  <PhoneCall className="w-4 h-4 text-[#c79a45]" />
+                  <span>Concierge &amp; Orders: {settings.whatsapp}</span>
+                </a>
+              </div>
+            )}
           </div>
 
           {/* Shop Column */}
@@ -84,7 +84,7 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <Link href="/shop?filter=new" className="text-[#c79a45] hover:underline">
-                  Eid '25 Preview
+                  Eid &apos;25 Preview
                 </Link>
               </li>
             </ul>
@@ -152,15 +152,7 @@ export const Footer: React.FC = () => {
               </div>
               <div className="pt-2 flex items-center gap-3">
                 <a
-                  href="https://instagram.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-8 h-8 rounded-none border border-[#76a493]/30 flex items-center justify-center text-[#fbf9f2] hover:text-[#c79a45] hover:border-[#c79a45] transition-colors"
-                >
-                  <InstagramIcon />
-                </a>
-                <a
-                  href="https://facebook.com"
+                  href="https://facebook.com/ronginlibas"
                   target="_blank"
                   rel="noreferrer"
                   className="w-8 h-8 rounded-none border border-[#76a493]/30 flex items-center justify-center text-[#fbf9f2] hover:text-[#c79a45] hover:border-[#c79a45] transition-colors"

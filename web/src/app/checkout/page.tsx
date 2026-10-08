@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
+import { getWhatsAppUrl, useStorefront } from '@/context/StorefrontContext';
 import { apiRequest } from '@/lib/api';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -37,6 +38,11 @@ import { toast } from 'sonner';
 export default function CheckoutPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { settings } = useStorefront();
+  const whatsappUrl = getWhatsAppUrl(
+    settings?.whatsapp || '',
+    'Hello Rongin Libas, I would like assistance with an order.',
+  );
   const {
     items,
     updateQuantity,
@@ -143,12 +149,8 @@ export default function CheckoutPage() {
           paymentMethod: paymentMethod.toUpperCase(),
           couponCode: appliedCoupon || undefined,
           customerNotes: formData.notes || undefined,
-          ...(!user
-            ? {
-                guestName: formData.fullName.trim(),
-                guestEmail: formData.email || undefined,
-              }
-            : {}),
+          guestName: formData.fullName.trim(),
+          guestEmail: formData.email?.trim() || user?.email || undefined,
         }),
       });
       setOrderId(order.orderNumber);
@@ -473,7 +475,7 @@ export default function CheckoutPage() {
                   ) : (
                     <form onSubmit={handleApplyCoupon} className="flex gap-2">
                       <Input
-                        placeholder="Coupon (e.g. RONGINLAUNCH)"
+                        placeholder="Coupon Code"
                         value={couponInput}
                         onChange={(e) => setCouponInput(e.target.value)}
                         className="h-10 text-xs bg-[#fbf9f2] rounded-none border-[#deddd3]"
@@ -550,15 +552,17 @@ export default function CheckoutPage() {
                 <p className="font-sans text-xs text-[#c0c8c3] leading-relaxed">
                   Call or WhatsApp our Dhaka studio to confirm sizing, custom lengths, or arrange immediate urgent handover.
                 </p>
-                <a
-                  href="https://wa.me/8801916664011?text=Hello%20Rongin%20Libas,%20I%20would%20like%20assistance%20with%20an%20order."
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 text-xs font-sans uppercase tracking-widest text-[#c79a45] hover:text-white font-bold pt-1"
-                >
-                  <PhoneCall className="w-4 h-4" />
-                  <span>WhatsApp 01916664011</span>
-                </a>
+                {settings?.whatsappOrderEnabled && whatsappUrl && (
+                  <a
+                    href={whatsappUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 text-xs font-sans uppercase tracking-widest text-[#c79a45] hover:text-white font-bold pt-1"
+                  >
+                    <PhoneCall className="w-4 h-4" />
+                    <span>WhatsApp {settings.whatsapp}</span>
+                  </a>
+                )}
               </div>
             </div>
           </div>

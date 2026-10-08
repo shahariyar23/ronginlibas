@@ -90,10 +90,10 @@ export const HeroBanner: React.FC = () => {
           {/* Scroll to Atelier link */}
           <a
             href="#categories"
-            className="font-sans text-[11px] uppercase tracking-[0.2em] text-white/70 hover:text-white transition-colors inline-flex items-center gap-2 group self-end sm:self-auto"
+            className="font-sans text-[11px] uppercase tracking-[0.2em] text-[#c79a45] hover:text-[#e0b75f] transition-all duration-300 hover:scale-105 inline-flex items-center gap-2 group self-end sm:self-auto"
           >
             <span>SCROLL TO ATELIER</span>
-            <ArrowDown className="w-3.5 h-3.5 group-hover:translate-y-1 transition-transform" />
+            <ArrowDown className="w-3.5 h-3.5 motion-safe:animate-bounce group-hover:translate-y-1 transition-transform" />
           </a>
         </div>
       </div>

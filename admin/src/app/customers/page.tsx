@@ -18,9 +18,11 @@ interface Patron {
 const PATRONS: Patron[] = [];
 
 import { adminApi } from '@/lib/api';
+import { TablePageSkeleton } from '@/components/common/Skeleton';
 
 export default function CustomersPage() {
   const [patrons, setPatrons] = useState<Patron[]>(PATRONS);
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -55,6 +57,8 @@ export default function CustomersPage() {
         }
       } catch (err) {
         console.warn('Customers API fetch fallback:', err);
+      } finally {
+        setIsLoadingCustomers(false);
       }
     }
     loadCustomers();
@@ -66,6 +70,16 @@ export default function CustomersPage() {
       p.email.toLowerCase().includes(search.toLowerCase()) ||
       p.phone.includes(search)
   );
+
+  if (isLoadingCustomers) {
+    return (
+      <TablePageSkeleton
+        title="Atelier Patrons & Clientele"
+        showAddButton={false}
+        rowCount={8}
+      />
+    );
+  }
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">

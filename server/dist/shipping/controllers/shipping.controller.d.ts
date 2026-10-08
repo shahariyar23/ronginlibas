@@ -8,6 +8,7 @@ export declare class ShippingController {
             id: string;
             name: string;
             charge: unknown;
+            freeShippingEnabled: unknown;
             freeDeliveryThreshold: unknown;
         }[];
     }>;
