@@ -41,22 +41,22 @@ export declare class AdminInventoryController {
     }>;
     getTransactionHistory(variantId: string): Promise<{
         message: string;
-        data: ({
+        data: {
+            id: string;
+            variantId: string;
+            quantityChange: number;
+            previousStock: number;
+            newStock: number;
+            type: import("@prisma/client").$Enums.InventoryTransactionType;
+            reason: string;
+            note: string;
+            reference: string;
+            createdAt: Date;
             user: {
                 email: string;
                 firstName: string;
                 lastName: string;
             } | null;
-        } & {
-            type: import("@prisma/client").$Enums.InventoryTransactionType;
-            id: string;
-            createdAt: Date;
-            variantId: string;
-            quantityChange: number;
-            previousStock: number;
-            newStock: number;
-            note: string | null;
-            userId: string | null;
-        })[];
+        }[];
     }>;
 }

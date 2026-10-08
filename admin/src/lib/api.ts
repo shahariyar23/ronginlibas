@@ -328,12 +328,21 @@ export const adminApi = {
       const qs = query.toString();
       return request<any>(`/admin/inventory${qs ? `?${qs}` : ''}`);
     },
-    adjustStock: (variantId: string, quantityChange: number, type = 'ADJUSTMENT', note?: string) =>
+    adjustStock: (
+      variantId: string,
+      quantityChange: number,
+      type = 'ADJUSTMENT',
+      note?: string,
+      reason?: string,
+    ) =>
       request<any>('/admin/inventory/adjust', {
         method: 'POST',
-        body: JSON.stringify({ variantId, quantityChange, type, note }),
+        body: JSON.stringify({ variantId, quantityChange, type, note, reason }),
       }),
+    getHistory: (variantId: string) =>
+      request<any>(`/admin/inventory/${variantId}/history`),
   },
+
 
   // Categories
   categories: {

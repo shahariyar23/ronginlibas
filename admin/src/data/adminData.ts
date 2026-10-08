@@ -151,15 +151,41 @@ export interface AdminOrder {
 
 export interface InventoryItem {
   id: string;
+  variantId: string;
+  productId?: string;
   name: string;
   subtitle: string;
   sku: string;
   category: string;
+  size: string;
+  color: string;
+  onHand: number;
+  reserved: number;
+  available: number;
   stock: number;
-  alertThreshold?: number;
+  alertThreshold: number;
   status: 'IN STOCK' | 'LOW STOCK' | 'OUT OF STOCK';
   image: string;
 }
+
+export interface InventoryTransactionRecord {
+  id: string;
+  variantId: string;
+  quantityChange: number;
+  previousStock: number;
+  newStock: number;
+  type: string;
+  reason?: string;
+  note?: string;
+  reference?: string;
+  createdAt: string;
+  user?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  } | null;
+}
+
 
 export interface StoreSettings {
   storeName: string;

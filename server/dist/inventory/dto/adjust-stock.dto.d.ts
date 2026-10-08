@@ -3,4 +3,5 @@ export declare class AdjustStockDto {
     quantityChange: number;
     type?: 'PURCHASE' | 'SALE' | 'RETURN' | 'ADJUSTMENT' | 'RESTOCK';
     note?: string;
+    reason?: string;
 }

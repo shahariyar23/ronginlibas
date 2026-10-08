@@ -6,12 +6,14 @@ import {
   AdminProductDetail,
   AdminOrder,
   InventoryItem,
+  InventoryTransactionRecord,
   StoreSettings,
   INITIAL_PRODUCTS,
   INITIAL_ORDERS,
   INITIAL_INVENTORY,
   INITIAL_SETTINGS,
 } from '@/data/adminData';
+
 import { adminApi } from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 
@@ -47,8 +49,15 @@ interface AdminContextType {
   deleteProduct: (id: string) => Promise<void>;
   getProductDetails: (id: string) => Promise<AdminProductDetail | null>;
   updateOrderStatus: (orderId: string, status: AdminOrder['status'], notes?: string) => Promise<void>;
-  updateInventoryStock: (id: string, newStock: number) => Promise<boolean>;
+  updateInventoryStock: (
+    id: string,
+    newStock: number,
+    reason?: string,
+    note?: string,
+  ) => Promise<boolean>;
+  getVariantHistory: (variantId: string) => Promise<InventoryTransactionRecord[]>;
   updateSettings: (newSettings: Partial<StoreSettings>) => Promise<void>;
+
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   isSearchOpen: boolean;
@@ -187,26 +196,36 @@ function adaptBackendOrder(o: any): AdminOrder {
 }
 
 function adaptBackendInventory(item: any): InventoryItem {
-  const stock = item.stock ?? 0;
   const alertThreshold =
     item.alertThreshold === undefined || item.alertThreshold === null
       ? 5
       : Number(item.alertThreshold);
-  const status =
+  const available = item.available !== undefined ? Number(item.available) : (item.stock ?? 0);
+  const reserved = item.reserved !== undefined ? Number(item.reserved) : 0;
+  const onHand = item.onHand !== undefined ? Number(item.onHand) : (available + reserved);
+  const rawStatus =
     item.status ||
-    (stock === 0
+    (available <= 0
       ? 'OUT OF STOCK'
-      : stock <= alertThreshold
+      : available <= alertThreshold
       ? 'LOW STOCK'
       : 'IN STOCK');
+  const status = rawStatus.replace('_', ' ');
 
   return {
     id: item.variantId || item.id,
+    variantId: item.variantId || item.id,
+    productId: item.productId,
     name: item.productName || item.name,
     subtitle: item.subtitle || item.fabric || 'Atelier Standard Weave',
     sku: item.sku,
     category: item.category || 'Atelier Garments',
-    stock,
+    size: item.size || 'M',
+    color: item.color || 'Standard',
+    onHand,
+    reserved,
+    available,
+    stock: available,
     alertThreshold,
     status: status as any,
     image:
@@ -214,6 +233,7 @@ function adaptBackendInventory(item: any): InventoryItem {
       'https://lh3.googleusercontent.com/aida-public/AB6AXuCKIcKxrkusL16CkM0fjAd340aZTnxr8o_tmugD7XS3cCDAG8yST04u91rCr7OrIxBUE3yNHckrJmRo81EtZGj8lTJHQgDVroNkj2CKu-ot-pwOAH0mcutBcSZUQfz7_-Ar5PUCPtpyOke4D81SjQQyrYnZs7hzWHiKTY0UnNT3WJuv-NAxhFJD5qK4YN7AOBd5nyfFy6KXxGhKLvjxG_EWE4pBc61A0x4zW4Oz-Fnn2JvqDoxPl3_PKQ',
   };
 }
+
 
 export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<AdminProduct[]>(INITIAL_PRODUCTS);
@@ -588,36 +608,54 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Update Inventory Stock Count
-  const updateInventoryStock = async (id: string, newStock: number): Promise<boolean> => {
+  const updateInventoryStock = async (
+    id: string,
+    newStock: number,
+    reason?: string,
+    note?: string,
+  ): Promise<boolean> => {
     const stockVal = Math.max(0, newStock);
     const existing = inventory.find((it) => it.id === id);
-    const prevStock = existing ? existing.stock : 0;
+    const prevStock = existing ? existing.available : 0;
     const delta = stockVal - prevStock;
 
     if (delta === 0) return true;
+
+    const chosenReason = reason || (delta > 0 ? 'RESTOCK' : 'MANUAL_ADJUSTMENT');
+    const defaultNote = `Manual stock adjustment (${delta > 0 ? '+' : ''}${delta})`;
+    const customNote = note ? note.trim() : defaultNote;
 
     try {
       const res = await adminApi.inventory.adjustStock(
         id,
         delta,
         delta > 0 ? 'RESTOCK' : 'ADJUSTMENT',
-        `Manual stock adjustment via Atelier Admin (${delta > 0 ? '+' : ''}${delta})`
+        customNote,
+        chosenReason,
       );
       if (res.success) {
         setInventory((prev) =>
           prev.map((item) => {
             if (item.id !== id) return item;
+            const newAvailable = stockVal;
+            const newOnHand = newAvailable + item.reserved;
             const status =
-              stockVal === 0
+              newAvailable <= 0
                 ? 'OUT OF STOCK'
-                : stockVal <= (item.alertThreshold ?? 5)
+                : newAvailable <= (item.alertThreshold ?? 5)
                 ? 'LOW STOCK'
                 : 'IN STOCK';
-            return { ...item, stock: stockVal, status };
+            return {
+              ...item,
+              available: newAvailable,
+              stock: newAvailable,
+              onHand: newOnHand,
+              status,
+            };
           })
         );
         toast.success(
-          res.message || `Inventory stock adjusted to ${stockVal} units`,
+          res.message || `Inventory stock adjusted to ${stockVal} units (${chosenReason})`,
           'INVENTORY UPDATED'
         );
         return true;
@@ -628,6 +666,19 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       console.warn('[AdminContext] Error adjusting stock in backend:', err);
       toast.error(err?.message || 'Failed to adjust stock in backend');
       return false;
+    }
+  };
+
+  const getVariantHistory = async (variantId: string): Promise<InventoryTransactionRecord[]> => {
+    try {
+      const res = await adminApi.inventory.getHistory(variantId);
+      if (res.success && Array.isArray(res.data)) {
+        return res.data;
+      }
+      return [];
+    } catch (err) {
+      console.warn('[AdminContext] Error fetching variant history:', err);
+      return [];
     }
   };
 
@@ -667,6 +718,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         getProductDetails,
         updateOrderStatus,
         updateInventoryStock,
+        getVariantHistory,
         updateSettings,
         searchQuery,
         setSearchQuery,
@@ -674,6 +726,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         setIsSearchOpen,
       }}
     >
+
       {children}
     </AdminContext.Provider>
   );

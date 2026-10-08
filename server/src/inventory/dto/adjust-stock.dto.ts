@@ -23,4 +23,22 @@ export class AdjustStockDto {
   @IsString()
   @IsOptional()
   note?: string;
+
+  @ApiPropertyOptional({
+    enum: [
+      'RESTOCK',
+      'SALE',
+      'RETURN',
+      'EXCHANGE',
+      'DAMAGED',
+      'LOST',
+      'MANUAL_ADJUSTMENT',
+      'ORDER_CANCELLED',
+    ],
+    example: 'RESTOCK',
+  })
+  @IsString()
+  @IsOptional()
+  reason?: string;
 }
+

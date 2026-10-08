@@ -35,21 +35,21 @@ export declare class InventoryService {
             userId: string | null;
         };
     }>;
-    getTransactionHistory(variantId: string): Promise<({
+    getTransactionHistory(variantId: string): Promise<{
+        id: string;
+        variantId: string;
+        quantityChange: number;
+        previousStock: number;
+        newStock: number;
+        type: import("@prisma/client").$Enums.InventoryTransactionType;
+        reason: string;
+        note: string;
+        reference: string;
+        createdAt: Date;
         user: {
             email: string;
             firstName: string;
             lastName: string;
         } | null;
-    } & {
-        type: import("@prisma/client").$Enums.InventoryTransactionType;
-        id: string;
-        createdAt: Date;
-        variantId: string;
-        quantityChange: number;
-        previousStock: number;
-        newStock: number;
-        note: string | null;
-        userId: string | null;
-    })[]>;
+    }[]>;
 }

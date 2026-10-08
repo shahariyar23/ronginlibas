@@ -14,6 +14,7 @@ export class AdjustStockDto {
     quantityChange;
     type = 'RESTOCK';
     note;
+    reason;
 }
 __decorate([
     ApiProperty({ example: 'variant-uuid-or-id' }),
@@ -41,4 +42,22 @@ __decorate([
     IsOptional(),
     __metadata("design:type", String)
 ], AdjustStockDto.prototype, "note", void 0);
+__decorate([
+    ApiPropertyOptional({
+        enum: [
+            'RESTOCK',
+            'SALE',
+            'RETURN',
+            'EXCHANGE',
+            'DAMAGED',
+            'LOST',
+            'MANUAL_ADJUSTMENT',
+            'ORDER_CANCELLED',
+        ],
+        example: 'RESTOCK',
+    }),
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], AdjustStockDto.prototype, "reason", void 0);
 //# sourceMappingURL=adjust-stock.dto.js.map
