@@ -27,6 +27,8 @@ async function bootstrap() {
         'http://localhost:3001',
         'https://ronginlibas.com',
         'https://www.ronginlibas.com',
+        'https://admin.ronginlibas.com',
+        'https://www.admin.ronginlibas.com'
     ];
     app.enableCors({
         origin: (origin, callback) => {
