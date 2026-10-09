@@ -149,9 +149,7 @@ function ProductFormContent() {
         }
         setIsFeatured(cached.featured ?? false);
         setLifecycleState(cached.status === 'Active' ? 'Active' : 'Draft');
-        if (cached.tags && cached.tags.length > 0) {
-          setTags(cached.tags);
-        }
+        setTags(Array.isArray(cached.tags) ? cached.tags : []);
         setImages(cached.images ?? []);
       }
 
@@ -185,9 +183,7 @@ function ProductFormContent() {
           setIsFeatured(detailed.isFeatured ?? false);
           setLifecycleState(detailed.isActive ? 'Active' : 'Draft');
           
-          if (detailed.tags && Array.isArray(detailed.tags)) {
-            setTags(detailed.tags);
-          }
+          setTags(Array.isArray(detailed.tags) ? detailed.tags : []);
           
           setImages((detailed.images ?? []).map((img: any) =>
             typeof img === 'string' ? { url: img } : {
@@ -474,8 +470,9 @@ function ProductFormContent() {
   const addTag = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && tagInput.trim()) {
       e.preventDefault();
-      if (!tags.includes(tagInput.trim())) {
-        setTags([...tags, tagInput.trim()]);
+      const newTag = tagInput.trim().toLowerCase();
+      if (!tags.some((tag) => tag.toLowerCase() === newTag)) {
+        setTags([...tags, newTag]);
       }
       setTagInput('');
     }
@@ -644,6 +641,7 @@ function ProductFormContent() {
             <button
               type="button"
               disabled={isSubmitting}
+              aria-busy={isSubmitting}
               onClick={() => handleSave(true)}
               className="flex items-center gap-2 px-5 py-2.5 bg-[#00231a] hover:bg-[#073a2d] text-white text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-xs disabled:opacity-50"
             >
@@ -652,7 +650,15 @@ function ProductFormContent() {
               ) : (
                 <Check className="w-3.5 h-3.5" />
               )}
-              <span>{isEditing ? 'UPDATE PRODUCT' : 'SAVE & PUBLISH'}</span>
+              <span>
+                {isSubmitting
+                  ? isEditing
+                    ? 'SAVING CHANGES...'
+                    : 'CREATING PRODUCT...'
+                  : isEditing
+                  ? 'UPDATE PRODUCT'
+                  : 'SAVE & PUBLISH'}
+              </span>
             </button>
           </div>
         </div>
@@ -1553,11 +1559,13 @@ function ProductFormContent() {
               <span className="text-[10px] text-[#717975] uppercase">Search Engine</span>
             </div>
             <p className="text-[11px] text-[#717975]">
-              Categorical tags for filtering, seasonal campaign landing pages, and smart collections.
+              Search and campaign keywords for discovery. Category, size, color, fabric, price, and stock stay in their structured fields.
             </p>
 
             <div className="flex flex-wrap gap-1.5">
-              {tags.map((tag) => (
+              {tags.length === 0 ? (
+                <span className="text-[11px] text-[#717975]">No tags added yet.</span>
+              ) : tags.map((tag) => (
                 <span
                   key={tag}
                   className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#f0eee7] border border-[#deddd3] text-[10px] font-bold text-[#404945] uppercase tracking-wider"
@@ -1615,6 +1623,7 @@ function ProductFormContent() {
           <button
             type="button"
             disabled={isSubmitting}
+            aria-busy={isSubmitting}
             onClick={() => handleSave(true)}
             className="flex items-center gap-1.5 px-6 py-2 bg-[#00231a] hover:bg-[#073a2d] text-white text-xs font-bold uppercase tracking-wider shadow-xs cursor-pointer disabled:opacity-50"
           >
@@ -1623,7 +1632,15 @@ function ProductFormContent() {
             ) : (
               <Sparkles className="w-3.5 h-3.5 text-[#c79a45]" />
             )}
-            <span>{isEditing ? 'UPDATE PRODUCT' : 'SAVE PRODUCT'}</span>
+            <span>
+              {isSubmitting
+                ? isEditing
+                  ? 'SAVING CHANGES...'
+                  : 'CREATING PRODUCT...'
+                : isEditing
+                ? 'UPDATE PRODUCT'
+                : 'SAVE PRODUCT'}
+            </span>
           </button>
         </div>
       </div>

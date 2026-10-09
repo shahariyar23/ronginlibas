@@ -20,6 +20,77 @@ export interface AdminUser {
   type: string;
 }
 
+export type DashboardPeriod = '7' | '30' | 'month';
+
+export interface AdminDashboardResponse {
+  period: DashboardPeriod;
+  metrics: {
+    totalSales: number;
+    totalOrders: number;
+    activeProducts: number;
+    totalCustomers: number;
+  };
+  salesOverview: {
+    chartData: Array<{
+      date: string;
+      day: string;
+      dhakaSales: number;
+      nationalSales: number;
+      unclassifiedSales: number;
+    }>;
+    peakPoint: { label: string; amount: number; day: string } | null;
+    kpis: {
+      averageOrderValue: number | null;
+      deliveryRate: number | null;
+      conversionRate: number | null;
+      fulfillmentVelocityHours: number | null;
+    };
+  };
+  dailySales: {
+    today: { date: string; total: number; orderCount: number };
+    yesterday: { date: string; total: number; orderCount: number };
+    lastSevenDays: Array<{
+      date: string;
+      day: string;
+      total: number;
+      orderCount: number;
+    }>;
+  };
+  needsAttention: {
+    pendingOrders: number;
+    lowStockVariants: number;
+    outOfStockVariants: number;
+    pendingReviews: number;
+    failedPayments: number;
+  };
+  recentOrders: Array<{
+    id: string;
+    orderNumber: string;
+    customerName: string;
+    customerLocation: string;
+    amount: number;
+    status: string;
+    paymentMethod: string;
+    createdAt: string;
+  }>;
+  topSellingProducts: Array<{
+    productId: string;
+    name: string;
+    sku: string;
+    unitsSold: number;
+    revenue: number;
+  }>;
+  lowStockProducts: Array<{
+    id: string;
+    variantId: string;
+    name: string;
+    sku: string;
+    stock: number;
+    status: string;
+    image: string;
+  }>;
+}
+
 export type CouponDiscountType = 'PERCENTAGE' | 'FIXED';
 
 export interface AdminCoupon {
@@ -248,7 +319,8 @@ export const adminApi = {
 
   // Dashboard Metrics
   dashboard: {
-    getMetrics: () => request<any>('/admin/dashboard'),
+    getMetrics: (period: DashboardPeriod = '7') =>
+      request<AdminDashboardResponse>(`/admin/dashboard?period=${period}`),
   },
 
   // Products
@@ -287,8 +359,20 @@ export const adminApi = {
         method: 'PATCH',
         body: JSON.stringify(payload),
       }),
+    archive: (id: string) =>
+      request<any>(`/admin/products/${id}/archive`, {
+        method: 'PATCH',
+      }),
+    restore: (id: string) =>
+      request<any>(`/admin/products/${id}/restore`, {
+        method: 'PATCH',
+      }),
+    deletePermanent: (id: string) =>
+      request<any>(`/admin/products/${id}/permanent`, {
+        method: 'DELETE',
+      }),
     delete: (id: string) =>
-      request<any>(`/admin/products/${id}`, {
+      request<any>(`/admin/products/${id}/permanent`, {
         method: 'DELETE',
       }),
   },

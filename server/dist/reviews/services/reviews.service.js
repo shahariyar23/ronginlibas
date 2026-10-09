@@ -248,6 +248,8 @@ let ReviewsService = class ReviewsService {
         const eligibleList = [];
         const seenProducts = new Set();
         for (const item of deliveredItems) {
+            if (!item.productId || !item.product)
+                continue;
             if (reviewedProductIds.has(item.productId))
                 continue;
             if (seenProducts.has(item.productId))

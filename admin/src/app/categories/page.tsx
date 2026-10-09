@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Plus, Edit2, Trash2, Layers, Sparkles } from 'lucide-react';
+import { Plus, Edit2, Trash2, Layers, Loader2 } from 'lucide-react';
 
 interface CategoryItem {
   id: string;
@@ -18,12 +18,15 @@ const INITIAL_CATEGORIES: CategoryItem[] = [];
 
 import { adminApi } from '@/lib/api';
 import { useAdmin } from '@/context/AdminContext';
+import { useToast } from '@/context/ToastContext';
 import { CategoriesSkeleton } from '@/components/common/Skeleton';
 
 export default function CategoriesPage() {
   const { refreshData } = useAdmin();
+  const { toast } = useToast();
   const [categories, setCategories] = useState<CategoryItem[]>(INITIAL_CATEGORIES);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newName, setNewName] = useState('');
   const [newTagline, setNewTagline] = useState('');
@@ -57,43 +60,42 @@ export default function CategoriesPage() {
   }, []);
 
   const handleAddCategory = async () => {
-    if (!newName) return;
-    const item: CategoryItem = {
-      id: `cat-${Date.now()}`,
-      name: newName,
-      slug: newName.toLowerCase().replace(/\s+/g, '-'),
-      tagline: newTagline || 'Boutique Collection',
-      itemCount: 0,
-      collection: newName,
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCKIcKxrkusL16CkM0fjAd340aZTnxr8o_tmugD7XS3cCDAG8yST04u91rCr7OrIxBUE3yNHckrJmRo81EtZGj8lTJHQgDVroNkj2CKu-ot-pwOAH0mcutBcSZUQfz7_-Ar5PUCPtpyOke4D81SjQQyrYnZs7hzWHiKTY0UnNT3WJuv-NAxhFJD5qK4YN7AOBd5nyfFy6KXxGhKLvjxG_EWE4pBc61A0x4zW4Oz-Fnn2JvqDoxPl3_PKQ',
-    };
-    setCategories([...categories, item]);
-    setShowAddModal(false);
-    setNewName('');
-    setNewTagline('');
+    if (!newName.trim() || isCreatingCategory) return;
+    setIsCreatingCategory(true);
 
     try {
       const res = await adminApi.categories.create({
-        name: newName,
-        description: newTagline || undefined,
-        image: item.image,
+        name: newName.trim(),
+        description: newTagline.trim() || undefined,
+        image:
+          'https://lh3.googleusercontent.com/aida-public/AB6AXuCKIcKxrkusL16CkM0fjAd340aZTnxr8o_tmugD7XS3cCDAG8yST04u91rCr7OrIxBUE3yNHckrJmRo81EtZGj8lTJHQgDVroNkj2CKu-ot-pwOAH0mcutBcSZUQfz7_-Ar5PUCPtpyOke4D81SjQQyrYnZs7hzWHiKTY0UnNT3WJuv-NAxhFJD5qK4YN7AOBd5nyfFy6KXxGhKLvjxG_EWE4pBc61A0x4zW4Oz-Fnn2JvqDoxPl3_PKQ',
       });
       if (res.success && res.data) {
-        setCategories((prev) =>
-          prev.map((cat) =>
-            cat.id === item.id
-              ? {
-                  ...cat,
-                  id: res.data.id,
-                  slug: res.data.slug || cat.slug,
-                }
-              : cat,
-          ),
-        );
+        const createdItem: CategoryItem = {
+          id: res.data.id,
+          name: res.data.name,
+          slug: res.data.slug || res.data.name.toLowerCase().replace(/\s+/g, '-'),
+          tagline: res.data.description || newTagline || 'Boutique Collection',
+          itemCount: 0,
+          collection: res.data.name,
+          image:
+            res.data.image ||
+            'https://lh3.googleusercontent.com/aida-public/AB6AXuCKIcKxrkusL16CkM0fjAd340aZTnxr8o_tmugD7XS3cCDAG8yST04u91rCr7OrIxBUE3yNHckrJmRo81EtZGj8lTJHQgDVroNkj2CKu-ot-pwOAH0mcutBcSZUQfz7_-Ar5PUCPtpyOke4D81SjQQyrYnZs7hzWHiKTY0UnNT3WJuv-NAxhFJD5qK4YN7AOBd5nyfFy6KXxGhKLvjxG_EWE4pBc61A0x4zW4Oz-Fnn2JvqDoxPl3_PKQ',
+        };
+        setCategories((prev) => [createdItem, ...prev]);
+        setShowAddModal(false);
+        setNewName('');
+        setNewTagline('');
+        toast.success(res.message || `Category "${createdItem.name}" created successfully`, 'CATEGORY CREATED');
+        await refreshData();
+      } else {
+        toast.error(res.error || 'Failed to create category');
       }
-      await refreshData();
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Error saving category to backend:', err);
+      toast.error(err?.message || 'Failed to create category');
+    } finally {
+      setIsCreatingCategory(false);
     }
   };
 
@@ -231,16 +233,28 @@ export default function CategoriesPage() {
             </div>
             <div className="mt-6 flex items-center justify-end gap-2">
               <button
-                onClick={() => setShowAddModal(false)}
-                className="px-4 py-2 border border-[#deddd3] text-xs text-[#717975] hover:bg-[#f0eee7]"
+                type="button"
+                disabled={isCreatingCategory}
+                onClick={() => !isCreatingCategory && setShowAddModal(false)}
+                className="px-4 py-2 border border-[#deddd3] text-xs text-[#717975] hover:bg-[#f0eee7] transition-colors cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
+                type="button"
+                disabled={isCreatingCategory || !newName.trim()}
+                aria-busy={isCreatingCategory}
                 onClick={handleAddCategory}
-                className="px-4 py-2 bg-[#00231a] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#073a2d]"
+                className="px-4 py-2 bg-[#00231a] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#073a2d] transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
               >
-                Create Category
+                {isCreatingCategory ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Creating Category...</span>
+                  </>
+                ) : (
+                  <span>Create Category</span>
+                )}
               </button>
             </div>
           </div>

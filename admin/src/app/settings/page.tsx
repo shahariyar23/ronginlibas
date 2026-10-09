@@ -9,6 +9,7 @@ export default function SettingsPage() {
   const { settings, updateSettings, backendConnected, refreshData, isLoading } = useAdmin();
   const [form, setForm] = useState(settings);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
@@ -55,11 +56,21 @@ export default function SettingsPage() {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => refreshData()}
-            className="flex items-center gap-2 px-3 py-2 border border-[#deddd3] bg-white text-xs font-semibold text-[#404945] hover:text-[#1b1c18] transition-colors"
+            type="button"
+            disabled={isSyncing || isSaving}
+            aria-busy={isSyncing}
+            onClick={async () => {
+              setIsSyncing(true);
+              try {
+                await refreshData();
+              } finally {
+                setIsSyncing(false);
+              }
+            }}
+            className="flex items-center gap-2 px-3 py-2 border border-[#deddd3] bg-white text-xs font-semibold text-[#404945] hover:text-[#1b1c18] transition-colors cursor-pointer disabled:opacity-50"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Reload</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-[#073a2d]' : ''}`} />
+            <span>{isSyncing ? 'Reloading...' : 'Reload'}</span>
           </button>
           <button
             onClick={handleSave}
@@ -408,9 +419,17 @@ export default function SettingsPage() {
           <button
             type="submit"
             disabled={isSaving}
-            className="px-4 py-2 bg-[#073a2d] hover:bg-[#0d4d3b] text-white text-xs font-semibold uppercase tracking-wider transition-colors disabled:opacity-50"
+            aria-busy={isSaving}
+            className="flex items-center gap-1.5 px-4 py-2 bg-[#073a2d] hover:bg-[#0d4d3b] text-white text-xs font-semibold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
           >
-            {isSaving ? 'Saving...' : 'Save Settings'}
+            {isSaving ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <span>Saving Settings...</span>
+              </>
+            ) : (
+              <span>Save Settings</span>
+            )}
           </button>
         </div>
       </form>

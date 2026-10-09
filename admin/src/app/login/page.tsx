@@ -11,6 +11,7 @@ import {
   LockKeyhole,
   Mail,
   ShieldCheck,
+  Loader2,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
@@ -221,10 +222,20 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex h-12 w-full items-center justify-center gap-2 bg-[#073a2d] px-5 text-xs font-bold uppercase tracking-[0.15em] text-white transition-colors hover:bg-[#0d4d3b] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#073a2d] disabled:cursor-wait disabled:opacity-70"
+              aria-busy={isSubmitting}
+              className="flex h-12 w-full items-center justify-center gap-2 bg-[#073a2d] px-5 text-xs font-bold uppercase tracking-[0.15em] text-white transition-colors hover:bg-[#0d4d3b] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#073a2d] disabled:cursor-wait disabled:opacity-70 cursor-pointer"
             >
-              {isSubmitting ? 'Signing in…' : 'Sign in to dashboard'}
-              {!isSubmitting && <ArrowRight className="h-4 w-4" />}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Signing in…</span>
+                </>
+              ) : (
+                <>
+                  <span>Sign in to dashboard</span>
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
             </button>
           </form>
 

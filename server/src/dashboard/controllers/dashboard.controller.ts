@@ -1,6 +1,7 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { DashboardService } from '../services/dashboard.service.js';
+import { DashboardQueryDto } from '../dto/dashboard-query.dto.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
@@ -16,8 +17,9 @@ export class DashboardController {
 
   @Get()
   @ApiOperation({ summary: 'Retrieve full executive atelier performance ledger metrics' })
-  async getMetrics() {
-    const data = await this.dashboardService.getAdminDashboardMetrics();
+  @ApiQuery({ name: 'period', enum: ['7', '30', 'month'], required: false })
+  async getMetrics(@Query() query: DashboardQueryDto) {
+    const data = await this.dashboardService.getAdminDashboardMetrics(query.period);
     return {
       message: 'Atelier dashboard metrics retrieved successfully',
       data,

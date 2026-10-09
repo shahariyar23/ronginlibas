@@ -202,14 +202,76 @@ const categoryAliases: Record<string, Product['category']> = {
   accessories: 'accessories',
 };
 
-function colorHex(name: string) {
-  const color = name.toLowerCase();
-  if (color.includes('green') || color.includes('emerald')) return '#073a2d';
-  if (color.includes('white') || color.includes('ivory') || color.includes('cream')) return '#fbf9f2';
-  if (color.includes('blue') || color.includes('navy')) return '#112244';
-  if (color.includes('red') || color.includes('terracotta') || color.includes('rust')) return '#9c4a2f';
-  if (color.includes('black') || color.includes('onyx')) return '#1b1c18';
-  return '#c79a45';
+export function colorHex(name: string): string {
+  if (!name) return '#073a2d';
+  const hexMatch = name.match(/#(?:[0-9a-fA-F]{3}){1,2}\b/);
+  if (hexMatch) return hexMatch[0];
+
+  const lower = name.toLowerCase().trim();
+  const knownPalette: Record<string, string> = {
+    'heritage olive': '#4B5320',
+    'olive': '#4B5320',
+    'navy atelier': '#0F1A2C',
+    'midnight navy': '#0F1A2C',
+    'navy': '#0F1A2C',
+    'raw silk white': '#FBF9F2',
+    'ivory': '#FBF9F2',
+    'off white': '#FBF9F2',
+    'cream': '#FBF9F2',
+    'royal emerald': '#00231A',
+    'emerald': '#00231A',
+    'forest': '#073a2d',
+    'antique gold': '#C79A45',
+    'gold': '#C79A45',
+    'mustard': '#C79A45',
+    'midnight noir': '#1A1A1A',
+    'noir': '#1A1A1A',
+    'black': '#1A1A1A',
+    'onyx': '#1A1A1A',
+    'charcoal': '#2C3539',
+    'slate': '#708090',
+    'grey': '#808080',
+    'gray': '#808080',
+    'silver': '#C0C0C0',
+    'white': '#FFFFFF',
+    'beige': '#F5F5DC',
+    'vintage beige': '#D9CBB6',
+    'tan': '#D2B48C',
+    'khaki': '#C3B091',
+    'camel': '#C19A6B',
+    'brown': '#654321',
+    'coffee': '#4A2E18',
+    'chocolate': '#3D2314',
+    'maroon': '#800000',
+    'burgundy': '#800020',
+    'wine': '#722F37',
+    'crimson': '#DC143C',
+    'red': '#9C4A2F',
+    'terracotta': '#9C4A2F',
+    'rust': '#9C4A2F',
+    'brick': '#9C4A2F',
+    'rose': '#E0BFB8',
+    'pink': '#FFC0CB',
+    'sage': '#9DC183',
+    'mint': '#98FF98',
+    'green': '#073A2D',
+    'teal': '#008080',
+    'turquoise': '#40E0D0',
+    'blue': '#112244',
+    'sky': '#87CEEB',
+    'royal blue': '#4169E1',
+    'indigo': '#4B0082',
+    'purple': '#800080',
+    'violet': '#7F00FF',
+    'lavender': '#E6E6FA',
+    'plum': '#8E4585',
+  };
+
+  if (knownPalette[lower]) return knownPalette[lower];
+  for (const [key, hex] of Object.entries(knownPalette)) {
+    if (lower.includes(key)) return hex;
+  }
+  return '#073a2d';
 }
 
 export function mapProduct(source: ApiProduct): Product {

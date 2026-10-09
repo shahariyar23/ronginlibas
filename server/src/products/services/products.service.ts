@@ -214,13 +214,16 @@ export class ProductsService {
 
   async findBySlug(slug: string) {
     const product = await this.prisma.product.findFirst({
-      where: { OR: [{ slug }, { id: slug }], isActive: true },
+      where: { OR: [{ slug }, { id: slug }], isActive: true, deletedAt: null },
       include: {
         category: true,
         images: { orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }] },
         variants: { where: { isActive: true } },
         reviews: {
           where: { status: 'APPROVED' },
+          include: {
+            customer: { select: { firstName: true, lastName: true } },
+          },
           take: 10,
           orderBy: { createdAt: 'desc' },
         },
@@ -247,7 +250,7 @@ export class ProductsService {
 
   async findRelated(slug: string, relationType: 'RELATED' | 'COMPLEMENTARY') {
     const product = await this.prisma.product.findFirst({
-      where: { OR: [{ slug }, { id: slug }], isActive: true },
+      where: { OR: [{ slug }, { id: slug }], isActive: true, deletedAt: null },
       select: { id: true, categoryId: true },
     });
     if (!product)
@@ -256,7 +259,7 @@ export class ProductsService {
       where: {
         sourceProductId: product.id,
         relationType,
-        targetProduct: { isActive: true },
+        targetProduct: { isActive: true, deletedAt: null },
       },
       orderBy: { sortOrder: 'asc' },
       take: 8,
@@ -278,6 +281,7 @@ export class ProductsService {
     const relatedProducts = await this.prisma.product.findMany({
       where: {
         isActive: true,
+        deletedAt: null,
         categoryId: product.categoryId,
         id: { not: product.id },
       },
@@ -326,6 +330,7 @@ export class ProductsService {
           isFeatured: dto.isFeatured ?? false,
           isNewArrival: dto.isNewArrival ?? true,
           isBestSeller: dto.isBestSeller ?? false,
+          tags: normalizeProductTags(dto.tags),
           categoryId: dto.categoryId,
           alertThreshold: dto.alertThreshold ?? 5,
           variants: dto.variants?.length
@@ -380,6 +385,15 @@ export class ProductsService {
     if (!existing) throw new NotFoundException(`Garment not found: ${id}`);
     const targetId = existing.id;
 
+    if (dto.categoryId !== undefined) {
+      const category = await this.prisma.category.findUnique({
+        where: { id: dto.categoryId },
+      });
+      if (!category) {
+        throw new NotFoundException(`Category not found with id: ${dto.categoryId}`);
+      }
+    }
+
     const previousImages = await this.prisma.productImage.findMany({
       where: { productId: targetId },
       select: { publicId: true },
@@ -422,7 +436,9 @@ export class ProductsService {
             ...(dto.careInstructions !== undefined && {
               careInstructions: dto.careInstructions,
             }),
-            ...(dto.tags !== undefined && { tags: dto.tags }),
+            ...(dto.tags !== undefined && {
+              tags: normalizeProductTags(dto.tags),
+            }),
             ...(dto.alertThreshold !== undefined && {
               alertThreshold: dto.alertThreshold,
             }),
@@ -457,7 +473,9 @@ export class ProductsService {
             where: { productId: targetId },
             select: { variantId: true },
           });
-          const protectedVariantIds = orderVariants.map((o) => o.variantId);
+          const protectedVariantIds = orderVariants
+            .map((o) => o.variantId)
+            .filter((id): id is string => Boolean(id));
 
           await transaction.productVariant.deleteMany({
             where: {
@@ -548,6 +566,72 @@ export class ProductsService {
     return updatedProduct;
   }
 
+  async archive(id: string) {
+    const existing = await this.prisma.product.findFirst({
+      where: { OR: [{ id }, { slug: id }] },
+      select: { id: true, name: true, isActive: true, deletedAt: true },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Product not found with identifier: ${id}`);
+    }
+
+    if (!existing.isActive && existing.deletedAt) {
+      throw new BadRequestException(`Product "${existing.name}" is already archived`);
+    }
+
+    const updated = await this.prisma.product.update({
+      where: { id: existing.id },
+      data: {
+        isActive: false,
+        deletedAt: new Date(),
+      },
+      include: {
+        category: true,
+        images: true,
+        variants: true,
+      },
+    });
+
+    this.logger.log(`Product "${existing.name}" (${existing.id}) successfully archived.`);
+
+    return {
+      message: `Product "${existing.name}" archived successfully`,
+      data: updated,
+    };
+  }
+
+  async restore(id: string) {
+    const existing = await this.prisma.product.findFirst({
+      where: { OR: [{ id }, { slug: id }] },
+      select: { id: true, name: true, isActive: true, deletedAt: true },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Product not found with identifier: ${id}`);
+    }
+
+    const updated = await this.prisma.product.update({
+      where: { id: existing.id },
+      data: {
+        isActive: true,
+        deletedAt: null,
+      },
+      include: {
+        category: true,
+        images: true,
+        variants: true,
+      },
+    });
+
+    this.logger.log(`Product "${existing.name}" (${existing.id}) successfully restored.`);
+
+    return {
+      message: `Product "${existing.name}" restored successfully`,
+      data: updated,
+    };
+  }
+
   async delete(id: string) {
     const existing = await this.prisma.product.findFirst({
       where: { OR: [{ id }, { slug: id }] },
@@ -564,33 +648,56 @@ export class ProductsService {
 
     const targetId = existing.id;
 
+    // Count historical order items referencing this product to ensure safety audit
+    const historicalOrderCount = await this.prisma.orderItem.count({
+      where: { productId: targetId },
+    });
+
     await this.prisma.$transaction(async (transaction) => {
+      // 1. Preserve historical order items: disconnect relation safely by setting productId and variantId to null
+      //    All snapshot fields (productName, variantName, sku, size, color, unitPrice, quantity, subtotal) are kept intact!
+      await transaction.orderItem.updateMany({
+        where: { productId: targetId },
+        data: {
+          productId: null,
+          variantId: null,
+        },
+      });
+
+      // 2. Remove product relations (cross-selling & recommendations)
       await transaction.productRelation.deleteMany({
         where: {
           OR: [{ sourceProductId: targetId }, { targetProductId: targetId }],
         },
       });
+
+      // 3. Remove reviews & review votes
       await transaction.reviewVote.deleteMany({
         where: { review: { productId: targetId } },
       });
       await transaction.review.deleteMany({
         where: { productId: targetId },
       });
+
+      // 4. Remove active cart items & wishlists
       await transaction.cartItem.deleteMany({
         where: { productId: targetId },
       });
       await transaction.wishlistItem.deleteMany({
         where: { productId: targetId },
       });
+
+      // 5. Remove product images
       await transaction.productImage.deleteMany({
         where: { productId: targetId },
       });
-      await transaction.orderItem.deleteMany({
-        where: { productId: targetId },
-      });
+
+      // 6. Remove product variants (associated InventoryTransactions cascade)
       await transaction.productVariant.deleteMany({
         where: { productId: targetId },
       });
+
+      // 7. Delete the product itself
       await transaction.product.delete({
         where: { id: targetId },
       });
@@ -599,29 +706,39 @@ export class ProductsService {
       timeout: 30000,
     });
 
+    // 8. Collect and remove associated Cloudinary media assets using exact publicId
     const publicIds = existing.images
       .map((image) => image.publicId)
-      .filter((publicId): publicId is string => publicId !== null);
-    const cleanup = await Promise.allSettled(
-      publicIds.map((publicId) =>
-        this.cloudinary.destroyProductImage(publicId),
-      ),
-    );
-    const failedPublicIds = publicIds.filter(
-      (_, index) => cleanup[index].status === 'rejected',
-    );
-    if (failedPublicIds.length) {
-      this.logger.error(
-        `Product image cleanup failed for: ${failedPublicIds.join(', ')}`,
+      .filter((publicId): publicId is string => Boolean(publicId));
+
+    let cleanupWarning: string | undefined;
+    if (publicIds.length > 0) {
+      const cleanup = await Promise.allSettled(
+        publicIds.map((publicId) =>
+          this.cloudinary.destroyProductImage(publicId),
+        ),
       );
-      return {
-        message: `Product "${existing.name}" deleted from the database`,
-        cleanupWarning: `Cloudinary cleanup failed for ${failedPublicIds.join(', ')}`,
-      };
+      const failedPublicIds = publicIds.filter(
+        (_, index) => cleanup[index]?.status === 'rejected',
+      );
+      if (failedPublicIds.length > 0) {
+        this.logger.error(
+          `Cloudinary image cleanup failed for product "${existing.name}" (${targetId}) assets: ${failedPublicIds.join(', ')}`,
+        );
+        cleanupWarning = `Product permanently deleted, but Cloudinary asset cleanup failed for ${failedPublicIds.join(', ')}`;
+      }
     }
 
     return {
-      message: `Product "${existing.name}" permanently deleted from database`,
+      message: cleanupWarning
+        ? `Product "${existing.name}" permanently deleted from database. Warning: Cloudinary cleanup failed.`
+        : `Product "${existing.name}" permanently deleted from database`,
+      data: {
+        id: targetId,
+        name: existing.name,
+        historicalOrdersPreserved: historicalOrderCount,
+        cleanupWarning,
+      },
     };
   }
 }
@@ -644,14 +761,21 @@ function buildProductWhere(
   const andConditions: Prisma.ProductWhereInput[] = [];
   if (!isAdmin) {
     where.isActive = true;
+    where.deletedAt = null;
     where.category = { is: { isActive: true } };
   }
   if (query.search) {
+    const searchText = query.search.trim().toLowerCase();
+    const searchTerms = searchText.split(/\s+/).filter(Boolean);
+    const tagSearchTerms = [
+      ...new Set([...searchTerms, searchTerms.join('-')]),
+    ];
     andConditions.push({
       OR: [
         { name: { contains: query.search.trim(), mode: 'insensitive' } },
         { sku: { contains: query.search.trim(), mode: 'insensitive' } },
         { description: { contains: query.search.trim(), mode: 'insensitive' } },
+        { tags: { hasSome: tagSearchTerms } },
       ],
     });
   }
@@ -699,10 +823,18 @@ function buildProductWhere(
       })),
     });
   }
-  if (query.status === 'Active') where.isActive = true;
-  if (query.status === 'Out of Stock') {
+  if (query.status === 'Active') {
+    where.isActive = true;
+    where.deletedAt = null;
+  } else if (query.status === 'Archived') {
+    where.OR = [{ isActive: false }, { deletedAt: { not: null } }];
+  } else if (query.status === 'Out of Stock') {
+    where.isActive = true;
+    where.deletedAt = null;
     where.variants = { none: { isActive: true, stock: { gt: 0 } } };
   } else if (query.status === 'Low Stock') {
+    where.isActive = true;
+    where.deletedAt = null;
     where.variants = { some: { isActive: true, stock: { gt: 0, lte: 5 } } };
   } else {
     const sizes = excludedFacet === 'size' ? undefined : query.size;
@@ -779,6 +911,16 @@ function buildProductWhere(
   }
   if (andConditions.length) where.AND = andConditions;
   return where;
+}
+
+function normalizeProductTags(tags: string[] | undefined): string[] {
+  return [
+    ...new Set(
+      (tags ?? [])
+        .map((tag) => tag.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ];
 }
 
 function toSlug(value: string): string {

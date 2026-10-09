@@ -7,9 +7,13 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { Controller, Get, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { DashboardService } from '../services/dashboard.service.js';
+import { DashboardQueryDto } from '../dto/dashboard-query.dto.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
@@ -19,8 +23,8 @@ let DashboardController = class DashboardController {
     constructor(dashboardService) {
         this.dashboardService = dashboardService;
     }
-    async getMetrics() {
-        const data = await this.dashboardService.getAdminDashboardMetrics();
+    async getMetrics(query) {
+        const data = await this.dashboardService.getAdminDashboardMetrics(query.period);
         return {
             message: 'Atelier dashboard metrics retrieved successfully',
             data,
@@ -30,8 +34,10 @@ let DashboardController = class DashboardController {
 __decorate([
     Get(),
     ApiOperation({ summary: 'Retrieve full executive atelier performance ledger metrics' }),
+    ApiQuery({ name: 'period', enum: ['7', '30', 'month'], required: false }),
+    __param(0, Query()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [DashboardQueryDto]),
     __metadata("design:returntype", Promise)
 ], DashboardController.prototype, "getMetrics", null);
 DashboardController = __decorate([

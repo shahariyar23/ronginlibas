@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import {
   AdminProduct,
   AdminProductDetail,
@@ -14,7 +14,7 @@ import {
   INITIAL_SETTINGS,
 } from '@/data/adminData';
 
-import { adminApi } from '@/lib/api';
+import { AdminDashboardResponse, DashboardPeriod, adminApi } from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 
 export interface AdminCategoryRecord {
@@ -39,16 +39,21 @@ interface AdminContextType {
   orders: AdminOrder[];
   inventory: InventoryItem[];
   settings: StoreSettings;
-  dashboardMetrics: any;
+  dashboardMetrics: AdminDashboardResponse | null;
+  dashboardLoading: boolean;
+  dashboardError: string | null;
   backendConnected: boolean;
   isLoading: boolean;
   inventoryLoadError: string | null;
   refreshData: () => Promise<void>;
+  refreshDashboard: (period?: DashboardPeriod) => Promise<boolean>;
   addProduct: (product: AdminProduct) => Promise<boolean>;
   updateProduct: (id: string, product: Partial<AdminProduct>) => Promise<boolean>;
-  deleteProduct: (id: string) => Promise<void>;
+  archiveProduct: (id: string) => Promise<boolean>;
+  restoreProduct: (id: string) => Promise<boolean>;
+  deleteProduct: (id: string) => Promise<boolean>;
   getProductDetails: (id: string) => Promise<AdminProductDetail | null>;
-  updateOrderStatus: (orderId: string, status: AdminOrder['status'], notes?: string) => Promise<void>;
+  updateOrderStatus: (orderId: string, status: AdminOrder['status'], notes?: string) => Promise<boolean>;
   updateInventoryStock: (
     id: string,
     newStock: number,
@@ -56,7 +61,7 @@ interface AdminContextType {
     note?: string,
   ) => Promise<boolean>;
   getVariantHistory: (variantId: string) => Promise<InventoryTransactionRecord[]>;
-  updateSettings: (newSettings: Partial<StoreSettings>) => Promise<void>;
+  updateSettings: (newSettings: Partial<StoreSettings>) => Promise<boolean>;
 
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -76,8 +81,11 @@ function adaptBackendProduct(p: any): AdminProduct {
   const threshold =
     p.alertThreshold !== undefined && p.alertThreshold !== null ? Number(p.alertThreshold) : 5;
 
+  const isArchived = p.isActive === false || Boolean(p.deletedAt);
   let status: AdminProduct['status'] = 'Active';
-  if (p.isActive === false || stock === 0) {
+  if (isArchived) {
+    status = 'Archived';
+  } else if (stock === 0) {
     status = 'Out of Stock';
   } else if (stock <= threshold) {
     status = 'Low Stock';
@@ -88,12 +96,15 @@ function adaptBackendProduct(p: any): AdminProduct {
     name: p.name,
     sku: p.sku,
     category: p.category?.name || p.category || 'Panjabi',
+    categoryId: p.categoryId || p.category?.id || undefined,
     price: Number(p.price) || 0,
     promotionalPrice: p.compareAtPrice ? Number(p.compareAtPrice) : undefined,
     costOfGoods: p.costPrice ? Number(p.costPrice) : undefined,
     stock,
     alertThreshold: threshold,
     status,
+    isActive: p.isActive,
+    deletedAt: p.deletedAt,
     image:
       p.images?.[0]?.url ||
       'https://lh3.googleusercontent.com/aida-public/AB6AXuCKIcKxrkusL16CkM0fjAd340aZTnxr8o_tmugD7XS3cCDAG8yST04u91rCr7OrIxBUE3yNHckrJmRo81EtZGj8lTJHQgDVroNkj2CKu-ot-pwOAH0mcutBcSZUQfz7_-Ar5PUCPtpyOke4D81SjQQyrYnZs7hzWHiKTY0UnNT3WJuv-NAxhFJD5qK4YN7AOBd5nyfFy6KXxGhKLvjxG_EWE4pBc61A0x4zW4Oz-Fnn2JvqDoxPl3_PKQ',
@@ -106,6 +117,7 @@ function adaptBackendProduct(p: any): AdminProduct {
     })),
     fabricNote: p.fabric || undefined,
     description: p.description,
+    tags: Array.isArray(p.tags) ? p.tags : [],
     featured: p.isFeatured,
   };
 }
@@ -241,7 +253,10 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [categories, setCategories] = useState<AdminCategoryRecord[]>(DEFAULT_FALLBACK_CATEGORIES);
   const [inventory, setInventory] = useState<InventoryItem[]>(INITIAL_INVENTORY);
   const [settings, setSettings] = useState<StoreSettings>(INITIAL_SETTINGS);
-  const [dashboardMetrics, setDashboardMetrics] = useState<any>(null);
+  const [dashboardMetrics, setDashboardMetrics] = useState<AdminDashboardResponse | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState<boolean>(true);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const dashboardRequestId = useRef(0);
   const [backendConnected, setBackendConnected] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [inventoryLoadError, setInventoryLoadError] = useState<string | null>(null);
@@ -249,13 +264,44 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { toast } = useToast();
 
+  const refreshDashboard = useCallback(
+    async (period: DashboardPeriod = '7'): Promise<boolean> => {
+      const requestId = ++dashboardRequestId.current;
+      setDashboardLoading(true);
+      setDashboardError(null);
+      setDashboardMetrics(null);
+
+      try {
+        const response = await adminApi.dashboard.getMetrics(period);
+        if (!response.success || !response.data) {
+          throw new Error(response.error || 'Unable to load dashboard data.');
+        }
+        if (requestId !== dashboardRequestId.current) return false;
+
+        setDashboardMetrics(response.data);
+        return true;
+      } catch (error) {
+        if (requestId !== dashboardRequestId.current) return false;
+        const message =
+          error instanceof Error ? error.message : 'Unable to load dashboard data.';
+        setDashboardMetrics(null);
+        setDashboardError(message);
+        toast.error(message, 'DASHBOARD DATA UNAVAILABLE');
+        return false;
+      } finally {
+        if (requestId === dashboardRequestId.current) setDashboardLoading(false);
+      }
+    },
+    [toast],
+  );
+
   // Fetch all primary operational streams from the NestJS Backend including executive dashboard API
   const refreshData = useCallback(async () => {
     setIsLoading(true);
     setInventoryLoadError(null);
     try {
-      const [dashRes, prodRes, ordRes, invRes, setRes, categoriesRes] = await Promise.all([
-        adminApi.dashboard.getMetrics(),
+      const [dashboardLoaded, prodRes, ordRes, invRes, setRes, categoriesRes] = await Promise.all([
+        refreshDashboard('7'),
         adminApi.products.getAll({ limit: 50 }),
         adminApi.orders.getAll({ limit: 50 }),
         adminApi.inventory.getAll({ page: 1, limit: 100 }),
@@ -265,10 +311,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
       let anySuccess = false;
 
-      if (dashRes.success && dashRes.data) {
-        setDashboardMetrics(dashRes.data);
-        anySuccess = true;
-      }
+      anySuccess = dashboardLoaded;
 
       if (prodRes.success && Array.isArray(prodRes.data?.items)) {
         setProducts(prodRes.data.items.map(adaptBackendProduct));
@@ -348,7 +391,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       }
 
       setBackendConnected(
-        anySuccess || dashRes.success || prodRes.success || ordRes.success || invRes.success,
+        anySuccess || prodRes.success || ordRes.success || invRes.success,
       );
     } catch (err) {
       console.warn('[AdminContext] Backend synchronization error, using local fallback:', err);
@@ -357,7 +400,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [refreshDashboard]);
 
   useEffect(() => {
     refreshData();
@@ -420,6 +463,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         alertThreshold: product.alertThreshold !== undefined ? Number(product.alertThreshold) : 5,
         isActive: product.status !== 'Out of Stock',
         isFeatured: product.featured ?? false,
+        tags: product.tags ?? [],
         variants: product.variants?.length
           ? product.variants.map((v) => ({
               size: v.size,
@@ -474,6 +518,19 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   // Update Product
   const updateProduct = async (id: string, updated: Partial<AdminProduct>): Promise<boolean> => {
     try {
+      let categoryId = updated.categoryId;
+      if (!categoryId && updated.category) {
+        const found = categories.find(
+          (c) =>
+            c.id === updated.category ||
+            c.name.toLowerCase() === updated.category!.toLowerCase() ||
+            c.slug.toLowerCase() === updated.category!.toLowerCase(),
+        );
+        if (found) {
+          categoryId = found.id;
+        }
+      }
+
       const payload: Record<string, any> = {
         name: updated.name,
         price: updated.price,
@@ -484,6 +541,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         fabric: updated.fabricNote,
         isFeatured: updated.featured,
         tags: updated.tags,
+        ...(categoryId && { categoryId }),
         ...(updated.alertThreshold !== undefined && { alertThreshold: Number(updated.alertThreshold) }),
       };
 
@@ -520,6 +578,8 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
               ? {
                   ...p,
                   ...updated,
+                  category: res.data?.category?.name || updated.category || p.category,
+                  categoryId: res.data?.categoryId || res.data?.category?.id || categoryId || p.categoryId,
                   ...(updated.alertThreshold !== undefined && { alertThreshold: Number(updated.alertThreshold) }),
                 }
               : p
@@ -543,27 +603,80 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Delete / Permanently Remove Product
-  const deleteProduct = async (id: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
-    setInventory((prev) => prev.filter((item) => item.id !== id));
+  // Archive Product (Never optimistically alter before backend confirms success)
+  const archiveProduct = async (id: string): Promise<boolean> => {
+    try {
+      const res = await adminApi.products.archive(id);
+      if (res.success) {
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === id
+              ? { ...p, status: 'Archived', isActive: false, deletedAt: new Date().toISOString() }
+              : p,
+          ),
+        );
+        toast.success(res.message || 'Product archived successfully', 'PRODUCT ARCHIVED');
+        await refreshData();
+        return true;
+      } else {
+        toast.error(res.error || 'Failed to archive product');
+        return false;
+      }
+    } catch (err: any) {
+      console.warn('[AdminContext] Error archiving product:', err);
+      toast.error(err?.message || 'Error archiving product');
+      return false;
+    }
+  };
+
+  // Restore Archived Product
+  const restoreProduct = async (id: string): Promise<boolean> => {
+    try {
+      const res = await adminApi.products.restore(id);
+      if (res.success) {
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === id
+              ? { ...p, status: 'Active', isActive: true, deletedAt: null }
+              : p,
+          ),
+        );
+        toast.success(res.message || 'Product restored to active catalog', 'PRODUCT RESTORED');
+        await refreshData();
+        return true;
+      } else {
+        toast.error(res.error || 'Failed to restore product');
+        return false;
+      }
+    } catch (err: any) {
+      console.warn('[AdminContext] Error restoring product:', err);
+      toast.error(err?.message || 'Error restoring product');
+      return false;
+    }
+  };
+
+  // Delete / Permanently Remove Product (Never optimistically remove before backend confirms success)
+  const deleteProduct = async (id: string): Promise<boolean> => {
     try {
       const res = await adminApi.products.delete(id);
       if (res.success) {
+        setProducts((prev) => prev.filter((p) => p.id !== id));
+        setInventory((prev) => prev.filter((item) => item.id !== id && (item as any).productId !== id));
         if (res.data?.cleanupWarning) {
           toast.info(res.data.cleanupWarning, 'IMAGE CLEANUP NEEDS ATTENTION');
         } else {
           toast.success(res.message || 'Product permanently deleted from database', 'PRODUCT DELETED');
         }
         await refreshData();
+        return true;
       } else {
         toast.error(res.error || 'Failed to delete product from database');
-        await refreshData();
+        return false;
       }
     } catch (err: any) {
       console.warn('[AdminContext] Error deleting product from backend:', err);
       toast.error(err?.message || 'Error deleting product from database');
-      await refreshData();
+      return false;
     }
   };
 
@@ -579,31 +692,33 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     return null;
   }, []);
 
-  // Update Order Status (e.g. PENDING -> CONFIRMED -> PROCESSING -> SHIPPED -> DELIVERED)
+  // Update Order Status (Never optimistically mutate before backend confirms success)
   const updateOrderStatus = async (
     orderId: string,
     status: AdminOrder['status'],
     notes?: string,
-  ) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === orderId || o.orderNumber === orderId ? { ...o, status } : o
-      )
-    );
-
+  ): Promise<boolean> => {
     try {
       const res = await adminApi.orders.updateStatus(orderId, status, notes);
       if (res.success) {
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === orderId || o.orderNumber === orderId ? { ...o, status } : o
+          )
+        );
         toast.success(
           res.message || `Order status transitioned to ${status} successfully`,
           'ORDER UPDATED'
         );
+        return true;
       } else {
         toast.error(res.error || 'Failed to update order status');
+        return false;
       }
     } catch (err: any) {
       console.warn('[AdminContext] Error updating order status in backend:', err);
       toast.error(err?.message || 'Error updating order status in backend');
+      return false;
     }
   };
 
@@ -682,20 +797,22 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Update Store Settings
-  const updateSettings = async (newSettings: Partial<StoreSettings>) => {
-    setSettings((prev) => ({ ...prev, ...newSettings }));
-
+  // Update Store Settings (Only update after confirmed backend response)
+  const updateSettings = async (newSettings: Partial<StoreSettings>): Promise<boolean> => {
     try {
       const res = await adminApi.settings.update(newSettings);
       if (res.success) {
+        setSettings((prev) => ({ ...prev, ...newSettings }));
         toast.success(res.message || 'Store settings saved successfully', 'SETTINGS SAVED');
+        return true;
       } else {
         toast.error(res.error || 'Failed to save settings');
+        return false;
       }
     } catch (err: any) {
       console.warn('[AdminContext] Error updating store settings in backend:', err);
       toast.error(err?.message || 'Failed to update settings');
+      return false;
     }
   };
 
@@ -708,12 +825,17 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         inventory,
         settings,
         dashboardMetrics,
+        dashboardLoading,
+        dashboardError,
         backendConnected,
         isLoading,
         inventoryLoadError,
         refreshData,
+        refreshDashboard,
         addProduct,
         updateProduct,
+        archiveProduct,
+        restoreProduct,
         deleteProduct,
         getProductDetails,
         updateOrderStatus,

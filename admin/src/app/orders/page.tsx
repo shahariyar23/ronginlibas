@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import {
   Search,
   Printer,
@@ -25,7 +25,10 @@ import {
   Truck,
   ShieldCheck,
   AlertCircle,
+  Loader2,
 } from 'lucide-react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useAdmin } from '@/context/AdminContext';
 import { AdminOrder } from '@/data/adminData';
 import { TablePageSkeleton } from '@/components/common/Skeleton';
@@ -73,14 +76,18 @@ function BarcodeGraphic({ value }: { value: string }) {
 }
 
 
-export default function OrdersPage() {
+function OrdersPageContent() {
   const { orders, updateOrderStatus, isLoading } = useAdmin();
+  const searchParams = useSearchParams();
+  const focusedOrderId = searchParams.get('orderId')?.trim() || '';
   const [activeTab, setActiveTab] = useState<string>('ALL');
   const [search, setSearch] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('ALL');
   const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState<AdminOrder | null>(null);
   const [receiptMode, setReceiptMode] = useState<'PARCEL_SLIP' | 'DOSSIER'>('PARCEL_SLIP');
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [targetStatus, setTargetStatus] = useState<string | null>(null);
   const [showFlowGuide, setShowFlowGuide] = useState(false);
 
   // Tab counts
@@ -92,13 +99,17 @@ export default function OrdersPage() {
   const cancelledCount = orders.filter((o) => o.status === 'CANCELLED').length;
 
   const filteredOrders = orders.filter((order) => {
+    const matchesFocusedOrder =
+      !focusedOrderId ||
+      order.id === focusedOrderId ||
+      order.orderNumber === focusedOrderId;
     const matchesTab = activeTab === 'ALL' || order.status === activeTab;
     const matchesSearch =
       order.id.toLowerCase().includes(search.toLowerCase()) ||
       order.customerName.toLowerCase().includes(search.toLowerCase()) ||
       order.phone.includes(search);
     const matchesPayment = paymentFilter === 'ALL' || order.paymentMethod === paymentFilter;
-    return matchesTab && matchesSearch && matchesPayment;
+    return matchesFocusedOrder && matchesTab && matchesSearch && matchesPayment;
   });
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -185,6 +196,17 @@ export default function OrdersPage() {
           </button>
         </div>
       </div>
+
+      {focusedOrderId && (
+        <div className="flex flex-col gap-2 border border-[#a1d1be] bg-[#bcedda]/20 px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            Showing order <strong className="font-mono">{focusedOrderId}</strong>
+          </span>
+          <Link href="/orders" className="font-bold text-[#073a2d] underline">
+            View all orders
+          </Link>
+        </div>
+      )}
 
       {/* Status Filter Tabs */}
       <div className="flex flex-wrap items-center gap-2 border-b border-[#deddd3] pb-2 text-xs">
@@ -608,24 +630,46 @@ export default function OrdersPage() {
             <div className="mt-4 space-y-2">
               {(
                 ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'] as const
-              ).map((st) => (
-                <button
-                  key={st}
-                  onClick={() => {
-                    updateOrderStatus(updatingOrderId, st);
-                    setUpdatingOrderId(null);
-                  }}
-                  className="w-full text-left px-3 py-2 border border-[#deddd3] hover:border-[#073a2d] hover:bg-[#fbf9f2] text-xs font-semibold text-[#1b1c18] transition-colors flex items-center justify-between"
-                >
-                  <span>{st}</span>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#073a2d]" />
-                </button>
-              ))}
+              ).map((st) => {
+                const isSelectedLoading = isUpdatingStatus && targetStatus === st;
+                return (
+                  <button
+                    key={st}
+                    type="button"
+                    disabled={isUpdatingStatus}
+                    aria-busy={isSelectedLoading}
+                    onClick={async () => {
+                      if (isUpdatingStatus || !updatingOrderId) return;
+                      setIsUpdatingStatus(true);
+                      setTargetStatus(st);
+                      try {
+                        const success = await updateOrderStatus(updatingOrderId, st);
+                        if (success) {
+                          setUpdatingOrderId(null);
+                        }
+                      } finally {
+                        setIsUpdatingStatus(false);
+                        setTargetStatus(null);
+                      }
+                    }}
+                    className="w-full text-left px-3 py-2 border border-[#deddd3] hover:border-[#073a2d] hover:bg-[#fbf9f2] text-xs font-semibold text-[#1b1c18] transition-colors flex items-center justify-between cursor-pointer disabled:opacity-50"
+                  >
+                    <span>{isSelectedLoading ? `Transitioning to ${st}...` : st}</span>
+                    {isSelectedLoading ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#073a2d]" />
+                    ) : (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#073a2d]" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
             <div className="mt-4 text-right">
               <button
-                onClick={() => setUpdatingOrderId(null)}
-                className="px-4 py-2 border border-[#deddd3] text-xs text-[#717975] hover:bg-[#f0eee7]"
+                type="button"
+                disabled={isUpdatingStatus}
+                onClick={() => !isUpdatingStatus && setUpdatingOrderId(null)}
+                className="px-4 py-2 border border-[#deddd3] text-xs text-[#717975] hover:bg-[#f0eee7] transition-colors cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -809,7 +853,7 @@ export default function OrdersPage() {
                             Special Patron Instructions:
                           </span>
                           <p className="italic text-[#404945]">
-                            "{selectedOrderForInvoice.fullAddress?.deliveryInstructions || selectedOrderForInvoice.customerNotes}"
+                            &ldquo;{selectedOrderForInvoice.fullAddress?.deliveryInstructions || selectedOrderForInvoice.customerNotes}&rdquo;
                           </p>
                         </div>
                       )}
@@ -1077,25 +1121,40 @@ export default function OrdersPage() {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 mt-5 border-t border-[#deddd3]">
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <span className="text-xs text-[#717975] font-semibold">Stage:</span>
-                <select
-                  value={selectedOrderForInvoice.status}
-                  onChange={(e) => {
-                    const newStatus = e.target.value as any;
-                    updateOrderStatus(selectedOrderForInvoice.id, newStatus);
-                    setSelectedOrderForInvoice((prev) =>
-                      prev ? { ...prev, status: newStatus } : null
-                    );
-                  }}
-                  className="px-2.5 py-1.5 border border-[#deddd3] bg-white text-xs font-bold uppercase tracking-wider text-[#073a2d] cursor-pointer"
-                >
-                  {(
-                    ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'] as const
-                  ).map((st) => (
-                    <option key={st} value={st}>
-                      {st}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-1.5">
+                  <select
+                    value={selectedOrderForInvoice.status}
+                    disabled={isUpdatingStatus}
+                    aria-busy={isUpdatingStatus}
+                    onChange={async (e) => {
+                      const newStatus = e.target.value as AdminOrder['status'];
+                      if (newStatus === selectedOrderForInvoice.status || isUpdatingStatus) return;
+                      setIsUpdatingStatus(true);
+                      try {
+                        const success = await updateOrderStatus(selectedOrderForInvoice.id, newStatus);
+                        if (success) {
+                          setSelectedOrderForInvoice((prev) =>
+                            prev ? { ...prev, status: newStatus } : null
+                          );
+                        }
+                      } finally {
+                        setIsUpdatingStatus(false);
+                      }
+                    }}
+                    className="px-2.5 py-1.5 border border-[#deddd3] bg-white text-xs font-bold uppercase tracking-wider text-[#073a2d] cursor-pointer disabled:opacity-50"
+                  >
+                    {(
+                      ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'] as const
+                    ).map((st) => (
+                      <option key={st} value={st}>
+                        {st}
+                      </option>
+                    ))}
+                  </select>
+                  {isUpdatingStatus && (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#073a2d]" />
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
@@ -1119,8 +1178,22 @@ export default function OrdersPage() {
           </div>
         </div>
       )}
-
-
     </div>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense
+      fallback={
+        <TablePageSkeleton
+          title="Atelier Orders & Fulfillment"
+          showAddButton={false}
+          rowCount={8}
+        />
+      }
+    >
+      <OrdersPageContent />
+    </Suspense>
   );
 }

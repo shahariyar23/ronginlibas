@@ -25,6 +25,7 @@ const orderItemCustomerSelect = {
     size: true,
     color: true,
     discountAmount: true,
+    productImage: true,
     createdAt: true,
 };
 const customerOrderSelect = {
@@ -127,6 +128,7 @@ let OrdersService = class OrdersService {
                             quantity: true,
                             unitPrice: true,
                             subtotal: true,
+                            productImage: true,
                             product: {
                                 select: {
                                     id: true,
@@ -211,6 +213,8 @@ let OrdersService = class OrdersService {
             }
             if (order.status !== 'CANCELLED' && dto.status === 'CANCELLED') {
                 for (const item of order.items) {
+                    if (!item.variantId)
+                        continue;
                     const variant = await transaction.productVariant.findUnique({
                         where: { id: item.variantId },
                         select: { id: true, stock: true },
@@ -289,9 +293,15 @@ let OrdersService = class OrdersService {
                     where: {
                         id: item.variantId,
                         isActive: true,
-                        product: { isActive: true },
+                        product: { isActive: true, deletedAt: null },
                     },
-                    include: { product: true },
+                    include: {
+                        product: {
+                            include: {
+                                images: { orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }] },
+                            },
+                        },
+                    },
                 });
                 if (!variant)
                     throw new BadRequestException('A selected product variant is unavailable');
@@ -323,6 +333,9 @@ let OrdersService = class OrdersService {
                         note: `Customer order ${orderNumber}`,
                     },
                 });
+                const primaryImage = variant.product.images?.find((img) => img.isPrimary)?.url ||
+                    variant.product.images?.[0]?.url ||
+                    undefined;
                 orderItems.push({
                     productId: variant.productId,
                     variantId: variant.id,
@@ -334,6 +347,7 @@ let OrdersService = class OrdersService {
                     subtotal: lineTotal,
                     size: variant.sizeLabel || variant.size,
                     color: variant.color,
+                    productImage: primaryImage,
                 });
             }
             let discountAmount = 0;

@@ -51,7 +51,7 @@ __decorate([
     __metadata("design:type", String)
 ], ProductQueryDto.prototype, "category", void 0);
 __decorate([
-    ApiPropertyOptional({ enum: ['Active', 'Low Stock', 'Out of Stock', 'All'] }),
+    ApiPropertyOptional({ enum: ['Active', 'Low Stock', 'Out of Stock', 'Archived', 'All'] }),
     IsString(),
     IsOptional(),
     __metadata("design:type", String)

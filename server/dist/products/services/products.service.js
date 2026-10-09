@@ -184,13 +184,16 @@ let ProductsService = ProductsService_1 = class ProductsService {
     }
     async findBySlug(slug) {
         const product = await this.prisma.product.findFirst({
-            where: { OR: [{ slug }, { id: slug }], isActive: true },
+            where: { OR: [{ slug }, { id: slug }], isActive: true, deletedAt: null },
             include: {
                 category: true,
                 images: { orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }] },
                 variants: { where: { isActive: true } },
                 reviews: {
                     where: { status: 'APPROVED' },
+                    include: {
+                        customer: { select: { firstName: true, lastName: true } },
+                    },
                     take: 10,
                     orderBy: { createdAt: 'desc' },
                 },
@@ -215,7 +218,7 @@ let ProductsService = ProductsService_1 = class ProductsService {
     }
     async findRelated(slug, relationType) {
         const product = await this.prisma.product.findFirst({
-            where: { OR: [{ slug }, { id: slug }], isActive: true },
+            where: { OR: [{ slug }, { id: slug }], isActive: true, deletedAt: null },
             select: { id: true, categoryId: true },
         });
         if (!product)
@@ -224,7 +227,7 @@ let ProductsService = ProductsService_1 = class ProductsService {
             where: {
                 sourceProductId: product.id,
                 relationType,
-                targetProduct: { isActive: true },
+                targetProduct: { isActive: true, deletedAt: null },
             },
             orderBy: { sortOrder: 'asc' },
             take: 8,
@@ -244,6 +247,7 @@ let ProductsService = ProductsService_1 = class ProductsService {
         const relatedProducts = await this.prisma.product.findMany({
             where: {
                 isActive: true,
+                deletedAt: null,
                 categoryId: product.categoryId,
                 id: { not: product.id },
             },
@@ -286,6 +290,7 @@ let ProductsService = ProductsService_1 = class ProductsService {
                     isFeatured: dto.isFeatured ?? false,
                     isNewArrival: dto.isNewArrival ?? true,
                     isBestSeller: dto.isBestSeller ?? false,
+                    tags: normalizeProductTags(dto.tags),
                     categoryId: dto.categoryId,
                     alertThreshold: dto.alertThreshold ?? 5,
                     variants: dto.variants?.length
@@ -339,6 +344,14 @@ let ProductsService = ProductsService_1 = class ProductsService {
         if (!existing)
             throw new NotFoundException(`Garment not found: ${id}`);
         const targetId = existing.id;
+        if (dto.categoryId !== undefined) {
+            const category = await this.prisma.category.findUnique({
+                where: { id: dto.categoryId },
+            });
+            if (!category) {
+                throw new NotFoundException(`Category not found with id: ${dto.categoryId}`);
+            }
+        }
         const previousImages = await this.prisma.productImage.findMany({
             where: { productId: targetId },
             select: { publicId: true },
@@ -380,7 +393,9 @@ let ProductsService = ProductsService_1 = class ProductsService {
                     ...(dto.careInstructions !== undefined && {
                         careInstructions: dto.careInstructions,
                     }),
-                    ...(dto.tags !== undefined && { tags: dto.tags }),
+                    ...(dto.tags !== undefined && {
+                        tags: normalizeProductTags(dto.tags),
+                    }),
                     ...(dto.alertThreshold !== undefined && {
                         alertThreshold: dto.alertThreshold,
                     }),
@@ -412,7 +427,9 @@ let ProductsService = ProductsService_1 = class ProductsService {
                     where: { productId: targetId },
                     select: { variantId: true },
                 });
-                const protectedVariantIds = orderVariants.map((o) => o.variantId);
+                const protectedVariantIds = orderVariants
+                    .map((o) => o.variantId)
+                    .filter((id) => Boolean(id));
                 await transaction.productVariant.deleteMany({
                     where: {
                         productId: targetId,
@@ -483,6 +500,61 @@ let ProductsService = ProductsService_1 = class ProductsService {
         }
         return updatedProduct;
     }
+    async archive(id) {
+        const existing = await this.prisma.product.findFirst({
+            where: { OR: [{ id }, { slug: id }] },
+            select: { id: true, name: true, isActive: true, deletedAt: true },
+        });
+        if (!existing) {
+            throw new NotFoundException(`Product not found with identifier: ${id}`);
+        }
+        if (!existing.isActive && existing.deletedAt) {
+            throw new BadRequestException(`Product "${existing.name}" is already archived`);
+        }
+        const updated = await this.prisma.product.update({
+            where: { id: existing.id },
+            data: {
+                isActive: false,
+                deletedAt: new Date(),
+            },
+            include: {
+                category: true,
+                images: true,
+                variants: true,
+            },
+        });
+        this.logger.log(`Product "${existing.name}" (${existing.id}) successfully archived.`);
+        return {
+            message: `Product "${existing.name}" archived successfully`,
+            data: updated,
+        };
+    }
+    async restore(id) {
+        const existing = await this.prisma.product.findFirst({
+            where: { OR: [{ id }, { slug: id }] },
+            select: { id: true, name: true, isActive: true, deletedAt: true },
+        });
+        if (!existing) {
+            throw new NotFoundException(`Product not found with identifier: ${id}`);
+        }
+        const updated = await this.prisma.product.update({
+            where: { id: existing.id },
+            data: {
+                isActive: true,
+                deletedAt: null,
+            },
+            include: {
+                category: true,
+                images: true,
+                variants: true,
+            },
+        });
+        this.logger.log(`Product "${existing.name}" (${existing.id}) successfully restored.`);
+        return {
+            message: `Product "${existing.name}" restored successfully`,
+            data: updated,
+        };
+    }
     async delete(id) {
         const existing = await this.prisma.product.findFirst({
             where: { OR: [{ id }, { slug: id }] },
@@ -496,7 +568,17 @@ let ProductsService = ProductsService_1 = class ProductsService {
             throw new NotFoundException(`Product not found with identifier: ${id}`);
         }
         const targetId = existing.id;
+        const historicalOrderCount = await this.prisma.orderItem.count({
+            where: { productId: targetId },
+        });
         await this.prisma.$transaction(async (transaction) => {
+            await transaction.orderItem.updateMany({
+                where: { productId: targetId },
+                data: {
+                    productId: null,
+                    variantId: null,
+                },
+            });
             await transaction.productRelation.deleteMany({
                 where: {
                     OR: [{ sourceProductId: targetId }, { targetProductId: targetId }],
@@ -517,9 +599,6 @@ let ProductsService = ProductsService_1 = class ProductsService {
             await transaction.productImage.deleteMany({
                 where: { productId: targetId },
             });
-            await transaction.orderItem.deleteMany({
-                where: { productId: targetId },
-            });
             await transaction.productVariant.deleteMany({
                 where: { productId: targetId },
             });
@@ -532,18 +611,26 @@ let ProductsService = ProductsService_1 = class ProductsService {
         });
         const publicIds = existing.images
             .map((image) => image.publicId)
-            .filter((publicId) => publicId !== null);
-        const cleanup = await Promise.allSettled(publicIds.map((publicId) => this.cloudinary.destroyProductImage(publicId)));
-        const failedPublicIds = publicIds.filter((_, index) => cleanup[index].status === 'rejected');
-        if (failedPublicIds.length) {
-            this.logger.error(`Product image cleanup failed for: ${failedPublicIds.join(', ')}`);
-            return {
-                message: `Product "${existing.name}" deleted from the database`,
-                cleanupWarning: `Cloudinary cleanup failed for ${failedPublicIds.join(', ')}`,
-            };
+            .filter((publicId) => Boolean(publicId));
+        let cleanupWarning;
+        if (publicIds.length > 0) {
+            const cleanup = await Promise.allSettled(publicIds.map((publicId) => this.cloudinary.destroyProductImage(publicId)));
+            const failedPublicIds = publicIds.filter((_, index) => cleanup[index]?.status === 'rejected');
+            if (failedPublicIds.length > 0) {
+                this.logger.error(`Cloudinary image cleanup failed for product "${existing.name}" (${targetId}) assets: ${failedPublicIds.join(', ')}`);
+                cleanupWarning = `Product permanently deleted, but Cloudinary asset cleanup failed for ${failedPublicIds.join(', ')}`;
+            }
         }
         return {
-            message: `Product "${existing.name}" permanently deleted from database`,
+            message: cleanupWarning
+                ? `Product "${existing.name}" permanently deleted from database. Warning: Cloudinary cleanup failed.`
+                : `Product "${existing.name}" permanently deleted from database`,
+            data: {
+                id: targetId,
+                name: existing.name,
+                historicalOrdersPreserved: historicalOrderCount,
+                cleanupWarning,
+            },
         };
     }
 };
@@ -562,14 +649,21 @@ function buildProductWhere(query, isAdmin, excludedFacet) {
     const andConditions = [];
     if (!isAdmin) {
         where.isActive = true;
+        where.deletedAt = null;
         where.category = { is: { isActive: true } };
     }
     if (query.search) {
+        const searchText = query.search.trim().toLowerCase();
+        const searchTerms = searchText.split(/\s+/).filter(Boolean);
+        const tagSearchTerms = [
+            ...new Set([...searchTerms, searchTerms.join('-')]),
+        ];
         andConditions.push({
             OR: [
                 { name: { contains: query.search.trim(), mode: 'insensitive' } },
                 { sku: { contains: query.search.trim(), mode: 'insensitive' } },
                 { description: { contains: query.search.trim(), mode: 'insensitive' } },
+                { tags: { hasSome: tagSearchTerms } },
             ],
         });
     }
@@ -623,12 +717,21 @@ function buildProductWhere(query, isAdmin, excludedFacet) {
             })),
         });
     }
-    if (query.status === 'Active')
+    if (query.status === 'Active') {
         where.isActive = true;
-    if (query.status === 'Out of Stock') {
+        where.deletedAt = null;
+    }
+    else if (query.status === 'Archived') {
+        where.OR = [{ isActive: false }, { deletedAt: { not: null } }];
+    }
+    else if (query.status === 'Out of Stock') {
+        where.isActive = true;
+        where.deletedAt = null;
         where.variants = { none: { isActive: true, stock: { gt: 0 } } };
     }
     else if (query.status === 'Low Stock') {
+        where.isActive = true;
+        where.deletedAt = null;
         where.variants = { some: { isActive: true, stock: { gt: 0, lte: 5 } } };
     }
     else {
@@ -702,6 +805,13 @@ function buildProductWhere(query, isAdmin, excludedFacet) {
     if (andConditions.length)
         where.AND = andConditions;
     return where;
+}
+function normalizeProductTags(tags) {
+    return [
+        ...new Set((tags ?? [])
+            .map((tag) => tag.trim().toLowerCase())
+            .filter(Boolean)),
+    ];
 }
 function toSlug(value) {
     return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');

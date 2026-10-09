@@ -67,13 +67,43 @@ export class AdminProductsController {
     };
   }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Permanently remove product from database' })
-  async delete(@Param('id') id: string) {
-    const data = await this.productsService.delete(id);
+  @Patch(':id/archive')
+  @ApiOperation({ summary: 'Archive product (hide from customer storefront, preserve inventory & media)' })
+  async archive(@Param('id') id: string) {
+    const res = await this.productsService.archive(id);
     return {
-      message: data.message || 'Product permanently deleted from database',
-      data,
+      message: res.message,
+      data: res.data,
+    };
+  }
+
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore an archived product to active catalog' })
+  async restore(@Param('id') id: string) {
+    const res = await this.productsService.restore(id);
+    return {
+      message: res.message,
+      data: res.data,
+    };
+  }
+
+  @Delete(':id/permanent')
+  @ApiOperation({ summary: 'Permanently remove product from database and cleanup Cloudinary media assets' })
+  async deletePermanent(@Param('id') id: string) {
+    const res = await this.productsService.delete(id);
+    return {
+      message: res.message,
+      data: res.data,
+    };
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Permanently remove product from database and cleanup Cloudinary media assets' })
+  async delete(@Param('id') id: string) {
+    const res = await this.productsService.delete(id);
+    return {
+      message: res.message,
+      data: res.data,
     };
   }
 }

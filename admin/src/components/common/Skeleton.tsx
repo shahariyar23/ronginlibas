@@ -84,22 +84,6 @@ export function DashboardSkeleton() {
         ))}
       </div>
 
-      {/* Secondary Highlights Banner */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div
-            key={i}
-            className="bg-white border border-[#deddd3] p-4 flex items-center gap-4 shadow-xs"
-          >
-            <Skeleton className="w-10 h-10 shrink-0" />
-            <div className="space-y-1.5 flex-1">
-              <Skeleton className="h-3 w-20" />
-              <Skeleton className="h-5 w-28" />
-            </div>
-          </div>
-        ))}
-      </div>
-
       {/* Analytics Grid: Chart + Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left: Revenue Trends chart skeleton */}
@@ -146,6 +130,59 @@ export function DashboardSkeleton() {
         </div>
       </div>
 
+      {/* Operational Metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3 bg-white p-3.5 border border-[#deddd3]">
+            <Skeleton className="h-8 w-8 shrink-0" />
+            <div className="space-y-1.5">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-5 w-20" />
+              <Skeleton className="h-2.5 w-28" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Daily Sales */}
+      <div className="bg-white border border-[#deddd3] p-6 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 border-b border-[#deddd3] pb-4">
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-44" />
+            <Skeleton className="h-6 w-32" />
+          </div>
+          <div className="flex gap-3">
+            <Skeleton className="h-20 w-36" />
+            <Skeleton className="h-20 w-36" />
+          </div>
+        </div>
+        <div className="grid h-52 grid-cols-7 items-end gap-4">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div key={i} className="flex h-full flex-col items-center justify-end gap-2">
+              <Skeleton className="h-3 w-12" />
+              <Skeleton className="w-full" style={{ height: `${35 + ((i * 37) % 60)}%` }} />
+              <Skeleton className="h-3 w-10" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Needs Attention */}
+      <div className="bg-white border border-[#deddd3] p-6 shadow-xs">
+        <div className="mb-4 border-b border-[#deddd3] pb-4">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="mt-2 h-3 w-64" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between border border-[#deddd3] p-3">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-5 w-8" />
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Recent Orders Table Skeleton */}
       <div className="bg-white border border-[#deddd3] p-6 shadow-xs space-y-4">
         <div className="flex items-center justify-between border-b border-[#f0eee7] pb-3">
@@ -169,6 +206,22 @@ export function DashboardSkeleton() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Top Selling Products */}
+      <div className="bg-white border border-[#deddd3] p-6 shadow-xs space-y-4">
+        <div className="border-b border-[#deddd3] pb-4">
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="mt-2 h-3 w-72" />
+        </div>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex items-center justify-between gap-4 border-b border-[#f0eee7] py-3">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-12" />
+            <Skeleton className="h-4 w-20" />
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -4,12 +4,15 @@ export interface AdminProduct {
   sku: string;
   barcode?: string;
   category: string;
+  categoryId?: string;
   price: number;
   promotionalPrice?: number;
   costOfGoods?: number;
   stock: number;
   alertThreshold?: number;
-  status: 'Active' | 'Low Stock' | 'Out of Stock';
+  status: 'Active' | 'Low Stock' | 'Out of Stock' | 'Archived';
+  isActive?: boolean;
+  deletedAt?: string | null;
   image: string;
   images?: {
     url: string;

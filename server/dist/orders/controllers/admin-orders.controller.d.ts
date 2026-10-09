@@ -19,7 +19,7 @@ export declare class AdminOrdersController {
                 id: string;
             } | null;
             items: ({
-                product: {
+                product: ({
                     images: {
                         url: string;
                         id: string;
@@ -57,7 +57,8 @@ export declare class AdminOrdersController {
                     isFeatured: boolean;
                     isNewArrival: boolean;
                     isBestSeller: boolean;
-                };
+                    deletedAt: Date | null;
+                }) | null;
                 variant: {
                     id: string;
                     isActive: boolean;
@@ -72,15 +73,16 @@ export declare class AdminOrdersController {
                     sizeType: string | null;
                     stock: number;
                     priceOverride: import("@prisma/client/runtime/library").Decimal | null;
-                };
+                } | null;
             } & {
+                productImage: string | null;
                 id: string;
                 createdAt: Date;
                 subtotal: import("@prisma/client/runtime/library").Decimal;
                 discountAmount: import("@prisma/client/runtime/library").Decimal;
                 orderId: string;
-                productId: string;
-                variantId: string;
+                productId: string | null;
+                variantId: string | null;
                 productName: string;
                 variantName: string;
                 sku: string;

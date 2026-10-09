@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, Bell, User, CheckCircle2, AlertTriangle, ShieldCheck, LogOut } from 'lucide-react';
+import { Search, Bell, User, CheckCircle2, AlertTriangle, ShieldCheck, LogOut, CheckCheck } from 'lucide-react';
 import { useAdmin } from '@/context/AdminContext';
 import { adminApi } from '@/lib/api';
 
@@ -14,6 +14,68 @@ export function Header() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [userEmail, setUserEmail] = useState('admin@ronginlibas.com');
   const [userRole, setUserRole] = useState('Super Admin');
+  const [readTimestamp, setReadTimestamp] = useState<number | null>(null);
+
+  const notificationRef = useRef<HTMLDivElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  const pendingOrders = orders.filter((o) => o.status === 'PENDING');
+  const lowStockItems = inventory.filter((i) => i.stock <= 5);
+  const totalAlerts = pendingOrders.length + lowStockItems.length;
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('rongin_admin_notifications_read_at');
+      if (saved) {
+        setReadTimestamp(Number(saved));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const isMarkedRead = readTimestamp !== null;
+  const unreadCount = isMarkedRead ? 0 : totalAlerts;
+
+  const handleMarkAllAsRead = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const now = Date.now();
+    setReadTimestamp(now);
+    try {
+      localStorage.setItem('rongin_admin_notifications_read_at', String(now));
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleMarkAllAsUnread = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setReadTimestamp(null);
+    try {
+      localStorage.removeItem('rongin_admin_notifications_read_at');
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target as Node)
+      ) {
+        setShowNotifications(false);
+      }
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowProfileMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const user = adminApi.auth.getUser();
@@ -92,70 +154,116 @@ export function Header() {
         </div>
 
         {/* Notifications */}
-        <div className="relative">
+        <div className="relative" ref={notificationRef}>
           <button
             onClick={() => {
               setShowNotifications(!showNotifications);
               setShowProfileMenu(false);
             }}
             className="relative p-2 text-[#404945] hover:text-[#073a2d] hover:bg-[#f0eee7] transition-colors"
-            title="Notifications"
+            title={unreadCount > 0 ? `${unreadCount} new alerts` : '0 notifications'}
+            aria-label="Notifications"
           >
             <Bell className="w-4 h-4" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#c79a45] rounded-full ring-2 ring-[#fbf9f2]" />
+            <span
+              className={`absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 text-[10px] font-bold font-sans rounded-full flex items-center justify-center leading-none ring-2 ring-[#fbf9f2] shadow-xs select-none transition-colors ${
+                unreadCount > 0
+                  ? 'bg-[#ba1a1a] text-white'
+                  : 'bg-[#deddd3] text-[#555e5a]'
+              }`}
+            >
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 bg-white border border-[#deddd3] shadow-lg p-4 z-50">
-              <div className="flex items-center justify-between border-b border-[#deddd3] pb-2 mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#073a2d]">
-                  Atelier Dispatch Feed
-                </span>
-                <span className="text-[10px] text-[#c79a45] font-semibold bg-[#f5eedf] px-1.5 py-0.5">
-                  {orders.filter((o) => o.status === 'PENDING').length +
-                    inventory.filter((i) => i.stock <= 5).length}{' '}
-                  ALERTS
-                </span>
+            <div className="absolute right-0 mt-2 w-96 bg-white border border-[#deddd3] shadow-lg p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center justify-between border-b border-[#deddd3] pb-2.5 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#073a2d]">
+                    Atelier Dispatch Feed
+                  </span>
+                  <span
+                    className={`text-[10px] font-semibold px-1.5 py-0.5 ${
+                      unreadCount > 0
+                        ? 'bg-[#ffdad6] text-[#ba1a1a]'
+                        : 'bg-[#e4e2dc] text-[#555e5a]'
+                    }`}
+                  >
+                    {unreadCount} ALERTS
+                  </span>
+                </div>
+                {unreadCount > 0 ? (
+                  <button
+                    onClick={handleMarkAllAsRead}
+                    className="text-[11px] text-[#073a2d] hover:text-[#ba1a1a] hover:underline font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                    title="Mark all notifications as read"
+                  >
+                    <CheckCheck className="w-3.5 h-3.5" />
+                    <span>Mark Read</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleMarkAllAsUnread}
+                    className="text-[10px] text-[#717975] hover:text-[#073a2d] hover:underline font-normal cursor-pointer transition-colors"
+                    title="Reset to unread count"
+                  >
+                    <span>Mark Unread</span>
+                  </button>
+                )}
               </div>
-              <div className="space-y-3 text-xs max-h-72 overflow-y-auto">
-                {orders.filter((o) => o.status === 'PENDING').length === 0 &&
-                inventory.filter((i) => i.stock <= 5).length === 0 ? (
-                  <p className="text-[11px] text-[#717975] py-2 text-center">
+              <div className="space-y-1.5 text-xs max-h-80 overflow-y-auto pr-1">
+                {totalAlerts === 0 ? (
+                  <p className="text-[11px] text-[#717975] py-6 text-center">
                     All atelier operations nominal. No pending alerts.
                   </p>
                 ) : (
                   <>
-                    {orders
-                      .filter((o) => o.status === 'PENDING')
-                      .slice(0, 3)
-                      .map((o) => (
-                        <div key={o.id} className="flex items-start gap-2.5 pb-2 border-b border-[#f0eee7]">
-                          <CheckCircle2 className="w-4 h-4 text-[#0d4d3b] shrink-0 mt-0.5" />
-                          <div>
-                            <p className="font-semibold text-[#1b1c18]">Order {o.id} Pending</p>
-                            <p className="text-[11px] text-[#69726d]">
-                              {o.customerName} • ৳{o.amount.toLocaleString()} ({o.paymentMethod})
-                            </p>
-                            <span className="text-[10px] text-[#717975]">{o.dateStr}</span>
-                          </div>
+                    {pendingOrders.map((o) => (
+                      <div
+                        key={o.id}
+                        onClick={() => {
+                          setShowNotifications(false);
+                          router.push('/orders');
+                        }}
+                        className={`flex items-start gap-2.5 p-2 rounded-xs hover:bg-[#fbf9f2] border-b border-[#f0eee7] transition-all cursor-pointer ${
+                          isMarkedRead ? 'opacity-65' : ''
+                        }`}
+                      >
+                        <CheckCircle2 className="w-4 h-4 text-[#0d4d3b] shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-[#1b1c18] truncate">
+                            Order {o.id} Pending
+                          </p>
+                          <p className="text-[11px] text-[#69726d] truncate">
+                            {o.customerName} • ৳{o.amount.toLocaleString()} ({o.paymentMethod})
+                          </p>
+                          <span className="text-[10px] text-[#717975]">{o.dateStr}</span>
                         </div>
-                      ))}
+                      </div>
+                    ))}
 
-                    {inventory
-                      .filter((i) => i.stock <= 5)
-                      .slice(0, 3)
-                      .map((i) => (
-                        <div key={i.id} className="flex items-start gap-2.5">
-                          <AlertTriangle className="w-4 h-4 text-[#c79a45] shrink-0 mt-0.5" />
-                          <div>
-                            <p className="font-semibold text-[#1b1c18]">Low Stock Alert</p>
-                            <p className="text-[11px] text-[#69726d]">
-                              {i.name} has only {i.stock} units remaining
-                            </p>
-                            <span className="text-[10px] text-[#717975]">SKU: {i.sku}</span>
-                          </div>
+                    {lowStockItems.map((i) => (
+                      <div
+                        key={i.id}
+                        onClick={() => {
+                          setShowNotifications(false);
+                          router.push('/inventory');
+                        }}
+                        className={`flex items-start gap-2.5 p-2 rounded-xs hover:bg-[#fbf9f2] border-b border-[#f0eee7] transition-all cursor-pointer ${
+                          isMarkedRead ? 'opacity-65' : ''
+                        }`}
+                      >
+                        <AlertTriangle className="w-4 h-4 text-[#c79a45] shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-[#1b1c18] truncate">Low Stock Alert</p>
+                          <p className="text-[11px] text-[#69726d] truncate">
+                            {i.name} has only {i.stock} units remaining
+                          </p>
+                          <span className="text-[10px] text-[#717975]">SKU: {i.sku}</span>
                         </div>
-                      ))}
+                      </div>
+                    ))}
                   </>
                 )}
               </div>
@@ -164,7 +272,7 @@ export function Header() {
         </div>
 
         {/* User Profile */}
-        <div className="relative">
+        <div className="relative" ref={profileMenuRef}>
           <button
             onClick={() => {
               setShowProfileMenu(!showProfileMenu);

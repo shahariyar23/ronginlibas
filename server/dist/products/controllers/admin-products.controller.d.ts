@@ -76,6 +76,7 @@ export declare class AdminProductsController {
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
+            deletedAt: Date | null;
         };
     }>;
     create(dto: CreateProductDto): Promise<{
@@ -133,6 +134,7 @@ export declare class AdminProductsController {
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
+            deletedAt: Date | null;
         };
     }>;
     update(id: string, dto: UpdateProductDto): Promise<{
@@ -202,6 +204,7 @@ export declare class AdminProductsController {
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
+            deletedAt: Date | null;
         }) | {
             imageCleanupWarning: string;
             category: {
@@ -267,16 +270,165 @@ export declare class AdminProductsController {
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
+            deletedAt: Date | null;
+        };
+    }>;
+    archive(id: string): Promise<{
+        message: string;
+        data: {
+            category: {
+                description: string | null;
+                id: string;
+                isActive: boolean;
+                createdAt: Date;
+                updatedAt: Date;
+                name: string;
+                sortOrder: number;
+                slug: string;
+                image: string | null;
+                parentId: string | null;
+            };
+            variants: {
+                id: string;
+                isActive: boolean;
+                createdAt: Date;
+                updatedAt: Date;
+                measurements: import("@prisma/client/runtime/library").JsonValue | null;
+                productId: string;
+                sku: string;
+                size: string;
+                color: string;
+                sizeLabel: string | null;
+                sizeType: string | null;
+                stock: number;
+                priceOverride: import("@prisma/client/runtime/library").Decimal | null;
+            }[];
+            images: {
+                url: string;
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                productId: string;
+                publicId: string | null;
+                altText: string | null;
+                sortOrder: number;
+                isPrimary: boolean;
+            }[];
+        } & {
+            description: string | null;
+            id: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            tags: string[];
+            sku: string;
+            slug: string;
+            shortDescription: string | null;
+            price: import("@prisma/client/runtime/library").Decimal;
+            compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
+            costPrice: import("@prisma/client/runtime/library").Decimal | null;
+            gender: import("@prisma/client").$Enums.Gender;
+            fabric: string | null;
+            fabricOrigin: string | null;
+            fit: string | null;
+            gsm: number | null;
+            careInstructions: string | null;
+            alertThreshold: number;
+            isExpressAvailable: boolean;
+            categoryId: string;
+            isFeatured: boolean;
+            isNewArrival: boolean;
+            isBestSeller: boolean;
+            deletedAt: Date | null;
+        };
+    }>;
+    restore(id: string): Promise<{
+        message: string;
+        data: {
+            category: {
+                description: string | null;
+                id: string;
+                isActive: boolean;
+                createdAt: Date;
+                updatedAt: Date;
+                name: string;
+                sortOrder: number;
+                slug: string;
+                image: string | null;
+                parentId: string | null;
+            };
+            variants: {
+                id: string;
+                isActive: boolean;
+                createdAt: Date;
+                updatedAt: Date;
+                measurements: import("@prisma/client/runtime/library").JsonValue | null;
+                productId: string;
+                sku: string;
+                size: string;
+                color: string;
+                sizeLabel: string | null;
+                sizeType: string | null;
+                stock: number;
+                priceOverride: import("@prisma/client/runtime/library").Decimal | null;
+            }[];
+            images: {
+                url: string;
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                productId: string;
+                publicId: string | null;
+                altText: string | null;
+                sortOrder: number;
+                isPrimary: boolean;
+            }[];
+        } & {
+            description: string | null;
+            id: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            tags: string[];
+            sku: string;
+            slug: string;
+            shortDescription: string | null;
+            price: import("@prisma/client/runtime/library").Decimal;
+            compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
+            costPrice: import("@prisma/client/runtime/library").Decimal | null;
+            gender: import("@prisma/client").$Enums.Gender;
+            fabric: string | null;
+            fabricOrigin: string | null;
+            fit: string | null;
+            gsm: number | null;
+            careInstructions: string | null;
+            alertThreshold: number;
+            isExpressAvailable: boolean;
+            categoryId: string;
+            isFeatured: boolean;
+            isNewArrival: boolean;
+            isBestSeller: boolean;
+            deletedAt: Date | null;
+        };
+    }>;
+    deletePermanent(id: string): Promise<{
+        message: string;
+        data: {
+            id: string;
+            name: string;
+            historicalOrdersPreserved: number;
+            cleanupWarning: string | undefined;
         };
     }>;
     delete(id: string): Promise<{
         message: string;
         data: {
-            message: string;
-            cleanupWarning: string;
-        } | {
-            message: string;
-            cleanupWarning?: undefined;
+            id: string;
+            name: string;
+            historicalOrdersPreserved: number;
+            cleanupWarning: string | undefined;
         };
     }>;
 }

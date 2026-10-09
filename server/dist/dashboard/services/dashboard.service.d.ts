@@ -1,49 +1,80 @@
 import { PrismaService } from '../../prisma/prisma.service.js';
+export type DashboardPeriod = '7' | '30' | 'month';
 export declare class DashboardService {
     private readonly prisma;
     constructor(prisma: PrismaService);
-    getAdminDashboardMetrics(): Promise<{
+    getAdminDashboardMetrics(period?: DashboardPeriod, now?: Date): Promise<{
+        period: DashboardPeriod;
         metrics: {
             totalSales: number;
-            salesGrowth: string;
             totalOrders: number;
-            pendingOrders: number;
-            deliveryRate: string;
-            totalProducts: number;
-            activeCatalog: number;
+            activeProducts: number;
             totalCustomers: number;
-            vipMembersCount: null;
-            lowStockCount: number;
-            stockoutCount: number;
         };
         salesOverview: {
+            chartData: {
+                dhakaSales: number;
+                nationalSales: number;
+                unclassifiedSales: number;
+                date: string;
+                day: string;
+            }[];
             peakPoint: {
                 label: string;
                 amount: number;
                 day: string;
             } | null;
-            chartData: {
-                day: string;
-                dhakaSales: number;
-                nationalSales: number;
-            }[];
             kpis: {
-                averageOrderValue: number;
-                conversionRate: string;
-                conversionGrowth: string;
-                fulfillmentVelocity: string;
+                averageOrderValue: number | null;
+                deliveryRate: number | null;
+                conversionRate: null;
+                fulfillmentVelocityHours: number | null;
             };
+        };
+        dailySales: {
+            today: {
+                date: string;
+                total: number;
+                orderCount: number;
+            };
+            yesterday: {
+                date: string;
+                total: number;
+                orderCount: number;
+            };
+            lastSevenDays: {
+                total: number;
+                date: string;
+                day: string;
+                orderCount: number;
+            }[];
+        };
+        needsAttention: {
+            pendingOrders: number;
+            lowStockVariants: number;
+            outOfStockVariants: number;
+            pendingReviews: number;
+            failedPayments: number;
         };
         recentOrders: {
             id: string;
+            orderNumber: string;
             customerName: string;
-            phone: string;
+            customerLocation: string;
             amount: number;
             status: import("@prisma/client").$Enums.OrderStatus;
             paymentMethod: import("@prisma/client").$Enums.PaymentMethod;
             createdAt: Date;
         }[];
+        topSellingProducts: {
+            name: string;
+            sku: string;
+            productId: string;
+            unitsSold: number;
+            revenue: number;
+        }[];
         lowStockProducts: {
+            id: string;
             variantId: string;
             name: string;
             sku: string;

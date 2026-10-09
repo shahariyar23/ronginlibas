@@ -34,7 +34,7 @@ export class ProductQueryDto extends PaginationQueryDto {
   @IsOptional()
   category?: string;
 
-  @ApiPropertyOptional({ enum: ['Active', 'Low Stock', 'Out of Stock', 'All'] })
+  @ApiPropertyOptional({ enum: ['Active', 'Low Stock', 'Out of Stock', 'Archived', 'All'] })
   @IsString()
   @IsOptional()
   status?: string;

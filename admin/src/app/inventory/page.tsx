@@ -77,6 +77,11 @@ export default function InventoryPage() {
   const [historyRecords, setHistoryRecords] = useState<InventoryTransactionRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
 
+  // Settings saving states
+  const [isSavingStoreInfo, setIsSavingStoreInfo] = useState<boolean>(false);
+  const [isSavingDelivery, setIsSavingDelivery] = useState<boolean>(false);
+  const [isSavingPayment, setIsSavingPayment] = useState<boolean>(false);
+
   // Settings form states
   const [storeName, setStoreName] = useState(settings.storeName);
   const [phone, setPhone] = useState(settings.phone);
@@ -221,26 +226,41 @@ export default function InventoryPage() {
     document.body.removeChild(link);
   };
 
-  const handleSaveStoreInfo = () => {
-    updateSettings({ storeName, phone, whatsapp, website, facebook });
+  const handleSaveStoreInfo = async () => {
+    setIsSavingStoreInfo(true);
+    try {
+      await updateSettings({ storeName, phone, whatsapp, website, facebook });
+    } finally {
+      setIsSavingStoreInfo(false);
+    }
   };
 
-  const handleSaveDelivery = () => {
-    updateSettings({
-      dhakaDeliveryCharge: parseFloat(dhakaCharge) || 80,
-      outsideDhakaDeliveryCharge: parseFloat(outsideCharge) || 150,
-      freeDeliveryThreshold: parseFloat(threshold) || 3000,
-    });
+  const handleSaveDelivery = async () => {
+    setIsSavingDelivery(true);
+    try {
+      await updateSettings({
+        dhakaDeliveryCharge: parseFloat(dhakaCharge) || 80,
+        outsideDhakaDeliveryCharge: parseFloat(outsideCharge) || 150,
+        freeDeliveryThreshold: parseFloat(threshold) || 3000,
+      });
+    } finally {
+      setIsSavingDelivery(false);
+    }
   };
 
-  const handleSavePayment = () => {
-    updateSettings({
-      codEnabled: cod,
-      bkashEnabled: bkash,
-      bkashWallet,
-      nagadEnabled: nagad,
-      nagadWallet,
-    });
+  const handleSavePayment = async () => {
+    setIsSavingPayment(true);
+    try {
+      await updateSettings({
+        codEnabled: cod,
+        bkashEnabled: bkash,
+        bkashWallet,
+        nagadEnabled: nagad,
+        nagadWallet,
+      });
+    } finally {
+      setIsSavingPayment(false);
+    }
   };
 
   if (isLoading) {
@@ -1156,11 +1176,23 @@ export default function InventoryPage() {
             </div>
 
             <button
+              type="button"
+              disabled={isSavingStoreInfo}
+              aria-busy={isSavingStoreInfo}
               onClick={handleSaveStoreInfo}
-              className="w-full py-2.5 bg-[#00231a] hover:bg-[#073a2d] text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              className="w-full py-2.5 bg-[#00231a] hover:bg-[#073a2d] text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
             >
-              <Check className="w-4 h-4" />
-              <span>SAVE STORE INFO</span>
+              {isSavingStoreInfo ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>SAVING STORE INFO...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>SAVE STORE INFO</span>
+                </>
+              )}
             </button>
           </div>
 
@@ -1256,11 +1288,23 @@ export default function InventoryPage() {
             </div>
 
             <button
+              type="button"
+              disabled={isSavingDelivery}
+              aria-busy={isSavingDelivery}
               onClick={handleSaveDelivery}
-              className="w-full py-2.5 bg-[#00231a] hover:bg-[#073a2d] text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              className="w-full py-2.5 bg-[#00231a] hover:bg-[#073a2d] text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
             >
-              <Truck className="w-4 h-4" />
-              <span>UPDATE DELIVERY SETTINGS</span>
+              {isSavingDelivery ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>UPDATING DELIVERY...</span>
+                </>
+              ) : (
+                <>
+                  <Truck className="w-4 h-4" />
+                  <span>UPDATE DELIVERY SETTINGS</span>
+                </>
+              )}
             </button>
           </div>
 
@@ -1350,11 +1394,23 @@ export default function InventoryPage() {
             </div>
 
             <button
+              type="button"
+              disabled={isSavingPayment}
+              aria-busy={isSavingPayment}
               onClick={handleSavePayment}
-              className="w-full py-2.5 bg-[#00231a] hover:bg-[#073a2d] text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              className="w-full py-2.5 bg-[#00231a] hover:bg-[#073a2d] text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
             >
-              <Check className="w-4 h-4" />
-              <span>SAVE PAYMENT SETTINGS</span>
+              {isSavingPayment ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>SAVING PAYMENT SETTINGS...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>SAVE PAYMENT SETTINGS</span>
+                </>
+              )}
             </button>
           </div>
         </div>

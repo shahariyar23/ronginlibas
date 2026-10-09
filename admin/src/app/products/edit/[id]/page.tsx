@@ -76,6 +76,7 @@ export default function EditProductPage() {
   // Form states
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Panjabi');
+  const [categoryId, setCategoryId] = useState('');
   const [fabricNote, setFabricNote] = useState('');
   const [description, setDescription] = useState('');
 
@@ -135,6 +136,7 @@ export default function EditProductPage() {
       if (cached && isMounted) {
         setTitle(cached.name || '');
         setCategory(cached.category || 'Panjabi');
+        setCategoryId(cached.categoryId || '');
         setFabricNote(cached.fabricNote || '');
         setDescription(cached.description || '');
         setRegularPrice(cached.price !== undefined ? cached.price.toString() : '');
@@ -147,7 +149,7 @@ export default function EditProductPage() {
         }
         setIsFeatured(cached.featured ?? false);
         setLifecycleState(cached.status === 'Active' ? 'Active' : 'Draft');
-        if (cached.tags?.length) setTags(cached.tags);
+        setTags(Array.isArray(cached.tags) ? cached.tags : []);
         setImages(cached.images ?? []);
       }
 
@@ -157,7 +159,10 @@ export default function EditProductPage() {
         if (detailed && isMounted) {
           loadedProductIdRef.current = productId;
           setTitle(detailed.name || '');
-          setCategory(detailed.category?.name || 'Panjabi');
+          const initialCategoryId = detailed.categoryId || detailed.category?.id || '';
+          const initialCategoryName = detailed.category?.name || 'Panjabi';
+          setCategoryId(initialCategoryId);
+          setCategory(initialCategoryName);
           setFabricNote(detailed.fabric || '');
           setDescription(detailed.description || '');
           setRegularPrice(detailed.price !== undefined ? detailed.price.toString() : '');
@@ -186,9 +191,7 @@ export default function EditProductPage() {
           setIsFeatured(detailed.isFeatured ?? false);
           setLifecycleState(detailed.isActive ? 'Active' : 'Draft');
 
-          if (detailed.tags && Array.isArray(detailed.tags)) {
-            setTags(detailed.tags);
-          }
+          setTags(Array.isArray(detailed.tags) ? detailed.tags : []);
 
           setImages((detailed.images ?? []).map((img: any) =>
             typeof img === 'string' ? { url: img } : {
@@ -253,10 +256,22 @@ export default function EditProductPage() {
     };
   }, [productId, getProductDetails, products]);
 
-  const handleCategoryChange = (newCat: string) => {
-    setCategory(newCat);
-    if (!sku || !isSkuManuallyEdited) {
-      setSku(generateCategorySku(newCat));
+  const handleCategoryChange = (selectedIdOrName: string) => {
+    const matched = categories.find(
+      (c) => c.id === selectedIdOrName || c.name.toLowerCase() === selectedIdOrName.toLowerCase(),
+    );
+    if (matched) {
+      setCategoryId(matched.id);
+      setCategory(matched.name);
+      if (!sku || !isSkuManuallyEdited) {
+        setSku(generateCategorySku(matched.name));
+      }
+    } else {
+      setCategoryId(selectedIdOrName);
+      setCategory(selectedIdOrName);
+      if (!sku || !isSkuManuallyEdited) {
+        setSku(generateCategorySku(selectedIdOrName));
+      }
     }
   };
 
@@ -491,8 +506,9 @@ export default function EditProductPage() {
   const addTag = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && tagInput.trim()) {
       e.preventDefault();
-      if (!tags.includes(tagInput.trim())) {
-        setTags([...tags, tagInput.trim()]);
+      const newTag = tagInput.trim().toLowerCase();
+      if (!tags.some((tag) => tag.toLowerCase() === newTag)) {
+        setTags([...tags, newTag]);
       }
       setTagInput('');
     }
@@ -519,6 +535,7 @@ export default function EditProductPage() {
         sku: sku,
         barcode: barcode || undefined,
         category: category,
+        categoryId: categoryId || categories.find((c) => c.name.toLowerCase() === category.toLowerCase())?.id,
         price: finalPrice,
         promotionalPrice: promotionalPrice ? parseFloat(promotionalPrice) : undefined,
         costOfGoods: costOfGoods ? parseFloat(costOfGoods) : undefined,
@@ -625,6 +642,7 @@ export default function EditProductPage() {
             <button
               type="button"
               disabled={isSubmitting}
+              aria-busy={isSubmitting}
               onClick={() => handleSave(true)}
               className="flex items-center gap-2 px-5 py-2.5 bg-[#00231a] hover:bg-[#073a2d] text-white text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-xs disabled:opacity-50"
             >
@@ -633,7 +651,7 @@ export default function EditProductPage() {
               ) : (
                 <Check className="w-3.5 h-3.5" />
               )}
-              <span>UPDATE PRODUCT</span>
+              <span>{isSubmitting ? 'SAVING CHANGES...' : 'UPDATE PRODUCT'}</span>
             </button>
           </div>
         </div>
@@ -677,15 +695,15 @@ export default function EditProductPage() {
                   Apparel Category <span className="text-[#ba1a1a]">*</span>
                 </label>
                 <select
-                  value={category}
+                  value={categoryId || categories.find((c) => c.name.toLowerCase() === category.toLowerCase())?.id || category}
                   onChange={(e) => handleCategoryChange(e.target.value)}
                   className="w-full mt-1.5 px-3 py-2.5 bg-[#fbf9f2] border border-[#deddd3] text-xs text-[#1b1c18] focus:border-[#073a2d] outline-hidden cursor-pointer"
                 >
-                  {category && !categories.some((c) => c.name.toLowerCase() === category.toLowerCase()) && (
-                    <option value={category}>{category}</option>
+                  {categoryId && !categories.some((c) => c.id === categoryId) && (
+                    <option value={categoryId}>{category || categoryId}</option>
                   )}
                   {categories.map((c) => (
-                    <option key={c.id} value={c.name}>
+                    <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
                   ))}
@@ -1446,9 +1464,14 @@ export default function EditProductPage() {
               <h2 className="font-serif text-base font-medium text-[#1b1c18]">Metadata & Curation</h2>
               <span className="text-[10px] text-[#717975] uppercase">Search Engine</span>
             </div>
+            <p className="text-[11px] text-[#717975]">
+              Search and campaign keywords for discovery. Category, size, color, fabric, price, and stock stay in their structured fields.
+            </p>
 
             <div className="flex flex-wrap gap-1.5">
-              {tags.map((tag) => (
+              {tags.length === 0 ? (
+                <span className="text-[11px] text-[#717975]">No tags added yet.</span>
+              ) : tags.map((tag) => (
                 <span
                   key={tag}
                   className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#f0eee7] border border-[#deddd3] text-[10px] font-bold text-[#404945] uppercase tracking-wider"
@@ -1494,6 +1517,7 @@ export default function EditProductPage() {
           <button
             type="button"
             disabled={isSubmitting}
+            aria-busy={isSubmitting}
             onClick={() => handleSave(true)}
             className="flex items-center gap-1.5 px-6 py-2 bg-[#00231a] hover:bg-[#073a2d] text-white text-xs font-bold uppercase tracking-wider shadow-xs cursor-pointer disabled:opacity-50"
           >
@@ -1502,7 +1526,7 @@ export default function EditProductPage() {
             ) : (
               <Sparkles className="w-3.5 h-3.5 text-[#c79a45]" />
             )}
-            <span>UPDATE PRODUCT</span>
+            <span>{isSubmitting ? 'SAVING CHANGES...' : 'UPDATE PRODUCT'}</span>
           </button>
         </div>
       </div>

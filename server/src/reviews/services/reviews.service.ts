@@ -284,6 +284,7 @@ export class ReviewsService {
     const seenProducts = new Set<string>();
 
     for (const item of deliveredItems) {
+      if (!item.productId || !item.product) continue;
       if (reviewedProductIds.has(item.productId)) continue;
       if (seenProducts.has(item.productId)) continue;
       seenProducts.add(item.productId);

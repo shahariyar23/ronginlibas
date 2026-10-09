@@ -53,11 +53,32 @@ let AdminProductsController = class AdminProductsController {
             data,
         };
     }
-    async delete(id) {
-        const data = await this.productsService.delete(id);
+    async archive(id) {
+        const res = await this.productsService.archive(id);
         return {
-            message: data.message || 'Product permanently deleted from database',
-            data,
+            message: res.message,
+            data: res.data,
+        };
+    }
+    async restore(id) {
+        const res = await this.productsService.restore(id);
+        return {
+            message: res.message,
+            data: res.data,
+        };
+    }
+    async deletePermanent(id) {
+        const res = await this.productsService.delete(id);
+        return {
+            message: res.message,
+            data: res.data,
+        };
+    }
+    async delete(id) {
+        const res = await this.productsService.delete(id);
+        return {
+            message: res.message,
+            data: res.data,
         };
     }
 };
@@ -95,8 +116,32 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AdminProductsController.prototype, "update", null);
 __decorate([
+    Patch(':id/archive'),
+    ApiOperation({ summary: 'Archive product (hide from customer storefront, preserve inventory & media)' }),
+    __param(0, Param('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AdminProductsController.prototype, "archive", null);
+__decorate([
+    Patch(':id/restore'),
+    ApiOperation({ summary: 'Restore an archived product to active catalog' }),
+    __param(0, Param('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AdminProductsController.prototype, "restore", null);
+__decorate([
+    Delete(':id/permanent'),
+    ApiOperation({ summary: 'Permanently remove product from database and cleanup Cloudinary media assets' }),
+    __param(0, Param('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AdminProductsController.prototype, "deletePermanent", null);
+__decorate([
     Delete(':id'),
-    ApiOperation({ summary: 'Permanently remove product from database' }),
+    ApiOperation({ summary: 'Permanently remove product from database and cleanup Cloudinary media assets' }),
     __param(0, Param('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),

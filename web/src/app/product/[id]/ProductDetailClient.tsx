@@ -17,6 +17,7 @@ import {
   submitProductReview,
   voteReviewHelpful,
   ProductReview,
+  ProductReviewsResponse,
   ReviewEligibilityResponse,
 } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -76,6 +77,7 @@ interface ProductDetailClientProps {
   product?: Product;
   relatedProducts?: Product[];
   recommendations?: Product[];
+  initialReviews?: ProductReviewsResponse;
   productId?: string;
 }
 
@@ -83,6 +85,7 @@ export const ProductDetailClient: React.FC<ProductDetailClientProps> = ({
   product: initialProduct,
   relatedProducts: initialRelatedProducts = [],
   recommendations: initialRecommendations = [],
+  initialReviews,
   productId,
 }) => {
   const [product, setProduct] = useState(initialProduct);
@@ -131,6 +134,7 @@ export const ProductDetailClient: React.FC<ProductDetailClientProps> = ({
       product={product}
       relatedProducts={relatedProducts}
       recommendations={recommendations}
+      initialReviews={initialReviews}
     />
   );
 };
@@ -146,10 +150,12 @@ const ProductDetailView: React.FC<{
   product: Product;
   relatedProducts: Product[];
   recommendations: Product[];
+  initialReviews?: ProductReviewsResponse;
 }> = ({
   product,
   relatedProducts,
   recommendations,
+  initialReviews,
 }) => {
   const router = useRouter();
   const { user } = useAuth();
@@ -166,12 +172,12 @@ const ProductDetailView: React.FC<{
   const initialColor =
     product.colors[0]?.name ||
     product.variants?.[0]?.color ||
-    'Forest Emerald (Signature)';
+    '';
   const [selectedColor, setSelectedColor] = useState<string>(initialColor);
 
   const colorVariants =
     product.variants?.filter(
-      (variant) => variant.isActive !== false && variant.color === selectedColor,
+      (variant) => variant.isActive !== false && (!selectedColor || variant.color === selectedColor),
     ) ?? [];
   const availableSizeLabels = product.variants?.length
     ? [
@@ -202,16 +208,20 @@ const ProductDetailView: React.FC<{
   const [measurementUnit, setMeasurementUnit] = useState<'in' | 'cm'>('in');
   const [sizeModalOpen, setSizeModalOpen] = useState(false);
   const [openAccordion, setOpenAccordion] = useState<string | null>('accordion-1');
-  const [reviews, setReviews] = useState<ProductReview[]>([]);
-  const [totalReviews, setTotalReviews] = useState(0);
-  const [averageRating, setAverageRating] = useState(0);
-  const [ratingDistribution, setRatingDistribution] = useState<Record<number, number>>({
-    1: 0,
-    2: 0,
-    3: 0,
-    4: 0,
-    5: 0,
-  });
+  const [reviews, setReviews] = useState<ProductReview[]>(initialReviews?.items || []);
+  const [totalReviews, setTotalReviews] = useState(
+    initialReviews?.total ?? (initialReviews?.items?.length || 0),
+  );
+  const [averageRating, setAverageRating] = useState(initialReviews?.averageRating ?? 0);
+  const [ratingDistribution, setRatingDistribution] = useState<Record<number, number>>(
+    initialReviews?.ratingDistribution || {
+      1: 0,
+      2: 0,
+      3: 0,
+      4: 0,
+      5: 0,
+    },
+  );
   const [reviewEligibility, setReviewEligibility] = useState<ReviewEligibilityResponse | null>(null);
   const [votedReviews, setVotedReviews] = useState<Record<string, 'yes' | 'no'>>({});
   const [reviewRating, setReviewRating] = useState(5);
@@ -236,9 +246,14 @@ const ProductDetailView: React.FC<{
     selectedVariant?.priceOverride !== null
       ? Number(selectedVariant.priceOverride)
       : product.price;
-  const hasDiscount =
-    product.originalPrice !== undefined && product.originalPrice > currentPrice;
-  const originalPrice = hasDiscount ? product.originalPrice : undefined;
+  const referencePrice =
+    product.originalPrice && product.originalPrice > currentPrice
+      ? product.originalPrice
+      : product.price > currentPrice
+        ? product.price
+        : undefined;
+  const hasDiscount = Boolean(referencePrice && referencePrice > currentPrice);
+  const originalPrice = hasDiscount ? referencePrice : undefined;
   const savingsAmount =
     originalPrice !== undefined ? originalPrice - currentPrice : 0;
 
@@ -346,7 +361,11 @@ const ProductDetailView: React.FC<{
     }
     if (!reviewEligibility?.canReview) {
       if (reviewEligibility?.reason === 'ALREADY_REVIEWED') {
-        toast.info('You have already submitted a review for this purchase.');
+        if (reviewEligibility?.existingReview?.status === 'PENDING') {
+          toast.info('Your review has been submitted and is currently awaiting atelier moderation.');
+        } else {
+          toast.info('You have already submitted a review for this purchase.');
+        }
       } else if (reviewEligibility?.reason === 'NO_DELIVERED_PURCHASE') {
         toast.error('Review submission requires a verified, delivered order of this product.');
       } else {
@@ -735,20 +754,27 @@ const ProductDetailView: React.FC<{
               <div className="flex items-center gap-3 pt-1">
                 <div className="flex text-[#c79a45]">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-[#c79a45] text-[#c79a45]" />
+                    <Star
+                      key={i}
+                      className={`w-4 h-4 ${
+                        totalReviews > 0 && i < Math.round(averageRating)
+                          ? 'fill-[#c79a45] text-[#c79a45]'
+                          : 'text-[#deddd3]'
+                      }`}
+                    />
                   ))}
                 </div>
                 <span className="font-sans text-xs font-bold text-[#1b1c18]">
-                  {reviews.length
-                    ? `${(reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1)} / 5.0`
-                    : '5.0 / 5.0'}
+                  {totalReviews > 0 ? `${averageRating.toFixed(1)} / 5.0` : '0 Reviews'}
                 </span>
                 <span className="text-[#deddd3]">•</span>
                 <a
                   href="#patron-reviews"
                   className="font-sans text-xs uppercase tracking-wider text-[#717975] hover:text-[#073a2d] underline underline-offset-4 font-semibold"
                 >
-                  {reviews.length ? `${reviews.length} Verified Patron Reviews` : 'Patron Reviews & Ratings'}
+                  {totalReviews > 0
+                    ? `${totalReviews} Verified Patron ${totalReviews === 1 ? 'Review' : 'Reviews'}`
+                    : 'No reviews yet'}
                 </a>
               </div>
             </div>
@@ -803,33 +829,37 @@ const ProductDetailView: React.FC<{
             )}
 
             {/* Color Hue Selection */}
-            <div className="space-y-2 pt-1">
-              <div className="flex items-center justify-between">
-                <label className="font-sans text-xs uppercase tracking-wider text-[#1b1c18] font-bold">
-                  Color Hue:{' '}
-                  <span className="font-normal text-[#69726d]">{selectedColor}</span>
-                </label>
-                <span className="font-sans text-[10px] uppercase text-[#c79a45] font-semibold tracking-wider">
-                  Heritage Dye
-                </span>
+            {product.colors.length > 0 && (
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="font-sans text-xs uppercase tracking-wider text-[#1b1c18] font-bold">
+                    Color Hue:{' '}
+                    <span className="font-normal text-[#69726d]">
+                      {selectedColor || product.colors[0]?.name}
+                    </span>
+                  </label>
+                  <span className="font-sans text-[10px] uppercase text-[#c79a45] font-semibold tracking-wider">
+                    Heritage Dye
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  {product.colors.map((c) => (
+                    <button
+                      key={c.name}
+                      type="button"
+                      onClick={() => selectColor(c.name)}
+                      title={c.name}
+                      className={`w-9 h-9 rounded-full transition-transform cursor-pointer border ${
+                        selectedColor === c.name
+                          ? 'ring-2 ring-[#073a2d] ring-offset-2 scale-110'
+                          : 'hover:scale-105 border-[#deddd3]'
+                      }`}
+                      style={{ backgroundColor: c.hex }}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                {product.colors.map((c) => (
-                  <button
-                    key={c.name}
-                    type="button"
-                    onClick={() => selectColor(c.name)}
-                    title={c.name}
-                    className={`w-9 h-9 rounded-full transition-transform cursor-pointer border ${
-                      selectedColor === c.name
-                        ? 'ring-2 ring-[#073a2d] ring-offset-2 scale-110'
-                        : 'hover:scale-105 border-[#deddd3]'
-                    }`}
-                    style={{ backgroundColor: c.hex }}
-                  />
-                ))}
-              </div>
-            </div>
+            )}
 
             {/* Size Selection & Sizing Matrix Trigger */}
             <div className="space-y-3 pt-2">
@@ -1074,11 +1104,17 @@ const ProductDetailView: React.FC<{
                   >
                     <div>
                       <div className="relative w-full h-56 bg-[#f5f4ed] overflow-hidden mb-3 border border-[#deddd3]">
-                        <img
-                          src={companion.images?.[0] || 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?w=600&auto=format&fit=crop&q=80'}
-                          alt={companion.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
+                        {companion.images?.[0] ? (
+                          <img
+                            src={companion.images[0]}
+                            alt={companion.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-[#f0eee7] text-[#717975] text-xs">
+                            No Image Available
+                          </div>
+                        )}
                         <span className="absolute top-2 left-2 bg-white/95 px-2 py-0.5 font-sans text-[9px] uppercase font-bold border border-[#deddd3]">
                           {companion.categoryLabel || companion.fabric || 'Atelier Piece'}
                         </span>
@@ -1175,7 +1211,7 @@ const ProductDetailView: React.FC<{
               The Anatomy of Bengal Sartorial Dignity
             </h2>
             <p className="font-sans text-xs text-[#69726d] leading-relaxed">
-              Each Rongin Libas Panjabi takes over forty-six hours of specialized handloom tensioning, individual panel washing in sub-tropical alkaline river waters, and final needlework executed by generational master karigars in Mirpur and Narayanganj.
+              Each Rongin Libas {product.categoryLabel.toLowerCase()} is crafted with meticulous attention to tailoring, seam tensioning, and finish executed by master karigars in our Dhaka atelier.
             </p>
 
             <div className="p-5 bg-[#f5f4ed] border border-[#deddd3] space-y-2">
@@ -1183,10 +1219,10 @@ const ProductDetailView: React.FC<{
                 Sartorial Master Note:
               </p>
               <p className="font-serif text-xs italic text-[#404945] leading-relaxed">
-                &ldquo;We chose a blended Mulberry silk and combed Egyptian cotton warp because pure silk suffocates in monsoon heat, while pure cotton lacks the regal luminescence required for nocturnal festivity.&rdquo;
+                &ldquo;{product.description || 'Crafted for discerning patrons seeking timeless elegance and uncompromising comfort in South Asian celebrations and formal assemblies.'}&rdquo;
               </p>
               <p className="font-sans text-[10px] text-[#c79a45] uppercase tracking-widest font-semibold pt-1">
-                — Ustad Kabirul, Chief Cutter
+                — Rongin Libas Atelier, Dhaka
               </p>
             </div>
           </div>
@@ -1203,7 +1239,7 @@ const ProductDetailView: React.FC<{
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pb-2 border-b border-[#deddd3]">
                       <div>
                         <span className="text-[10px] uppercase text-[#717975] block">Silhouette &amp; Cut</span>
-                        <span className="font-bold text-[#073a2d]">{product.fit || 'Heritage Cut'}</span>
+                        <span className="font-bold text-[#073a2d]">{product.fit || 'Regular Cut'}</span>
                       </div>
                       <div>
                         <span className="text-[10px] uppercase text-[#717975] block">Garment SKU</span>
@@ -1237,7 +1273,7 @@ const ProductDetailView: React.FC<{
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-xs font-sans">
                     <div className="p-3 bg-[#f5f4ed] border border-[#deddd3]">
                       <span className="text-[10px] uppercase text-[#717975] block">Fabric Composition</span>
-                      <span className="font-bold text-[#073a2d]">{product.fabric || '100% Premium Egyptian / Giza Cotton'}</span>
+                      <span className="font-bold text-[#073a2d]">{product.fabric || 'Atelier Specification'}</span>
                     </div>
                     <div className="p-3 bg-[#f5f4ed] border border-[#deddd3]">
                       <span className="text-[10px] uppercase text-[#717975] block">Fabric Weight</span>
@@ -1247,7 +1283,7 @@ const ProductDetailView: React.FC<{
                     </div>
                     <div className="p-3 bg-[#f5f4ed] border border-[#deddd3]">
                       <span className="text-[10px] uppercase text-[#717975] block">Fabric Origin / Mill</span>
-                      <span className="font-bold text-[#073a2d]">{product.fabricOrigin || 'Artisanal Handloom Heritage Weave'}</span>
+                      <span className="font-bold text-[#073a2d]">{product.fabricOrigin || 'Heritage Atelier Weave'}</span>
                     </div>
                     <div className="p-3 bg-[#f5f4ed] border border-[#deddd3]">
                       <span className="text-[10px] uppercase text-[#717975] block">Dye Standard</span>
@@ -1284,10 +1320,10 @@ const ProductDetailView: React.FC<{
                       </div>
                     )}
                     <ul className="list-disc list-inside space-y-1 text-xs font-sans text-[#404945]">
-                      <li>First 2 cleans: Professional eco dry clean recommended to protect natural handloom silk and cotton luster.</li>
+                      <li>First 2 cleans: Professional eco dry clean recommended to protect natural luster and texture.</li>
                       <li>Subsequent care: Gentle cold hand wash using pH-neutral gentle detergent; do not wring or tumble dry.</li>
                       <li>Pressing: Warm iron on reverse side under a damp cotton pressing cloth.</li>
-                      <li>Storage: Hang on broad cedarwood hanger inside complimentary breathable Rongin Libas cotton dust bag.</li>
+                      <li>Storage: Hang on broad hanger inside complimentary breathable garment bag.</li>
                     </ul>
                   </div>
                 ),
@@ -1298,7 +1334,7 @@ const ProductDetailView: React.FC<{
                 icon: Truck,
                 content: (
                   <p className="text-xs font-sans text-[#404945]">
-                    We operate daily express logistics covering Gulshan, Banani, Dhanmondi, Uttara, Mirpur, and all major Dhaka sectors via our dedicated courier fleet. Cash on Delivery is gladly accepted across Bangladesh with open-box verification.
+                    We operate daily express logistics covering Gulshan, Banani, Dhanmondi, Uttara, Mirpur, and all major Dhaka sectors via dedicated couriers. Inside Dhaka: ৳{settings?.dhakaDeliveryCharge ?? 80} (within 48 Hours) | Outside Dhaka: ৳{settings?.outsideDhakaDeliveryCharge ?? 150} (within 3-5 days via Steadfast Express). Cash on Delivery is gladly accepted across Bangladesh with open-box verification.
                   </p>
                 ),
               },
@@ -1576,8 +1612,29 @@ const ProductDetailView: React.FC<{
               </div>
               <h3 className="font-serif text-2xl text-[#073a2d]">0 Reviews</h3>
               <p className="font-sans text-xs text-[#69726d] max-w-md mx-auto">
-                No approved reviews for this product yet. Only verified patrons who have purchased and received this delivered garment may share their reflections.
+                No reviews yet. Only verified patrons who have purchased and received this delivered garment may share their reflections.
               </p>
+            </div>
+          )}
+
+          {/* User Review Status Notice if awaiting moderation */}
+          {reviewEligibility?.existingReview?.status === 'PENDING' && (
+            <div className="bg-[#fbf9f2] border border-[#c79a45] p-4 flex items-center justify-between text-xs text-[#1b1c18]">
+              <div className="flex items-center gap-2">
+                <Star className="w-4 h-4 text-[#c79a45] fill-[#c79a45]" />
+                <span>
+                  Your review ({reviewEligibility.existingReview.rating} of 5 Stars) submitted on{' '}
+                  {new Date(reviewEligibility.existingReview.createdAt).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}{' '}
+                  is currently awaiting atelier moderation.
+                </span>
+              </div>
+              <span className="font-sans text-[10px] uppercase tracking-wider font-bold text-[#c79a45] bg-[#073a2d] px-2.5 py-1">
+                Awaiting Moderation
+              </span>
             </div>
           )}
 

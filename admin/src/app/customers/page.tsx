@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Users, Search, Award, Mail, Phone, MapPin, Download } from 'lucide-react';
+import { Users, Search, Award, Phone, MapPin, Download } from 'lucide-react';
 
 interface Patron {
   id: string;
@@ -71,6 +71,31 @@ export default function CustomersPage() {
       p.phone.includes(search)
   );
 
+  const handleExportCSV = () => {
+    const headers = ['ID', 'Name', 'Email', 'Phone', 'Location', 'Tier', 'Orders', 'Total Spend', 'Last Order'];
+    const rows = filtered.map((p) => [
+      p.id,
+      `"${p.name.replace(/"/g, '""')}"`,
+      `"${p.email}"`,
+      `"${p.phone}"`,
+      `"${p.location.replace(/"/g, '""')}"`,
+      `"${p.tier}"`,
+      p.ordersCount,
+      p.totalSpent,
+      `"${p.lastOrder}"`,
+    ]);
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `rongin_libas_clientele_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (isLoadingCustomers) {
     return (
       <TablePageSkeleton
@@ -95,8 +120,9 @@ export default function CustomersPage() {
         </div>
 
         <button
-          onClick={() => alert('Exporting Clientele Ledger...')}
-          className="flex items-center gap-2 px-4 py-2.5 border border-[#073a2d] text-xs font-semibold uppercase tracking-wider text-[#073a2d] hover:bg-[#073a2d] hover:text-white transition-colors"
+          type="button"
+          onClick={handleExportCSV}
+          className="flex items-center gap-2 px-4 py-2.5 border border-[#073a2d] text-xs font-semibold uppercase tracking-wider text-[#073a2d] hover:bg-[#073a2d] hover:text-white transition-colors cursor-pointer"
         >
           <Download className="w-3.5 h-3.5" />
           <span>Export Roster</span>

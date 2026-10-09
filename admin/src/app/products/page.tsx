@@ -8,33 +8,32 @@ import {
   Search,
   Download,
   Filter,
-  Eye,
   Edit,
-  Trash2,
   ChevronLeft,
   ChevronRight,
   X,
   Shirt,
   Sparkles,
   Tag,
-  Calendar,
-  CheckCircle2,
   AlertCircle,
-  ExternalLink,
-  Scissors,
   ShieldCheck,
   Loader2,
-  TrendingUp,
-  Box,
-  Layers,
-  Sparkle,
+  Archive,
 } from 'lucide-react';
 import { useAdmin } from '@/context/AdminContext';
 import { AdminProduct, AdminProductDetail } from '@/data/adminData';
 import { TablePageSkeleton } from '@/components/common/Skeleton';
 
 export default function ProductsPage() {
-  const { products, categories, deleteProduct, getProductDetails, isLoading } = useAdmin();
+  const {
+    products,
+    categories,
+    deleteProduct,
+    archiveProduct,
+    restoreProduct,
+    getProductDetails,
+    isLoading,
+  } = useAdmin();
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
@@ -42,12 +41,38 @@ export default function ProductsPage() {
   const [detailedProduct, setDetailedProduct] = useState<AdminProductDetail | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // Archive & Permanent Delete Modal States
+  const [archiveConfirmProduct, setArchiveConfirmProduct] = useState<AdminProduct | null>(null);
+  const [deleteConfirmProduct, setDeleteConfirmProduct] = useState<AdminProduct | null>(null);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
 
   // Compute stat counts
+  const archivedCount = products.filter(
+    (p) => p.status === 'Archived' || p.isActive === false || Boolean(p.deletedAt)
+  ).length;
   const activeCount = products.filter((p) => p.status === 'Active').length;
   const lowStockCount = products.filter((p) => p.status === 'Low Stock').length;
   const stockoutCount = products.filter((p) => p.status === 'Out of Stock').length;
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setCurrentPage(1);
+  };
+  const handleCategoryChange = (val: string) => {
+    setSelectedCategory(val);
+    setCurrentPage(1);
+  };
+  const handleStatusChange = (val: string) => {
+    setSelectedStatus(val);
+    setCurrentPage(1);
+  };
 
   // Filter products
   const filteredProducts = products.filter((p) => {
@@ -56,16 +81,12 @@ export default function ProductsPage() {
       p.sku.toLowerCase().includes(search.toLowerCase());
     const matchesCategory =
       selectedCategory === 'All' || p.category.toLowerCase() === selectedCategory.toLowerCase();
-    const matchesStatus = selectedStatus === 'All' || p.status === selectedStatus;
+    const isArchived = p.status === 'Archived' || p.isActive === false || Boolean(p.deletedAt);
+    const matchesStatus =
+      selectedStatus === 'All' ||
+      (selectedStatus === 'Archived' ? isArchived : p.status === selectedStatus && !isArchived);
     return matchesSearch && matchesCategory && matchesStatus;
   });
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
-
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [search, selectedCategory, selectedStatus]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
   const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
@@ -99,9 +120,42 @@ export default function ProductsPage() {
     setSelectedImageIdx(0);
   };
 
-  const handleDelete = (id: string) => {
-    deleteProduct(id);
-    setDeleteConfirmId(null);
+  const handleArchiveConfirm = async () => {
+    if (!archiveConfirmProduct || isArchiving) return;
+    setIsArchiving(true);
+    try {
+      const success = await archiveProduct(archiveConfirmProduct.id);
+      if (success) {
+        setArchiveConfirmProduct(null);
+      }
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirmProduct || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      const success = await deleteProduct(deleteConfirmProduct.id);
+      if (success) {
+        setDeleteConfirmProduct(null);
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleRestore = async (p: AdminProduct) => {
+    if (isRestoring) return;
+    setIsRestoring(true);
+    setRestoringId(p.id);
+    try {
+      await restoreProduct(p.id);
+    } finally {
+      setIsRestoring(false);
+      setRestoringId(null);
+    }
   };
 
   const handleExportCSV = () => {
@@ -170,6 +224,11 @@ export default function ProductsPage() {
               <span className="text-[10px] uppercase font-bold text-[#ba1a1a]">STOCKOUT</span>
               <span className="font-semibold text-[#ba1a1a]">{stockoutCount}</span>
             </div>
+            <span className="text-[#deddd3]">|</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] uppercase font-bold text-[#717975]">ARCHIVED</span>
+              <span className="font-semibold text-[#555e5a]">{archivedCount}</span>
+            </div>
           </div>
 
           <Link
@@ -191,7 +250,7 @@ export default function ProductsPage() {
             type="text"
             placeholder="Search products by name, SKU..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full pl-9 pr-3 py-2 bg-[#fbf9f2] border border-[#deddd3] text-xs text-[#1b1c18] focus:border-[#073a2d] outline-hidden placeholder-[#717975]"
           />
         </div>
@@ -201,7 +260,7 @@ export default function ProductsPage() {
           {/* Category Dropdown */}
           <select
             value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
+            onChange={(e) => handleCategoryChange(e.target.value)}
             className="bg-[#fbf9f2] border border-[#deddd3] text-xs px-3 py-2 text-[#404945] focus:border-[#073a2d] outline-hidden cursor-pointer"
           >
             <option value="All">Category: All</option>
@@ -215,13 +274,14 @@ export default function ProductsPage() {
           {/* Status Dropdown */}
           <select
             value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
+            onChange={(e) => handleStatusChange(e.target.value)}
             className="bg-[#fbf9f2] border border-[#deddd3] text-xs px-3 py-2 text-[#404945] focus:border-[#073a2d] outline-hidden cursor-pointer"
           >
             <option value="All">Status: All</option>
             <option value="Active">Active</option>
             <option value="Low Stock">Low Stock</option>
             <option value="Out of Stock">Out of Stock</option>
+            <option value="Archived">Archived</option>
           </select>
 
           {/* Export CSV */}
@@ -239,6 +299,7 @@ export default function ProductsPage() {
               setSelectedCategory('All');
               setSelectedStatus('All');
               setSearch('');
+              setCurrentPage(1);
             }}
             className="p-2 border border-[#deddd3] bg-[#fbf9f2] hover:bg-[#e4e2dc] text-[#404945]"
             title="Reset Filters"
@@ -279,23 +340,28 @@ export default function ProductsPage() {
                 </tr>
               ) : (
                 paginatedProducts.map((p) => {
-                const statusBadge =
-                  p.status === 'Active' ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase bg-[#b0ecd3]/40 text-[#073a2d]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#0d4d3b]" />
-                      Active
-                    </span>
-                  ) : p.status === 'Low Stock' ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase bg-[#f5eedf] text-[#8c6722]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#c79a45]" />
-                      Low Stock
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase bg-[#ffdad6] text-[#ba1a1a]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#ba1a1a]" />
-                      Out of Stock
-                    </span>
-                  );
+                const isArchived = p.status === 'Archived' || p.isActive === false || Boolean(p.deletedAt);
+                const statusBadge = isArchived ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase bg-[#e4e2dc] text-[#555e5a] border border-[#deddd3]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#717975]" />
+                    Archived
+                  </span>
+                ) : p.status === 'Active' ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase bg-[#b0ecd3]/40 text-[#073a2d]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#0d4d3b]" />
+                    Active
+                  </span>
+                ) : p.status === 'Low Stock' ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase bg-[#f5eedf] text-[#8c6722]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#c79a45]" />
+                    Low Stock
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase bg-[#ffdad6] text-[#ba1a1a]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#ba1a1a]" />
+                    Out of Stock
+                  </span>
+                );
 
                 return (
                   <tr key={p.id} className="hover:bg-[#fbf9f2] transition-colors group">
@@ -338,7 +404,7 @@ export default function ProductsPage() {
                     </td>
                     <td className="py-3 px-4">{statusBadge}</td>
                     <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-3 text-[11px] tracking-wider uppercase font-semibold">
+                      <div className="flex items-center justify-end gap-2.5 text-[11px] tracking-wider uppercase font-semibold">
                         <button
                           type="button"
                           onClick={() => handleViewProduct(p)}
@@ -352,11 +418,40 @@ export default function ProductsPage() {
                         >
                           EDIT
                         </Link>
+                        {isArchived ? (
+                          <button
+                            type="button"
+                            disabled={isRestoring && restoringId === p.id}
+                            onClick={() => handleRestore(p)}
+                            className="text-[#073a2d] hover:text-[#0b5f48] transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                            title="Restore product to active catalog"
+                          >
+                            {isRestoring && restoringId === p.id ? (
+                              <>
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                <span>RESTORING...</span>
+                              </>
+                            ) : (
+                              <span>RESTORE</span>
+                            )}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setArchiveConfirmProduct(p)}
+                            className="text-[#8c6722] hover:text-[#73531b] transition-colors cursor-pointer"
+                            title="Archive product (hide from storefront)"
+                          >
+                            ARCHIVE
+                          </button>
+                        )}
                         <button
-                          onClick={() => setDeleteConfirmId(p.id)}
-                          className="text-[#ba1a1a] hover:text-[#93000a] transition-colors"
+                          type="button"
+                          onClick={() => setDeleteConfirmProduct(p)}
+                          className="text-[#ba1a1a] hover:text-[#93000a] transition-colors cursor-pointer"
+                          title="Permanently delete product and media"
                         >
-                          DELETE
+                          DELETE PERMANENTLY
                         </button>
                       </div>
                     </td>
@@ -474,7 +569,12 @@ export default function ProductsPage() {
                 Category: {detailedProduct?.category?.name || viewProduct.category}
               </span>
 
-              {viewProduct.status === 'Active' ? (
+              {viewProduct.status === 'Archived' || viewProduct.isActive === false || Boolean(viewProduct.deletedAt) ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[#e4e2dc] text-[#555e5a] border border-[#deddd3]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#717975]" />
+                  Archived (Hidden from Storefront)
+                </span>
+              ) : viewProduct.status === 'Active' ? (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[#b0ecd3]/50 text-[#073a2d] border border-[#a1d1be]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#0d4d3b]" />
                   Active In Atelier
@@ -747,7 +847,7 @@ export default function ProductsPage() {
                     </span>
                     {detailedProduct?.shortDescription && (
                       <p className="text-xs font-serif italic text-[#404945] bg-[#fbf9f2] p-2.5 border-l-2 border-[#073a2d]">
-                        "{detailedProduct.shortDescription}"
+                        &ldquo;{detailedProduct.shortDescription}&rdquo;
                       </p>
                     )}
                     <p className="text-xs text-[#404945] leading-relaxed">
@@ -903,26 +1003,102 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {deleteConfirmId && (
+      {/* Archive Confirmation Modal */}
+      {archiveConfirmProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white border border-[#deddd3] shadow-2xl p-6 w-full max-w-sm">
-            <h3 className="font-serif text-base font-bold text-[#ba1a1a]">Confirm Product Removal</h3>
-            <p className="text-xs text-[#69726d] mt-2">
-              Are you sure you want to remove this garment silhouette from the active atelier catalog?
+          <div className="bg-white border border-[#deddd3] shadow-2xl p-6 w-full max-w-md animate-in fade-in-0 duration-150">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-[#f5eedf] flex items-center justify-center text-[#8c6722] shrink-0">
+                <Archive className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-serif text-base font-bold text-[#1b1c18]">Archive this product?</h3>
+                <p className="text-[11px] text-[#717975] font-mono">
+                  {archiveConfirmProduct.name} ({archiveConfirmProduct.sku})
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-[#555e5a] leading-relaxed">
+              This product will no longer appear on the customer website but will remain available in Admin.
             </p>
-            <div className="mt-5 flex items-center justify-end gap-2">
+            <div className="mt-6 flex items-center justify-end gap-2.5">
               <button
-                onClick={() => setDeleteConfirmId(null)}
-                className="px-4 py-2 border border-[#deddd3] text-xs font-medium text-[#717975] hover:bg-[#f0eee7]"
+                type="button"
+                disabled={isArchiving}
+                onClick={() => !isArchiving && setArchiveConfirmProduct(null)}
+                className="px-4 py-2 border border-[#deddd3] text-xs font-medium text-[#717975] hover:bg-[#f0eee7] transition-colors cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
-                onClick={() => handleDelete(deleteConfirmId)}
-                className="px-4 py-2 bg-[#ba1a1a] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#93000a]"
+                type="button"
+                disabled={isArchiving}
+                aria-busy={isArchiving}
+                onClick={handleArchiveConfirm}
+                className="px-4 py-2 bg-[#8c6722] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#73531b] transition-colors cursor-pointer disabled:opacity-60 flex items-center gap-1.5"
               >
-                Delete Product
+                {isArchiving ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Archiving...</span>
+                  </>
+                ) : (
+                  <span>Archive</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Permanent Delete Confirmation Modal */}
+      {deleteConfirmProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white border border-[#deddd3] shadow-2xl p-6 w-full max-w-lg animate-in fade-in-0 duration-150">
+            <div className="flex items-start gap-3.5 mb-3.5">
+              <div className="w-10 h-10 rounded-full bg-[#ffdad6] flex items-center justify-center text-[#ba1a1a] shrink-0">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-serif text-lg font-bold text-[#ba1a1a]">Delete Product Permanently?</h3>
+                <p className="text-xs text-[#717975] font-mono mt-0.5">
+                  {deleteConfirmProduct.name} (SKU: {deleteConfirmProduct.sku})
+                </p>
+              </div>
+            </div>
+            <div className="bg-[#fbf9f2] border border-[#deddd3] p-3 text-xs text-[#404945] leading-relaxed mb-4 space-y-2">
+              <p>
+                This action will permanently remove this product, its variants, inventory records, product images, and Cloudinary media. Historical order information will remain preserved.
+              </p>
+              <p className="text-[#073a2d] font-medium flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-[#073a2d] shrink-0" />
+                <span>Historical orders and invoices will never be broken or deleted.</span>
+              </p>
+            </div>
+            <div className="mt-5 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => !isDeleting && setDeleteConfirmProduct(null)}
+                className="px-4 py-2 border border-[#deddd3] text-xs font-medium text-[#717975] hover:bg-[#f0eee7] transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                aria-busy={isDeleting}
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 bg-[#ba1a1a] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#93000a] transition-colors cursor-pointer disabled:opacity-60 flex items-center gap-1.5 shadow-xs"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <span>Delete Permanently</span>
+                )}
               </button>
             </div>
           </div>

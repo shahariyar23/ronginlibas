@@ -54,6 +54,75 @@ describe('ProductsService storefront catalogue', () => {
     );
   });
 
+  it('persists normalized tags when creating a product', async () => {
+    const create = vi.fn().mockResolvedValue({ id: 'product-id' });
+    const prisma = {
+      product: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create,
+      },
+    } as unknown as PrismaService;
+    const service = new ProductsService(
+      prisma,
+      { destroyProductImage: vi.fn() } as unknown as CloudinaryService,
+    );
+
+    await service.create({
+      name: 'Mercerized Polo',
+      sku: 'RL-POLO-001',
+      price: 2400,
+      categoryId: 'shirts',
+      tags: [' Men ', 'Cotton', '', 'men'],
+    });
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ tags: ['men', 'cotton'] }),
+      }),
+    );
+  });
+
+  it('updates tags and accepts an empty list to clear them', async () => {
+    const productUpdate = vi.fn().mockResolvedValue({ id: 'product-id' });
+    const transaction = {
+      product: {
+        update: productUpdate,
+        findUniqueOrThrow: vi.fn().mockResolvedValue({ id: 'product-id' }),
+      },
+    };
+    const prisma = {
+      product: { findFirst: vi.fn().mockResolvedValue({ id: 'product-id' }) },
+      productImage: { findMany: vi.fn().mockResolvedValue([]) },
+      $transaction: vi.fn(
+        (callback: (tx: typeof transaction) => Promise<unknown>) =>
+          callback(transaction),
+      ),
+    } as unknown as PrismaService;
+    const service = new ProductsService(
+      prisma,
+      { destroyProductImage: vi.fn() } as unknown as CloudinaryService,
+    );
+
+    await service.update('product-id', {
+      tags: ['Cotton', 'Polo'],
+    } as UpdateProductDto);
+
+    expect(productUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'product-id' },
+        data: expect.objectContaining({ tags: ['cotton', 'polo'] }),
+      }),
+    );
+
+    await service.update('product-id', { tags: [] } as UpdateProductDto);
+
+    expect(productUpdate).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ tags: [] }),
+      }),
+    );
+  });
+
   it('orders best sellers by order-item count and excludes inactive variants', async () => {
     const findMany = vi.fn().mockResolvedValue([]);
     const count = vi.fn().mockResolvedValue(0);
@@ -65,13 +134,34 @@ describe('ProductsService storefront catalogue', () => {
 
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { isActive: true, category: { is: { isActive: true } } },
+        where: { isActive: true, deletedAt: null, category: { is: { isActive: true } } },
         orderBy: [{ orderItems: { _count: 'desc' } }, { createdAt: 'desc' }],
         include: expect.objectContaining({
           variants: expect.objectContaining({ where: { isActive: true } }),
         }),
       }),
     );
+  });
+
+  it('returns saved tags in the storefront catalogue response', async () => {
+    const findMany = vi.fn().mockResolvedValue([
+      {
+        id: 'product-id',
+        tags: ['men', 'polo', 'cotton'],
+        category: { slug: 'shirts' },
+        variants: [],
+      },
+    ]);
+    const count = vi.fn().mockResolvedValue(1);
+    const prisma = { product: { findMany, count } } as unknown as PrismaService;
+    const service = new ProductsService(
+      prisma,
+      { destroyProductImage: vi.fn() } as unknown as CloudinaryService,
+    );
+
+    const result = await service.findAll({ page: 1, limit: 20 });
+
+    expect(result.items[0].tags).toEqual(['men', 'polo', 'cotton']);
   });
 
   it('finds related products when the storefront passes a product ID', async () => {
@@ -89,12 +179,12 @@ describe('ProductsService storefront catalogue', () => {
     await service.findRelated('product-id', 'RELATED');
 
     expect(findFirst).toHaveBeenCalledWith({
-      where: { OR: [{ slug: 'product-id' }, { id: 'product-id' }], isActive: true },
+      where: { OR: [{ slug: 'product-id' }, { id: 'product-id' }], isActive: true, deletedAt: null },
       select: { id: true, categoryId: true },
     });
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { isActive: true, categoryId: 'category-id', id: { not: 'product-id' } },
+        where: { isActive: true, deletedAt: null, categoryId: 'category-id', id: { not: 'product-id' } },
       }),
     );
   });
@@ -143,6 +233,7 @@ describe('ProductsService storefront catalogue', () => {
                 { name: { contains: 'heritage', mode: 'insensitive' } },
                 { sku: { contains: 'heritage', mode: 'insensitive' } },
                 { description: { contains: 'heritage', mode: 'insensitive' } },
+                { tags: { hasSome: ['heritage'] } },
               ],
             },
             {
@@ -178,6 +269,23 @@ describe('ProductsService storefront catalogue', () => {
         orderBy: { price: 'asc' },
       }),
     );
+  });
+
+  it('searches product tags using individual query keywords', async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
+    const count = vi.fn().mockResolvedValue(0);
+    const prisma = { product: { findMany, count } } as unknown as PrismaService;
+    const service = new ProductsService(
+      prisma,
+      { destroyProductImage: vi.fn() } as unknown as CloudinaryService,
+    );
+
+    await service.findAll({ search: 'Cotton Polo' });
+
+    const searchCondition = findMany.mock.calls[0][0].where.AND[0];
+    expect(searchCondition.OR).toContainEqual({
+      tags: { hasSome: ['cotton', 'polo', 'cotton-polo'] },
+    });
   });
 
   it('restricts legacy numeric size filters to waist-size variants and trouser products', async () => {
@@ -347,6 +455,7 @@ describe('ProductsService storefront catalogue', () => {
     const findFirst = vi.fn().mockResolvedValue({
       id: 'product-id',
       category: { slug: 'panjabi' },
+      tags: ['men', 'cotton'],
       variants: [
         { size: 'l', sizeLabel: null, sizeType: null },
         { size: '40', sizeLabel: null, sizeType: null },
@@ -360,9 +469,10 @@ describe('ProductsService storefront catalogue', () => {
 
     expect(findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { OR: [{ slug: 'hidden-product' }, { id: 'hidden-product' }], isActive: true },
+        where: { OR: [{ slug: 'hidden-product' }, { id: 'hidden-product' }], isActive: true, deletedAt: null },
       }),
     );
+    expect(product.tags).toEqual(['men', 'cotton']);
     expect(product.variants?.map((variant) => variant.sizeLabel)).toEqual(['L', null]);
   });
 
@@ -412,9 +522,10 @@ describe('ProductsService storefront catalogue', () => {
     expect(destroyProductImage).toHaveBeenCalledWith('rongin-libas/products/remove');
   });
 
-  it('destroys all stored Cloudinary images after deleting a product', async () => {
+  it('destroys all stored Cloudinary images after deleting a product and preserves order items', async () => {
     const destroyProductImage = vi.fn().mockResolvedValue(undefined);
     const deleteMany = vi.fn().mockResolvedValue({ count: 0 });
+    const updateMany = vi.fn().mockResolvedValue({ count: 2 });
     const transaction = {
       productRelation: { deleteMany },
       reviewVote: { deleteMany },
@@ -422,7 +533,7 @@ describe('ProductsService storefront catalogue', () => {
       cartItem: { deleteMany },
       wishlistItem: { deleteMany },
       productImage: { deleteMany },
-      orderItem: { deleteMany },
+      orderItem: { updateMany },
       productVariant: { deleteMany },
       product: { delete: vi.fn().mockResolvedValue({ id: 'product-id' }) },
     };
@@ -434,6 +545,7 @@ describe('ProductsService storefront catalogue', () => {
           images: [{ publicId: 'rongin-libas/products/front' }],
         }),
       },
+      orderItem: { count: vi.fn().mockResolvedValue(2) },
       $transaction: vi.fn((callback: (tx: typeof transaction) => Promise<unknown>) =>
         callback(transaction),
       ),
@@ -443,11 +555,76 @@ describe('ProductsService storefront catalogue', () => {
       { destroyProductImage } as unknown as CloudinaryService,
     );
 
-    await service.delete('product-id');
+    const result = await service.delete('product-id');
 
+    expect(transaction.orderItem.updateMany).toHaveBeenCalledWith({
+      where: { productId: 'product-id' },
+      data: { productId: null, variantId: null },
+    });
     expect(destroyProductImage).toHaveBeenCalledWith('rongin-libas/products/front');
     expect(transaction.product.delete).toHaveBeenCalledWith({
       where: { id: 'product-id' },
     });
+    expect(result.data.historicalOrdersPreserved).toBe(2);
+  });
+
+  it('archives product without destroying Cloudinary images', async () => {
+    const destroyProductImage = vi.fn();
+    const update = vi.fn().mockResolvedValue({ id: 'product-id', isActive: false, deletedAt: new Date() });
+    const prisma = {
+      product: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'product-id',
+          name: 'Panjabi',
+          isActive: true,
+          deletedAt: null,
+        }),
+        update,
+      },
+    } as unknown as PrismaService;
+    const service = new ProductsService(
+      prisma,
+      { destroyProductImage } as unknown as CloudinaryService,
+    );
+
+    const result = await service.archive('product-id');
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'product-id' },
+        data: expect.objectContaining({ isActive: false }),
+      }),
+    );
+    expect(destroyProductImage).not.toHaveBeenCalled();
+    expect(result.message).toContain('archived successfully');
+  });
+
+  it('restores an archived product', async () => {
+    const update = vi.fn().mockResolvedValue({ id: 'product-id', isActive: true, deletedAt: null });
+    const prisma = {
+      product: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'product-id',
+          name: 'Panjabi',
+          isActive: false,
+          deletedAt: new Date(),
+        }),
+        update,
+      },
+    } as unknown as PrismaService;
+    const service = new ProductsService(
+      prisma,
+      { destroyProductImage: vi.fn() } as unknown as CloudinaryService,
+    );
+
+    const result = await service.restore('product-id');
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'product-id' },
+        data: expect.objectContaining({ isActive: true, deletedAt: null }),
+      }),
+    );
+    expect(result.message).toContain('restored successfully');
   });
 });

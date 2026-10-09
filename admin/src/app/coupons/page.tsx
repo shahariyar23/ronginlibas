@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Ticket, Plus, Calendar, CheckCircle2, Trash2 } from 'lucide-react';
+import { Ticket, Plus, Calendar, CheckCircle2, Trash2, Loader2 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import type { AdminCoupon, CouponDiscountType, CreateCouponPayload } from '@/lib/api';
+import { useToast } from '@/context/ToastContext';
 import { TablePageSkeleton } from '@/components/common/Skeleton';
 
 interface Coupon {
@@ -53,9 +54,11 @@ function mapCoupon(coupon: AdminCoupon): Coupon {
 }
 
 export default function CouponsPage() {
+  const { toast } = useToast();
   const [coupons, setCoupons] = useState<Coupon[]>(INITIAL_COUPONS);
   const [isLoadingCoupons, setIsLoadingCoupons] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [deleteConfirmCoupon, setDeleteConfirmCoupon] = useState<Coupon | null>(null);
   const [newCode, setNewCode] = useState('');
   const [newDiscount, setNewDiscount] = useState('');
   const [newMinSpend, setNewMinSpend] = useState('');
@@ -113,7 +116,9 @@ export default function CouponsPage() {
     try {
       const res = await adminApi.coupons.create(payload);
       if (!res.success || !res.data) {
-        setMutationError(res.error || 'Unable to save this voucher.');
+        const err = res.error || 'Unable to save this voucher.';
+        setMutationError(err);
+        toast.error(err);
         return;
       }
 
@@ -127,8 +132,11 @@ export default function CouponsPage() {
       setNewStartDate(toDateInputValue(new Date()));
       setNewExpiryDate('');
       setNewIsActive(true);
+      toast.success(`Voucher "${createdCoupon.code}" created successfully`, 'VOUCHER CREATED');
     } catch {
-      setMutationError('Unable to save this voucher. Check your connection and try again.');
+      const err = 'Unable to save this voucher. Check your connection and try again.';
+      setMutationError(err);
+      toast.error(err);
     } finally {
       setIsSavingCoupon(false);
     }
@@ -140,34 +148,46 @@ export default function CouponsPage() {
     try {
       const res = await adminApi.coupons.update(coupon.id, { isActive: !coupon.isActive });
       if (!res.success || !res.data) {
-        setMutationError(res.error || `Unable to update ${coupon.code}.`);
+        const err = res.error || `Unable to update ${coupon.code}.`;
+        setMutationError(err);
+        toast.error(err);
         return;
       }
       const updatedCoupon = res.data;
       setCoupons((prev) =>
         prev.map((item) => item.id === coupon.id ? mapCoupon(updatedCoupon) : item),
       );
+      toast.success(
+        `Voucher ${coupon.code} ${!coupon.isActive ? 'activated' : 'deactivated'} successfully`,
+        'VOUCHER UPDATED',
+      );
     } catch {
-      setMutationError(`Unable to update ${coupon.code}. Check your connection and try again.`);
+      const err = `Unable to update ${coupon.code}. Check your connection and try again.`;
+      setMutationError(err);
+      toast.error(err);
     } finally {
       setSavingCouponId(null);
     }
   };
 
   const handleDelete = async (coupon: Coupon) => {
-    if (!window.confirm(`Delete voucher ${coupon.code}? This cannot be undone.`)) return;
-
     setDeletingCouponId(coupon.id);
     setMutationError('');
     try {
       const res = await adminApi.coupons.delete(coupon.id);
       if (!res.success) {
-        setMutationError(res.error || `Unable to delete ${coupon.code}.`);
+        const err = res.error || `Unable to delete ${coupon.code}.`;
+        setMutationError(err);
+        toast.error(err);
         return;
       }
       setCoupons((prev) => prev.filter((item) => item.id !== coupon.id));
+      setDeleteConfirmCoupon(null);
+      toast.success(`Voucher ${coupon.code} deleted successfully`, 'VOUCHER DELETED');
     } catch {
-      setMutationError(`Unable to delete ${coupon.code}. Check your connection and try again.`);
+      const err = `Unable to delete ${coupon.code}. Check your connection and try again.`;
+      setMutationError(err);
+      toast.error(err);
     } finally {
       setDeletingCouponId(null);
     }
@@ -297,22 +317,27 @@ export default function CouponsPage() {
                   type="button"
                   onClick={() => handleActiveChange(coupon)}
                   disabled={savingCouponId === coupon.id || deletingCouponId === coupon.id}
-                  className="text-xs text-[#ba1a1a] hover:underline disabled:opacity-50"
+                  className="inline-flex items-center gap-1 text-xs text-[#073a2d] hover:underline disabled:opacity-50 cursor-pointer font-semibold"
                 >
-                  {savingCouponId === coupon.id
-                    ? 'Saving...'
-                    : coupon.isActive
-                    ? 'Deactivate Voucher'
-                    : 'Activate Voucher'}
+                  {savingCouponId === coupon.id ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span>Updating...</span>
+                    </>
+                  ) : coupon.isActive ? (
+                    'Deactivate Voucher'
+                  ) : (
+                    'Activate Voucher'
+                  )}
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleDelete(coupon)}
+                  onClick={() => setDeleteConfirmCoupon(coupon)}
                   disabled={savingCouponId === coupon.id || deletingCouponId === coupon.id}
-                  className="inline-flex items-center gap-1 text-xs text-[#ba1a1a] hover:underline disabled:opacity-50"
+                  className="inline-flex items-center gap-1 text-xs text-[#ba1a1a] hover:underline disabled:opacity-50 cursor-pointer font-semibold"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  {deletingCouponId === coupon.id ? 'Deleting...' : 'Delete'}
+                  <span>Delete</span>
                 </button>
               </div>
             </div>
@@ -451,20 +476,67 @@ export default function CouponsPage() {
             <div className="mt-6 flex items-center justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setShowAddModal(false)}
-                className="px-4 py-2 border border-[#deddd3] text-xs text-[#717975] hover:bg-[#f0eee7]"
+                disabled={isSavingCoupon}
+                onClick={() => !isSavingCoupon && setShowAddModal(false)}
+                className="px-4 py-2 border border-[#deddd3] text-xs text-[#717975] hover:bg-[#f0eee7] transition-colors cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSavingCoupon}
-                className="px-4 py-2 bg-[#00231a] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#073a2d]"
+                aria-busy={isSavingCoupon}
+                className="px-4 py-2 bg-[#00231a] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#073a2d] transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
               >
-                {isSavingCoupon ? 'Saving...' : 'Save Voucher'}
+                {isSavingCoupon ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Creating Voucher...</span>
+                  </>
+                ) : (
+                  <span>Save Voucher</span>
+                )}
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmCoupon && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white border border-[#deddd3] shadow-2xl p-6 w-full max-w-sm">
+            <h3 className="font-serif text-base font-bold text-[#ba1a1a]">Confirm Voucher Deletion</h3>
+            <p className="text-xs text-[#69726d] mt-2">
+              Are you sure you want to permanently delete voucher <strong className="font-mono text-[#1b1c18]">{deleteConfirmCoupon.code}</strong>? This action cannot be undone.
+            </p>
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                disabled={deletingCouponId === deleteConfirmCoupon.id}
+                onClick={() => setDeleteConfirmCoupon(null)}
+                className="px-4 py-2 border border-[#deddd3] text-xs font-medium text-[#717975] hover:bg-[#f0eee7] transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deletingCouponId === deleteConfirmCoupon.id}
+                aria-busy={deletingCouponId === deleteConfirmCoupon.id}
+                onClick={() => handleDelete(deleteConfirmCoupon)}
+                className="px-4 py-2 bg-[#ba1a1a] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#93000a] transition-colors cursor-pointer disabled:opacity-60 flex items-center gap-1.5"
+              >
+                {deletingCouponId === deleteConfirmCoupon.id ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <span>Delete Voucher</span>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

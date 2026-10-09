@@ -62,7 +62,12 @@ export declare class ProductsController {
                 image: string | null;
                 parentId: string | null;
             };
-            reviews: {
+            reviews: ({
+                customer: {
+                    firstName: string;
+                    lastName: string | null;
+                };
+            } & {
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
@@ -71,7 +76,7 @@ export declare class ProductsController {
                 productId: string;
                 rating: number;
                 comment: string;
-            }[];
+            })[];
             variants: {
                 id: string;
                 isActive: boolean;
@@ -124,6 +129,7 @@ export declare class ProductsController {
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
+            deletedAt: Date | null;
         };
     }>;
     findRelated(slug: string): Promise<{
@@ -186,6 +192,7 @@ export declare class ProductsController {
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
+            deletedAt: Date | null;
         })[];
     }>;
     findRecommendations(slug: string): Promise<{
@@ -248,6 +255,7 @@ export declare class ProductsController {
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
+            deletedAt: Date | null;
         })[];
     }>;
 }

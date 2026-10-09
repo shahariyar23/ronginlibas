@@ -19,7 +19,7 @@ export declare class OrdersService {
             id: string;
         } | null;
         items: ({
-            product: {
+            product: ({
                 images: {
                     url: string;
                     id: string;
@@ -57,7 +57,8 @@ export declare class OrdersService {
                 isFeatured: boolean;
                 isNewArrival: boolean;
                 isBestSeller: boolean;
-            };
+                deletedAt: Date | null;
+            }) | null;
             variant: {
                 id: string;
                 isActive: boolean;
@@ -72,15 +73,16 @@ export declare class OrdersService {
                 sizeType: string | null;
                 stock: number;
                 priceOverride: Prisma.Decimal | null;
-            };
+            } | null;
         } & {
+            productImage: string | null;
             id: string;
             createdAt: Date;
             subtotal: Prisma.Decimal;
             discountAmount: Prisma.Decimal;
             orderId: string;
-            productId: string;
-            variantId: string;
+            productId: string | null;
+            variantId: string | null;
             productName: string;
             variantName: string;
             sku: string;
@@ -123,12 +125,13 @@ export declare class OrdersService {
     findCustomerOrders(customerId: string, query: OrderQueryDto): Promise<{
         items: {
             items: {
+                productImage: string | null;
                 id: string;
                 createdAt: Date;
                 subtotal: Prisma.Decimal;
                 discountAmount: Prisma.Decimal;
-                productId: string;
-                variantId: string;
+                productId: string | null;
+                variantId: string | null;
                 productName: string;
                 variantName: string;
                 sku: string;
@@ -162,12 +165,13 @@ export declare class OrdersService {
     }>;
     findCustomerOrder(customerId: string, orderNumber: string): Promise<{
         items: {
+            productImage: string | null;
             id: string;
             createdAt: Date;
             subtotal: Prisma.Decimal;
             discountAmount: Prisma.Decimal;
-            productId: string;
-            variantId: string;
+            productId: string | null;
+            variantId: string | null;
             productName: string;
             variantName: string;
             sku: string;
@@ -244,12 +248,13 @@ export declare class OrdersService {
         createdAt: Date;
         updatedAt: Date;
         items: {
+            productImage: string | null;
             id: string;
             createdAt: Date;
             subtotal: Prisma.Decimal;
             discountAmount: Prisma.Decimal;
-            productId: string;
-            variantId: string;
+            productId: string | null;
+            variantId: string | null;
             productName: string;
             variantName: string;
             sku: string;
@@ -266,12 +271,13 @@ export declare class OrdersService {
     }>;
     findOrderForAccess(orderNumber: string, customerId?: string, phone?: string, trackingToken?: string): Promise<{
         items: {
+            productImage: string | null;
             id: string;
             createdAt: Date;
             subtotal: Prisma.Decimal;
             discountAmount: Prisma.Decimal;
-            productId: string;
-            variantId: string;
+            productId: string | null;
+            variantId: string | null;
             productName: string;
             variantName: string;
             sku: string;
@@ -325,12 +331,13 @@ export declare class OrdersService {
         createdAt: Date;
         updatedAt: Date;
         items: {
+            productImage: string | null;
             id: string;
             createdAt: Date;
             subtotal: Prisma.Decimal;
             discountAmount: Prisma.Decimal;
-            productId: string;
-            variantId: string;
+            productId: string | null;
+            variantId: string | null;
             productName: string;
             variantName: string;
             sku: string;

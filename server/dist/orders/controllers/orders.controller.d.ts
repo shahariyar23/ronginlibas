@@ -28,12 +28,13 @@ export declare class OrdersController {
             createdAt: Date;
             updatedAt: Date;
             items: {
+                productImage: string | null;
                 id: string;
                 createdAt: Date;
                 subtotal: import("@prisma/client/runtime/library").Decimal;
                 discountAmount: import("@prisma/client/runtime/library").Decimal;
-                productId: string;
-                variantId: string;
+                productId: string | null;
+                variantId: string | null;
                 productName: string;
                 variantName: string;
                 sku: string;
@@ -54,12 +55,13 @@ export declare class OrdersController {
         data: {
             items: {
                 items: {
+                    productImage: string | null;
                     id: string;
                     createdAt: Date;
                     subtotal: import("@prisma/client/runtime/library").Decimal;
                     discountAmount: import("@prisma/client/runtime/library").Decimal;
-                    productId: string;
-                    variantId: string;
+                    productId: string | null;
+                    variantId: string | null;
                     productName: string;
                     variantName: string;
                     sku: string;
@@ -96,12 +98,13 @@ export declare class OrdersController {
         message: string;
         data: {
             items: {
+                productImage: string | null;
                 id: string;
                 createdAt: Date;
                 subtotal: import("@prisma/client/runtime/library").Decimal;
                 discountAmount: import("@prisma/client/runtime/library").Decimal;
-                productId: string;
-                variantId: string;
+                productId: string | null;
+                variantId: string | null;
                 productName: string;
                 variantName: string;
                 sku: string;
@@ -172,12 +175,13 @@ export declare class OrdersController {
             createdAt: Date;
             updatedAt: Date;
             items: {
+                productImage: string | null;
                 id: string;
                 createdAt: Date;
                 subtotal: import("@prisma/client/runtime/library").Decimal;
                 discountAmount: import("@prisma/client/runtime/library").Decimal;
-                productId: string;
-                variantId: string;
+                productId: string | null;
+                variantId: string | null;
                 productName: string;
                 variantName: string;
                 sku: string;
