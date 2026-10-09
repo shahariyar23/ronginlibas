@@ -1,9 +1,21 @@
 import { ReviewVoteDto } from '../dto/review-vote.dto.js';
 import { UpdateReviewDto } from '../dto/update-review.dto.js';
 import { ReviewsService } from '../services/reviews.service.js';
+import { CloudinaryService } from '../../products/services/cloudinary.service.js';
 export declare class ReviewsController {
     private readonly reviewsService;
-    constructor(reviewsService: ReviewsService);
+    private readonly cloudinary;
+    constructor(reviewsService: ReviewsService, cloudinary: CloudinaryService);
+    uploadPhoto(file: {
+        buffer: Buffer;
+        mimetype: string;
+    } | undefined): Promise<{
+        message: string;
+        data: {
+            url: string;
+            publicId: string;
+        };
+    }>;
     findMine(customerId: string): Promise<{
         message: string;
         data: {
@@ -14,6 +26,7 @@ export declare class ReviewsController {
             productImage: string;
             rating: number;
             comment: string;
+            images: string[];
             status: import("@prisma/client").$Enums.ReviewStatus;
             adminFeedback: string | null;
             adminFeedbackAt: Date | null;
@@ -43,6 +56,7 @@ export declare class ReviewsController {
             id: string;
             updatedAt: Date;
             status: import("@prisma/client").$Enums.ReviewStatus;
+            images: string[];
             productId: string;
             rating: number;
             comment: string;

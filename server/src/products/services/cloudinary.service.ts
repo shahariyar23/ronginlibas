@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary, type UploadApiResponse } from 'cloudinary';
 
 const PRODUCT_IMAGE_FOLDER = 'rongin-libas/products';
+const REVIEW_IMAGE_FOLDER = 'rongin-libas/reviews';
 
 @Injectable()
 export class CloudinaryService {
@@ -22,6 +23,29 @@ export class CloudinaryService {
         (error, result) => {
           if (error) {
             reject(new ServiceUnavailableException('Cloudinary image upload failed'));
+            return;
+          }
+          if (!result?.secure_url || !result.public_id) {
+            reject(new InternalServerErrorException('Cloudinary returned an incomplete image result'));
+            return;
+          }
+          resolve({ secure_url: result.secure_url, public_id: result.public_id });
+        },
+      );
+      stream.end(buffer);
+    });
+  }
+
+  async uploadReviewImage(
+    buffer: Buffer,
+  ): Promise<Pick<UploadApiResponse, 'secure_url' | 'public_id'>> {
+    this.configure();
+    return new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { folder: REVIEW_IMAGE_FOLDER, resource_type: 'image' },
+        (error, result) => {
+          if (error) {
+            reject(new ServiceUnavailableException('Cloudinary review image upload failed'));
             return;
           }
           if (!result?.secure_url || !result.public_id) {

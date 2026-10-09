@@ -1,5 +1,5 @@
-import { IsString, IsNotEmpty, IsInt, Min, Max } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsInt, Min, Max, IsOptional, IsArray } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateReviewDto {
   @ApiProperty({ example: 'product-uuid' })
@@ -17,4 +17,10 @@ export class CreateReviewDto {
   @IsString()
   @IsNotEmpty()
   comment: string;
+
+  @ApiPropertyOptional({ example: ['https://res.cloudinary.com/.../image.jpg'], type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  images?: string[];
 }

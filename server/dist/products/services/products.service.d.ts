@@ -73,6 +73,7 @@ export declare class ProductsService {
             updatedAt: Date;
             customerId: string;
             status: import("@prisma/client").$Enums.ReviewStatus;
+            images: string[];
             productId: string;
             rating: number;
             comment: string;

@@ -93,6 +93,9 @@ export class ReviewsService {
           id: true,
           rating: true,
           comment: true,
+          images: true,
+          adminFeedback: true,
+          adminFeedbackAt: true,
           createdAt: true,
           customerId: true,
           customer: { select: { firstName: true, lastName: true } },
@@ -144,6 +147,9 @@ export class ReviewsService {
         id: review.id,
         rating: review.rating,
         comment: review.comment,
+        images: review.images ?? [],
+        adminFeedback: review.adminFeedback,
+        adminFeedbackAt: review.adminFeedbackAt,
         createdAt: review.createdAt,
         customerName: `${review.customer.firstName} ${review.customer.lastName ?? ''}`.trim(),
         verifiedPurchase: verifiedCustomerIds.has(review.customerId),
@@ -235,6 +241,7 @@ export class ReviewsService {
       productImage: r.product.images[0]?.url ?? null,
       rating: r.rating,
       comment: r.comment,
+      images: r.images ?? [],
       status: r.status,
       adminFeedback: r.adminFeedback,
       adminFeedbackAt: r.adminFeedbackAt,
@@ -323,7 +330,7 @@ export class ReviewsService {
 
   async createForProduct(
     productId: string,
-    dto: Pick<CreateReviewDto, 'rating' | 'comment'>,
+    dto: Pick<CreateReviewDto, 'rating' | 'comment' | 'images'>,
     customerId: string,
   ) {
     const product = await this.prisma.product.findFirst({
@@ -359,6 +366,7 @@ export class ReviewsService {
               customerId,
               rating: dto.rating,
               comment: dto.comment,
+              images: dto.images ?? [],
               status: 'PENDING',
             },
             select: {
@@ -366,6 +374,7 @@ export class ReviewsService {
               productId: true,
               rating: true,
               comment: true,
+              images: true,
               status: true,
               createdAt: true,
             },
@@ -390,13 +399,14 @@ export class ReviewsService {
     return this.prisma.review.update({
       where: { id: review.id },
       data: {
-        rating: dto.rating,
-        comment: dto.comment,
+        ...(dto.rating !== undefined ? { rating: dto.rating } : {}),
+        ...(dto.comment !== undefined ? { comment: dto.comment } : {}),
+        ...(dto.images !== undefined ? { images: dto.images } : {}),
         status: 'PENDING',
         adminFeedback: null,
         adminFeedbackAt: null,
       },
-      select: { id: true, productId: true, rating: true, comment: true, status: true, updatedAt: true },
+      select: { id: true, productId: true, rating: true, comment: true, images: true, status: true, updatedAt: true },
     });
   }
 

@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsNotEmpty, IsString, Max, MaxLength, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsArray, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class CreateProductReviewDto {
   @ApiProperty({ minimum: 1, maximum: 5 })
@@ -13,4 +13,10 @@ export class CreateProductReviewDto {
   @IsNotEmpty()
   @MaxLength(3000)
   comment: string;
+
+  @ApiPropertyOptional({ example: ['https://res.cloudinary.com/.../image.jpg'], type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  images?: string[];
 }

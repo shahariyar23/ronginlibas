@@ -105,8 +105,9 @@ export async function apiRequest<T>(
     }
   }
 
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers = new Headers(options.headers);
-  if (options.body && !headers.has('Content-Type')) {
+  if (options.body && !isFormData && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
   if (token) {
@@ -489,11 +490,6 @@ export async function getRelatedProducts(slug: string) {
   return products.map(mapProduct);
 }
 
-export async function getRecommendations(slug: string) {
-  const products = await apiRequest<ApiProduct[]>(`/products/${encodeURIComponent(slug)}/recommendations`);
-  return products.map(mapProduct);
-}
-
 export async function downloadOrderInvoice(orderNumber: string) {
   const headers = new Headers();
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
@@ -520,11 +516,14 @@ export interface ProductReview {
   id: string;
   rating: number;
   comment: string;
+  images?: string[];
   createdAt: string;
   customerName: string;
   verifiedPurchase: boolean;
   helpfulYes: number;
   helpfulNo: number;
+  adminFeedback?: string | null;
+  adminFeedbackAt?: string | null;
 }
 
 export interface ProductReviewsResponse {
@@ -555,7 +554,10 @@ export interface CustomerSubmittedReview {
   productImage: string | null;
   rating: number;
   comment: string;
+  images?: string[];
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  adminFeedback?: string | null;
+  adminFeedbackAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -586,12 +588,26 @@ export async function checkReviewEligibility(productIdOrSlug: string) {
   );
 }
 
-export async function submitProductReview(productIdOrSlug: string, rating: number, comment: string) {
+export async function uploadReviewImage(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiRequest<{ url: string; publicId: string }>('/reviews/upload', {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+export async function submitProductReview(
+  productIdOrSlug: string,
+  rating: number,
+  comment: string,
+  images: string[] = [],
+) {
   return apiRequest<{ id: string; status: string }>(
     `/products/${encodeURIComponent(productIdOrSlug)}/reviews`,
     {
       method: 'POST',
-      body: JSON.stringify({ rating, comment }),
+      body: JSON.stringify({ rating, comment, images }),
     },
   );
 }

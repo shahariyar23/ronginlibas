@@ -281,8 +281,8 @@ export const OrdersClient: React.FC = () => {
                         <span className="text-sm font-semibold">৳{(item.unitPrice * item.quantity).toLocaleString()}</span>
                         {order.status === 'DELIVERED' && (
                           <Link
-                            href="/profile"
-                            className="inline-flex items-center h-8 px-3 text-xs border border-[#c79a45] text-[#073a2d] hover:bg-[#073a2d] hover:text-white transition-colors"
+                            href={`/profile?tab=reviews&orderNumber=${encodeURIComponent(order.orderNumber)}&productId=${encodeURIComponent(item.productId)}&productName=${encodeURIComponent(item.name)}&size=${encodeURIComponent(item.size)}&color=${encodeURIComponent(item.color)}`}
+                            className="inline-flex items-center h-8 px-3 text-xs border border-[#c79a45] text-[#073a2d] hover:bg-[#073a2d] hover:text-white transition-colors cursor-pointer"
                           >
                             Write Review
                           </Link>
