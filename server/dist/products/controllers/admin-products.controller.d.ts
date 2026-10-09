@@ -2,9 +2,11 @@ import { ProductsService } from '../services/products.service.js';
 import { CreateProductDto } from '../dto/create-product.dto.js';
 import { UpdateProductDto } from '../dto/update-product.dto.js';
 import { ProductQueryDto } from '../dto/product-query.dto.js';
+import { AuditService, AdminAuditActor } from '../../audit/audit.service.js';
 export declare class AdminProductsController {
     private readonly productsService;
-    constructor(productsService: ProductsService);
+    private readonly auditService;
+    constructor(productsService: ProductsService, auditService: AuditService);
     findAll(query: ProductQueryDto): Promise<{
         message: string;
         data: import("../../common/dto/pagination-query.dto.js").PaginatedResult<any>;
@@ -29,35 +31,35 @@ export declare class AdminProductsController {
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
-                productId: string;
                 size: string;
                 color: string;
-                sizeLabel: string | null;
-                sizeType: string | null;
                 stock: number;
                 priceOverride: import("@prisma/client/runtime/library").Decimal | null;
+                sizeLabel: string | null;
+                sizeType: string | null;
+                measurements: import("@prisma/client/runtime/library").JsonValue | null;
+                productId: string;
             }[];
             images: {
-                url: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
                 sortOrder: number;
                 isPrimary: boolean;
                 productId: string;
+                url: string;
                 publicId: string | null;
                 altText: string | null;
             }[];
         } & {
+            tags: string[];
             description: string | null;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
             name: string;
-            tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
             compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
@@ -79,7 +81,7 @@ export declare class AdminProductsController {
             categoryId: string;
         };
     }>;
-    create(dto: CreateProductDto): Promise<{
+    create(dto: CreateProductDto, actor: AdminAuditActor): Promise<{
         message: string;
         data: {
             variants: {
@@ -87,35 +89,35 @@ export declare class AdminProductsController {
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
-                productId: string;
                 size: string;
                 color: string;
-                sizeLabel: string | null;
-                sizeType: string | null;
                 stock: number;
                 priceOverride: import("@prisma/client/runtime/library").Decimal | null;
+                sizeLabel: string | null;
+                sizeType: string | null;
+                measurements: import("@prisma/client/runtime/library").JsonValue | null;
+                productId: string;
             }[];
             images: {
-                url: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
                 sortOrder: number;
                 isPrimary: boolean;
                 productId: string;
+                url: string;
                 publicId: string | null;
                 altText: string | null;
             }[];
         } & {
+            tags: string[];
             description: string | null;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
             name: string;
-            tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
             compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
@@ -137,7 +139,7 @@ export declare class AdminProductsController {
             categoryId: string;
         };
     }>;
-    update(id: string, dto: UpdateProductDto): Promise<{
+    update(id: string, dto: UpdateProductDto, actor: AdminAuditActor): Promise<{
         message: string;
         data: ({
             category: {
@@ -157,35 +159,35 @@ export declare class AdminProductsController {
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
-                productId: string;
                 size: string;
                 color: string;
-                sizeLabel: string | null;
-                sizeType: string | null;
                 stock: number;
                 priceOverride: import("@prisma/client/runtime/library").Decimal | null;
+                sizeLabel: string | null;
+                sizeType: string | null;
+                measurements: import("@prisma/client/runtime/library").JsonValue | null;
+                productId: string;
             }[];
             images: {
-                url: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
                 sortOrder: number;
                 isPrimary: boolean;
                 productId: string;
+                url: string;
                 publicId: string | null;
                 altText: string | null;
             }[];
         } & {
+            tags: string[];
             description: string | null;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
             name: string;
-            tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
             compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
@@ -224,34 +226,34 @@ export declare class AdminProductsController {
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
-                productId: string;
                 size: string;
                 color: string;
-                sizeLabel: string | null;
-                sizeType: string | null;
                 stock: number;
                 priceOverride: import("@prisma/client/runtime/library").Decimal | null;
+                sizeLabel: string | null;
+                sizeType: string | null;
+                measurements: import("@prisma/client/runtime/library").JsonValue | null;
+                productId: string;
             }[];
             images: {
-                url: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
                 sortOrder: number;
                 isPrimary: boolean;
                 productId: string;
+                url: string;
                 publicId: string | null;
                 altText: string | null;
             }[];
+            tags: string[];
             description: string | null;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
             name: string;
-            tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
             compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
@@ -273,7 +275,7 @@ export declare class AdminProductsController {
             categoryId: string;
         };
     }>;
-    archive(id: string): Promise<{
+    archive(id: string, actor: AdminAuditActor): Promise<{
         message: string;
         data: {
             category: {
@@ -293,35 +295,35 @@ export declare class AdminProductsController {
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
-                productId: string;
                 size: string;
                 color: string;
-                sizeLabel: string | null;
-                sizeType: string | null;
                 stock: number;
                 priceOverride: import("@prisma/client/runtime/library").Decimal | null;
+                sizeLabel: string | null;
+                sizeType: string | null;
+                measurements: import("@prisma/client/runtime/library").JsonValue | null;
+                productId: string;
             }[];
             images: {
-                url: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
                 sortOrder: number;
                 isPrimary: boolean;
                 productId: string;
+                url: string;
                 publicId: string | null;
                 altText: string | null;
             }[];
         } & {
+            tags: string[];
             description: string | null;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
             name: string;
-            tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
             compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
@@ -343,7 +345,7 @@ export declare class AdminProductsController {
             categoryId: string;
         };
     }>;
-    restore(id: string): Promise<{
+    restore(id: string, actor: AdminAuditActor): Promise<{
         message: string;
         data: {
             category: {
@@ -363,35 +365,35 @@ export declare class AdminProductsController {
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
-                productId: string;
                 size: string;
                 color: string;
-                sizeLabel: string | null;
-                sizeType: string | null;
                 stock: number;
                 priceOverride: import("@prisma/client/runtime/library").Decimal | null;
+                sizeLabel: string | null;
+                sizeType: string | null;
+                measurements: import("@prisma/client/runtime/library").JsonValue | null;
+                productId: string;
             }[];
             images: {
-                url: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
                 sortOrder: number;
                 isPrimary: boolean;
                 productId: string;
+                url: string;
                 publicId: string | null;
                 altText: string | null;
             }[];
         } & {
+            tags: string[];
             description: string | null;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
             name: string;
-            tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
             compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
@@ -413,7 +415,7 @@ export declare class AdminProductsController {
             categoryId: string;
         };
     }>;
-    deletePermanent(id: string): Promise<{
+    deletePermanent(id: string, actor: AdminAuditActor): Promise<{
         message: string;
         data: {
             id: string;
@@ -422,7 +424,7 @@ export declare class AdminProductsController {
             cleanupWarning: string | undefined;
         };
     }>;
-    delete(id: string): Promise<{
+    delete(id: string, actor: AdminAuditActor): Promise<{
         message: string;
         data: {
             id: string;

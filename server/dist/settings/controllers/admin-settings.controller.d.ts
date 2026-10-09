@@ -1,8 +1,10 @@
 import { SettingsService } from '../services/settings.service.js';
 import { UpdateSettingsDto } from '../dto/update-settings.dto.js';
+import { AuditService, AdminAuditActor } from '../../audit/audit.service.js';
 export declare class AdminSettingsController {
     private readonly settingsService;
-    constructor(settingsService: SettingsService);
+    private readonly auditService;
+    constructor(settingsService: SettingsService, auditService: AuditService);
     getSettings(): Promise<{
         message: string;
         data: Record<string, unknown> | {
@@ -33,7 +35,7 @@ export declare class AdminSettingsController {
             storeStatus: string;
         };
     }>;
-    updateSettings(dto: UpdateSettingsDto): Promise<{
+    updateSettings(dto: UpdateSettingsDto, actor: AdminAuditActor): Promise<{
         message: string;
         data: Record<string, unknown> | {
             storeName: string;

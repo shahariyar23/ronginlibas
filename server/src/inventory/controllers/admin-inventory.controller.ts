@@ -9,6 +9,7 @@ import { Roles } from '../../common/decorators/roles.decorator.js';
 import { Permissions } from '../../common/decorators/permissions.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
+import { AuditService, AdminAuditActor } from '../../audit/audit.service.js';
 
 @ApiTags('Admin - Inventory')
 @ApiBearerAuth()
@@ -17,7 +18,10 @@ import { UserRole } from '../../common/constants/roles.constant.js';
 @Permissions('inventory')
 @Controller('admin/inventory')
 export class AdminInventoryController {
-  constructor(private readonly inventoryService: InventoryService) {}
+  constructor(
+    private readonly inventoryService: InventoryService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List inventory stock levels across all garment variants' })
@@ -31,8 +35,28 @@ export class AdminInventoryController {
 
   @Post('adjust')
   @ApiOperation({ summary: 'Perform stock count adjustment with audit transaction log' })
-  async adjustStock(@Body() dto: AdjustStockDto, @CurrentUser('id') userId?: string) {
+  async adjustStock(
+    @Body() dto: AdjustStockDto,
+    @CurrentUser('id') userId: string,
+    @CurrentUser() actor: AdminAuditActor,
+  ) {
     const data = await this.inventoryService.adjustStock(dto, userId);
+    await this.auditService.record({
+      actor,
+      module: 'inventory',
+      action: 'STOCK_ADJUSTED',
+      entityType: 'product_variant',
+      entityId: data.variant.id,
+      entityLabel: data.variant.sku,
+      summary: `Adjusted stock for ${data.variant.sku} by ${dto.quantityChange}`,
+      before: { stock: data.transaction.previousStock },
+      after: {
+        stock: data.transaction.newStock,
+        quantityChange: data.transaction.quantityChange,
+        reason: data.transaction.type,
+        note: data.transaction.note,
+      },
+    });
     return {
       message: 'Stock adjusted and audit transaction logged successfully',
       data,

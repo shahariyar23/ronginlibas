@@ -87,6 +87,29 @@ model User {
   @@map("users")
 }
 
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  actorId     String
+  actorName   String
+  actorEmail  String
+  actorRole   String
+  module      String
+  action      String
+  entityType  String
+  entityId    String?
+  entityLabel String?
+  summary     String
+  before      Json?
+  after       Json?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([module, createdAt])
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId, createdAt])
+  @@map("admin_audit_logs")
+}
+
 model Customer {
   id           String    @id @default(uuid())
   email        String?   @unique

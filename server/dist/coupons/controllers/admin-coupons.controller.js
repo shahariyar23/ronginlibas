@@ -19,10 +19,14 @@ import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { Permissions } from '../../common/decorators/permissions.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
+import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import { AuditService } from '../../audit/audit.service.js';
 let AdminCouponsController = class AdminCouponsController {
     couponsService;
-    constructor(couponsService) {
+    auditService;
+    constructor(couponsService, auditService) {
         this.couponsService = couponsService;
+        this.auditService = auditService;
     }
     async findAll() {
         const data = await this.couponsService.findAll();
@@ -31,22 +35,55 @@ let AdminCouponsController = class AdminCouponsController {
             data,
         };
     }
-    async create(dto) {
+    async create(dto, actor) {
         const data = await this.couponsService.create(dto);
+        await this.auditService.record({
+            actor,
+            module: 'coupons',
+            action: 'COUPON_CREATED',
+            entityType: 'coupon',
+            entityId: data.id,
+            entityLabel: data.code,
+            summary: `Created coupon ${data.code}`,
+            after: data,
+        });
         return {
             message: 'Voucher created successfully',
             data,
         };
     }
-    async update(id, body) {
+    async update(id, body, actor) {
+        const before = await this.couponsService.findById(id);
         const data = await this.couponsService.update(id, body);
+        await this.auditService.record({
+            actor,
+            module: 'coupons',
+            action: 'COUPON_UPDATED',
+            entityType: 'coupon',
+            entityId: data.id,
+            entityLabel: data.code,
+            summary: `Updated coupon ${data.code}`,
+            before,
+            after: data,
+        });
         return {
             message: 'Voucher updated successfully',
             data,
         };
     }
-    async remove(id) {
+    async remove(id, actor) {
+        const before = await this.couponsService.findById(id);
         const data = await this.couponsService.remove(id);
+        await this.auditService.record({
+            actor,
+            module: 'coupons',
+            action: 'COUPON_DELETED',
+            entityType: 'coupon',
+            entityId: id,
+            entityLabel: before.code,
+            summary: `Deleted coupon ${before.code}`,
+            before,
+        });
         return {
             message: 'Voucher deleted successfully',
             data,
@@ -64,8 +101,9 @@ __decorate([
     Post(),
     ApiOperation({ summary: 'Create new promotional coupon code' }),
     __param(0, Body()),
+    __param(1, CurrentUser()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [CreateCouponDto]),
+    __metadata("design:paramtypes", [CreateCouponDto, Object]),
     __metadata("design:returntype", Promise)
 ], AdminCouponsController.prototype, "create", null);
 __decorate([
@@ -73,16 +111,18 @@ __decorate([
     ApiOperation({ summary: 'Update coupon properties or deactivation' }),
     __param(0, Param('id')),
     __param(1, Body()),
+    __param(2, CurrentUser()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], AdminCouponsController.prototype, "update", null);
 __decorate([
     Delete(':id'),
     ApiOperation({ summary: 'Delete a promotional coupon code' }),
     __param(0, Param('id')),
+    __param(1, CurrentUser()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], AdminCouponsController.prototype, "remove", null);
 AdminCouponsController = __decorate([
@@ -92,7 +132,8 @@ AdminCouponsController = __decorate([
     Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER),
     Permissions('coupons'),
     Controller('admin/coupons'),
-    __metadata("design:paramtypes", [CouponsService])
+    __metadata("design:paramtypes", [CouponsService,
+        AuditService])
 ], AdminCouponsController);
 export { AdminCouponsController };
 //# sourceMappingURL=admin-coupons.controller.js.map

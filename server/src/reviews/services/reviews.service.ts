@@ -426,6 +426,15 @@ export class ReviewsService {
     });
   }
 
+  async getAdminAuditState(id: string) {
+    const review = await this.prisma.review.findUnique({
+      where: { id },
+      select: { id: true, status: true, adminFeedback: true },
+    });
+    if (!review) throw new NotFoundException('Review not found');
+    return review;
+  }
+
   async updateAdminFeedback(id: string, feedback: string) {
     const trimmedFeedback = feedback.trim();
     if (!trimmedFeedback) throw new BadRequestException('Review feedback cannot be empty');

@@ -19,11 +19,15 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { Permissions } from '../../common/decorators/permissions.decorator.js';
+import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
+import { AuditService } from '../../audit/audit.service.js';
 let AdminOrdersController = class AdminOrdersController {
     ordersService;
-    constructor(ordersService) {
+    auditService;
+    constructor(ordersService, auditService) {
         this.ordersService = ordersService;
+        this.auditService = auditService;
     }
     async findAll(query) {
         const data = await this.ordersService.findAll(query);
@@ -39,15 +43,43 @@ let AdminOrdersController = class AdminOrdersController {
             data,
         };
     }
-    async updateOrder(id, dto) {
+    async updateOrder(id, dto, actor) {
+        const before = await this.ordersService.findById(id);
         const data = await this.ordersService.updateStatus(id, dto);
+        await this.auditService.record({
+            actor,
+            module: 'orders',
+            action: before.status === data.status ? 'ORDER_UPDATED' : 'ORDER_STATUS_CHANGED',
+            entityType: 'order',
+            entityId: data.id,
+            entityLabel: data.orderNumber,
+            summary: before.status === data.status
+                ? `Updated order ${data.orderNumber}`
+                : `Changed order ${data.orderNumber} from ${before.status} to ${data.status}`,
+            before: { status: before.status, adminNotes: before.adminNotes },
+            after: { status: data.status, adminNotes: data.adminNotes },
+        });
         return {
             message: `Order status transitioned to ${dto.status} successfully`,
             data,
         };
     }
-    async updateStatus(id, dto) {
+    async updateStatus(id, dto, actor) {
+        const before = await this.ordersService.findById(id);
         const data = await this.ordersService.updateStatus(id, dto);
+        await this.auditService.record({
+            actor,
+            module: 'orders',
+            action: before.status === data.status ? 'ORDER_UPDATED' : 'ORDER_STATUS_CHANGED',
+            entityType: 'order',
+            entityId: data.id,
+            entityLabel: data.orderNumber,
+            summary: before.status === data.status
+                ? `Updated order ${data.orderNumber}`
+                : `Changed order ${data.orderNumber} from ${before.status} to ${data.status}`,
+            before: { status: before.status, adminNotes: before.adminNotes },
+            after: { status: data.status, adminNotes: data.adminNotes },
+        });
         return {
             message: `Order status transitioned to ${dto.status} successfully`,
             data,
@@ -75,8 +107,9 @@ __decorate([
     ApiOperation({ summary: 'Update order stage or administrative notes' }),
     __param(0, Param('id')),
     __param(1, Body()),
+    __param(2, CurrentUser()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, UpdateOrderStatusDto]),
+    __metadata("design:paramtypes", [String, UpdateOrderStatusDto, Object]),
     __metadata("design:returntype", Promise)
 ], AdminOrdersController.prototype, "updateOrder", null);
 __decorate([
@@ -84,8 +117,9 @@ __decorate([
     ApiOperation({ summary: 'Advance order stage in the Sartorial Lifecycle flow' }),
     __param(0, Param('id')),
     __param(1, Body()),
+    __param(2, CurrentUser()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, UpdateOrderStatusDto]),
+    __metadata("design:paramtypes", [String, UpdateOrderStatusDto, Object]),
     __metadata("design:returntype", Promise)
 ], AdminOrdersController.prototype, "updateStatus", null);
 AdminOrdersController = __decorate([
@@ -95,7 +129,8 @@ AdminOrdersController = __decorate([
     Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER),
     Permissions('orders'),
     Controller('admin/orders'),
-    __metadata("design:paramtypes", [OrdersService])
+    __metadata("design:paramtypes", [OrdersService,
+        AuditService])
 ], AdminOrdersController);
 export { AdminOrdersController };
 //# sourceMappingURL=admin-orders.controller.js.map

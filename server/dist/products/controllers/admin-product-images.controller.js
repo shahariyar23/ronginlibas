@@ -28,22 +28,48 @@ __decorate([
     __metadata("design:type", String)
 ], DeleteProductImageDto.prototype, "publicId", void 0);
 import { Permissions } from '../../common/decorators/permissions.decorator.js';
+import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import { AuditService } from '../../audit/audit.service.js';
 let AdminProductImagesController = class AdminProductImagesController {
     cloudinary;
-    constructor(cloudinary) {
+    auditService;
+    constructor(cloudinary, auditService) {
         this.cloudinary = cloudinary;
+        this.auditService = auditService;
     }
-    async upload(file) {
+    async upload(file, actor) {
         if (!file)
             throw new BadRequestException('An image file is required');
         const uploaded = await this.cloudinary.uploadProductImage(file.buffer);
+        if (!actor)
+            throw new BadRequestException('Administrative identity is required');
+        await this.auditService.record({
+            actor,
+            module: 'products',
+            action: 'PRODUCT_IMAGE_UPLOADED',
+            entityType: 'product_image',
+            entityId: uploaded.public_id,
+            entityLabel: uploaded.public_id,
+            summary: 'Uploaded a product image',
+            after: { url: uploaded.secure_url, publicId: uploaded.public_id },
+        });
         return {
             message: 'Product image uploaded successfully',
             data: { url: uploaded.secure_url, publicId: uploaded.public_id },
         };
     }
-    async destroy(dto) {
+    async destroy(dto, actor) {
         await this.cloudinary.destroyProductImage(dto.publicId);
+        await this.auditService.record({
+            actor,
+            module: 'products',
+            action: 'PRODUCT_IMAGE_DELETED',
+            entityType: 'product_image',
+            entityId: dto.publicId,
+            entityLabel: dto.publicId,
+            summary: 'Deleted an unassociated product image',
+            before: { publicId: dto.publicId },
+        });
         return { message: 'Product image deleted successfully' };
     }
 };
@@ -69,8 +95,9 @@ __decorate([
         },
     })),
     __param(0, UploadedFile()),
+    __param(1, CurrentUser()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], AdminProductImagesController.prototype, "upload", null);
 __decorate([
@@ -78,8 +105,9 @@ __decorate([
     ApiBody({ type: DeleteProductImageDto }),
     ApiOperation({ summary: 'Delete an unassociated product image from Cloudinary' }),
     __param(0, Body()),
+    __param(1, CurrentUser()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [DeleteProductImageDto]),
+    __metadata("design:paramtypes", [DeleteProductImageDto, Object]),
     __metadata("design:returntype", Promise)
 ], AdminProductImagesController.prototype, "destroy", null);
 AdminProductImagesController = __decorate([
@@ -89,7 +117,8 @@ AdminProductImagesController = __decorate([
     Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER),
     Permissions('products'),
     Controller('admin/products/images'),
-    __metadata("design:paramtypes", [CloudinaryService])
+    __metadata("design:paramtypes", [CloudinaryService,
+        AuditService])
 ], AdminProductImagesController);
 export { AdminProductImagesController };
 //# sourceMappingURL=admin-product-images.controller.js.map

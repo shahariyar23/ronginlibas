@@ -59,7 +59,7 @@ export interface UpdateStaffUserPayload {
 }
 
 export interface ChangePasswordPayload {
-  currentPassword?: string;
+  currentPassword: string;
   newPassword: string;
 }
 
@@ -178,6 +178,31 @@ export interface AdminReview {
 
 export interface AdminReviewListResponse {
   items: AdminReview[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface AdminAuditEvent {
+  id: string;
+  actorId: string;
+  actorName: string;
+  actorEmail: string;
+  actorRole: string;
+  module: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  entityLabel: string | null;
+  summary: string;
+  before: unknown;
+  after: unknown;
+  createdAt: string;
+}
+
+export interface AdminAuditListResponse {
+  items: AdminAuditEvent[];
   page: number;
   limit: number;
   total: number;
@@ -398,6 +423,25 @@ export const adminApi = {
   dashboard: {
     getMetrics: (period: DashboardPeriod = '7') =>
       request<AdminDashboardResponse>(`/admin/dashboard?period=${period}`),
+  },
+
+  activity: {
+    getAll: (params: {
+      page?: number;
+      limit?: number;
+      module?: string;
+      action?: string;
+      actor?: string;
+      search?: string;
+      from?: string;
+      to?: string;
+    }) => {
+      const query = new URLSearchParams();
+      for (const [key, value] of Object.entries(params)) {
+        if (value) query.set(key, String(value));
+      }
+      return request<AdminAuditListResponse>(`/admin/activity?${query.toString()}`);
+    },
   },
 
   // Products

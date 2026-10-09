@@ -17,6 +17,16 @@ let CouponsService = class CouponsService {
     async findAll() {
         return this.prisma.coupon.findMany({ orderBy: { createdAt: 'desc' } });
     }
+    async findById(id) {
+        try {
+            return await this.prisma.coupon.findUniqueOrThrow({ where: { id } });
+        }
+        catch (error) {
+            if (isPrismaError(error, 'P2025'))
+                throw new NotFoundException('Voucher not found');
+            throw error;
+        }
+    }
     async create(dto) {
         const code = dto.code.toUpperCase().trim();
         const existing = await this.prisma.coupon.findUnique({

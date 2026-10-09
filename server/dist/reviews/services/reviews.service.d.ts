@@ -12,10 +12,10 @@ export declare class ReviewsService {
     create(dto: CreateReviewDto, customerId: string): Promise<{
         id: string;
         createdAt: Date;
-        status: import("@prisma/client").$Enums.ReviewStatus;
         productId: string;
         rating: number;
         comment: string;
+        status: import("@prisma/client").$Enums.ReviewStatus;
     }>;
     findProductReviews(productId: string, query: PaginationQueryDto): Promise<{
         items: {
@@ -49,8 +49,8 @@ export declare class ReviewsService {
         existingReview: {
             id: string;
             createdAt: Date;
-            status: import("@prisma/client").$Enums.ReviewStatus;
             rating: number;
+            status: import("@prisma/client").$Enums.ReviewStatus;
         };
         orderNumber?: undefined;
     } | {
@@ -94,18 +94,18 @@ export declare class ReviewsService {
     createForProduct(productId: string, dto: Pick<CreateReviewDto, 'rating' | 'comment'>, customerId: string): Promise<{
         id: string;
         createdAt: Date;
-        status: import("@prisma/client").$Enums.ReviewStatus;
         productId: string;
         rating: number;
         comment: string;
+        status: import("@prisma/client").$Enums.ReviewStatus;
     }>;
     updateOwned(reviewId: string, customerId: string, dto: UpdateReviewDto): Promise<{
         id: string;
         updatedAt: Date;
-        status: import("@prisma/client").$Enums.ReviewStatus;
         productId: string;
         rating: number;
         comment: string;
+        status: import("@prisma/client").$Enums.ReviewStatus;
     }>;
     deleteOwned(reviewId: string, customerId: string): Promise<{
         deleted: boolean;
@@ -121,13 +121,18 @@ export declare class ReviewsService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        customerId: string;
-        status: import("@prisma/client").$Enums.ReviewStatus;
         productId: string;
         rating: number;
         comment: string;
+        customerId: string;
+        status: import("@prisma/client").$Enums.ReviewStatus;
         adminFeedback: string | null;
         adminFeedbackAt: Date | null;
+    }>;
+    getAdminAuditState(id: string): Promise<{
+        id: string;
+        status: import("@prisma/client").$Enums.ReviewStatus;
+        adminFeedback: string | null;
     }>;
     updateAdminFeedback(id: string, feedback: string): Promise<{
         id: string;

@@ -67,6 +67,14 @@ interface AdminContextType {
   setSearchQuery: (query: string) => void;
   isSearchOpen: boolean;
   setIsSearchOpen: (open: boolean) => void;
+
+  isMobileSidebarOpen: boolean;
+  setIsMobileSidebarOpen: (open: boolean) => void;
+  openMobileSidebar: () => void;
+  closeMobileSidebar: () => void;
+
+  isPasswordModalOpen: boolean;
+  setIsPasswordModalOpen: (open: boolean) => void;
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
@@ -264,7 +272,12 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [inventoryLoadError, setInventoryLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const { toast } = useToast();
+
+  const openMobileSidebar = useCallback(() => setIsMobileSidebarOpen(true), []);
+  const closeMobileSidebar = useCallback(() => setIsMobileSidebarOpen(false), []);
 
   const refreshDashboard = useCallback(
     async (period: DashboardPeriod = '7'): Promise<boolean> => {
@@ -852,6 +865,12 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         setSearchQuery,
         isSearchOpen,
         setIsSearchOpen,
+        isMobileSidebarOpen,
+        setIsMobileSidebarOpen,
+        openMobileSidebar,
+        closeMobileSidebar,
+        isPasswordModalOpen,
+        setIsPasswordModalOpen,
       }}
     >
 

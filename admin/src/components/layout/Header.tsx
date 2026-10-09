@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, Bell, User, CheckCircle2, AlertTriangle, ShieldCheck, LogOut, CheckCheck, KeyRound, Lock, X } from 'lucide-react';
+import { Search, Bell, User, CheckCircle2, AlertTriangle, ShieldCheck, LogOut, CheckCheck, KeyRound, Lock, X, Menu } from 'lucide-react';
 import { useAdmin } from '@/context/AdminContext';
 import { useToast } from '@/context/ToastContext';
 import { adminApi } from '@/lib/api';
@@ -10,7 +10,14 @@ import { adminApi } from '@/lib/api';
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
-  const { setIsSearchOpen, backendConnected, orders, inventory } = useAdmin();
+  const {
+    setIsSearchOpen,
+    backendConnected,
+    orders,
+    inventory,
+    openMobileSidebar,
+    setIsPasswordModalOpen,
+  } = useAdmin();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [userEmail, setUserEmail] = useState('admin@ronginlibas.com');
@@ -81,11 +88,6 @@ export function Header() {
   const { toast } = useToast();
   const [userName, setUserName] = useState('Master Tailor Admin');
   const [mustChangePassword, setMustChangePassword] = useState(false);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [currentPw, setCurrentPw] = useState('');
-  const [newPw, setNewPw] = useState('');
-  const [confirmPw, setConfirmPw] = useState('');
-  const [isChangingPw, setIsChangingPw] = useState(false);
 
   useEffect(() => {
     const user = adminApi.auth.getUser();
@@ -110,46 +112,6 @@ export function Header() {
   const handleSignOut = () => {
     adminApi.auth.logout();
     router.replace('/login');
-  };
-
-  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newPw.length < 6) {
-      toast.error('New password must be at least 6 characters');
-      return;
-    }
-    if (newPw !== confirmPw) {
-      toast.error('New password and confirmation do not match');
-      return;
-    }
-
-    setIsChangingPw(true);
-    try {
-      const res = await adminApi.users.changePassword({
-        currentPassword: currentPw || undefined,
-        newPassword: newPw,
-      });
-      if (res.success) {
-        toast.success('Your password has been changed successfully');
-        setShowPasswordModal(false);
-        setMustChangePassword(false);
-        setCurrentPw('');
-        setNewPw('');
-        setConfirmPw('');
-        // Update stored user
-        const stored = adminApi.auth.getUser();
-        if (stored) {
-          stored.mustChangePassword = false;
-          adminApi.auth.getUser();
-        }
-      } else {
-        toast.error(res.error || 'Failed to update password');
-      }
-    } catch (err: any) {
-      toast.error(err?.message || 'Error updating password');
-    } finally {
-      setIsChangingPw(false);
-    }
   };
 
   // Keyboard shortcut for Cmd+K
@@ -179,17 +141,27 @@ export function Header() {
   };
 
   return (
-    <header className="h-16 bg-[#fbf9f2] border-b border-[#deddd3] px-8 flex items-center justify-between sticky top-0 z-30">
+    <header className="h-16 bg-[#fbf9f2] border-b border-[#deddd3] px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30">
       {/* Breadcrumb & Live Status */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[#717975]">
-          <span className="font-semibold text-[#073a2d]">ATELIER SUITE</span>
-          <span className="text-[#deddd3]">/</span>
-          <span className="text-[#1b1c18] font-bold">{getPageTitle()}</span>
+      <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+        {/* Mobile Hamburger Button */}
+        <button
+          type="button"
+          onClick={openMobileSidebar}
+          className="lg:hidden p-1.5 -ml-1 text-[#073a2d] hover:bg-[#f0eee7] rounded-md transition-colors cursor-pointer"
+          aria-label="Open navigation menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[#717975] truncate">
+          <span className="hidden sm:inline font-semibold text-[#073a2d]">ATELIER SUITE</span>
+          <span className="hidden sm:inline text-[#deddd3]">/</span>
+          <span className="text-[#1b1c18] font-bold truncate max-w-[150px] sm:max-w-none">{getPageTitle()}</span>
         </div>
 
         {/* Live Backend Connection Indicator */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] tracking-wide font-medium border border-[#deddd3] bg-white shadow-xs">
+        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] tracking-wide font-medium border border-[#deddd3] bg-white shadow-xs">
           <span
             className={`w-2 h-2 rounded-full ${
               backendConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'
@@ -202,14 +174,14 @@ export function Header() {
       </div>
 
       {/* Right controls */}
-      <div className="flex items-center gap-5">
+      <div className="flex items-center gap-3 sm:gap-5">
         {/* Quick Search */}
         <div
           onClick={() => setIsSearchOpen(true)}
-          className="flex items-center gap-2.5 bg-[#f0eee7] hover:bg-[#e4e2dc] border border-[#deddd3] px-3.5 py-1.5 cursor-pointer text-xs text-[#717975] transition-colors w-64 select-none"
+          className="hidden md:flex items-center gap-2.5 bg-[#f0eee7] hover:bg-[#e4e2dc] border border-[#deddd3] px-3.5 py-1.5 cursor-pointer text-xs text-[#717975] transition-colors w-44 lg:w-64 select-none"
         >
           <Search className="w-3.5 h-3.5 text-[#073a2d]" />
-          <span className="flex-1 truncate">Quick search (Cmd+K)</span>
+          <span className="flex-1 truncate">Quick search</span>
           <kbd className="text-[10px] bg-white border border-[#deddd3] px-1.5 py-0.5 text-[#404945] font-mono">
             ⌘K
           </kbd>
@@ -372,7 +344,7 @@ export function Header() {
                 <button
                   onClick={() => {
                     setShowProfileMenu(false);
-                    setShowPasswordModal(true);
+                    setIsPasswordModalOpen(true);
                   }}
                   className="w-full text-left px-4 py-2 text-[#073a2d] hover:bg-[#f0eee7] flex items-center gap-2 font-medium transition-colors cursor-pointer"
                 >
@@ -394,97 +366,6 @@ export function Header() {
           )}
         </div>
       </div>
-
-      {/* Change Password Modal */}
-      {showPasswordModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-[#deddd3] max-w-md w-full p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-4 border-b border-[#deddd3]">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-[#073a2d]/10 flex items-center justify-center text-[#073a2d]">
-                  <KeyRound className="w-4 h-4 text-[#073a2d]" />
-                </div>
-                <div>
-                  <h3 className="font-serif font-bold text-base text-[#1b1c18]">Change Password</h3>
-                  <p className="text-[11px] text-[#69726d]">Update your atelier staff credentials</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowPasswordModal(false)}
-                className="text-[#717975] hover:text-[#1b1c18] cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleChangePasswordSubmit} className="space-y-4 pt-4">
-              {!mustChangePassword && (
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-[#404945] uppercase tracking-wider block">
-                    Current Password
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={currentPw}
-                    onChange={(e) => setCurrentPw(e.target.value)}
-                    placeholder="Enter current password"
-                    className="w-full h-10 px-3 border border-[#deddd3] text-xs outline-none focus:border-[#073a2d]"
-                  />
-                </div>
-              )}
-
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-[#404945] uppercase tracking-wider block">
-                  New Password (min 6 characters)
-                </label>
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  value={newPw}
-                  onChange={(e) => setNewPw(e.target.value)}
-                  placeholder="Enter new private password"
-                  className="w-full h-10 px-3 border border-[#deddd3] text-xs outline-none focus:border-[#073a2d]"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-[#404945] uppercase tracking-wider block">
-                  Confirm New Password
-                </label>
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  value={confirmPw}
-                  onChange={(e) => setConfirmPw(e.target.value)}
-                  placeholder="Re-enter new password"
-                  className="w-full h-10 px-3 border border-[#deddd3] text-xs outline-none focus:border-[#073a2d]"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2 border-t border-[#deddd3]">
-                <button
-                  type="button"
-                  onClick={() => setShowPasswordModal(false)}
-                  className="px-4 py-2 border border-[#deddd3] text-xs text-[#404945] hover:bg-[#f0eee7] cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isChangingPw}
-                  className="px-4 py-2 bg-[#073a2d] hover:bg-[#0c4e3b] text-white text-xs font-semibold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
-                >
-                  {isChangingPw ? 'Updating...' : 'Update Password'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </header>
   );
 }

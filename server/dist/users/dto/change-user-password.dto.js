@@ -7,22 +7,22 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 export class ChangeUserPasswordDto {
     currentPassword;
     newPassword;
 }
 __decorate([
-    ApiPropertyOptional({ example: 'CurrentSecret123' }),
+    ApiProperty({ example: 'CurrentSecret123', description: 'Existing / remaining current password' }),
     IsString(),
-    IsOptional(),
+    IsNotEmpty({ message: 'Current password is required' }),
     __metadata("design:type", String)
 ], ChangeUserPasswordDto.prototype, "currentPassword", void 0);
 __decorate([
     ApiProperty({ example: 'MyNewSecret123' }),
     IsString(),
-    IsNotEmpty(),
+    IsNotEmpty({ message: 'New password is required' }),
     MinLength(6, { message: 'New password must be at least 6 characters long' }),
     __metadata("design:type", String)
 ], ChangeUserPasswordDto.prototype, "newPassword", void 0);

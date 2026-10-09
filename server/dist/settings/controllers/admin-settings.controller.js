@@ -19,10 +19,14 @@ import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { Permissions } from '../../common/decorators/permissions.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
+import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import { AuditService } from '../../audit/audit.service.js';
 let AdminSettingsController = class AdminSettingsController {
     settingsService;
-    constructor(settingsService) {
+    auditService;
+    constructor(settingsService, auditService) {
         this.settingsService = settingsService;
+        this.auditService = auditService;
     }
     async getSettings() {
         const data = await this.settingsService.getSettings();
@@ -31,8 +35,19 @@ let AdminSettingsController = class AdminSettingsController {
             data,
         };
     }
-    async updateSettings(dto) {
+    async updateSettings(dto, actor) {
+        const before = await this.settingsService.getSettings();
         const data = await this.settingsService.updateSettings(dto);
+        await this.auditService.record({
+            actor,
+            module: 'settings',
+            action: 'SETTINGS_UPDATED',
+            entityType: 'store_settings',
+            entityLabel: 'Store Settings',
+            summary: `Updated store settings: ${Object.keys(dto).join(', ') || 'no fields'}`,
+            before,
+            after: data,
+        });
         return {
             message: 'Store settings updated successfully',
             data,
@@ -50,8 +65,9 @@ __decorate([
     Patch(),
     ApiOperation({ summary: 'Update regional commerce rates, phone, or gateway parameters' }),
     __param(0, Body()),
+    __param(1, CurrentUser()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [UpdateSettingsDto]),
+    __metadata("design:paramtypes", [UpdateSettingsDto, Object]),
     __metadata("design:returntype", Promise)
 ], AdminSettingsController.prototype, "updateSettings", null);
 AdminSettingsController = __decorate([
@@ -61,7 +77,8 @@ AdminSettingsController = __decorate([
     Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN),
     Permissions('settings'),
     Controller('admin/settings'),
-    __metadata("design:paramtypes", [SettingsService])
+    __metadata("design:paramtypes", [SettingsService,
+        AuditService])
 ], AdminSettingsController);
 export { AdminSettingsController };
 //# sourceMappingURL=admin-settings.controller.js.map

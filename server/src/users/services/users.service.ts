@@ -175,14 +175,17 @@ export class UsersService {
     });
     if (!user) throw new NotFoundException('User not found');
 
-    // If current password provided or user has changed password before, verify current password
-    if (dto.currentPassword) {
-      const isMatch = await bcrypt.compare(dto.currentPassword, user.passwordHash);
-      if (!isMatch) {
-        throw new BadRequestException('The current password entered is incorrect');
-      }
-    } else if (!user.mustChangePassword) {
+    if (!dto.currentPassword) {
       throw new BadRequestException('Current password is required to change password');
+    }
+
+    const isMatch = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+    if (!isMatch) {
+      throw new BadRequestException('The current password entered is incorrect');
+    }
+
+    if (dto.currentPassword === dto.newPassword) {
+      throw new BadRequestException('New password cannot be the same as your current password');
     }
 
     const passwordHash = await bcrypt.hash(dto.newPassword, 10);

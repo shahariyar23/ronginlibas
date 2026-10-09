@@ -8,6 +8,8 @@ import { Roles } from '../../common/decorators/roles.decorator.js';
 import { Permissions } from '../../common/decorators/permissions.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
 import { AdminReviewFeedbackDto } from '../dto/admin-review-feedback.dto.js';
+import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import { AuditService, AdminAuditActor } from '../../audit/audit.service.js';
 
 @ApiTags('Admin - Reviews')
 @ApiBearerAuth()
@@ -16,7 +18,10 @@ import { AdminReviewFeedbackDto } from '../dto/admin-review-feedback.dto.js';
 @Permissions('reviews')
 @Controller('admin/reviews')
 export class AdminReviewsController {
-  constructor(private readonly reviewsService: ReviewsService) {}
+  constructor(
+    private readonly reviewsService: ReviewsService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List customer testimonials for moderation' })
@@ -33,8 +38,20 @@ export class AdminReviewsController {
   async updateStatus(
     @Param('id') id: string,
     @Body('status') status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'HIDDEN',
+    @CurrentUser() actor: AdminAuditActor,
   ) {
+    const before = await this.reviewsService.getAdminAuditState(id);
     const data = await this.reviewsService.updateStatus(id, status);
+    await this.auditService.record({
+      actor,
+      module: 'reviews',
+      action: 'REVIEW_STATUS_CHANGED',
+      entityType: 'review',
+      entityId: data.id,
+      summary: `Changed review status from ${before.status} to ${data.status}`,
+      before: { status: before.status },
+      after: { status: data.status },
+    });
     return {
       message: `Review status updated to ${status}`,
       data,
@@ -43,8 +60,23 @@ export class AdminReviewsController {
 
   @Patch(':id/feedback')
   @ApiOperation({ summary: 'Send feedback on a customer review' })
-  async updateFeedback(@Param('id') id: string, @Body() dto: AdminReviewFeedbackDto) {
+  async updateFeedback(
+    @Param('id') id: string,
+    @Body() dto: AdminReviewFeedbackDto,
+    @CurrentUser() actor: AdminAuditActor,
+  ) {
+    const before = await this.reviewsService.getAdminAuditState(id);
     const data = await this.reviewsService.updateAdminFeedback(id, dto.feedback);
+    await this.auditService.record({
+      actor,
+      module: 'reviews',
+      action: 'REVIEW_FEEDBACK_UPDATED',
+      entityType: 'review',
+      entityId: data.id,
+      summary: 'Updated admin feedback for a customer review',
+      before: { adminFeedback: before.adminFeedback },
+      after: { adminFeedback: data.adminFeedback },
+    });
     return {
       message: 'Review feedback sent successfully',
       data,

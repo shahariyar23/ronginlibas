@@ -42,10 +42,10 @@ export declare class ReviewsController {
         data: {
             id: string;
             updatedAt: Date;
-            status: import("@prisma/client").$Enums.ReviewStatus;
             productId: string;
             rating: number;
             comment: string;
+            status: import("@prisma/client").$Enums.ReviewStatus;
         };
     }>;
     remove(reviewId: string, customerId: string): Promise<{

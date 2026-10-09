@@ -1,14 +1,16 @@
 import { InventoryService } from '../services/inventory.service.js';
 import { AdjustStockDto } from '../dto/adjust-stock.dto.js';
 import { InventoryQueryDto } from '../dto/inventory-query.dto.js';
+import { AuditService, AdminAuditActor } from '../../audit/audit.service.js';
 export declare class AdminInventoryController {
     private readonly inventoryService;
-    constructor(inventoryService: InventoryService);
+    private readonly auditService;
+    constructor(inventoryService: InventoryService, auditService: AuditService);
     getInventoryList(query: InventoryQueryDto): Promise<{
         message: string;
         data: import("../../common/dto/pagination-query.dto.js").PaginatedResult<any>;
     }>;
-    adjustStock(dto: AdjustStockDto, userId?: string): Promise<{
+    adjustStock(dto: AdjustStockDto, userId: string, actor: AdminAuditActor): Promise<{
         message: string;
         data: {
             variant: {
@@ -16,23 +18,23 @@ export declare class AdminInventoryController {
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
-                productId: string;
                 size: string;
                 color: string;
-                sizeLabel: string | null;
-                sizeType: string | null;
                 stock: number;
                 priceOverride: import("@prisma/client/runtime/library").Decimal | null;
+                sizeLabel: string | null;
+                sizeType: string | null;
+                measurements: import("@prisma/client/runtime/library").JsonValue | null;
+                productId: string;
             };
             transaction: {
-                type: import("@prisma/client").$Enums.InventoryTransactionType;
                 id: string;
                 createdAt: Date;
                 quantityChange: number;
                 previousStock: number;
                 newStock: number;
+                type: import("@prisma/client").$Enums.InventoryTransactionType;
                 note: string | null;
                 variantId: string;
                 userId: string | null;

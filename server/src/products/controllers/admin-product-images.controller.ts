@@ -24,6 +24,8 @@ class DeleteProductImageDto {
 }
 
 import { Permissions } from '../../common/decorators/permissions.decorator.js';
+import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import { AuditService, AdminAuditActor } from '../../audit/audit.service.js';
 
 @ApiTags('Admin - Product Images')
 @ApiBearerAuth()
@@ -32,7 +34,10 @@ import { Permissions } from '../../common/decorators/permissions.decorator.js';
 @Permissions('products')
 @Controller('admin/products/images')
 export class AdminProductImagesController {
-  constructor(private readonly cloudinary: CloudinaryService) {}
+  constructor(
+    private readonly cloudinary: CloudinaryService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Post('upload')
   @ApiConsumes('multipart/form-data')
@@ -58,9 +63,21 @@ export class AdminProductImagesController {
   )
   async upload(
     @UploadedFile() file?: { buffer: Buffer; mimetype: string },
+    @CurrentUser() actor?: AdminAuditActor,
   ) {
     if (!file) throw new BadRequestException('An image file is required');
     const uploaded = await this.cloudinary.uploadProductImage(file.buffer);
+    if (!actor) throw new BadRequestException('Administrative identity is required');
+    await this.auditService.record({
+      actor,
+      module: 'products',
+      action: 'PRODUCT_IMAGE_UPLOADED',
+      entityType: 'product_image',
+      entityId: uploaded.public_id,
+      entityLabel: uploaded.public_id,
+      summary: 'Uploaded a product image',
+      after: { url: uploaded.secure_url, publicId: uploaded.public_id },
+    });
     return {
       message: 'Product image uploaded successfully',
       data: { url: uploaded.secure_url, publicId: uploaded.public_id },
@@ -70,8 +87,21 @@ export class AdminProductImagesController {
   @Delete('cleanup')
   @ApiBody({ type: DeleteProductImageDto })
   @ApiOperation({ summary: 'Delete an unassociated product image from Cloudinary' })
-  async destroy(@Body() dto: DeleteProductImageDto) {
+  async destroy(
+    @Body() dto: DeleteProductImageDto,
+    @CurrentUser() actor: AdminAuditActor,
+  ) {
     await this.cloudinary.destroyProductImage(dto.publicId);
+    await this.auditService.record({
+      actor,
+      module: 'products',
+      action: 'PRODUCT_IMAGE_DELETED',
+      entityType: 'product_image',
+      entityId: dto.publicId,
+      entityLabel: dto.publicId,
+      summary: 'Deleted an unassociated product image',
+      before: { publicId: dto.publicId },
+    });
     return { message: 'Product image deleted successfully' };
   }
 }

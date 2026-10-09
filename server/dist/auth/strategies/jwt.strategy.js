@@ -35,6 +35,8 @@ let JwtStrategy = class JwtStrategy extends PassportStrategy(Strategy) {
                     id: true,
                     email: true,
                     role: true,
+                    firstName: true,
+                    lastName: true,
                     permissions: true,
                     isActive: true,
                 },
@@ -47,6 +49,8 @@ let JwtStrategy = class JwtStrategy extends PassportStrategy(Strategy) {
                 sub: user.id,
                 email: user.email,
                 role: user.role,
+                firstName: user.firstName,
+                lastName: user.lastName,
                 permissions: user.permissions || [],
                 type: 'admin',
             };

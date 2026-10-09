@@ -19,6 +19,8 @@ export declare class JwtStrategy extends JwtStrategy_base {
         sub: string;
         email: string;
         role: import("@prisma/client").$Enums.Role;
+        firstName: string;
+        lastName: string;
         permissions: string[];
         type: "admin";
     } | {
@@ -28,6 +30,8 @@ export declare class JwtStrategy extends JwtStrategy_base {
         role: string;
         permissions: never[];
         type: "customer";
+        firstName?: undefined;
+        lastName?: undefined;
     }>;
 }
 export {};

@@ -382,6 +382,15 @@ let ReviewsService = class ReviewsService {
             data: { status },
         });
     }
+    async getAdminAuditState(id) {
+        const review = await this.prisma.review.findUnique({
+            where: { id },
+            select: { id: true, status: true, adminFeedback: true },
+        });
+        if (!review)
+            throw new NotFoundException('Review not found');
+        return review;
+    }
     async updateAdminFeedback(id, feedback) {
         const trimmedFeedback = feedback.trim();
         if (!trimmedFeedback)
