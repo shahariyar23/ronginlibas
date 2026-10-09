@@ -6,6 +6,7 @@ import type { Product } from '@/types';
 import { colorHex, getProductFilters, getShopProducts, ProductFilters, ProductListQuery } from '@/lib/api';
 import { getWhatsAppUrl, useStorefront } from '@/context/StorefrontContext';
 import { ProductCard } from '@/components/shop/ProductCard';
+import { LogoLoader } from '@/components/common/LogoLoader';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -685,11 +686,7 @@ export const ShopContent: React.FC = () => {
                 </Button>
               </div>
             ) : isLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" aria-label="Loading products">
-                {Array.from({ length: 6 }, (_, index) => (
-                  <div key={index} className="aspect-[3/4] animate-pulse border border-[#deddd3] bg-white" />
-                ))}
-              </div>
+              <LogoLoader />
             ) : pageMeta.total === 0 ? (
               <div className="p-16 bg-white border border-[#deddd3] text-center space-y-4">
                 <h3 className="font-serif text-2xl text-[#073a2d]">

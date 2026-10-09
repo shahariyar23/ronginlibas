@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { LoginClient } from './LoginClient';
+import { LogoLoader } from '@/components/common/LogoLoader';
 
 export const metadata: Metadata = {
   title: 'Patron Sanctuary Portal | Sign In & Join Atelier — Rongin Libas',
@@ -10,13 +11,7 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen pt-32 pb-20 flex items-center justify-center">
-          <div className="w-8 h-8 border-2 border-[#073a2d] border-t-transparent rounded-full animate-spin" />
-        </div>
-      }
-    >
+    <Suspense fallback={<LogoLoader />}>
       <LoginClient />
     </Suspense>
   );

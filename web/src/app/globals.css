@@ -70,6 +70,34 @@
   --radius: 0px;
 }
 
+@keyframes logo-loader-breathe {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+.logo-loader-breathe {
+  animation: logo-loader-breathe 1.8s ease-in-out infinite;
+  transform-origin: center;
+  will-change: opacity, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-loader-breathe {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    will-change: auto;
+  }
+}
+
 @layer base {
   * {
     border-color: var(--border);

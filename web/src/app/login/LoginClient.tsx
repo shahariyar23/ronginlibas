@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Logo } from '@/components/common/Logo';
+import { LogoLoader } from '@/components/common/LogoLoader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -140,16 +141,7 @@ export const LoginClient: React.FC = () => {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen pt-32 pb-20 flex items-center justify-center bg-[#fbf9f2]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-[#073a2d] border-t-transparent rounded-full animate-spin" />
-          <span className="font-sans text-xs uppercase tracking-widest text-[#717975]">
-            Verifying Patron Credentials...
-          </span>
-        </div>
-      </div>
-    );
+    return <LogoLoader />;
   }
 
   // Logged-in user cannot view or access login or register forms

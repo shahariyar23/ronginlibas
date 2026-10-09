@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react';
 import { ShopContent } from './ShopContent';
+import { LogoLoader } from '@/components/common/LogoLoader';
 
 export const metadata = {
   title: "Men's Collection | Rongin Libas — Bespoke Panjabis & Sartorial Menswear",
@@ -9,7 +10,7 @@ export const metadata = {
 
 export default function ShopPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen pt-32 text-center font-serif text-xl">Loading Atelier Collection...</div>}>
+    <Suspense fallback={<LogoLoader />}>
       <ShopContent />
     </Suspense>
   );

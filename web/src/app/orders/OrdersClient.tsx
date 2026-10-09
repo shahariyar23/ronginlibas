@@ -2,15 +2,17 @@
 
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { apiRequest, downloadOrderInvoice, getProduct } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Download, MapPin, Package, Search, Truck, Lock, User } from 'lucide-react';
+import { Calendar, Download, MapPin, Package, Search, Truck, Lock, User, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { OrderTrackingStepper } from '@/components/orders/OrderTrackingStepper';
+import { LogoLoader } from '@/components/common/LogoLoader';
 
 interface OrderItem {
   productId: string;
@@ -44,6 +46,36 @@ export const OrdersClient: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'in-transit' | 'delivered'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+
+  const searchParams = useSearchParams();
+  const [expandedTrackingOrders, setExpandedTrackingOrders] = useState<Set<string>>(new Set());
+
+  // Auto-expand if URL has ?track=... or ?id=...
+  useEffect(() => {
+    const trackParam = searchParams.get('track') || searchParams.get('id');
+    if (trackParam && orders.length > 0) {
+      const match = orders.find(
+        (o) =>
+          o.orderNumber.toLowerCase() === trackParam.toLowerCase() ||
+          o.orderNumber.replace('#', '').toLowerCase() === trackParam.replace('#', '').toLowerCase(),
+      );
+      if (match) {
+        setExpandedTrackingOrders(new Set([match.orderNumber]));
+      }
+    }
+  }, [searchParams, orders]);
+
+  const toggleTracking = (orderNumber: string) => {
+    setExpandedTrackingOrders((prev) => {
+      const next = new Set(prev);
+      if (next.has(orderNumber)) {
+        next.delete(orderNumber);
+      } else {
+        next.add(orderNumber);
+      }
+      return next;
+    });
+  };
 
   const hasNotifiedRef = useRef(false);
   useEffect(() => {
@@ -109,16 +141,7 @@ export const OrdersClient: React.FC = () => {
   };
 
   if (isAuthLoading) {
-    return (
-      <div className="min-h-screen pt-32 pb-20 flex items-center justify-center bg-[#fbf9f2]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-[#073a2d] border-t-transparent rounded-full animate-spin" />
-          <span className="font-sans text-xs uppercase tracking-widest text-[#717975]">
-            Verifying Patron Credentials...
-          </span>
-        </div>
-      </div>
-    );
+    return <LogoLoader />;
   }
 
   if (!user) {
@@ -203,9 +226,7 @@ export const OrdersClient: React.FC = () => {
         </div>
 
         {isLoading ? (
-          <div className="border border-[#deddd3] bg-white p-12 text-center text-sm text-[#69726d]">
-            Loading your orders...
-          </div>
+          <LogoLoader />
         ) : filteredOrders.length === 0 ? (
           <div className="space-y-3 border border-[#deddd3] bg-white p-12 text-center">
             <Package className="mx-auto h-10 w-10 text-[#c79a45]" />
@@ -282,21 +303,46 @@ export const OrdersClient: React.FC = () => {
                       <div>Estimated delivery: {new Date(order.estimatedDelivery).toLocaleDateString()}</div>
                     )}
                   </div>
-                  <div className="flex gap-2">
-                    {['SHIPPED', 'OUT_FOR_DELIVERY'].includes(order.status) && (
-                      <Link
-                        href={`/track-order?id=${encodeURIComponent(order.orderNumber)}`}
-                        className="inline-flex items-center border border-[#073a2d] px-3 py-2 font-semibold text-[#073a2d]"
-                      >
-                        Track order
-                      </Link>
-                    )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleTracking(order.orderNumber)}
+                      className={`font-semibold border-[#073a2d] transition-all cursor-pointer ${
+                        expandedTrackingOrders.has(order.orderNumber)
+                          ? 'bg-[#073a2d] text-white hover:bg-[#0c4e3b]'
+                          : 'text-[#073a2d] hover:bg-[#073a2d] hover:text-white'
+                      }`}
+                    >
+                      <Truck className="mr-1.5 h-3.5 w-3.5" />
+                      <span>Order Tracking</span>
+                      <ChevronDown
+                        className={`ml-1.5 h-3.5 w-3.5 transition-transform duration-200 ${
+                          expandedTrackingOrders.has(order.orderNumber) ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </Button>
                     <Button variant="outline" size="sm" onClick={() => void handleInvoice(order.orderNumber)}>
                       <Download className="mr-1 h-3.5 w-3.5" />
                       Invoice
                     </Button>
                   </div>
                 </div>
+
+                {/* Collapsible Order Tracking Stepper Section */}
+                {expandedTrackingOrders.has(order.orderNumber) && (
+                  <div className="border-t border-[#deddd3] p-4 sm:p-5 bg-[#fbf9f2]">
+                    <OrderTrackingStepper
+                      status={order.status}
+                      orderNumber={order.orderNumber}
+                      courierName={order.courierName}
+                      trackingNumber={order.trackingNumber}
+                      estimatedDelivery={order.estimatedDelivery}
+                      createdAt={order.createdAt}
+                      shippingAddress={order.shippingAddress}
+                    />
+                  </div>
+                )}
               </article>
             ))}
           </div>

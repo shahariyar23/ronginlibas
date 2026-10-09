@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { OrderTrackingStepper } from '@/components/orders/OrderTrackingStepper';
 import { MapPin, Search, Truck } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -122,60 +123,16 @@ export const TrackOrderClient: React.FC = () => {
         </form>
 
         {tracking && (
-          <section className="space-y-6 border border-[#deddd3] bg-white p-6 sm:p-8">
-            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#deddd3] pb-5">
-              <div>
-                <span className="text-[10px] uppercase tracking-widest text-[#717975]">Order</span>
-                <h2 className="font-serif text-2xl font-semibold text-[#073a2d]">{tracking.orderNumber}</h2>
-              </div>
-              <Badge className="rounded-none bg-[#073a2d] text-white">{tracking.status.replaceAll('_', ' ')}</Badge>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div>
-                <span className="text-[10px] uppercase tracking-wider text-[#717975]">Courier</span>
-                <p className="mt-1 text-sm font-semibold text-[#073a2d]">{tracking.courierName || 'Not assigned'}</p>
-              </div>
-              <div>
-                <span className="text-[10px] uppercase tracking-wider text-[#717975]">Tracking number</span>
-                <p className="mt-1 text-sm font-semibold text-[#073a2d]">{tracking.trackingNumber || 'Not assigned'}</p>
-              </div>
-              <div>
-                <span className="text-[10px] uppercase tracking-wider text-[#717975]">Estimated delivery</span>
-                <p className="mt-1 text-sm font-semibold text-[#073a2d]">
-                  {tracking.estimatedDelivery ? new Date(tracking.estimatedDelivery).toLocaleDateString() : 'To be confirmed'}
-                </p>
-              </div>
-            </div>
-
-            {tracking.trackingUrl && (
-              <a href={tracking.trackingUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm font-semibold text-[#073a2d] underline">
-                <MapPin className="h-4 w-4" />
-                Open courier tracking
-              </a>
-            )}
-
-            <div className="border-t border-[#deddd3] pt-5">
-              <h3 className="font-serif text-lg text-[#073a2d]">Tracking updates</h3>
-              {tracking.trackingEvents.length ? (
-                <ol className="mt-4 space-y-4">
-                  {tracking.trackingEvents.map((event, index) => (
-                    <li key={`${event.createdAt}-${index}`} className="flex gap-3">
-                      <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-[#c79a45]" />
-                      <div>
-                        <p className="text-sm font-semibold text-[#073a2d]">{event.status.replaceAll('_', ' ')}</p>
-                        {event.description && <p className="mt-0.5 text-sm text-[#69726d]">{event.description}</p>}
-                        <time className="mt-1 block text-xs text-[#717975]">
-                          {new Date(event.createdAt).toLocaleString()}
-                        </time>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p className="mt-3 text-sm text-[#69726d]">There are no courier updates yet.</p>
-              )}
-            </div>
+          <section className="space-y-6">
+            <OrderTrackingStepper
+              status={tracking.status}
+              orderNumber={tracking.orderNumber}
+              courierName={tracking.courierName}
+              trackingNumber={tracking.trackingNumber}
+              trackingUrl={tracking.trackingUrl}
+              estimatedDelivery={tracking.estimatedDelivery}
+              trackingEvents={tracking.trackingEvents}
+            />
           </section>
         )}
       </div>
