@@ -73,6 +73,7 @@ export declare class ProductsController {
                 updatedAt: Date;
                 customerId: string;
                 status: import("@prisma/client").$Enums.ReviewStatus;
+                images: string[];
                 productId: string;
                 rating: number;
                 comment: string;
@@ -132,6 +133,10 @@ export declare class ProductsController {
             isNewArrival: boolean;
             isBestSeller: boolean;
             categoryId: string;
+        } & {
+            reviewsCount: number;
+            averageRating: number;
+            totalSold: number;
         };
     }>;
     findRelated(slug: string): Promise<{
@@ -142,6 +147,9 @@ export declare class ProductsController {
                 name: string;
                 slug: string;
             };
+            reviews: {
+                rating: number;
+            }[];
             variants: {
                 id: string;
                 isActive: boolean;
@@ -167,6 +175,9 @@ export declare class ProductsController {
                 productId: string;
                 publicId: string | null;
                 altText: string | null;
+            }[];
+            orderItems: {
+                quantity: number;
             }[];
         } & {
             description: string | null;
@@ -195,69 +206,10 @@ export declare class ProductsController {
             isNewArrival: boolean;
             isBestSeller: boolean;
             categoryId: string;
-        })[];
-    }>;
-    findRecommendations(slug: string): Promise<{
-        message: string;
-        data: ({
-            category: {
-                id: string;
-                name: string;
-                slug: string;
-            };
-            variants: {
-                id: string;
-                isActive: boolean;
-                createdAt: Date;
-                updatedAt: Date;
-                measurements: import("@prisma/client/runtime/library").JsonValue | null;
-                sku: string;
-                productId: string;
-                size: string;
-                color: string;
-                sizeLabel: string | null;
-                sizeType: string | null;
-                stock: number;
-                priceOverride: import("@prisma/client/runtime/library").Decimal | null;
-            }[];
-            images: {
-                url: string;
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
-                sortOrder: number;
-                isPrimary: boolean;
-                productId: string;
-                publicId: string | null;
-                altText: string | null;
-            }[];
         } & {
-            description: string | null;
-            id: string;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            name: string;
-            tags: string[];
-            slug: string;
-            price: import("@prisma/client/runtime/library").Decimal;
-            compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
-            costPrice: import("@prisma/client/runtime/library").Decimal | null;
-            sku: string;
-            gender: import("@prisma/client").$Enums.Gender;
-            fabric: string | null;
-            fit: string | null;
-            shortDescription: string | null;
-            fabricOrigin: string | null;
-            gsm: number | null;
-            careInstructions: string | null;
-            isExpressAvailable: boolean;
-            alertThreshold: number;
-            deletedAt: Date | null;
-            isFeatured: boolean;
-            isNewArrival: boolean;
-            isBestSeller: boolean;
-            categoryId: string;
+            reviewsCount: number;
+            averageRating: number;
+            totalSold: number;
         })[];
     }>;
 }

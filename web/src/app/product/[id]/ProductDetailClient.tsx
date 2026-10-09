@@ -11,7 +11,6 @@ import { ProductCard } from '@/components/shop/ProductCard';
 import {
   getProduct,
   getRelatedProducts,
-  getRecommendations,
   getProductReviews,
   checkReviewEligibility,
   submitProductReview,
@@ -48,6 +47,7 @@ import {
   Scissors,
   ArrowRight,
   Loader2,
+  MessageSquare,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getWhatsAppUrl, useStorefront } from '@/context/StorefrontContext';
@@ -77,7 +77,6 @@ function getMeasurementEntries(
 interface ProductDetailClientProps {
   product?: Product;
   relatedProducts?: Product[];
-  recommendations?: Product[];
   initialReviews?: ProductReviewsResponse;
   productId?: string;
 }
@@ -85,13 +84,11 @@ interface ProductDetailClientProps {
 export const ProductDetailClient: React.FC<ProductDetailClientProps> = ({
   product: initialProduct,
   relatedProducts: initialRelatedProducts = [],
-  recommendations: initialRecommendations = [],
   initialReviews,
   productId,
 }) => {
   const [product, setProduct] = useState(initialProduct);
   const [relatedProducts, setRelatedProducts] = useState(initialRelatedProducts);
-  const [recommendations, setRecommendations] = useState(initialRecommendations);
   const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
@@ -101,16 +98,11 @@ export const ProductDetailClient: React.FC<ProductDetailClientProps> = ({
       console.error('Could not load related products.', error);
       return [];
     });
-    const recommendationsRequest = getRecommendations(productId).catch((error: unknown) => {
-      console.error('Could not load product recommendations.', error);
-      return [];
-    });
-    Promise.all([getProduct(productId), relatedProductsRequest, recommendationsRequest])
-      .then(([loadedProduct, related, recs]) => {
+    Promise.all([getProduct(productId), relatedProductsRequest])
+      .then(([loadedProduct, related]) => {
         if (!active) return;
         setProduct(loadedProduct);
         setRelatedProducts(related);
-        setRecommendations(recs);
       })
       .catch((error: unknown) => {
         if (active) setLoadError(error instanceof Error ? error.message : 'Could not load this product.');
@@ -134,7 +126,6 @@ export const ProductDetailClient: React.FC<ProductDetailClientProps> = ({
     <ProductDetailView
       product={product}
       relatedProducts={relatedProducts}
-      recommendations={recommendations}
       initialReviews={initialReviews}
     />
   );
@@ -150,12 +141,10 @@ function getVariantSize(
 const ProductDetailView: React.FC<{
   product: Product;
   relatedProducts: Product[];
-  recommendations: Product[];
   initialReviews?: ProductReviewsResponse;
 }> = ({
   product,
   relatedProducts,
-  recommendations,
   initialReviews,
 }) => {
   const router = useRouter();
@@ -209,6 +198,7 @@ const ProductDetailView: React.FC<{
   const [measurementUnit, setMeasurementUnit] = useState<'in' | 'cm'>('in');
   const [sizeModalOpen, setSizeModalOpen] = useState(false);
   const [openAccordion, setOpenAccordion] = useState<string | null>('accordion-1');
+  const [showMobileDetails, setShowMobileDetails] = useState(false);
   const [reviews, setReviews] = useState<ProductReview[]>(initialReviews?.items || []);
   const [totalReviews, setTotalReviews] = useState(
     initialReviews?.total ?? (initialReviews?.items?.length || 0),
@@ -543,74 +533,6 @@ const ProductDetailView: React.FC<{
     setOpenAccordion((prev) => (prev === id ? null : id));
   };
 
-  // Add ensemble items to cart
-  const handleAddEnsembleItem = (companion: Product) => {
-    if (!user) {
-      toast.error('First login please', {
-        description: 'Please login first to add items to your cart.',
-        action: {
-          label: 'Login',
-          onClick: () => router.push(`/login?next=${encodeURIComponent(`/product/${product.slug}`)}`),
-        },
-      });
-      return;
-    }
-    const defaultSize =
-      companion.variants?.[0]?.sizeLabel ||
-      companion.variants?.[0]?.size ||
-      companion.sizes?.[0] ||
-      'Standard';
-    const defaultColor =
-      companion.variants?.[0]?.color ||
-      companion.colors?.[0]?.name ||
-      'Signature';
-    addToCart(companion, defaultSize, defaultColor, 1);
-    toast.success(`Added ${companion.name} to cart.`);
-  };
-
-  const handleAddFullEnsemble = () => {
-    if (!user) {
-      toast.error('First login please', {
-        description: 'Please login first to add items to your cart.',
-        action: {
-          label: 'Login',
-          onClick: () => router.push(`/login?next=${encodeURIComponent(`/product/${product.slug}`)}`),
-        },
-      });
-      return;
-    }
-    if (!canSelectSize) {
-      toast.error("Please select a size for the main garment first.");
-      return;
-    }
-    if (selectedVariant && selectedVariant.stock <= 0) {
-      toast.error(`Size ${selectedSize} is currently out of stock.`);
-      return;
-    }
-    addToCart(product, selectedSize, selectedColor, quantity, customNotes);
-    recommendations.forEach((companion) => {
-      const defaultSize =
-        companion.variants?.[0]?.sizeLabel ||
-        companion.variants?.[0]?.size ||
-        companion.sizes?.[0] ||
-        'Standard';
-      const defaultColor =
-        companion.variants?.[0]?.color ||
-        companion.colors?.[0]?.name ||
-        'Signature';
-      addToCart(companion, defaultSize, defaultColor, 1);
-    });
-    toast.success('Complete ensemble added to cart', {
-      description: '10% Bundle Privilege applied to your order.',
-    });
-  };
-
-  const ensembleCompanions = recommendations.slice(0, 3);
-  const companionTotalPrice = ensembleCompanions.reduce((sum, c) => sum + c.price, 0);
-  const fullEnsembleOriginalPrice = currentPrice + companionTotalPrice;
-  const fullEnsembleDiscountedPrice = Math.round(fullEnsembleOriginalPrice * 0.9);
-  const ensembleTotalPieces = 1 + ensembleCompanions.length;
-
   return (
     <div className="w-full pt-6 sm:pt-10 pb-28 md:pb-24 bg-[#fbf9f2]">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-8 sm:space-y-12">
@@ -779,33 +701,33 @@ const ProductDetailView: React.FC<{
                 </p>
               )}
 
-              {/* Patron Rating Row */}
-              <div className="flex items-center gap-3 pt-1">
-                <div className="flex text-[#c79a45]">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`w-4 h-4 ${
-                        totalReviews > 0 && i < Math.round(averageRating)
-                          ? 'fill-[#c79a45] text-[#c79a45]'
-                          : 'text-[#deddd3]'
-                      }`}
-                    />
-                  ))}
+              {/* Patron Rating Row - Only shown when product has reviews */}
+              {totalReviews > 0 && (
+                <div className="flex items-center gap-3 pt-1">
+                  <div className="flex text-[#c79a45]">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`w-4 h-4 ${
+                          i < Math.round(averageRating)
+                            ? 'fill-[#c79a45] text-[#c79a45]'
+                            : 'text-[#deddd3]'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="font-sans text-xs font-bold text-[#1b1c18]">
+                    {averageRating.toFixed(1)} / 5.0
+                  </span>
+                  <span className="text-[#deddd3]">•</span>
+                  <a
+                    href="#patron-reviews"
+                    className="font-sans text-xs uppercase tracking-wider text-[#717975] hover:text-[#073a2d] underline underline-offset-4 font-semibold"
+                  >
+                    {totalReviews} Verified Patron {totalReviews === 1 ? 'Review' : 'Reviews'}
+                  </a>
                 </div>
-                <span className="font-sans text-xs font-bold text-[#1b1c18]">
-                  {totalReviews > 0 ? `${averageRating.toFixed(1)} / 5.0` : '0 Reviews'}
-                </span>
-                <span className="text-[#deddd3]">•</span>
-                <a
-                  href="#patron-reviews"
-                  className="font-sans text-xs uppercase tracking-wider text-[#717975] hover:text-[#073a2d] underline underline-offset-4 font-semibold"
-                >
-                  {totalReviews > 0
-                    ? `${totalReviews} Verified Patron ${totalReviews === 1 ? 'Review' : 'Reviews'}`
-                    : 'No reviews yet'}
-                </a>
-              </div>
+              )}
             </div>
 
             {/* Pricing Card Panel */}
@@ -872,20 +794,31 @@ const ProductDetailView: React.FC<{
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
-                  {product.colors.map((c) => (
-                    <button
-                      key={c.name}
-                      type="button"
-                      onClick={() => selectColor(c.name)}
-                      title={c.name}
-                      className={`w-9 h-9 rounded-full transition-transform cursor-pointer border ${
-                        selectedColor === c.name
-                          ? 'ring-2 ring-[#073a2d] ring-offset-2 scale-110'
-                          : 'hover:scale-105 border-[#deddd3]'
-                      }`}
-                      style={{ backgroundColor: c.hex }}
-                    />
-                  ))}
+                  {product.colors.map((c) => {
+                    const isLight =
+                      !c.hex ||
+                      ['#ffffff', '#fff', '#fbf9f2', '#f5f4ed', '#fafafa', '#f8fafc'].includes(c.hex.toLowerCase()) ||
+                      c.name.toLowerCase().includes('white');
+
+                    return (
+                      <button
+                        key={c.name}
+                        type="button"
+                        onClick={() => selectColor(c.name)}
+                        title={c.name}
+                        className={`w-9 h-9 rounded-full transition-transform cursor-pointer border ${
+                          isLight
+                            ? 'border-neutral-400 shadow-[0_2px_6px_rgba(0,0,0,0.3)] ring-1 ring-black/10'
+                            : 'border-[#deddd3]'
+                        } ${
+                          selectedColor === c.name
+                            ? 'ring-2 ring-[#073a2d] ring-offset-2 scale-110'
+                            : 'hover:scale-105'
+                        }`}
+                        style={{ backgroundColor: c.hex }}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1112,131 +1045,26 @@ const ProductDetailView: React.FC<{
           </div>
         </div>
 
-        {/* Complete The Look / Bespoke Sartorial Ensemble Rail */}
-        <section className="w-full bg-[#f5f4ed] p-6 sm:p-10 border border-[#deddd3] space-y-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div>
-              <span className="font-sans text-xs uppercase tracking-widest text-[#c79a45] font-bold">
-                Curated Ensemble
-              </span>
-              <h2 className="font-serif text-2xl sm:text-3xl text-[#073a2d] font-normal tracking-tight mt-1">
-                Complete The Aristocratic Look
-              </h2>
-            </div>
-            <p className="font-sans text-xs text-[#69726d] max-w-md">
-              Harmonized by Dhaka atelier stylists for wedding banquets, Eid celebrations, and dignified evening gatherings.
-            </p>
-          </div>
+        {/* Mobile View All Details Toggle (Only visible on mobile) */}
+        <div className="lg:hidden pt-2 pb-2">
+          <button
+            type="button"
+            onClick={() => setShowMobileDetails((prev) => !prev)}
+            className="w-full py-3.5 px-4 bg-white hover:bg-[#f5f4ed] border border-[#deddd3] text-[#073a2d] font-sans text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
+          >
+            <span>{showMobileDetails ? 'Hide Details' : 'View All Details'}</span>
+            <ChevronDown
+              className={`w-4 h-4 text-[#c79a45] transition-transform duration-300 ${
+                showMobileDetails ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+        </div>
 
-          {/* Real Recommendations / Companion Cards Bento */}
-          {ensembleCompanions.length > 0 ? (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {ensembleCompanions.map((companion) => (
-                  <div
-                    key={companion.id}
-                    className="bg-white p-4 border border-[#deddd3] flex flex-col justify-between group shadow-xs"
-                  >
-                    <div>
-                      <div className="relative w-full h-56 bg-[#f5f4ed] overflow-hidden mb-3 border border-[#deddd3]">
-                        {companion.images?.[0] ? (
-                          <img
-                            src={companion.images[0]}
-                            alt={companion.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-[#f0eee7] text-[#717975] text-xs">
-                            No Image Available
-                          </div>
-                        )}
-                        <span className="absolute top-2 left-2 bg-white/95 px-2 py-0.5 font-sans text-[9px] uppercase font-bold border border-[#deddd3]">
-                          {companion.categoryLabel || companion.fabric || 'Atelier Piece'}
-                        </span>
-                      </div>
-                      <h3 className="font-serif text-base text-[#073a2d] font-semibold line-clamp-1">
-                        <Link href={`/product/${companion.slug}`} className="hover:text-[#c79a45] transition-colors">
-                          {companion.name}
-                        </Link>
-                      </h3>
-                      <p className="font-sans text-xs text-[#69726d] mt-1 line-clamp-2">
-                        {companion.shortDescription || companion.description || companion.categoryLabel}
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#f0eee7]">
-                      <span className="font-serif text-base font-bold text-[#073a2d]">
-                        ৳ {companion.price.toLocaleString()}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleAddEnsembleItem(companion)}
-                        className="font-sans text-[11px] uppercase tracking-wider border-[#deddd3] hover:bg-[#073a2d] hover:text-white cursor-pointer"
-                      >
-                        <Plus className="w-3 h-3 mr-1" />
-                        <span>Add To Ensemble</span>
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Bundle Total Bar */}
-              <div className="bg-[#073a2d] text-white p-6 border-l-4 border-[#c79a45] flex flex-col md:flex-row items-center justify-between gap-6 shadow-md">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-[#c79a45] text-[#073a2d] flex items-center justify-center shrink-0">
-                    <Crown className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="font-serif text-lg text-white font-semibold">
-                      Purchase Complete {ensembleTotalPieces}-Piece Ensemble
-                    </p>
-                    <p className="font-sans text-xs text-[#76a493] line-clamp-1">
-                      {product.name} + {ensembleCompanions.map((c) => c.name).join(' + ')}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-6">
-                  <div className="text-right">
-                    <p className="font-serif text-xl font-bold text-white">
-                      ৳ {fullEnsembleDiscountedPrice.toLocaleString()}{' '}
-                      <span className="font-sans text-xs text-[#76a493] line-through font-normal">
-                        ৳ {fullEnsembleOriginalPrice.toLocaleString()}
-                      </span>
-                    </p>
-                    <p className="font-sans text-[10px] text-[#c79a45] uppercase tracking-wider font-semibold">
-                      Instant 10% Bundle Privilege
-                    </p>
-                  </div>
-                  <Button
-                    onClick={handleAddFullEnsemble}
-                    className="bg-[#c79a45] hover:bg-[#d6a953] text-[#073a2d] font-sans text-xs uppercase tracking-wider font-bold px-6 h-12 shadow-sm cursor-pointer whitespace-nowrap"
-                  >
-                    Add All {ensembleTotalPieces} Pieces
-                  </Button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="bg-white p-8 border border-[#deddd3] text-center space-y-2">
-              <Crown className="w-8 h-8 text-[#c79a45] mx-auto mb-2 opacity-80" />
-              <h3 className="font-serif text-lg text-[#073a2d]">Curated Ensemble</h3>
-              <p className="font-sans text-xs text-[#69726d] max-w-md mx-auto">
-                No complementary items currently configured for this piece. Explore our full atelier catalog for matching sandals, shawls, and pajams.
-              </p>
-              <Link
-                href="/shop"
-                className="inline-block mt-2 font-sans text-xs uppercase tracking-wider text-[#073a2d] hover:text-[#c79a45] font-bold underline underline-offset-4"
-              >
-                Browse Atelier Collection &rarr;
-              </Link>
-            </div>
-          )}
-        </section>
-
-        {/* Editorial Specifications & Artisan Accordions */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 py-6">
+        {/* Editorial Specifications & Garment Dimensions (Always visible on desktop, toggled on mobile) */}
+        <div className={showMobileDetails ? 'block space-y-6' : 'hidden lg:block lg:space-y-6'}>
+          {/* Editorial Specifications & Artisan Accordions */}
+          <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 py-6">
           {/* Left Narrative Column */}
           <div className="lg:col-span-4 space-y-4">
             <span className="font-sans text-xs uppercase tracking-widest text-[#c79a45] font-bold">
@@ -1493,8 +1321,10 @@ const ProductDetailView: React.FC<{
               : 'Product-specific measurements are available above.'}
           </p>
         </section>
+        </div>
 
         {/* Patron Reviews & Testimonials Section */}
+        {(totalReviews > 0 || reviewEligibility?.canReview || isReviewFormOpen || reviewEligibility?.existingReview) && (
         <section className="space-y-8 py-6" id="patron-reviews">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
@@ -1642,15 +1472,10 @@ const ProductDetailView: React.FC<{
               </div>
             </div>
           ) : (
-            <div className="bg-white p-8 border border-[#deddd3] text-center space-y-3">
-              <div className="flex items-center justify-center text-[#deddd3] gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-5 h-5" />
-                ))}
-              </div>
-              <h3 className="font-serif text-2xl text-[#073a2d]">0 Reviews</h3>
+            <div className="bg-white p-6 border border-[#deddd3] text-center space-y-2">
+              <h3 className="font-serif text-xl text-[#073a2d]">Be the First to Review</h3>
               <p className="font-sans text-xs text-[#69726d] max-w-md mx-auto">
-                No reviews yet. Only verified patrons who have purchased and received this delivered garment may share their reflections.
+                Share your reflections on the craftsmanship, fit, and handloom texture of this garment.
               </p>
             </div>
           )}
@@ -1736,6 +1561,51 @@ const ProductDetailView: React.FC<{
                       {review.comment}
                     </p>
 
+                    {review.images && review.images.length > 0 && (
+                      <div className="flex flex-wrap gap-2.5 pt-2">
+                        {review.images.map((imgUrl, imgIdx) => (
+                          <a
+                            key={imgIdx}
+                            href={imgUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="w-16 h-20 sm:w-20 sm:h-24 rounded border border-[#deddd3] overflow-hidden hover:opacity-90 hover:border-[#c79a45] transition-all shrink-0 bg-[#fbf9f2]"
+                            title="View full patron photo"
+                          >
+                            <img
+                              src={imgUrl}
+                              alt={`Patron photo ${imgIdx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Official Atelier Response */}
+                    {review.adminFeedback && (
+                      <div className="bg-[#fbf9f2] border-l-2 border-[#073a2d] p-3.5 space-y-1">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-sans font-semibold text-[#073a2d] uppercase tracking-wider flex items-center gap-1.5">
+                            <MessageSquare className="w-3.5 h-3.5 text-[#073a2d]" />
+                            <span>Rongin Libas Atelier Response</span>
+                          </span>
+                          {review.adminFeedbackAt && (
+                            <span className="font-sans text-[10px] text-[#717975]">
+                              {new Date(review.adminFeedbackAt).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                              })}
+                            </span>
+                          )}
+                        </div>
+                        <p className="font-sans text-xs text-[#1b1c18] italic leading-relaxed pt-0.5">
+                          &ldquo;{review.adminFeedback}&rdquo;
+                        </p>
+                      </div>
+                    )}
+
                     {/* Helpful voting bar */}
                     <div className="pt-3 border-t border-[#f0eee7] flex items-center justify-between text-xs text-[#717975]">
                       <span className="font-sans text-[11px]">Was this reflection helpful?</span>
@@ -1774,6 +1644,7 @@ const ProductDetailView: React.FC<{
             </div>
           )}
         </section>
+        )}
 
         {/* You May Also Admire Section */}
         <section className="space-y-6 pt-6 border-t border-[#deddd3]">
@@ -1783,14 +1654,14 @@ const ProductDetailView: React.FC<{
                 Complementary Wardrobe
               </span>
               <h2 className="font-serif text-2xl sm:text-3xl text-[#073a2d] font-normal tracking-tight mt-1">
-                You May Also Admire
+                More products you may like
               </h2>
             </div>
             <Link
               href="/shop"
               className="font-sans text-xs uppercase tracking-wider text-[#073a2d] hover:text-[#c79a45] font-bold underline underline-offset-4"
             >
-              View Atelier Catalogue &rarr;
+              All products &rarr;
             </Link>
           </div>
 

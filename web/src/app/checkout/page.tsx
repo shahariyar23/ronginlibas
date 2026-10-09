@@ -35,6 +35,11 @@ import {
   Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  BANGLADESH_DIVISIONS,
+  getDistrictsByDivision,
+  getThanasByDistrict,
+} from '@/data/bangladeshGeo';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -58,13 +63,17 @@ export default function CheckoutPage() {
     removeCoupon,
   } = useCart();
 
-  // Form states
+  // Form states with hierarchical Bangladesh address structure
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
     email: '',
-    division: 'Dhaka',
+    division: '',
+    district: '',
+    thana: '',
+    customThana: '',
     address: '',
+    postalCode: '',
     notes: '',
   });
 
@@ -80,26 +89,54 @@ export default function CheckoutPage() {
 
   React.useEffect(() => {
     if (!user) return;
+    const userDivision = user.address?.division || '';
+    const userCity = user.address?.city || '';
+    const districts = userDivision ? getDistrictsByDivision(userDivision) : [];
+    const matchedDistrict = districts.find(
+      (d) => d.name.toLowerCase() === userCity.toLowerCase(),
+    );
+    const districtName = matchedDistrict ? matchedDistrict.name : '';
+
     setFormData((previous) => ({
       ...previous,
-      fullName: previous.fullName || user.name,
-      phone: previous.phone || user.phone,
-      email: previous.email || user.email,
-      division: previous.division || user.address.division || 'Dhaka',
-      address: previous.address || user.address.line1,
+      fullName: previous.fullName || user.name || '',
+      phone: previous.phone || user.phone || '',
+      email: previous.email || user.email || '',
+      division: previous.division || userDivision,
+      district: previous.district || districtName,
+      address: previous.address || user.address?.line1 || '',
+      postalCode: previous.postalCode || user.address?.postalCode || '',
     }));
   }, [user]);
 
-  const divisions = [
-    'Dhaka',
-    'Chattogram',
-    'Sylhet',
-    'Rajshahi',
-    'Khulna',
-    'Barishal',
-    'Rangpur',
-    'Mymensingh',
-  ];
+  const availableDistricts = React.useMemo(() => {
+    if (!formData.division) return [];
+    return getDistrictsByDivision(formData.division);
+  }, [formData.division]);
+
+  const availableThanas = React.useMemo(() => {
+    if (!formData.division || !formData.district) return [];
+    return getThanasByDistrict(formData.division, formData.district);
+  }, [formData.division, formData.district]);
+
+  const handleDivisionChange = (newDivision: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      division: newDivision,
+      district: '',
+      thana: '',
+      customThana: '',
+    }));
+  };
+
+  const handleDistrictChange = (newDistrict: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      district: newDistrict,
+      thana: '',
+      customThana: '',
+    }));
+  };
 
   const getItemKey = (productId: string, size: string, color: string) =>
     `${productId}-${size}-${color}`;
@@ -135,8 +172,8 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleApplyCoupon = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleApplyCoupon = async (e?: React.SyntheticEvent) => {
+    if (e) e.preventDefault();
     if (!couponInput.trim() || isApplyingCoupon || isSubmitting) return;
     setIsApplyingCoupon(true);
     try {
@@ -158,8 +195,28 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (!formData.fullName.trim() || !formData.phone.trim() || !formData.address.trim()) {
-      toast.error('Please complete your name, phone number, and delivery address.');
+    if (!formData.fullName.trim() || !formData.phone.trim()) {
+      toast.error('Please enter your recipient full name and phone number.');
+      return;
+    }
+
+    if (!formData.division || !formData.district) {
+      toast.error('Please select your Division and District.');
+      return;
+    }
+
+    const effectiveThana =
+      formData.thana === 'OTHER'
+        ? formData.customThana.trim()
+        : formData.thana.trim();
+
+    if (!effectiveThana) {
+      toast.error('Please select or specify your Thana / Upazila.');
+      return;
+    }
+
+    if (!formData.address.trim()) {
+      toast.error('Please enter your street address, house no, or road.');
       return;
     }
 
@@ -187,8 +244,10 @@ export default function CheckoutPage() {
             phone: formData.phone.replace(/\s/g, ''),
             email: formData.email || undefined,
             division: formData.division,
-            city: formData.division,
+            city: formData.district,
+            area: effectiveThana,
             addressLine1: formData.address.trim(),
+            postalCode: formData.postalCode.trim() || undefined,
             deliveryInstructions: formData.notes || undefined,
           },
           paymentMethod: paymentMethod.toUpperCase(),
@@ -208,6 +267,138 @@ export default function CheckoutPage() {
       setIsSubmitting(false);
     }
   };
+
+  const renderOrderSummary = (isMobile = false) => (
+    <div
+      className={`p-5 sm:p-6 bg-white border border-[#deddd3] shadow-xs space-y-4 sm:space-y-5 ${
+        isMobile ? 'my-4 sm:my-6' : ''
+      }`}
+    >
+      <h3 className="font-serif text-base sm:text-lg font-semibold text-[#073a2d] pb-3 border-b border-[#deddd3]">
+        Order Summary ({items.length} {items.length === 1 ? 'Item' : 'Items'})
+      </h3>
+
+      {/* Coupon Code Section */}
+      <div>
+        {appliedCoupon ? (
+          <div className="flex items-center justify-between p-2.5 bg-[#f0eee7] border border-[#c79a45]/40 text-xs">
+            <div className="flex items-center gap-2 text-[#073a2d]">
+              <Tag className="w-3.5 h-3.5 text-[#c79a45]" />
+              <span>
+                Applied: <strong>{appliedCoupon}</strong>
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={removeCoupon}
+              className="text-[11px] text-[#ba1a1a] hover:underline uppercase font-bold cursor-pointer"
+            >
+              Remove
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <Input
+              placeholder="Coupon Code"
+              value={couponInput}
+              disabled={isApplyingCoupon}
+              onChange={(e) => setCouponInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  void handleApplyCoupon(e);
+                }
+              }}
+              className="h-10 text-xs bg-[#fbf9f2] rounded-none border-[#deddd3]"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              loading={isApplyingCoupon}
+              loadingText="Applying..."
+              disabled={isApplyingCoupon || !couponInput.trim()}
+              onClick={handleApplyCoupon}
+              className="h-10 px-4 text-xs font-sans uppercase tracking-wider border-[#073a2d] text-[#073a2d] cursor-pointer"
+            >
+              Apply
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Calculations */}
+      <div className="space-y-2 text-xs font-sans text-[#69726d] pt-2">
+        <div className="flex justify-between">
+          <span>Items Subtotal</span>
+          <span className="font-semibold text-[#1b1c18] tabular-nums">
+            ৳{subtotal.toLocaleString()}
+          </span>
+        </div>
+
+        {discount > 0 && (
+          <div className="flex justify-between text-[#073a2d] font-semibold">
+            <span>Voucher Discount</span>
+            <span className="tabular-nums">-৳{discount.toLocaleString()}</span>
+          </div>
+        )}
+
+        <div className="flex justify-between">
+          <span>Nationwide Delivery</span>
+          <span className="font-semibold tabular-nums text-[#1b1c18]">
+            {shippingFee === 0 ? (
+              <span className="text-[#073a2d] font-bold uppercase text-[10px]">
+                Free (Order &gt; ৳3,000)
+              </span>
+            ) : (
+              `৳${shippingFee}`
+            )}
+          </span>
+        </div>
+
+        <Separator className="my-3 bg-[#deddd3]" />
+
+        <div className="flex justify-between text-base sm:text-lg font-bold text-[#073a2d]">
+          <span className="font-serif">Grand Total</span>
+          <span className="tabular-nums">৳{total.toLocaleString()}</span>
+        </div>
+      </div>
+
+      {/* Guarantees Strip */}
+      <div className="pt-3 border-t border-[#f0eee7] space-y-2 text-[11px] font-sans text-[#69726d]">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-[#073a2d]" />
+          <span>Open-Box Delivery Verification Guaranteed</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Truck className="w-4 h-4 text-[#073a2d]" />
+          <span>48h Express Dispatch Across Bangladesh</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderConciergeCard = () => (
+    <div className="p-6 bg-[#073a2d] text-[#fbf9f2] border border-[#c79a45]/30 shadow-xs space-y-3">
+      <span className="font-sans text-[10px] uppercase tracking-[0.25em] text-[#c79a45] font-semibold block">
+        BESPOKE ASSISTANCE
+      </span>
+      <h4 className="font-serif text-lg text-white">Prefer Direct Human Support?</h4>
+      <p className="font-sans text-xs text-[#c0c8c3] leading-relaxed">
+        Call or WhatsApp our Dhaka studio to confirm sizing, custom lengths, or arrange immediate urgent handover.
+      </p>
+      {settings?.whatsappOrderEnabled && whatsappUrl && (
+        <a
+          href={whatsappUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 text-xs font-sans uppercase tracking-widest text-[#c79a45] hover:text-white font-bold pt-1"
+        >
+          <PhoneCall className="w-4 h-4" />
+          <span>WhatsApp {settings.whatsapp}</span>
+        </a>
+      )}
+    </div>
+  );
 
   return (
     <div className="w-full pt-6 sm:pt-10 pb-20 sm:pb-24 bg-[#fbf9f2]">
@@ -367,6 +558,11 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
+              {/* Order Summary on Mobile: shown right after products on mobile devices */}
+              <div className="block lg:hidden">
+                {renderOrderSummary(true)}
+              </div>
+
               {/* Step 2: Delivery Details */}
               <div className="bg-white border border-[#deddd3] p-6 shadow-xs">
                 <div className="pb-4 border-b border-[#deddd3] mb-5">
@@ -376,9 +572,13 @@ export default function CheckoutPage() {
                     </span>
                     <span>Delivery Address</span>
                   </h3>
+                  <p className="font-sans text-[11px] text-[#717975] mt-1">
+                    Select your administrative Division, District, and Thana/Upazila for verified doorstep delivery across Bangladesh.
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans">
+                  {/* Recipient Full Name */}
                   <div>
                     <label className="block uppercase tracking-wider text-[#404945] font-semibold mb-1">
                       Recipient Full Name *
@@ -392,6 +592,7 @@ export default function CheckoutPage() {
                     />
                   </div>
 
+                  {/* Mobile Number */}
                   <div>
                     <label className="block uppercase tracking-wider text-[#404945] font-semibold mb-1">
                       Mobile Number (+880) *
@@ -405,23 +606,73 @@ export default function CheckoutPage() {
                     />
                   </div>
 
+                  {/* Division Dropdown */}
                   <div>
                     <label className="block uppercase tracking-wider text-[#404945] font-semibold mb-1">
                       Division *
                     </label>
                     <select
                       value={formData.division}
-                      onChange={(e) => setFormData({ ...formData, division: e.target.value })}
-                      className="w-full h-9 px-3 bg-[#fbf9f2] border border-[#deddd3] text-xs focus:outline-none focus:border-[#073a2d]"
+                      onChange={(e) => handleDivisionChange(e.target.value)}
+                      className="w-full h-9 px-3 bg-[#fbf9f2] border border-[#deddd3] text-xs font-sans text-[#1b1c18] focus:outline-none focus:border-[#073a2d]"
                     >
-                      {divisions.map((d) => (
-                        <option key={d} value={d}>
-                          {d} Division
+                      <option value="">Select Division</option>
+                      {BANGLADESH_DIVISIONS.map((d) => (
+                        <option key={d.name} value={d.name}>
+                          {d.name} Division
                         </option>
                       ))}
                     </select>
                   </div>
 
+                  {/* District Dropdown (Cascades based on Division) */}
+                  <div>
+                    <label className="block uppercase tracking-wider text-[#404945] font-semibold mb-1">
+                      District (Zilla) *
+                    </label>
+                    <select
+                      value={formData.district}
+                      disabled={!formData.division}
+                      onChange={(e) => handleDistrictChange(e.target.value)}
+                      className="w-full h-9 px-3 bg-[#fbf9f2] border border-[#deddd3] text-xs font-sans text-[#1b1c18] focus:outline-none focus:border-[#073a2d] disabled:opacity-50 disabled:bg-[#f0eee7] disabled:cursor-not-allowed"
+                    >
+                      <option value="">
+                        {formData.division ? 'Select District (Zilla)' : 'Select Division first'}
+                      </option>
+                      {availableDistricts.map((dist) => (
+                        <option key={dist.name} value={dist.name}>
+                          {dist.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Thana / Upazila Dropdown (Cascades based on District) */}
+                  <div>
+                    <label className="block uppercase tracking-wider text-[#404945] font-semibold mb-1">
+                      Thana / Upazila *
+                    </label>
+                    <select
+                      value={formData.thana}
+                      disabled={!formData.district}
+                      onChange={(e) => setFormData({ ...formData, thana: e.target.value })}
+                      className="w-full h-9 px-3 bg-[#fbf9f2] border border-[#deddd3] text-xs font-sans text-[#1b1c18] focus:outline-none focus:border-[#073a2d] disabled:opacity-50 disabled:bg-[#f0eee7] disabled:cursor-not-allowed"
+                    >
+                      <option value="">
+                        {formData.district ? 'Select Thana / Upazila' : 'Select District first'}
+                      </option>
+                      {availableThanas.map((thana) => (
+                        <option key={thana} value={thana}>
+                          {thana}
+                        </option>
+                      ))}
+                      {Boolean(formData.district) && (
+                        <option value="OTHER">Other / Specify area...</option>
+                      )}
+                    </select>
+                  </div>
+
+                  {/* Email Address */}
                   <div>
                     <label className="block uppercase tracking-wider text-[#404945] font-semibold mb-1">
                       Email Address (Optional)
@@ -435,20 +686,51 @@ export default function CheckoutPage() {
                     />
                   </div>
 
+                  {/* Custom Thana field if OTHER is selected */}
+                  {formData.thana === 'OTHER' && (
+                    <div className="sm:col-span-2">
+                      <label className="block uppercase tracking-wider text-[#404945] font-semibold mb-1">
+                        Specify Your Thana / Sub-district *
+                      </label>
+                      <Input
+                        required
+                        placeholder="e.g. Specific police station, cantonment, or local upazila"
+                        value={formData.customThana}
+                        onChange={(e) => setFormData({ ...formData, customThana: e.target.value })}
+                        className="bg-[#fbf9f2] rounded-none border-[#deddd3]"
+                      />
+                    </div>
+                  )}
+
+                  {/* Street Address */}
                   <div className="sm:col-span-2">
                     <label className="block uppercase tracking-wider text-[#404945] font-semibold mb-1">
-                      Street Address & Landmark *
+                      Street Address, House No &amp; Road *
                     </label>
                     <Input
                       required
-                      placeholder="House No, Road No, Area, Thana / Postal Code"
+                      placeholder="House No, Road No, Flat / Holding, Landmark (e.g. House 14, Road 7, Block C)"
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                       className="bg-[#fbf9f2] rounded-none border-[#deddd3]"
                     />
                   </div>
 
-                  <div className="sm:col-span-2">
+                  {/* Postal Code */}
+                  <div>
+                    <label className="block uppercase tracking-wider text-[#404945] font-semibold mb-1">
+                      Postal Code (Optional)
+                    </label>
+                    <Input
+                      placeholder="e.g. 1212"
+                      value={formData.postalCode}
+                      onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
+                      className="bg-[#fbf9f2] rounded-none border-[#deddd3]"
+                    />
+                  </div>
+
+                  {/* Special Tailoring / Delivery Note */}
+                  <div>
                     <label className="block uppercase tracking-wider text-[#404945] font-semibold mb-1">
                       Special Tailoring / Delivery Note
                     </label>
@@ -502,141 +784,29 @@ export default function CheckoutPage() {
                 </p>
               </div>
 
-              {/* Submit CTA (Mobile / Form placement) */}
+              {/* Submit CTA */}
               <div className="pt-2">
                 <Button
                   type="submit"
                   loading={isSubmitting}
-                  loadingText="PROCESSING ORDER..."
+                  loadingText="PLACING ORDER..."
                   disabled={isSubmitting}
-                  className="w-full h-14 bg-[#073a2d] hover:bg-[#0d4d3b] text-[#fbf9f2] font-sans uppercase tracking-[0.18em] text-xs font-bold shadow-lg"
+                  className="w-full h-14 bg-[#073a2d] hover:bg-[#0d4d3b] text-[#fbf9f2] font-sans uppercase tracking-[0.18em] text-xs font-bold shadow-lg cursor-pointer"
                 >
-                  {`Confirm Sartorial Order • ৳${total.toLocaleString()}`}
+                  {`Place Order - ৳${total.toLocaleString()}`}
                 </Button>
+              </div>
+
+              {/* Mobile Concierge Card */}
+              <div className="block lg:hidden pt-2">
+                {renderConciergeCard()}
               </div>
             </form>
 
-            {/* Right Summary Sidebar (5 Cols) */}
-            <div className="lg:col-span-5 space-y-6">
-              <div className="p-6 bg-white border border-[#deddd3] shadow-xs space-y-5">
-                <h3 className="font-serif text-lg font-semibold text-[#073a2d] pb-3 border-b border-[#deddd3]">
-                  Order Summary ({items.length} {items.length === 1 ? 'Item' : 'Items'})
-                </h3>
-
-                {/* Coupon Code Section */}
-                <div>
-                  {appliedCoupon ? (
-                    <div className="flex items-center justify-between p-2.5 bg-[#f0eee7] border border-[#c79a45]/40 text-xs">
-                      <div className="flex items-center gap-2 text-[#073a2d]">
-                        <Tag className="w-3.5 h-3.5 text-[#c79a45]" />
-                        <span>
-                          Applied: <strong>{appliedCoupon}</strong>
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={removeCoupon}
-                        className="text-[11px] text-[#ba1a1a] hover:underline uppercase font-bold cursor-pointer"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ) : (
-                    <form onSubmit={handleApplyCoupon} className="flex gap-2">
-                      <Input
-                        placeholder="Coupon Code"
-                        value={couponInput}
-                        disabled={isApplyingCoupon}
-                        onChange={(e) => setCouponInput(e.target.value)}
-                        className="h-10 text-xs bg-[#fbf9f2] rounded-none border-[#deddd3]"
-                      />
-                      <Button
-                        type="submit"
-                        variant="outline"
-                        loading={isApplyingCoupon}
-                        loadingText="Applying..."
-                        disabled={isApplyingCoupon || !couponInput.trim()}
-                        className="h-10 px-4 text-xs font-sans uppercase tracking-wider border-[#073a2d] text-[#073a2d]"
-                      >
-                        Apply
-                      </Button>
-                    </form>
-                  )}
-                </div>
-
-                {/* Calculations */}
-                <div className="space-y-2 text-xs font-sans text-[#69726d] pt-2">
-                  <div className="flex justify-between">
-                    <span>Items Subtotal</span>
-                    <span className="font-semibold text-[#1b1c18] tabular-nums">
-                      ৳{subtotal.toLocaleString()}
-                    </span>
-                  </div>
-
-                  {discount > 0 && (
-                    <div className="flex justify-between text-[#073a2d] font-semibold">
-                      <span>Voucher Discount</span>
-                      <span className="tabular-nums">-৳{discount.toLocaleString()}</span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between">
-                    <span>Nationwide Delivery</span>
-                    <span className="font-semibold tabular-nums text-[#1b1c18]">
-                      {shippingFee === 0 ? (
-                        <span className="text-[#073a2d] font-bold uppercase text-[10px]">
-                          Free (Order &gt; ৳3,000)
-                        </span>
-                      ) : (
-                        `৳${shippingFee}`
-                      )}
-                    </span>
-                  </div>
-
-                  <Separator className="my-3 bg-[#deddd3]" />
-
-                  <div className="flex justify-between text-lg font-bold text-[#073a2d]">
-                    <span className="font-serif">Grand Total</span>
-                    <span className="tabular-nums">৳{total.toLocaleString()}</span>
-                  </div>
-                </div>
-
-                {/* Guarantees Strip */}
-                <div className="pt-4 border-t border-[#f0eee7] space-y-2.5 text-[11px] font-sans text-[#69726d]">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-[#073a2d]" />
-                    <span>Open-Box Delivery Verification Guaranteed</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Truck className="w-4 h-4 text-[#073a2d]" />
-                    <span>48h Express Dispatch Across Bangladesh</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* WhatsApp Human Concierge Card */}
-              <div className="p-6 bg-[#073a2d] text-[#fbf9f2] border border-[#c79a45]/30 shadow-xs space-y-3">
-                <span className="font-sans text-[10px] uppercase tracking-[0.25em] text-[#c79a45] font-semibold block">
-                  BESPOKE ASSISTANCE
-                </span>
-                <h4 className="font-serif text-lg text-white">
-                  Prefer Direct Human Support?
-                </h4>
-                <p className="font-sans text-xs text-[#c0c8c3] leading-relaxed">
-                  Call or WhatsApp our Dhaka studio to confirm sizing, custom lengths, or arrange immediate urgent handover.
-                </p>
-                {settings?.whatsappOrderEnabled && whatsappUrl && (
-                  <a
-                    href={whatsappUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 text-xs font-sans uppercase tracking-widest text-[#c79a45] hover:text-white font-bold pt-1"
-                  >
-                    <PhoneCall className="w-4 h-4" />
-                    <span>WhatsApp {settings.whatsapp}</span>
-                  </a>
-                )}
-              </div>
+            {/* Right Summary Sidebar (5 Cols - Desktop only) */}
+            <div className="hidden lg:block lg:col-span-5 space-y-6">
+              {renderOrderSummary(false)}
+              {renderConciergeCard()}
             </div>
           </div>
         )}

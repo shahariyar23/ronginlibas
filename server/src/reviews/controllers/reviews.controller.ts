@@ -1,18 +1,68 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CustomerAuthGuard } from '../../auth/guards/customer-auth.guard.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { ReviewVoteDto } from '../dto/review-vote.dto.js';
 import { UpdateReviewDto } from '../dto/update-review.dto.js';
 import { ReviewsService } from '../services/reviews.service.js';
+import { CloudinaryService } from '../../products/services/cloudinary.service.js';
 
 @ApiTags('Reviews')
 @ApiBearerAuth()
 @UseGuards(CustomerAuthGuard)
 @Controller('reviews')
 export class ReviewsController {
-  constructor(private readonly reviewsService: ReviewsService) {}
+  constructor(
+    private readonly reviewsService: ReviewsService,
+    private readonly cloudinary: CloudinaryService,
+  ) {}
+
+  @Post('upload')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiOperation({ summary: 'Upload a customer review photo to Cloudinary' })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 10 * 1024 * 1024 },
+      fileFilter: (_request, file, callback) => {
+        if (!['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(file.mimetype)) {
+          callback(new BadRequestException('Only JPEG, PNG, WEBP, and AVIF images are allowed'), false);
+          return;
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  async uploadPhoto(
+    @UploadedFile() file: { buffer: Buffer; mimetype: string } | undefined,
+  ) {
+    if (!file) throw new BadRequestException('An image file is required');
+    const uploaded = await this.cloudinary.uploadReviewImage(file.buffer);
+    return {
+      message: 'Review photo uploaded successfully',
+      data: { url: uploaded.secure_url, publicId: uploaded.public_id },
+    };
+  }
 
   @Get('mine')
   @ApiOperation({ summary: 'Retrieve reviews submitted by the authenticated customer' })

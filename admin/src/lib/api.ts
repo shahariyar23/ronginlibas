@@ -162,6 +162,7 @@ export interface AdminReview {
   id: string;
   rating: number;
   comment: string;
+  images?: string[];
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'HIDDEN';
   adminFeedback: string | null;
   adminFeedbackAt: string | null;
@@ -536,6 +537,11 @@ export const adminApi = {
       request<Pick<AdminReview, 'id' | 'adminFeedback' | 'adminFeedbackAt'>>(
         `/admin/reviews/${encodeURIComponent(id)}/feedback`,
         { method: 'PATCH', body: JSON.stringify({ feedback }) },
+      ),
+    updateStatus: (id: string, status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'HIDDEN') =>
+      request<Pick<AdminReview, 'id' | 'status'>>(
+        `/admin/reviews/${encodeURIComponent(id)}/status`,
+        { method: 'PATCH', body: JSON.stringify({ status }) },
       ),
   },
 

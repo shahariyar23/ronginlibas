@@ -7,12 +7,13 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { IsString, IsNotEmpty, IsInt, Min, Max } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsInt, Min, Max, IsOptional, IsArray } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export class CreateReviewDto {
     productId;
     rating;
     comment;
+    images;
 }
 __decorate([
     ApiProperty({ example: 'product-uuid' }),
@@ -33,4 +34,11 @@ __decorate([
     IsNotEmpty(),
     __metadata("design:type", String)
 ], CreateReviewDto.prototype, "comment", void 0);
+__decorate([
+    ApiPropertyOptional({ example: ['https://res.cloudinary.com/.../image.jpg'], type: [String] }),
+    IsOptional(),
+    IsArray(),
+    IsString({ each: true }),
+    __metadata("design:type", Array)
+], CreateReviewDto.prototype, "images", void 0);
 //# sourceMappingURL=create-review.dto.js.map

@@ -46,12 +46,6 @@ let ProductsController = class ProductsController {
             data: await this.productsService.findRelated(slug, 'RELATED'),
         };
     }
-    async findRecommendations(slug) {
-        return {
-            message: 'Product recommendations retrieved successfully',
-            data: await this.productsService.findRelated(slug, 'COMPLEMENTARY'),
-        };
-    }
 };
 __decorate([
     Get(),
@@ -85,14 +79,6 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], ProductsController.prototype, "findRelated", null);
-__decorate([
-    Get(':slug/recommendations'),
-    ApiOperation({ summary: 'Retrieve complementary active product recommendations' }),
-    __param(0, Param('slug')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Promise)
-], ProductsController.prototype, "findRecommendations", null);
 ProductsController = __decorate([
     ApiTags('Storefront - Products'),
     Public(),

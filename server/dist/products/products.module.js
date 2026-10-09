@@ -22,7 +22,7 @@ ProductsModule = __decorate([
             AdminProductImagesController,
         ],
         providers: [ProductsService, CloudinaryService],
-        exports: [ProductsService],
+        exports: [ProductsService, CloudinaryService],
     })
 ], ProductsModule);
 export { ProductsModule };

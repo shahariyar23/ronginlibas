@@ -14,6 +14,6 @@ import { CloudinaryService } from './services/cloudinary.service.js';
     AdminProductImagesController,
   ],
   providers: [ProductsService, CloudinaryService],
-  exports: [ProductsService],
+  exports: [ProductsService, CloudinaryService],
 })
 export class ProductsModule {}

@@ -13,6 +13,7 @@ export declare class ReviewsService {
         id: string;
         createdAt: Date;
         status: import("@prisma/client").$Enums.ReviewStatus;
+        images: string[];
         productId: string;
         rating: number;
         comment: string;
@@ -22,6 +23,9 @@ export declare class ReviewsService {
             id: string;
             rating: number;
             comment: string;
+            images: string[];
+            adminFeedback: string | null;
+            adminFeedbackAt: Date | null;
             createdAt: Date;
             customerName: string;
             verifiedPurchase: boolean;
@@ -72,6 +76,7 @@ export declare class ReviewsService {
         productImage: string;
         rating: number;
         comment: string;
+        images: string[];
         status: import("@prisma/client").$Enums.ReviewStatus;
         adminFeedback: string | null;
         adminFeedbackAt: Date | null;
@@ -91,10 +96,11 @@ export declare class ReviewsService {
         size: string;
         color: string;
     }[]>;
-    createForProduct(productId: string, dto: Pick<CreateReviewDto, 'rating' | 'comment'>, customerId: string): Promise<{
+    createForProduct(productId: string, dto: Pick<CreateReviewDto, 'rating' | 'comment' | 'images'>, customerId: string): Promise<{
         id: string;
         createdAt: Date;
         status: import("@prisma/client").$Enums.ReviewStatus;
+        images: string[];
         productId: string;
         rating: number;
         comment: string;
@@ -103,6 +109,7 @@ export declare class ReviewsService {
         id: string;
         updatedAt: Date;
         status: import("@prisma/client").$Enums.ReviewStatus;
+        images: string[];
         productId: string;
         rating: number;
         comment: string;
@@ -123,6 +130,7 @@ export declare class ReviewsService {
         updatedAt: Date;
         customerId: string;
         status: import("@prisma/client").$Enums.ReviewStatus;
+        images: string[];
         productId: string;
         rating: number;
         comment: string;

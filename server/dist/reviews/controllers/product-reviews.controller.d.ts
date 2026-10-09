@@ -11,6 +11,9 @@ export declare class ProductReviewsController {
                 id: string;
                 rating: number;
                 comment: string;
+                images: string[];
+                adminFeedback: string | null;
+                adminFeedbackAt: Date | null;
                 createdAt: Date;
                 customerName: string;
                 verifiedPurchase: boolean;
@@ -63,6 +66,7 @@ export declare class ProductReviewsController {
             id: string;
             createdAt: Date;
             status: import("@prisma/client").$Enums.ReviewStatus;
+            images: string[];
             productId: string;
             rating: number;
             comment: string;

@@ -384,6 +384,14 @@ export const Header: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
+  const [readIds, setReadIds] = useState<string[]>(() => {
+    try {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('rongin_customer_read_notification_ids') : null;
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [readTimestamp, setReadTimestamp] = useState<number | null>(() => {
     try {
       const saved = typeof window !== 'undefined' ? localStorage.getItem('rongin_customer_notifications_read_at') : null;
@@ -482,7 +490,7 @@ export const Header: React.FC = () => {
                 status: 'DELIVERED',
                 type: 'delivery',
                 timestamp: time,
-                link: '/orders',
+                link: `/profile?tab=reviews&orderNumber=${encodeURIComponent(order.orderNumber)}`,
               });
             } else if (order.status === 'PENDING') {
               notifs.push({
@@ -508,7 +516,7 @@ export const Header: React.FC = () => {
                 status: 'PENDING',
                 type: 'review',
                 timestamp: new Date(rev.createdAt).getTime(),
-                link: '/profile',
+                link: '/profile?tab=reviews',
               });
             }
             if (rev.adminFeedback && rev.adminFeedbackAt) {
@@ -519,7 +527,7 @@ export const Header: React.FC = () => {
                 status: 'REPLIED',
                 type: 'review',
                 timestamp: new Date(rev.adminFeedbackAt).getTime(),
-                link: '/profile',
+                link: '/profile?tab=reviews',
               });
             }
           }
@@ -542,17 +550,39 @@ export const Header: React.FC = () => {
     };
   }, [isLoggedIn, user?.id]);
 
-  const unreadCount =
-    readTimestamp !== null
-      ? notifications.filter((n) => n.timestamp > readTimestamp).length
-      : notifications.length;
+  const isNotificationUnread = (notif: CustomerNotification) => {
+    if (readIds.includes(notif.id)) return false;
+    if (readTimestamp !== null && notif.timestamp <= readTimestamp) return false;
+    return true;
+  };
+
+  const unreadCount = notifications.filter(isNotificationUnread).length;
+
+  const handleNotificationClick = (notif: CustomerNotification) => {
+    setIsUserMenuOpen(false);
+    if (!isNotificationUnread(notif)) return;
+
+    setReadIds((prev) => {
+      if (prev.includes(notif.id)) return prev;
+      const updated = [notif.id, ...prev].slice(0, 200);
+      try {
+        localStorage.setItem('rongin_customer_read_notification_ids', JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+      return updated;
+    });
+  };
 
   const handleMarkAllAsRead = (e: React.MouseEvent) => {
     e.stopPropagation();
     const now = Date.now();
     setReadTimestamp(now);
+    const allIds = Array.from(new Set([...readIds, ...notifications.map((n) => n.id)])).slice(0, 200);
+    setReadIds(allIds);
     try {
       localStorage.setItem('rongin_customer_notifications_read_at', String(now));
+      localStorage.setItem('rongin_customer_read_notification_ids', JSON.stringify(allIds));
     } catch {
       // ignore
     }
@@ -788,13 +818,12 @@ export const Header: React.FC = () => {
                   <div className="max-h-64 overflow-y-auto divide-y divide-[#f0eee7]">
                     {notifications.length > 0 ? (
                       notifications.map((notif) => {
-                        const isUnread =
-                          !readTimestamp || notif.timestamp > readTimestamp;
+                        const isUnread = isNotificationUnread(notif);
                         return (
                           <Link
                             key={notif.id}
                             href={notif.link}
-                            onClick={() => setIsUserMenuOpen(false)}
+                            onClick={() => handleNotificationClick(notif)}
                             className={`block p-3.5 hover:bg-[#fbf9f2] transition-colors relative ${
                               isUnread ? 'bg-[#fcfaf4]' : ''
                             }`}

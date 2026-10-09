@@ -73,6 +73,7 @@ export declare class ProductsService {
             updatedAt: Date;
             customerId: string;
             status: import("@prisma/client").$Enums.ReviewStatus;
+            images: string[];
             productId: string;
             rating: number;
             comment: string;
@@ -132,6 +133,10 @@ export declare class ProductsService {
         isNewArrival: boolean;
         isBestSeller: boolean;
         categoryId: string;
+    } & {
+        reviewsCount: number;
+        averageRating: number;
+        totalSold: number;
     }>;
     findById(id: string): Promise<{
         category: {
@@ -206,6 +211,9 @@ export declare class ProductsService {
             name: string;
             slug: string;
         };
+        reviews: {
+            rating: number;
+        }[];
         variants: {
             id: string;
             isActive: boolean;
@@ -231,6 +239,9 @@ export declare class ProductsService {
             productId: string;
             publicId: string | null;
             altText: string | null;
+        }[];
+        orderItems: {
+            quantity: number;
         }[];
     } & {
         description: string | null;
@@ -259,6 +270,10 @@ export declare class ProductsService {
         isNewArrival: boolean;
         isBestSeller: boolean;
         categoryId: string;
+    } & {
+        reviewsCount: number;
+        averageRating: number;
+        totalSold: number;
     })[]>;
     create(dto: CreateProductDto): Promise<{
         variants: {

@@ -85,7 +85,13 @@ export const ShopContent: React.FC = () => {
       : priceRange;
   const searchDraft =
     searchEdit?.query === initialQueryFromUrl ? searchEdit.value : initialQueryFromUrl;
-  const sortBy = urlParams.get('sort') || 'featured';
+  const rawSort = urlParams.get('sort') || 'featured';
+  const sortBy =
+    rawSort === 'price-asc'
+      ? 'price-low'
+      : rawSort === 'price-desc'
+        ? 'price-high'
+        : rawSort;
   const [gridCols, setGridCols] = useState<3 | 4>(3);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const whatsappUrl = getWhatsAppUrl(
@@ -345,7 +351,11 @@ export const ShopContent: React.FC = () => {
                 }`}
               >
                 <span
-                  className="w-3 h-3 rounded-full border border-black/20"
+                  className={`w-3 h-3 rounded-full border ${
+                    color.name.toLowerCase().includes('white')
+                      ? 'border-neutral-400 shadow-[0_1px_3px_rgba(0,0,0,0.35)] ring-1 ring-black/10'
+                      : 'border-black/20'
+                  }`}
                   style={{ backgroundColor: colorHex(color.name) }}
                 />
                 <span>{formatOption(color.name, color.count)}</span>

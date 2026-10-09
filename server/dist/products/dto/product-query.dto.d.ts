@@ -17,5 +17,5 @@ export declare class ProductQueryDto extends PaginationQueryDto {
     bestSeller?: boolean;
     onSale?: boolean;
     expressAvailable?: boolean;
-    sort?: 'featured' | 'newest' | 'price-asc' | 'price-desc' | 'best-selling';
+    sort?: 'featured' | 'newest' | 'price-asc' | 'price-desc' | 'price-low' | 'price-high' | 'best-selling';
 }

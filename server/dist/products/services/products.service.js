@@ -26,9 +26,9 @@ let ProductsService = ProductsService_1 = class ProductsService {
         const limit = query.limit || 20;
         const skip = (page - 1) * limit;
         const where = buildProductWhere(query, isAdmin);
-        const orderBy = query.sort === 'price-asc'
+        const orderBy = query.sort === 'price-asc' || query.sort === 'price-low'
             ? { price: 'asc' }
-            : query.sort === 'price-desc'
+            : query.sort === 'price-desc' || query.sort === 'price-high'
                 ? { price: 'desc' }
                 : query.sort === 'best-selling'
                     ? [{ orderItems: { _count: 'desc' } }, { createdAt: 'desc' }]
@@ -57,6 +57,13 @@ let ProductsService = ProductsService_1 = class ProductsService {
                             isActive: true,
                             priceOverride: true,
                         },
+                    },
+                    reviews: {
+                        where: { status: 'APPROVED' },
+                        select: { rating: true },
+                    },
+                    orderItems: {
+                        select: { quantity: true },
                     },
                 },
                 orderBy,
@@ -237,6 +244,13 @@ let ProductsService = ProductsService_1 = class ProductsService {
                         category: { select: { id: true, name: true, slug: true } },
                         images: { orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }] },
                         variants: { where: { isActive: true } },
+                        reviews: {
+                            where: { status: 'APPROVED' },
+                            select: { rating: true },
+                        },
+                        orderItems: {
+                            select: { quantity: true },
+                        },
                     },
                 },
             },
@@ -257,6 +271,13 @@ let ProductsService = ProductsService_1 = class ProductsService {
                 category: { select: { id: true, name: true, slug: true } },
                 images: { orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }] },
                 variants: { where: { isActive: true } },
+                reviews: {
+                    where: { status: 'APPROVED' },
+                    select: { rating: true },
+                },
+                orderItems: {
+                    select: { quantity: true },
+                },
             },
         });
         return relatedProducts.map(normalizeStorefrontSizeLabels);
@@ -828,11 +849,23 @@ const apparelSizeLabels = new Set([
     '5XL',
 ]);
 function normalizeStorefrontSizeLabels(product) {
+    const reviews = product.reviews ?? [];
+    const reviewsCount = reviews.length;
+    const averageRating = reviewsCount > 0
+        ? Number((reviews.reduce((sum, r) => sum + r.rating, 0) / reviewsCount).toFixed(1))
+        : 0;
+    const totalSold = (product.orderItems ?? []).reduce((sum, oi) => sum + (oi.quantity || 1), 0);
+    const base = {
+        ...product,
+        reviewsCount,
+        averageRating,
+        totalSold,
+    };
     if (!product.category || !product.variants)
-        return product;
+        return base;
     const category = { slug: product.category.slug };
     return {
-        ...product,
+        ...base,
         variants: product.variants.map((variant) => ({
             ...variant,
             sizeLabel: getShopSizeLabel({ ...variant, product: { category } }) ?? null,

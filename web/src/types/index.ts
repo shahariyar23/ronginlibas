@@ -28,6 +28,9 @@ export interface Product {
   }[];
   inStock: boolean;
   stockCount?: number;
+  averageRating?: number;
+  reviewsCount?: number;
+  totalSold?: number;
   isNewArrival?: boolean;
   isBestSeller?: boolean;
   featured?: boolean;

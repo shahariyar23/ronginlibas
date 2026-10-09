@@ -8,10 +8,11 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { IsArray, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 export class UpdateReviewDto {
     rating;
     comment;
+    images;
 }
 __decorate([
     ApiPropertyOptional({ minimum: 1, maximum: 5 }),
@@ -28,4 +29,11 @@ __decorate([
     IsOptional(),
     __metadata("design:type", String)
 ], UpdateReviewDto.prototype, "comment", void 0);
+__decorate([
+    ApiPropertyOptional({ type: [String] }),
+    IsOptional(),
+    IsArray(),
+    IsString({ each: true }),
+    __metadata("design:type", Array)
+], UpdateReviewDto.prototype, "images", void 0);
 //# sourceMappingURL=update-review.dto.js.map

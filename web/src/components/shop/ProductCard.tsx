@@ -6,7 +6,7 @@ import { Product } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
-import { Heart, ShoppingCart, Loader2 } from 'lucide-react';
+import { Heart, ShoppingCart, Loader2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -171,22 +171,61 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             </h3>
           </Link>
 
+          {/* Reviews Rating & Buyers */}
+          {((product.reviewsCount ?? 0) > 0 || (product.totalSold ?? 0) > 0) && (
+            <div className="flex items-center gap-1.5 pt-1 text-[10px] sm:text-[11px] font-sans">
+              {(product.reviewsCount ?? 0) > 0 && (
+                <div className="flex items-center gap-1">
+                  <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-[#c79a45] text-[#c79a45] shrink-0" />
+                  <span className="font-bold text-[#073a2d]">
+                    {product.averageRating ? product.averageRating.toFixed(1) : '5.0'}
+                  </span>
+                  <span className="text-[#717975]">/5</span>
+                  <span className="text-[#717975]">
+                    ({product.reviewsCount})
+                  </span>
+                </div>
+              )}
+
+              {(product.reviewsCount ?? 0) > 0 && (product.totalSold ?? 0) > 0 && (
+                <span className="text-[#deddd3]">•</span>
+              )}
+
+              {(product.totalSold ?? 0) > 0 && (
+                <span className="text-[#69726d] font-medium">
+                  {product.totalSold} {product.totalSold === 1 ? 'bought' : 'bought'}
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Colorway Swatches */}
           {product.colors && product.colors.length > 0 && (
             <div className="flex items-center gap-1.5 pt-1.5 sm:pt-2">
-              {product.colors.map((c) => (
-                <button
-                  key={c.name}
-                  onClick={() => setSelectedColor(c.name)}
-                  title={c.name}
-                  className={`w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full border transition-all cursor-pointer ${
-                    selectedColor === c.name
-                      ? 'ring-1.5 ring-[#073a2d] ring-offset-1 border-white'
-                      : 'border-black/20 hover:scale-110'
-                  }`}
-                  style={{ backgroundColor: c.hex }}
-                />
-              ))}
+              {product.colors.map((c) => {
+                const isLight =
+                  !c.hex ||
+                  ['#ffffff', '#fff', '#fbf9f2', '#f5f4ed', '#fafafa', '#f8fafc'].includes(c.hex.toLowerCase()) ||
+                  c.name.toLowerCase().includes('white');
+
+                return (
+                  <button
+                    key={c.name}
+                    onClick={() => setSelectedColor(c.name)}
+                    title={c.name}
+                    className={`w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full border transition-all cursor-pointer ${
+                      isLight
+                        ? 'border-neutral-400 shadow-[0_1px_3px_rgba(0,0,0,0.35)] ring-1 ring-black/10'
+                        : 'border-black/20'
+                    } ${
+                      selectedColor === c.name
+                        ? `ring-1.5 ring-[#073a2d] ring-offset-1 ${isLight ? 'border-neutral-400' : 'border-white'}`
+                        : 'hover:scale-110'
+                    }`}
+                    style={{ backgroundColor: c.hex }}
+                  />
+                );
+              })}
               <span className="text-[9px] sm:text-[10px] text-[#717975] ml-0.5 font-sans truncate max-w-[65px] sm:max-w-none">
                 {selectedColor}
               </span>
@@ -207,7 +246,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             )}
           </div>
           <span className="font-sans text-[8.5px] sm:text-[10px] uppercase tracking-wider text-[#c79a45] font-semibold truncate max-w-[55px] sm:max-w-none">
-            {product.fabricOrigin?.split(',')[0] || 'Atelier'}
+            {product.fabricOrigin?.split(',')[0] || 'RonginLibas'}
           </span>
         </div>
       </div>

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { getWhatsAppUrl, useStorefront } from '@/context/StorefrontContext';
 import { LogoLoader } from '@/components/common/LogoLoader';
@@ -36,30 +36,53 @@ import {
   Star,
   MessageSquare,
   Loader2,
+  Camera,
+  X,
+  ImageIcon,
 } from 'lucide-react';
 import {
   getEligibleReviews,
   getCustomerReviews,
   submitProductReview,
+  uploadReviewImage,
   EligibleReviewProduct,
   CustomerSubmittedReview,
 } from '@/lib/api';
+import {
+  BANGLADESH_DIVISIONS,
+  getDistrictsByDivision,
+  getThanasByDistrict,
+} from '@/data/bangladeshGeo';
 
 export const ProfileClient: React.FC = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const orderNumberParam = searchParams.get('orderNumber');
+  const productIdParam = searchParams.get('productId');
+  const productNameParam = searchParams.get('productName');
+  const sizeParam = searchParams.get('size');
+  const colorParam = searchParams.get('color');
+
   const { user, isLoggedIn, isLoading, logout, updateProfile, changePassword } = useAuth();
   const { settings } = useStorefront();
   const whatsappUrl = getWhatsAppUrl(settings?.whatsapp || '');
 
-  const [activeTab, setActiveTab] = useState<'details' | 'security' | 'reviews'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'security' | 'reviews'>(() => {
+    if (tabParam === 'reviews') return 'reviews';
+    if (tabParam === 'security') return 'security';
+    return 'details';
+  });
 
   // Form states
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [addressLine, setAddressLine] = useState(user?.address.line1 || '');
-  const [division, setDivision] = useState(user?.address.division || '');
-  const [city, setCity] = useState(user?.address.city || '');
+  const [division, setDivision] = useState(user?.address.division || 'Dhaka');
+  const [district, setDistrict] = useState(user?.address.city || 'Dhaka');
+  const [thana, setThana] = useState('');
+  const [customThana, setCustomThana] = useState('');
   const [postalCode, setPostalCode] = useState(user?.address.postalCode || '');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
@@ -83,14 +106,70 @@ export const ProfileClient: React.FC = () => {
   // Reviews states
   const [eligibleProducts, setEligibleProducts] = useState<EligibleReviewProduct[]>([]);
   const [myReviews, setMyReviews] = useState<CustomerSubmittedReview[]>([]);
-  const [isReviewsLoading] = useState(false);
+  const [isReviewsLoading, setIsReviewsLoading] = useState(false);
   const [reviewModalProduct, setReviewModalProduct] = useState<EligibleReviewProduct | null>(null);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
+  const [reviewImages, setReviewImages] = useState<string[]>([]);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const hasAutoOpenedModal = useRef(false);
+
+  const handleReviewImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (reviewImages.length + files.length > 5) {
+      toast.error('You can upload up to 5 photos per review.');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      const uploadPromises = Array.from(files).map(async (file) => {
+        if (!['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(file.type)) {
+          throw new Error('Only JPEG, PNG, WEBP, and AVIF images are supported.');
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          throw new Error('Photo size must not exceed 10MB.');
+        }
+        const res = await uploadReviewImage(file);
+        return res.url;
+      });
+
+      const urls = await Promise.all(uploadPromises);
+      setReviewImages((prev) => [...prev, ...urls]);
+      toast.success(`${urls.length} photo${urls.length > 1 ? 's' : ''} attached successfully!`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not upload photo.');
+    } finally {
+      setIsUploadingImage(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveReviewImage = (indexToRemove: number) => {
+    setReviewImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  useEffect(() => {
+    if (tabParam === 'reviews' || tabParam === 'security' || tabParam === 'details') {
+      setActiveTab(tabParam);
+    }
+    if (tabParam === 'reviews') {
+      const timer = setTimeout(() => {
+        const el = document.getElementById('reviews-section');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [tabParam]);
 
   const loadProfileReviews = React.useCallback(async () => {
     if (!user) return;
+    setIsReviewsLoading(true);
     try {
       const [eligible, submitted] = await Promise.all([
         getEligibleReviews(),
@@ -100,12 +179,15 @@ export const ProfileClient: React.FC = () => {
       setMyReviews(submitted || []);
     } catch (err) {
       console.error('Could not load profile reviews', err);
+    } finally {
+      setIsReviewsLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
     let active = true;
+    setIsReviewsLoading(true);
     Promise.all([getEligibleReviews(), getCustomerReviews()])
       .then(([eligible, submitted]) => {
         if (!active) return;
@@ -114,11 +196,54 @@ export const ProfileClient: React.FC = () => {
       })
       .catch((err) => {
         console.error('Could not load profile reviews', err);
+      })
+      .finally(() => {
+        if (active) setIsReviewsLoading(false);
       });
     return () => {
       active = false;
     };
   }, [isLoggedIn]);
+
+  // Auto-open review modal if navigated from "Write Review" button
+  useEffect(() => {
+    if (hasAutoOpenedModal.current) return;
+    if (!productIdParam && !orderNumberParam) return;
+
+    if (eligibleProducts.length > 0) {
+      const match = eligibleProducts.find(
+        (p) =>
+          (productIdParam && (p.product.id === productIdParam || p.product.slug === productIdParam)) ||
+          (orderNumberParam && (p.orderNumber === orderNumberParam || p.orderId === orderNumberParam)),
+      );
+      if (match) {
+        setReviewModalProduct(match);
+        setReviewRating(5);
+        setReviewComment('');
+        hasAutoOpenedModal.current = true;
+        return;
+      }
+    }
+
+    if (productIdParam && productNameParam) {
+      setReviewModalProduct({
+        orderId: orderNumberParam || '',
+        orderNumber: orderNumberParam || '',
+        deliveredAt: new Date().toISOString(),
+        product: {
+          id: productIdParam,
+          name: productNameParam,
+          slug: productIdParam,
+          image: null,
+        },
+        size: sizeParam || '',
+        color: colorParam || '',
+      });
+      setReviewRating(5);
+      setReviewComment('');
+      hasAutoOpenedModal.current = true;
+    }
+  }, [eligibleProducts, productIdParam, orderNumberParam, productNameParam, sizeParam, colorParam]);
 
   const handleProfileSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,11 +258,13 @@ export const ProfileClient: React.FC = () => {
         reviewModalProduct.product.slug || reviewModalProduct.product.id,
         reviewRating,
         reviewComment.trim(),
+        reviewImages,
       );
-      toast.success('Your review has been submitted for moderation. It will be displayed after atelier approval.');
+      toast.success('Your review and photos have been submitted for moderation. It will be displayed after atelier approval.');
       setReviewModalProduct(null);
       setReviewComment('');
       setReviewRating(5);
+      setReviewImages([]);
       await loadProfileReviews();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not submit your review.');
@@ -153,8 +280,13 @@ export const ProfileClient: React.FC = () => {
     setEmail(user.email ?? '');
     setPhone(user.phone ?? '');
     setAddressLine(user.address?.line1 ?? '');
-    setDivision(user.address?.division ?? '');
-    setCity(user.address?.city ?? '');
+    const userDiv = user.address?.division || 'Dhaka';
+    setDivision(userDiv);
+    const districts = getDistrictsByDivision(userDiv);
+    const matchedDistrict = districts.find(
+      (d) => d.name.toLowerCase() === (user.address?.city ?? '').toLowerCase(),
+    );
+    setDistrict(matchedDistrict ? matchedDistrict.name : (districts[0]?.name || 'Dhaka'));
     setPostalCode(user.address?.postalCode ?? '');
     setHeight(user.tailoringProfile?.height ?? '');
     setChest(user.tailoringProfile?.chest ?? '');
@@ -163,6 +295,28 @@ export const ProfileClient: React.FC = () => {
     setFit(user.tailoringProfile?.preferredFit ?? '');
     setCollar(user.tailoringProfile?.preferredCollar ?? '');
   }, [user]);
+
+  const availableProfileDistricts = React.useMemo(() => {
+    return getDistrictsByDivision(division);
+  }, [division]);
+
+  const availableProfileThanas = React.useMemo(() => {
+    return getThanasByDistrict(division, district);
+  }, [division, district]);
+
+  const handleProfileDivisionChange = (newDivision: string) => {
+    setDivision(newDivision);
+    const dists = getDistrictsByDivision(newDivision);
+    setDistrict(dists[0]?.name || '');
+    setThana('');
+    setCustomThana('');
+  };
+
+  const handleProfileDistrictChange = (newDistrict: string) => {
+    setDistrict(newDistrict);
+    setThana('');
+    setCustomThana('');
+  };
 
   const hasNotifiedRef = useRef(false);
   useEffect(() => {
@@ -177,6 +331,10 @@ export const ProfileClient: React.FC = () => {
     if (isSavingProfile) return;
     setIsSavingProfile(true);
     try {
+      const effectiveThana = thana === 'OTHER' ? customThana.trim() : thana.trim();
+      const cityValue = district
+        ? (effectiveThana ? `${district}, ${effectiveThana}` : district)
+        : (effectiveThana || 'Dhaka');
       await updateProfile({
         name,
         email,
@@ -184,7 +342,7 @@ export const ProfileClient: React.FC = () => {
         address: {
           line1: addressLine,
           division,
-          city,
+          city: cityValue,
           postalCode,
         },
         tailoringProfile: {
@@ -542,37 +700,68 @@ export const ProfileClient: React.FC = () => {
                         />
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="space-y-1.5">
                           <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">
                             Division
                           </Label>
                           <select
                             value={division}
-                            onChange={(e) => setDivision(e.target.value)}
+                            onChange={(e) => handleProfileDivisionChange(e.target.value)}
                             className="w-full bg-[#fbf9f2] border border-[#deddd3] h-11 px-3 text-xs font-sans text-[#1b1c18] focus:outline-none focus:border-[#073a2d]"
                           >
-                            <option value="Dhaka">Dhaka</option>
-                            <option value="Chattogram">Chattogram</option>
-                            <option value="Sylhet">Sylhet</option>
-                            <option value="Rajshahi">Rajshahi</option>
-                            <option value="Khulna">Khulna</option>
-                            <option value="Barishal">Barishal</option>
-                            <option value="Rangpur">Rangpur</option>
-                            <option value="Mymensingh">Mymensingh</option>
+                            <option value="">Select Division</option>
+                            {BANGLADESH_DIVISIONS.map((d) => (
+                              <option key={d.name} value={d.name}>
+                                {d.name} Division
+                              </option>
+                            ))}
                           </select>
                         </div>
 
                         <div className="space-y-1.5">
                           <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">
-                            City / Area
+                            District (Zilla)
                           </Label>
-                          <Input
-                            value={city}
-                            onChange={(e) => setCity(e.target.value)}
-                            required
-                            className="bg-[#fbf9f2] border-[#deddd3] h-11"
-                          />
+                          <select
+                            value={district}
+                            disabled={!division}
+                            onChange={(e) => handleProfileDistrictChange(e.target.value)}
+                            className="w-full bg-[#fbf9f2] border border-[#deddd3] h-11 px-3 text-xs font-sans text-[#1b1c18] focus:outline-none focus:border-[#073a2d] disabled:opacity-50 disabled:bg-[#f0eee7] disabled:cursor-not-allowed"
+                          >
+                            <option value="">
+                              {division ? 'Select District (Zilla)' : 'Select Division first'}
+                            </option>
+                            {availableProfileDistricts.map((d) => (
+                              <option key={d.name} value={d.name}>
+                                {d.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">
+                            Thana / Upazila
+                          </Label>
+                          <select
+                            value={thana}
+                            disabled={!district}
+                            onChange={(e) => setThana(e.target.value)}
+                            className="w-full bg-[#fbf9f2] border border-[#deddd3] h-11 px-3 text-xs font-sans text-[#1b1c18] focus:outline-none focus:border-[#073a2d] disabled:opacity-50 disabled:bg-[#f0eee7] disabled:cursor-not-allowed"
+                          >
+                            <option value="">
+                              {district ? 'Select Thana / Upazila' : 'Select District first'}
+                            </option>
+                            {availableProfileThanas.map((t) => (
+                              <option key={t} value={t}>
+                                {t}
+                              </option>
+                            ))}
+                            {Boolean(district) && (
+                              <option value="OTHER">Other / Custom Area...</option>
+                            )}
+                          </select>
                         </div>
 
                         <div className="space-y-1.5">
@@ -582,10 +771,24 @@ export const ProfileClient: React.FC = () => {
                           <Input
                             value={postalCode}
                             onChange={(e) => setPostalCode(e.target.value)}
-                            required
+                            placeholder="e.g. 1212"
                             className="bg-[#fbf9f2] border-[#deddd3] h-11"
                           />
                         </div>
+
+                        {thana === 'OTHER' && (
+                          <div className="space-y-1.5 sm:col-span-2 md:col-span-4">
+                            <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">
+                              Specify Thana / Sub-district
+                            </Label>
+                            <Input
+                              value={customThana}
+                              onChange={(e) => setCustomThana(e.target.value)}
+                              placeholder="e.g. Specific police station, cantonment, or local upazila"
+                              className="bg-[#fbf9f2] border-[#deddd3] h-11"
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -798,7 +1001,7 @@ export const ProfileClient: React.FC = () => {
 
             {/* ================= TAB 3: PRODUCT REVIEWS ================= */}
             {activeTab === 'reviews' && (
-              <div className="bg-white border border-[#deddd3] p-6 sm:p-10 shadow-sm space-y-10">
+              <div id="reviews-section" className="bg-white border border-[#deddd3] p-6 sm:p-10 shadow-sm space-y-10">
                 <div>
                   <span className="font-sans text-[11px] uppercase tracking-[0.2em] text-[#c79a45] font-semibold block mb-1">
                     Atelier Reflections
@@ -964,6 +1167,53 @@ export const ProfileClient: React.FC = () => {
                           <p className="font-sans text-xs text-[#404945] leading-relaxed bg-[#fbf9f2] p-3 border border-[#f0eee7]">
                             &ldquo;{rev.comment}&rdquo;
                           </p>
+
+                          {rev.images && rev.images.length > 0 && (
+                            <div className="pt-2">
+                              <p className="font-sans text-[11px] uppercase tracking-wider font-semibold text-[#717975] mb-1.5 flex items-center gap-1.5">
+                                <ImageIcon className="w-3.5 h-3.5 text-[#c79a45]" />
+                                <span>Attached Photos ({rev.images.length})</span>
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {rev.images.map((img, idx) => (
+                                  <a
+                                    key={idx}
+                                    href={img}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="w-16 h-20 sm:w-20 sm:h-24 rounded border border-[#deddd3] overflow-hidden hover:opacity-90 hover:border-[#c79a45] transition-all shrink-0 bg-[#fbf9f2]"
+                                    title="View full photo"
+                                  >
+                                    <img
+                                      src={img}
+                                      alt={`Review photo ${idx + 1}`}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Official Atelier Response */}
+                          {rev.adminFeedback && (
+                            <div className="mt-2 bg-[#fbf9f2] border-l-2 border-[#073a2d] p-3 text-xs space-y-1">
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className="font-semibold text-[#073a2d] uppercase tracking-wider flex items-center gap-1.5">
+                                  <MessageSquare className="w-3.5 h-3.5 text-[#073a2d]" />
+                                  <span>Official Atelier Response</span>
+                                </span>
+                                {rev.adminFeedbackAt && (
+                                  <span className="text-[#717975] text-[10px]">
+                                    {new Date(rev.adminFeedbackAt).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="font-sans text-xs text-[#1b1c18] italic leading-relaxed pt-0.5">
+                                &ldquo;{rev.adminFeedback}&rdquo;
+                              </p>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -979,7 +1229,10 @@ export const ProfileClient: React.FC = () => {
       <Dialog
         open={Boolean(reviewModalProduct)}
         onOpenChange={(open) => {
-          if (!open) setReviewModalProduct(null);
+          if (!open) {
+            setReviewModalProduct(null);
+            setReviewImages([]);
+          }
         }}
       >
         <DialogContent className="max-w-lg bg-white p-6 sm:p-8 border border-[#deddd3] shadow-2xl">
@@ -1030,7 +1283,7 @@ export const ProfileClient: React.FC = () => {
               </label>
               <textarea
                 required
-                rows={5}
+                rows={4}
                 maxLength={3000}
                 placeholder="Share your detailed reflection on the fabric texture, collar firmness, stitching precision, and delivery verification..."
                 value={reviewComment}
@@ -1039,11 +1292,92 @@ export const ProfileClient: React.FC = () => {
               />
             </div>
 
+            {/* Garment Photos Upload */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block font-sans text-xs uppercase tracking-wider font-semibold text-[#404945]">
+                  Attach Garment Photos (Optional)
+                </label>
+                <span className="text-[11px] font-sans text-[#717975]">
+                  {reviewImages.length}/5 Photos
+                </span>
+              </div>
+
+              {/* Uploaded Photos Preview Grid */}
+              {reviewImages.length > 0 && (
+                <div className="flex flex-wrap gap-2.5 mb-2.5">
+                  {reviewImages.map((imgUrl, index) => (
+                    <div
+                      key={index}
+                      className="relative w-16 h-16 sm:w-20 sm:h-20 rounded border border-[#deddd3] overflow-hidden group bg-[#fbf9f2] shrink-0"
+                    >
+                      <img
+                        src={imgUrl}
+                        alt={`Review photo ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveReviewImage(index)}
+                        className="absolute top-1 right-1 w-5 h-5 bg-black/75 hover:bg-[#ba1a1a] text-white rounded-full flex items-center justify-center transition-colors shadow cursor-pointer"
+                        title="Remove photo"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Photo Upload Trigger */}
+              {reviewImages.length < 5 && (
+                <div>
+                  <input
+                    type="file"
+                    id="profile-review-photo-input"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp,image/avif"
+                    className="hidden"
+                    onChange={handleReviewImageUpload}
+                    disabled={isUploadingImage}
+                  />
+                  <label
+                    htmlFor="profile-review-photo-input"
+                    className={`flex items-center justify-center gap-2 p-3 border-2 border-dashed border-[#deddd3] hover:border-[#c79a45] hover:bg-[#fbf9f2] text-[#073a2d] rounded transition-colors cursor-pointer ${
+                      isUploadingImage ? 'opacity-60 pointer-events-none' : ''
+                    }`}
+                  >
+                    {isUploadingImage ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-[#c79a45]" />
+                        <span className="font-sans text-xs font-semibold">
+                          Uploading photos to Cloudinary...
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Camera className="w-4 h-4 text-[#c79a45]" />
+                        <span className="font-sans text-xs font-semibold">
+                          Click to attach fabric texture, fit, or finish photos
+                        </span>
+                        <span className="text-[10px] text-[#717975] hidden sm:inline">
+                          (Max 5)
+                        </span>
+                      </>
+                    )}
+                  </label>
+                </div>
+              )}
+            </div>
+
             <div className="flex items-center justify-end gap-3 pt-2">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setReviewModalProduct(null)}
+                onClick={() => {
+                  setReviewModalProduct(null);
+                  setReviewImages([]);
+                }}
                 className="font-sans text-xs uppercase tracking-wider border-[#deddd3] cursor-pointer"
               >
                 Cancel
@@ -1052,7 +1386,7 @@ export const ProfileClient: React.FC = () => {
                 type="submit"
                 loading={isSubmittingReview}
                 loadingText="Submitting..."
-                disabled={isSubmittingReview}
+                disabled={isSubmittingReview || isUploadingImage}
                 className="bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-wider px-6 cursor-pointer"
               >
                 Submit Reflection

@@ -125,10 +125,33 @@ export class ProductQueryDto extends PaginationQueryDto {
   expressAvailable?: boolean;
 
   @ApiPropertyOptional({
-    enum: ['featured', 'newest', 'price-asc', 'price-desc', 'best-selling'],
+    enum: [
+      'featured',
+      'newest',
+      'price-asc',
+      'price-desc',
+      'price-low',
+      'price-high',
+      'best-selling',
+    ],
     default: 'newest',
   })
-  @IsEnum(['featured', 'newest', 'price-asc', 'price-desc', 'best-selling'])
+  @IsEnum([
+    'featured',
+    'newest',
+    'price-asc',
+    'price-desc',
+    'price-low',
+    'price-high',
+    'best-selling',
+  ])
   @IsOptional()
-  sort?: 'featured' | 'newest' | 'price-asc' | 'price-desc' | 'best-selling';
+  sort?:
+    | 'featured'
+    | 'newest'
+    | 'price-asc'
+    | 'price-desc'
+    | 'price-low'
+    | 'price-high'
+    | 'best-selling';
 }

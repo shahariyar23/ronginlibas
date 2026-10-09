@@ -105,8 +105,9 @@ export async function apiRequest<T>(
     }
   }
 
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers = new Headers(options.headers);
-  if (options.body && !headers.has('Content-Type')) {
+  if (options.body && !isFormData && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
   if (token) {
@@ -193,6 +194,12 @@ interface ApiProduct {
   isFeatured?: boolean;
   isNewArrival?: boolean;
   isBestSeller?: boolean;
+  averageRating?: number;
+  reviewsCount?: number;
+  totalSold?: number;
+  reviews?: Array<{ rating: number }>;
+  orderItems?: Array<{ quantity: number }>;
+  _count?: { reviews?: number; orderItems?: number };
   category?: { name?: string; slug?: string } | null;
   images?: Array<{ url?: string; altText?: string | null } | string>;
   variants?: ApiVariant[];
@@ -337,6 +344,22 @@ export function mapProduct(source: ApiProduct): Product {
     colors: colors.map((name) => ({ name, hex: colorHex(name) })),
     inStock: variants.some((variant) => variant.isActive !== false && variant.stock > 0),
     stockCount: variants.reduce((total, variant) => total + Math.max(0, variant.stock), 0),
+    averageRating:
+      source.averageRating !== undefined
+        ? source.averageRating
+        : source.reviews && source.reviews.length > 0
+          ? Number((source.reviews.reduce((sum, r) => sum + r.rating, 0) / source.reviews.length).toFixed(1))
+          : 0,
+    reviewsCount:
+      source.reviewsCount !== undefined
+        ? source.reviewsCount
+        : source._count?.reviews !== undefined
+          ? source._count.reviews
+          : (source.reviews?.length ?? 0),
+    totalSold:
+      source.totalSold !== undefined
+        ? source.totalSold
+        : (source.orderItems ?? []).reduce((sum, oi) => sum + (oi.quantity || 1), 0) || (source._count?.orderItems ?? 0),
     isNewArrival: source.isNewArrival,
     isBestSeller: source.isBestSeller,
     featured: source.isFeatured,
@@ -425,6 +448,14 @@ export interface ProductFilters {
 export function buildProductQuery(query: ProductListQuery = {}) {
   const params = new URLSearchParams();
   Object.entries(query).forEach(([key, value]) => {
+    if (key === 'sort' && typeof value === 'string') {
+      const sortMap: Record<string, string> = {
+        'price-low': 'price-asc',
+        'price-high': 'price-desc',
+      };
+      params.set(key, sortMap[value] || value);
+      return;
+    }
     if (Array.isArray(value)) {
       value.forEach((item) => params.append(key, item));
     } else if (value !== undefined && value !== '') {
@@ -489,11 +520,6 @@ export async function getRelatedProducts(slug: string) {
   return products.map(mapProduct);
 }
 
-export async function getRecommendations(slug: string) {
-  const products = await apiRequest<ApiProduct[]>(`/products/${encodeURIComponent(slug)}/recommendations`);
-  return products.map(mapProduct);
-}
-
 export async function downloadOrderInvoice(orderNumber: string) {
   const headers = new Headers();
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
@@ -520,11 +546,14 @@ export interface ProductReview {
   id: string;
   rating: number;
   comment: string;
+  images?: string[];
   createdAt: string;
   customerName: string;
   verifiedPurchase: boolean;
   helpfulYes: number;
   helpfulNo: number;
+  adminFeedback?: string | null;
+  adminFeedbackAt?: string | null;
 }
 
 export interface ProductReviewsResponse {
@@ -555,7 +584,10 @@ export interface CustomerSubmittedReview {
   productImage: string | null;
   rating: number;
   comment: string;
+  images?: string[];
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  adminFeedback?: string | null;
+  adminFeedbackAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -586,12 +618,26 @@ export async function checkReviewEligibility(productIdOrSlug: string) {
   );
 }
 
-export async function submitProductReview(productIdOrSlug: string, rating: number, comment: string) {
+export async function uploadReviewImage(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiRequest<{ url: string; publicId: string }>('/reviews/upload', {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+export async function submitProductReview(
+  productIdOrSlug: string,
+  rating: number,
+  comment: string,
+  images: string[] = [],
+) {
   return apiRequest<{ id: string; status: string }>(
     `/products/${encodeURIComponent(productIdOrSlug)}/reviews`,
     {
       method: 'POST',
-      body: JSON.stringify({ rating, comment }),
+      body: JSON.stringify({ rating, comment, images }),
     },
   );
 }
