@@ -2,14 +2,15 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import helmet from 'helmet';
+import { default as helmet } from 'helmet';
 import compression from 'compression';
 import { AppModule } from './app/app.module.js';
 async function bootstrap() {
     const logger = new Logger('Bootstrap');
     const app = await NestFactory.create(AppModule);
     const configService = app.get(ConfigService);
-    app.use(helmet());
+    const helmetMiddleware = helmet;
+    app.use(helmetMiddleware());
     app.use(compression());
     const apiPrefix = configService.get('app.apiPrefix') || '/api/v1';
     app.setGlobalPrefix(apiPrefix.replace(/^\//, ''));

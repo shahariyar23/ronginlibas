@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Minus, Trash2, ArrowRight, ShieldCheck, Tag, ShoppingCart } from 'lucide-react';
+import { Plus, Minus, Trash2, ArrowRight, ShieldCheck, Tag, ShoppingCart, Loader2 } from 'lucide-react';
 import { useStorefront } from '@/context/StorefrontContext';
 
 export const CartDrawer: React.FC = () => {
@@ -36,6 +36,43 @@ export const CartDrawer: React.FC = () => {
   const { settings } = useStorefront();
 
   const [couponInput, setCouponInput] = useState('');
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [updatingKey, setUpdatingKey] = useState<string | null>(null);
+  const [removingKey, setRemovingKey] = useState<string | null>(null);
+
+  const getItemKey = (productId: string, size: string, color: string) =>
+    `${productId}-${size}-${color}`;
+
+  const handleUpdateQuantity = async (
+    productId: string,
+    size: string,
+    color: string,
+    newQty: number,
+  ) => {
+    const key = getItemKey(productId, size, color);
+    if (updatingKey || removingKey) return;
+    setUpdatingKey(key);
+    try {
+      await updateQuantity(productId, size, color, newQty);
+    } finally {
+      setUpdatingKey(null);
+    }
+  };
+
+  const handleRemoveItem = async (
+    productId: string,
+    size: string,
+    color: string,
+  ) => {
+    const key = getItemKey(productId, size, color);
+    if (updatingKey || removingKey) return;
+    setRemovingKey(key);
+    try {
+      await removeFromCart(productId, size, color);
+    } finally {
+      setRemovingKey(null);
+    }
+  };
 
   const freeShippingThreshold = Number(settings?.freeDeliveryThreshold ?? 0);
   const showFreeShippingProgress =
@@ -48,9 +85,14 @@ export const CartDrawer: React.FC = () => {
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!couponInput.trim()) return;
-    if (await applyCoupon(couponInput)) {
-      setCouponInput('');
+    if (!couponInput.trim() || isApplyingCoupon) return;
+    setIsApplyingCoupon(true);
+    try {
+      if (await applyCoupon(couponInput)) {
+        setCouponInput('');
+      }
+    } finally {
+      setIsApplyingCoupon(false);
     }
   };
 
@@ -126,75 +168,97 @@ export const CartDrawer: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {items.map((item, index) => (
-                <div
-                  key={`${item.product.id}-${item.selectedSize}-${item.selectedColor}-${index}`}
-                  className="flex gap-4 p-3 bg-white border border-[#deddd3] relative group"
-                >
-                  {/* Image */}
-                  <div className="relative w-20 h-26 bg-[#f5f4ed] overflow-hidden flex-shrink-0">
-                    <img
-                      src={item.product.images[0]}
-                      alt={item.product.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+              {items.map((item, index) => {
+                const itemKey = getItemKey(item.product.id, item.selectedSize, item.selectedColor);
+                const isUpdating = updatingKey === itemKey;
+                const isRemoving = removingKey === itemKey;
+                const isItemBusy = isUpdating || isRemoving;
 
-                  {/* Info */}
-                  <div className="flex-1 flex flex-col justify-between py-0.5">
-                    <div>
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="text-[10px] uppercase font-sans tracking-widest text-[#717975]">
-                          {item.product.categoryLabel}
-                        </span>
-                        <button
-                          onClick={() => removeFromCart(item.product.id, item.selectedSize, item.selectedColor)}
-                          className="text-[#717975] hover:text-[#ba1a1a] transition-colors p-1"
-                          title="Remove item"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                      <h4 className="font-serif text-sm font-semibold text-[#073a2d] line-clamp-1 mt-0.5">
-                        {item.product.name}
-                      </h4>
-                      <p className="text-xs text-[#69726d] mt-1 flex items-center gap-2">
-                        <span>Size: <strong className="text-[#1b1c18]">{item.selectedSize}</strong></span>
-                        <span className="text-[#deddd3]">•</span>
-                        <span>Color: <strong className="text-[#1b1c18]">{item.selectedColor}</strong></span>
-                      </p>
+                return (
+                  <div
+                    key={`${item.product.id}-${item.selectedSize}-${item.selectedColor}-${index}`}
+                    className="flex gap-4 p-3 bg-white border border-[#deddd3] relative group"
+                  >
+                    {/* Image */}
+                    <div className="relative w-20 h-26 bg-[#f5f4ed] overflow-hidden flex-shrink-0">
+                      <img
+                        src={item.product.images[0]}
+                        alt={item.product.name}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
 
-                    <div className="flex items-center justify-between mt-3 pt-2 border-t border-[#f0eee7]">
-                      {/* Quantity Selector */}
-                      <div className="flex items-center border border-[#deddd3] bg-[#fbf9f2]">
-                        <button
-                          onClick={() => updateQuantity(item.product.id, item.selectedSize, item.selectedColor, item.quantity - 1)}
-                          className="w-7 h-7 flex items-center justify-center text-[#1b1c18] hover:bg-[#eae8e1] transition-colors"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="w-8 text-center text-xs font-semibold tabular-nums">
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() => updateQuantity(item.product.id, item.selectedSize, item.selectedColor, item.quantity + 1)}
-                          className="w-7 h-7 flex items-center justify-center text-[#1b1c18] hover:bg-[#eae8e1] transition-colors"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
+                    {/* Info */}
+                    <div className="flex-1 flex flex-col justify-between py-0.5">
+                      <div>
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-[10px] uppercase font-sans tracking-widest text-[#717975]">
+                            {item.product.categoryLabel}
+                          </span>
+                          <button
+                            disabled={isItemBusy}
+                            onClick={() => handleRemoveItem(item.product.id, item.selectedSize, item.selectedColor)}
+                            className="text-[#717975] hover:text-[#ba1a1a] transition-colors p-1 disabled:opacity-50 cursor-pointer disabled:cursor-wait"
+                            title="Remove item"
+                            aria-label="Remove item"
+                            aria-busy={isRemoving ? 'true' : undefined}
+                          >
+                            {isRemoving ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#ba1a1a]" />
+                            ) : (
+                              <Trash2 className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                        <h4 className="font-serif text-sm font-semibold text-[#073a2d] line-clamp-1 mt-0.5">
+                          {item.product.name}
+                        </h4>
+                        <p className="text-xs text-[#69726d] mt-1 flex items-center gap-2">
+                          <span>Size: <strong className="text-[#1b1c18]">{item.selectedSize}</strong></span>
+                          <span className="text-[#deddd3]">•</span>
+                          <span>Color: <strong className="text-[#1b1c18]">{item.selectedColor}</strong></span>
+                        </p>
                       </div>
 
-                      {/* Line Price */}
-                      <div className="text-right">
-                        <span className="font-sans font-bold text-sm text-[#073a2d] tabular-nums">
-                          ৳{(item.product.price * item.quantity).toLocaleString()}
-                        </span>
+                      <div className="flex items-center justify-between mt-3 pt-2 border-t border-[#f0eee7]">
+                        {/* Quantity Selector */}
+                        <div className="flex items-center border border-[#deddd3] bg-[#fbf9f2]">
+                          <button
+                            disabled={isItemBusy}
+                            onClick={() => handleUpdateQuantity(item.product.id, item.selectedSize, item.selectedColor, item.quantity - 1)}
+                            className="w-7 h-7 flex items-center justify-center text-[#1b1c18] hover:bg-[#eae8e1] transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-wait"
+                            aria-label="Decrease quantity"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="w-8 text-center text-xs font-semibold tabular-nums flex items-center justify-center" aria-live="polite">
+                            {isUpdating ? (
+                              <Loader2 className="w-3 h-3 animate-spin text-[#073a2d]" />
+                            ) : (
+                              item.quantity
+                            )}
+                          </span>
+                          <button
+                            disabled={isItemBusy}
+                            onClick={() => handleUpdateQuantity(item.product.id, item.selectedSize, item.selectedColor, item.quantity + 1)}
+                            className="w-7 h-7 flex items-center justify-center text-[#1b1c18] hover:bg-[#eae8e1] transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-wait"
+                            aria-label="Increase quantity"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        {/* Line Price */}
+                        <div className="text-right">
+                          <span className="font-sans font-bold text-sm text-[#073a2d] tabular-nums">
+                            ৳{(item.product.price * item.quantity).toLocaleString()}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -212,7 +276,7 @@ export const CartDrawer: React.FC = () => {
                   </div>
                   <button
                     onClick={removeCoupon}
-                    className="text-[11px] text-[#ba1a1a] hover:underline uppercase tracking-wider font-semibold"
+                    className="text-[11px] text-[#ba1a1a] hover:underline uppercase tracking-wider font-semibold cursor-pointer"
                   >
                     Remove
                   </button>
@@ -222,12 +286,16 @@ export const CartDrawer: React.FC = () => {
                   <Input
                     placeholder="Enter Coupon Code"
                     value={couponInput}
+                    disabled={isApplyingCoupon}
                     onChange={(e) => setCouponInput(e.target.value)}
                     className="h-10 text-xs bg-[#fbf9f2] border-[#deddd3] rounded-none focus-visible:ring-[#073a2d]"
                   />
                   <Button
                     type="submit"
                     variant="outline"
+                    loading={isApplyingCoupon}
+                    loadingText="Applying..."
+                    disabled={isApplyingCoupon || !couponInput.trim()}
                     className="h-10 px-4 text-xs font-sans uppercase tracking-wider border-[#073a2d] text-[#073a2d] hover:bg-[#073a2d] hover:text-white"
                   >
                     Apply

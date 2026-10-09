@@ -125,6 +125,11 @@ export declare class OrdersService {
     findCustomerOrders(customerId: string, query: OrderQueryDto): Promise<{
         items: {
             items: {
+                product: {
+                    images: {
+                        url: string;
+                    }[];
+                } | null;
                 productImage: string | null;
                 id: string;
                 createdAt: Date;
@@ -165,6 +170,11 @@ export declare class OrdersService {
     }>;
     findCustomerOrder(customerId: string, orderNumber: string): Promise<{
         items: {
+            product: {
+                images: {
+                    url: string;
+                }[];
+            } | null;
             productImage: string | null;
             id: string;
             createdAt: Date;
@@ -248,6 +258,11 @@ export declare class OrdersService {
         createdAt: Date;
         updatedAt: Date;
         items: {
+            product: {
+                images: {
+                    url: string;
+                }[];
+            } | null;
             productImage: string | null;
             id: string;
             createdAt: Date;
@@ -270,7 +285,18 @@ export declare class OrdersService {
         }[];
     }>;
     findOrderForAccess(orderNumber: string, customerId?: string, phone?: string, trackingToken?: string): Promise<{
+        customer: {
+            email: string | null;
+            phone: string;
+            firstName: string;
+            lastName: string | null;
+        } | null;
         items: {
+            product: {
+                images: {
+                    url: string;
+                }[];
+            } | null;
             productImage: string | null;
             id: string;
             createdAt: Date;
@@ -291,6 +317,8 @@ export declare class OrdersService {
         updatedAt: Date;
         customerId: string | null;
         orderNumber: string;
+        guestName: string | null;
+        guestEmail: string | null;
         guestPhone: string | null;
         trackingTokenHash: string | null;
         courierName: string | null;
@@ -331,6 +359,11 @@ export declare class OrdersService {
         createdAt: Date;
         updatedAt: Date;
         items: {
+            product: {
+                images: {
+                    url: string;
+                }[];
+            } | null;
             productImage: string | null;
             id: string;
             createdAt: Date;

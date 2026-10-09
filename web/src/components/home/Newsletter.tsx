@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Check, Mail } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
 import { useStorefront } from '@/context/StorefrontContext';
 
@@ -12,13 +12,16 @@ export const Newsletter: React.FC = () => {
   const { settings } = useStorefront();
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!email || !email.includes('@')) {
       toast.error('Please enter a valid email address');
       return;
     }
+    setIsSubmitting(true);
     try {
       await apiRequest('/newsletter/subscribe', {
         method: 'POST',
@@ -28,6 +31,8 @@ export const Newsletter: React.FC = () => {
       toast.success('You are subscribed to Rongin Libas updates.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not subscribe this email.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -57,6 +62,7 @@ export const Newsletter: React.FC = () => {
           <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto pt-2">
             <Input
               type="email"
+              disabled={isSubmitting}
               placeholder="Enter your email address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -64,7 +70,10 @@ export const Newsletter: React.FC = () => {
             />
             <Button
               type="submit"
-              className="h-12 px-8 bg-[#c79a45] hover:bg-[#b08535] text-[#073a2d] font-sans font-bold uppercase tracking-wider text-xs whitespace-nowrap shadow-md"
+              loading={isSubmitting}
+              loadingText="Subscribing..."
+              disabled={isSubmitting || !email.trim()}
+              className="h-12 px-8 bg-[#c79a45] hover:bg-[#b08535] text-[#073a2d] font-sans font-bold uppercase tracking-wider text-xs whitespace-nowrap shadow-md cursor-pointer"
             >
               Join Atelier
             </Button>

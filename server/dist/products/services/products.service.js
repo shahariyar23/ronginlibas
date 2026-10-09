@@ -288,7 +288,7 @@ let ProductsService = ProductsService_1 = class ProductsService {
                     fit: dto.fit,
                     isActive: dto.isActive ?? true,
                     isFeatured: dto.isFeatured ?? false,
-                    isNewArrival: dto.isNewArrival ?? true,
+                    isNewArrival: dto.isNewArrival ?? false,
                     isBestSeller: dto.isBestSeller ?? false,
                     tags: normalizeProductTags(dto.tags),
                     categoryId: dto.categoryId,

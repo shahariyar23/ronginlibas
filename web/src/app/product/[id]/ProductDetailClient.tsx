@@ -47,6 +47,7 @@ import {
   Crown,
   Scissors,
   ArrowRight,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getWhatsAppUrl, useStorefront } from '@/context/StorefrontContext';
@@ -160,7 +161,7 @@ const ProductDetailView: React.FC<{
   const router = useRouter();
   const { user } = useAuth();
   const { addToCart } = useCart();
-  const { isInWishlist, toggleWishlist } = useWishlist();
+  const { isInWishlist, toggleWishlist, isItemLoading } = useWishlist();
   const { settings } = useStorefront();
   const whatsappUrl = getWhatsAppUrl(settings?.whatsapp || '');
   const productWhatsAppUrl = getWhatsAppUrl(
@@ -224,6 +225,9 @@ const ProductDetailView: React.FC<{
   );
   const [reviewEligibility, setReviewEligibility] = useState<ReviewEligibilityResponse | null>(null);
   const [votedReviews, setVotedReviews] = useState<Record<string, 'yes' | 'no'>>({});
+  const [votingReviewId, setVotingReviewId] = useState<string | null>(null);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isBuyingNow, setIsBuyingNow] = useState(false);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [isReviewFormOpen, setIsReviewFormOpen] = useState(false);
@@ -234,6 +238,7 @@ const ProductDetailView: React.FC<{
   });
 
   const isFavorite = isInWishlist(product.id);
+  const isWishlistBusy = isItemLoading(product.id);
   const selectedVariant = colorVariants.find(
     (variant) => getVariantSize(variant) === selectedSize,
   );
@@ -415,6 +420,7 @@ const ProductDetailView: React.FC<{
   };
 
   const handleVoteHelpful = async (reviewId: string, helpful: boolean) => {
+    if (votingReviewId) return;
     if (!user) {
       toast.error('First login please', {
         description: 'Please login to vote on patron reviews.',
@@ -429,6 +435,7 @@ const ProductDetailView: React.FC<{
       toast.info('You have already voted on this review.');
       return;
     }
+    setVotingReviewId(reviewId);
     try {
       await voteReviewHelpful(reviewId, helpful);
       setVotedReviews((prev) => ({ ...prev, [reviewId]: helpful ? 'yes' : 'no' }));
@@ -447,6 +454,8 @@ const ProductDetailView: React.FC<{
       toast.success('Thank you for your feedback.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not record your vote.');
+    } finally {
+      setVotingReviewId(null);
     }
   };
 
@@ -464,7 +473,8 @@ const ProductDetailView: React.FC<{
     setZoomStyle((prev) => ({ ...prev, display: 'none' }));
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
+    if (isAddingToCart || isBuyingNow) return;
     if (!user) {
       toast.error('First login please', {
         description: 'Please login first to add items to your cart.',
@@ -483,10 +493,16 @@ const ProductDetailView: React.FC<{
       toast.error(`Size ${selectedSize} is currently out of stock.`);
       return;
     }
-    addToCart(product, selectedSize, selectedColor, quantity, customNotes);
+    setIsAddingToCart(true);
+    try {
+      await addToCart(product, selectedSize, selectedColor, quantity, customNotes);
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
+    if (isAddingToCart || isBuyingNow) return;
     if (!user) {
       toast.error('First login please', {
         description: 'Please login first to proceed to checkout.',
@@ -505,8 +521,15 @@ const ProductDetailView: React.FC<{
       toast.error(`Size ${selectedSize} is currently out of stock.`);
       return;
     }
-    addToCart(product, selectedSize, selectedColor, quantity, customNotes);
-    router.push('/checkout');
+    setIsBuyingNow(true);
+    try {
+      const added = await addToCart(product, selectedSize, selectedColor, quantity, customNotes);
+      if (added) {
+        router.push('/checkout');
+      }
+    } finally {
+      setIsBuyingNow(false);
+    }
   };
 
   const handleShare = () => {
@@ -666,11 +689,17 @@ const ProductDetailView: React.FC<{
               {/* Wishlist & Share Action Floating */}
               <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
                 <button
+                  disabled={isWishlistBusy}
                   onClick={() => toggleWishlist(product.id, product.name)}
-                  aria-label="Wishlist"
-                  className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-md text-[#1b1c18] hover:text-[#ba1a1a] flex items-center justify-center shadow-md transition-transform active:scale-95 cursor-pointer"
+                  aria-label={isWishlistBusy ? 'Updating wishlist' : 'Wishlist'}
+                  aria-busy={isWishlistBusy ? 'true' : undefined}
+                  className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-md text-[#1b1c18] hover:text-[#ba1a1a] flex items-center justify-center shadow-md transition-transform active:scale-95 cursor-pointer disabled:opacity-75 disabled:cursor-wait"
                 >
-                  <Heart className={`w-5 h-5 ${isFavorite ? 'fill-[#ba1a1a] text-[#ba1a1a]' : ''}`} />
+                  {isWishlistBusy ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-[#073a2d]" />
+                  ) : (
+                    <Heart className={`w-5 h-5 ${isFavorite ? 'fill-[#ba1a1a] text-[#ba1a1a]' : ''}`} />
+                  )}
                 </button>
                 <button
                   onClick={handleShare}
@@ -978,6 +1007,9 @@ const ProductDetailView: React.FC<{
 
                 {/* Primary Add to Cart */}
                 <Button
+                  loading={isAddingToCart}
+                  loadingText="Adding To Cart..."
+                  disabled={isAddingToCart || isBuyingNow}
                   onClick={handleAddToCart}
                   className="flex-1 h-13 bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans uppercase tracking-[0.16em] text-xs font-bold shadow-md flex items-center justify-center gap-2 group cursor-pointer"
                 >
@@ -989,6 +1021,9 @@ const ProductDetailView: React.FC<{
               {/* Buy It Now (Cash on Delivery) */}
               <Button
                 variant="outline"
+                loading={isBuyingNow}
+                loadingText="Preparing Checkout..."
+                disabled={isAddingToCart || isBuyingNow}
                 onClick={handleBuyNow}
                 className="w-full h-12 bg-white hover:bg-[#f5f4ed] text-[#073a2d] border-[#073a2d] font-sans text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 cursor-pointer"
               >
@@ -1533,14 +1568,17 @@ const ProductDetailView: React.FC<{
               <div className="flex items-center gap-3">
                 <Button
                   type="submit"
+                  loading={isReviewSubmitting}
+                  loadingText="Submitting Reflection..."
                   disabled={isReviewSubmitting}
                   className="bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-wider px-6 h-11 cursor-pointer"
                 >
-                  {isReviewSubmitting ? 'Submitting Reflection...' : 'Submit Reflection'}
+                  Submit Reflection
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
+                  disabled={isReviewSubmitting}
                   onClick={() => setIsReviewFormOpen(false)}
                   className="font-sans text-xs uppercase tracking-wider border-[#deddd3] cursor-pointer"
                 >
@@ -1704,27 +1742,29 @@ const ProductDetailView: React.FC<{
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          disabled={Boolean(isVoted)}
+                          disabled={Boolean(isVoted) || Boolean(votingReviewId)}
                           onClick={() => handleVoteHelpful(review.id, true)}
-                          className={`px-2.5 py-1 text-[11px] font-sans border transition-colors cursor-pointer ${
+                          className={`px-2.5 py-1 text-[11px] font-sans border transition-colors cursor-pointer inline-flex items-center gap-1.5 ${
                             isVoted === 'yes'
                               ? 'bg-[#073a2d] text-white border-[#073a2d]'
                               : 'border-[#deddd3] text-[#404945] hover:border-[#073a2d] hover:text-[#073a2d]'
-                          } ${isVoted ? 'cursor-default' : ''}`}
+                          } ${isVoted ? 'cursor-default' : ''} disabled:opacity-50`}
                         >
-                          Yes ({review.helpfulYes})
+                          {votingReviewId === review.id && <Loader2 className="w-3 h-3 animate-spin shrink-0" />}
+                          <span>Yes ({review.helpfulYes})</span>
                         </button>
                         <button
                           type="button"
-                          disabled={Boolean(isVoted)}
+                          disabled={Boolean(isVoted) || Boolean(votingReviewId)}
                           onClick={() => handleVoteHelpful(review.id, false)}
-                          className={`px-2.5 py-1 text-[11px] font-sans border transition-colors cursor-pointer ${
+                          className={`px-2.5 py-1 text-[11px] font-sans border transition-colors cursor-pointer inline-flex items-center gap-1.5 ${
                             isVoted === 'no'
                               ? 'bg-[#ba1a1a] text-white border-[#ba1a1a]'
                               : 'border-[#deddd3] text-[#404945] hover:border-[#ba1a1a] hover:text-[#ba1a1a]'
-                          } ${isVoted ? 'cursor-default' : ''}`}
+                          } ${isVoted ? 'cursor-default' : ''} disabled:opacity-50`}
                         >
-                          No ({review.helpfulNo})
+                          {votingReviewId === review.id && <Loader2 className="w-3 h-3 animate-spin shrink-0" />}
+                          <span>No ({review.helpfulNo})</span>
                         </button>
                       </div>
                     </div>

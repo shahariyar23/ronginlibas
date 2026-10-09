@@ -11,8 +11,8 @@ export declare class CustomersService {
     findById(id: string): Promise<{
         email: string | null;
         phone: string;
-        lastName: string | null;
         firstName: string;
+        lastName: string | null;
         id: string;
         isActive: boolean;
         createdAt: Date;
@@ -22,17 +22,17 @@ export declare class CustomersService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            customerId: string;
+            fullName: string | null;
             addressLine1: string;
             addressLine2: string | null;
             city: string;
             division: string;
-            postalCode: string | null;
-            country: string;
-            isDefault: boolean;
-            fullName: string | null;
             area: string | null;
+            postalCode: string | null;
             deliveryInstructions: string | null;
+            isDefault: boolean;
+            customerId: string;
+            country: string;
         }[];
         orders: {
             id: string;
@@ -63,30 +63,31 @@ export declare class CustomersService {
     findMyProfile(customerId: string): Promise<{
         email: string | null;
         phone: string;
-        lastName: string | null;
         firstName: string;
+        lastName: string | null;
+        preferredSize: string | null;
+        preferredFit: string | null;
+        marketingConsent: boolean;
         id: string;
         createdAt: Date;
         secondaryPhone: string | null;
         dateOfBirth: Date | null;
-        preferredSize: string | null;
-        preferredFit: string | null;
-        marketingConsent: boolean;
         addresses: {
             email: string | null;
             phone: string;
             id: string;
+            fullName: string | null;
             addressLine1: string;
             addressLine2: string | null;
             city: string;
             division: string;
-            postalCode: string | null;
-            isDefault: boolean;
-            fullName: string | null;
             area: string | null;
+            postalCode: string | null;
             deliveryInstructions: string | null;
+            isDefault: boolean;
         }[];
         measurements: {
+            updatedAt: Date;
             chest: Prisma.Decimal | null;
             shoulder: Prisma.Decimal | null;
             sleeveLength: Prisma.Decimal | null;
@@ -95,21 +96,20 @@ export declare class CustomersService {
             trouserLength: Prisma.Decimal | null;
             garmentLength: Prisma.Decimal | null;
             tailoringNotes: string | null;
-            updatedAt: Date;
         } | null;
     }>;
     updateMyProfile(customerId: string, dto: UpdateCustomerProfileDto): Promise<{
         email: string | null;
         phone: string;
-        lastName: string | null;
         firstName: string;
+        lastName: string | null;
+        preferredSize: string | null;
+        preferredFit: string | null;
+        marketingConsent: boolean;
         id: string;
         updatedAt: Date;
         secondaryPhone: string | null;
         dateOfBirth: Date | null;
-        preferredSize: string | null;
-        preferredFit: string | null;
-        marketingConsent: boolean;
     }>;
     getDashboard(customerId: string): Promise<{
         customer: {
@@ -140,13 +140,13 @@ export declare class CustomersService {
         defaultAddress: {
             phone: string;
             id: string;
+            fullName: string | null;
             addressLine1: string;
             addressLine2: string | null;
             city: string;
             division: string;
-            postalCode: string | null;
-            fullName: string | null;
             area: string | null;
+            postalCode: string | null;
         };
         wishlistCount: number;
     }>;
@@ -156,15 +156,15 @@ export declare class CustomersService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        fullName: string | null;
         addressLine1: string;
         addressLine2: string | null;
         city: string;
         division: string;
-        postalCode: string | null;
-        isDefault: boolean;
-        fullName: string | null;
         area: string | null;
+        postalCode: string | null;
         deliveryInstructions: string | null;
+        isDefault: boolean;
     }[]>;
     createAddress(customerId: string, dto: CreateAddressDto): Promise<{
         email: string | null;
@@ -172,15 +172,15 @@ export declare class CustomersService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        fullName: string | null;
         addressLine1: string;
         addressLine2: string | null;
         city: string;
         division: string;
-        postalCode: string | null;
-        isDefault: boolean;
-        fullName: string | null;
         area: string | null;
+        postalCode: string | null;
         deliveryInstructions: string | null;
+        isDefault: boolean;
     }>;
     updateAddress(customerId: string, addressId: string, dto: UpdateAddressDto): Promise<{
         email: string | null;
@@ -188,15 +188,15 @@ export declare class CustomersService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        fullName: string | null;
         addressLine1: string;
         addressLine2: string | null;
         city: string;
         division: string;
-        postalCode: string | null;
-        isDefault: boolean;
-        fullName: string | null;
         area: string | null;
+        postalCode: string | null;
         deliveryInstructions: string | null;
+        isDefault: boolean;
     }>;
     setDefaultAddress(customerId: string, addressId: string): Promise<{
         email: string | null;
@@ -204,20 +204,22 @@ export declare class CustomersService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        fullName: string | null;
         addressLine1: string;
         addressLine2: string | null;
         city: string;
         division: string;
-        postalCode: string | null;
-        isDefault: boolean;
-        fullName: string | null;
         area: string | null;
+        postalCode: string | null;
         deliveryInstructions: string | null;
+        isDefault: boolean;
     }>;
     deleteAddress(customerId: string, addressId: string): Promise<{
         deleted: boolean;
     }>;
     getMeasurements(customerId: string): Promise<{
+        id: string;
+        updatedAt: Date;
         chest: Prisma.Decimal | null;
         shoulder: Prisma.Decimal | null;
         sleeveLength: Prisma.Decimal | null;
@@ -226,8 +228,6 @@ export declare class CustomersService {
         trouserLength: Prisma.Decimal | null;
         garmentLength: Prisma.Decimal | null;
         tailoringNotes: string | null;
-        id: string;
-        updatedAt: Date;
         customerId: string;
     } | {
         chest: null;
@@ -242,6 +242,8 @@ export declare class CustomersService {
         preferredFit: string | null;
     }>;
     updateMeasurements(customerId: string, dto: MeasurementProfileDto): Promise<{
+        id: string;
+        updatedAt: Date;
         chest: Prisma.Decimal | null;
         shoulder: Prisma.Decimal | null;
         sleeveLength: Prisma.Decimal | null;
@@ -250,8 +252,6 @@ export declare class CustomersService {
         trouserLength: Prisma.Decimal | null;
         garmentLength: Prisma.Decimal | null;
         tailoringNotes: string | null;
-        id: string;
-        updatedAt: Date;
         customerId: string;
     }>;
     private requireOwnedAddress;

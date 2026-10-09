@@ -42,6 +42,7 @@ export const LoginClient: React.FC = () => {
   const [showSignInPw, setShowSignInPw] = useState(false);
   const [keepSignedIn, setKeepSignedIn] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   // Register form state
   const [regName, setRegName] = useState('');
@@ -87,6 +88,7 @@ export const LoginClient: React.FC = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setIsSubmitting(true);
     try {
       if (await login(signInEmail, signInPassword)) {
@@ -106,6 +108,7 @@ export const LoginClient: React.FC = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setIsSubmitting(true);
     try {
       const registered = await register(
@@ -177,13 +180,20 @@ export const LoginClient: React.FC = () => {
             </Link>
             <button
               type="button"
+              disabled={isSigningOut}
               onClick={async () => {
-                await logout();
-                toast.info('You have signed out.');
+                if (isSigningOut) return;
+                setIsSigningOut(true);
+                try {
+                  await logout();
+                  toast.info('You have signed out.');
+                } finally {
+                  setIsSigningOut(false);
+                }
               }}
-              className="w-full text-xs text-[#ba1a1a] hover:underline font-sans pt-2 cursor-pointer"
+              className="w-full text-xs text-[#ba1a1a] hover:underline font-sans pt-2 cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
             >
-              Sign out to use another account
+              {isSigningOut ? 'Signing out...' : 'Sign out to use another account'}
             </button>
           </div>
         </div>
@@ -408,10 +418,12 @@ export const LoginClient: React.FC = () => {
 
                   <Button
                     type="submit"
+                    loading={isSubmitting}
+                    loadingText="Authenticating..."
                     disabled={isSubmitting}
                     className="w-full bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-[0.16em] h-13 shadow-md flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <span>{isSubmitting ? 'Authenticating...' : 'Enter Patron Portal'}</span>
+                    <span>Enter Patron Portal</span>
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 </form>
@@ -586,11 +598,13 @@ export const LoginClient: React.FC = () => {
                   <div className="pt-2">
                     <Button
                       type="submit"
+                      loading={isSubmitting}
+                      loadingText="Creating Account..."
                       disabled={isSubmitting || !termsAccepted}
                       className="w-full bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-[0.16em] h-13 shadow-md flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Crown className="w-4 h-4 text-[#c79a45]" />
-                      <span>{isSubmitting ? 'Creating Account...' : 'Create Customer Account'}</span>
+                      <span>Create Customer Account</span>
                     </Button>
                   </div>
                 </form>

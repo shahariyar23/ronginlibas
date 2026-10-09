@@ -25,7 +25,9 @@ import {
   CheckCheck,
   Star,
   LogOut,
+  Loader2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 
 interface CustomerNotification {
@@ -381,7 +383,15 @@ export const Header: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
-  const [readTimestamp, setReadTimestamp] = useState<number | null>(null);
+  const [readTimestamp, setReadTimestamp] = useState<number | null>(() => {
+    try {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('rongin_customer_notifications_read_at') : null;
+      return saved ? Number(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   const visibleCategories = categories.filter((category) => (category._count?.products ?? 1) > 0);
@@ -397,21 +407,10 @@ export const Header: React.FC = () => {
   const showWhatsAppAnnouncement =
     settings?.whatsappOrderEnabled && Boolean(whatsappUrl);
 
-  // Load saved read timestamp from local storage
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('rongin_customer_notifications_read_at');
-      if (saved) {
-        setReadTimestamp(Number(saved));
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
-
   // Fetch notifications for logged-in user
   useEffect(() => {
     if (!isLoggedIn) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNotifications([]);
       return;
     }
@@ -884,15 +883,27 @@ export const Header: React.FC = () => {
                     </Link>
                     <button
                       type="button"
+                      disabled={isLoggingOut}
                       onClick={async () => {
-                        setIsUserMenuOpen(false);
-                        await logout();
+                        if (isLoggingOut) return;
+                        setIsLoggingOut(true);
+                        try {
+                          await logout();
+                          setIsUserMenuOpen(false);
+                          toast.info('You have signed out.');
+                        } finally {
+                          setIsLoggingOut(false);
+                        }
                       }}
-                      className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-[#ba1a1a] hover:bg-white rounded transition-colors cursor-pointer text-left"
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-[#ba1a1a] hover:bg-white rounded transition-colors cursor-pointer text-left disabled:opacity-50"
                     >
                       <span className="flex items-center gap-2">
-                        <LogOut className="w-3.5 h-3.5 text-[#ba1a1a]" />
-                        <span>Sign Out</span>
+                        {isLoggingOut ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-[#ba1a1a]" />
+                        ) : (
+                          <LogOut className="w-3.5 h-3.5 text-[#ba1a1a]" />
+                        )}
+                        <span>{isLoggingOut ? 'Signing Out...' : 'Sign Out'}</span>
                       </span>
                     </button>
                   </div>

@@ -35,6 +35,7 @@ import {
   EyeOff,
   Star,
   MessageSquare,
+  Loader2,
 } from 'lucide-react';
 import {
   getEligibleReviews,
@@ -60,6 +61,7 @@ export const ProfileClient: React.FC = () => {
   const [division, setDivision] = useState(user?.address.division || '');
   const [city, setCity] = useState(user?.address.city || '');
   const [postalCode, setPostalCode] = useState(user?.address.postalCode || '');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Tailoring profile
   const [height, setHeight] = useState(user?.tailoringProfile.height || '');
@@ -75,6 +77,8 @@ export const ProfileClient: React.FC = () => {
   const [confirmPw, setConfirmPw] = useState('');
   const [showOldPw, setShowOldPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   // Reviews states
   const [eligibleProducts, setEligibleProducts] = useState<EligibleReviewProduct[]>([]);
@@ -170,48 +174,69 @@ export const ProfileClient: React.FC = () => {
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    await updateProfile({
-      name,
-      email,
-      phone,
-      address: {
-        line1: addressLine,
-        division,
-        city,
-        postalCode,
-      },
-      tailoringProfile: {
-        height,
-        chest,
-        shoulder,
-        preferredPanjabiLength: panjabiLength,
-        preferredFit: fit,
-        preferredCollar: collar,
-      },
-    });
+    if (isSavingProfile) return;
+    setIsSavingProfile(true);
+    try {
+      await updateProfile({
+        name,
+        email,
+        phone,
+        address: {
+          line1: addressLine,
+          division,
+          city,
+          postalCode,
+        },
+        tailoringProfile: {
+          height,
+          chest,
+          shoulder,
+          preferredPanjabiLength: panjabiLength,
+          preferredFit: fit,
+          preferredCollar: collar,
+        },
+      });
+      toast.success('Patron details saved successfully.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save patron details.');
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isUpdatingPassword) return;
     if (newPw !== confirmPw) {
-      alert('New password and confirmation do not match.');
+      toast.error('New password and confirmation do not match.');
       return;
     }
     if (newPw.length < 10 || !/[a-z]/.test(newPw) || !/[A-Z]/.test(newPw) || !/\d/.test(newPw)) {
-      alert('Password must be at least 10 characters and include uppercase, lowercase, and a number.');
+      toast.error('Password must be at least 10 characters and include uppercase, lowercase, and a number.');
       return;
     }
-    if (await changePassword(oldPw, newPw)) {
-      setOldPw('');
-      setNewPw('');
-      setConfirmPw('');
-      router.push('/login');
+    setIsUpdatingPassword(true);
+    try {
+      if (await changePassword(oldPw, newPw)) {
+        setOldPw('');
+        setNewPw('');
+        setConfirmPw('');
+        router.push('/login');
+      }
+    } finally {
+      setIsUpdatingPassword(false);
     }
   };
 
-  const handleSignOut = () => {
-    void logout();
-    router.push('/');
+  const handleSignOut = async () => {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    try {
+      await logout();
+      router.push('/');
+    } finally {
+      setIsSigningOut(false);
+    }
   };
 
   if (isLoading) {
@@ -302,11 +327,12 @@ export const ProfileClient: React.FC = () => {
                 <span>Track Consignment</span>
               </Link>
               <button
+                disabled={isSigningOut}
                 onClick={handleSignOut}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#ba1a1a]/20 hover:bg-[#ba1a1a]/30 text-[#fbf9f2] font-sans text-xs uppercase tracking-wider transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#ba1a1a]/20 hover:bg-[#ba1a1a]/30 text-[#fbf9f2] font-sans text-xs uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-wait"
               >
-                <LogOut className="w-4 h-4" />
-                <span>Sign Out</span>
+                {isSigningOut ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <LogOut className="w-4 h-4" />}
+                <span>{isSigningOut ? 'Signing Out...' : 'Sign Out'}</span>
               </button>
             </div>
           </div>
@@ -657,6 +683,9 @@ export const ProfileClient: React.FC = () => {
                     </span>
                     <Button
                       type="submit"
+                      loading={isSavingProfile}
+                      loadingText="Saving Details..."
+                      disabled={isSavingProfile}
                       className="bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-widest px-6 h-12 shadow-sm flex items-center gap-2 cursor-pointer"
                     >
                       <Save className="w-4 h-4" />
@@ -755,6 +784,9 @@ export const ProfileClient: React.FC = () => {
 
                   <Button
                     type="submit"
+                    loading={isUpdatingPassword}
+                    loadingText="Updating Password..."
+                    disabled={isUpdatingPassword}
                     className="bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-widest px-6 h-12 shadow-sm flex items-center gap-2 cursor-pointer"
                   >
                     <Lock className="w-4 h-4 text-[#c79a45]" />
@@ -1018,10 +1050,12 @@ export const ProfileClient: React.FC = () => {
               </Button>
               <Button
                 type="submit"
+                loading={isSubmittingReview}
+                loadingText="Submitting..."
                 disabled={isSubmittingReview}
                 className="bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-wider px-6 cursor-pointer"
               >
-                {isSubmittingReview ? 'Submitting...' : 'Submit Reflection'}
+                Submit Reflection
               </Button>
             </div>
           </form>

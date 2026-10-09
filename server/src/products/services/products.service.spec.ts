@@ -39,6 +39,8 @@ describe('ProductsService storefront catalogue', () => {
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
+          isNewArrival: false,
+          isBestSeller: false,
           variants: {
             create: [
               expect.objectContaining({
@@ -138,6 +140,27 @@ describe('ProductsService storefront catalogue', () => {
         orderBy: [{ orderItems: { _count: 'desc' } }, { createdAt: 'desc' }],
         include: expect.objectContaining({
           variants: expect.objectContaining({ where: { isActive: true } }),
+        }),
+      }),
+    );
+  });
+
+  it('filters the storefront catalogue by new-arrival and best-seller flags', async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
+    const count = vi.fn().mockResolvedValue(0);
+    const prisma = { product: { findMany, count } } as unknown as PrismaService;
+    const service = new ProductsService(
+      prisma,
+      { destroyProductImage: vi.fn() } as unknown as CloudinaryService,
+    );
+
+    await service.findAll({ newArrival: true, bestSeller: true });
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          isNewArrival: true,
+          isBestSeller: true,
         }),
       }),
     );

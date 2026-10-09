@@ -9,6 +9,7 @@ interface WishlistContextType {
   wishlist: string[];
   toggleWishlist: (productId: string, productName?: string) => Promise<void>;
   isInWishlist: (productId: string) => boolean;
+  isItemLoading: (productId: string) => boolean;
 }
 
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
@@ -17,6 +18,7 @@ const WISHLIST_KEY = 'rongin_wishlist';
 export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   const [wishlist, setWishlist] = useState<string[]>([]);
+  const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (isLoading) return;
@@ -48,6 +50,8 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   }, [user?.id, isLoading]);
 
   const toggleWishlist = async (productId: string, productName?: string) => {
+    if (loadingIds.has(productId)) return;
+    setLoadingIds((prev) => new Set(prev).add(productId));
     const exists = wishlist.includes(productId);
     try {
       if (user) {
@@ -67,12 +71,23 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not update your wishlist.');
+    } finally {
+      setLoadingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(productId);
+        return next;
+      });
     }
   };
 
   return (
     <WishlistContext.Provider
-      value={{ wishlist, toggleWishlist, isInWishlist: (productId) => wishlist.includes(productId) }}
+      value={{
+        wishlist,
+        toggleWishlist,
+        isInWishlist: (productId) => wishlist.includes(productId),
+        isItemLoading: (productId) => loadingIds.has(productId),
+      }}
     >
       {children}
     </WishlistContext.Provider>

@@ -69,6 +69,7 @@ export const TrackOrderClient: React.FC = () => {
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+    if (isLoading) return;
     void trackOrder(orderNumber, phone, trackingToken);
   };
 
@@ -116,9 +117,15 @@ export const TrackOrderClient: React.FC = () => {
               </label>
             </>
           )}
-          <Button disabled={isLoading} className="bg-[#073a2d] text-white sm:col-span-2">
+          <Button
+            type="submit"
+            loading={isLoading}
+            loadingText="Looking up order..."
+            disabled={isLoading}
+            className="bg-[#073a2d] text-white sm:col-span-2 cursor-pointer"
+          >
             <Search className="mr-2 h-4 w-4" />
-            {isLoading ? 'Looking up order...' : 'Track order'}
+            Track order
           </Button>
         </form>
 

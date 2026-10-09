@@ -117,6 +117,8 @@ export default function EditProductPage() {
   // Publishing
   const [lifecycleState, setLifecycleState] = useState('Active');
   const [isFeatured, setIsFeatured] = useState(false);
+  const [isNewArrival, setIsNewArrival] = useState(false);
+  const [isBestSeller, setIsBestSeller] = useState(false);
 
   // Images
   const [images, setImages] = useState<ProductImageDraft[]>([]);
@@ -148,6 +150,8 @@ export default function EditProductPage() {
           setAlertThreshold(cached.alertThreshold.toString());
         }
         setIsFeatured(cached.featured ?? false);
+        setIsNewArrival(cached.isNewArrival ?? false);
+        setIsBestSeller(cached.isBestSeller ?? false);
         setLifecycleState(cached.status === 'Active' ? 'Active' : 'Draft');
         setTags(Array.isArray(cached.tags) ? cached.tags : []);
         setImages(cached.images ?? []);
@@ -189,6 +193,8 @@ export default function EditProductPage() {
           }
 
           setIsFeatured(detailed.isFeatured ?? false);
+          setIsNewArrival(detailed.isNewArrival ?? false);
+          setIsBestSeller(detailed.isBestSeller ?? false);
           setLifecycleState(detailed.isActive ? 'Active' : 'Draft');
 
           setTags(Array.isArray(detailed.tags) ? detailed.tags : []);
@@ -553,6 +559,8 @@ export default function EditProductPage() {
         description: description,
         tags: tags,
         featured: isFeatured,
+        isNewArrival,
+        isBestSeller,
         variants: productVariants.map((v) => ({
           id: v.id?.startsWith('v-') || v.id?.startsWith('var-') ? undefined : v.id,
           size: v.size,
@@ -1452,6 +1460,37 @@ export default function EditProductPage() {
                   <strong className="block font-medium">Featured Master Piece</strong>
                   <span className="text-[11px] text-[#717975]">
                     Pin to homepage &apos;Featured Menswear&apos; curated editorial lookbook banner.
+                  </span>
+                </span>
+              </label>
+            </div>
+
+            <div className="space-y-3 border-t border-[#f0eee7] pt-3">
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isNewArrival}
+                  onChange={(e) => setIsNewArrival(e.target.checked)}
+                  className="mt-0.5 accent-[#073a2d]"
+                />
+                <span className="text-xs text-[#1b1c18]">
+                  <strong className="block font-medium">New Arrival</strong>
+                  <span className="text-[11px] text-[#717975]">
+                    Include this product in the New Arrivals collection.
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isBestSeller}
+                  onChange={(e) => setIsBestSeller(e.target.checked)}
+                  className="mt-0.5 accent-[#073a2d]"
+                />
+                <span className="text-xs text-[#1b1c18]">
+                  <strong className="block font-medium">Best Seller</strong>
+                  <span className="text-[11px] text-[#717975]">
+                    Include this product in the Best Sellers collection.
                   </span>
                 </span>
               </label>

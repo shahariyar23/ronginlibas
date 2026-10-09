@@ -49,6 +49,8 @@ export const OrdersClient: React.FC = () => {
 
   const searchParams = useSearchParams();
   const [expandedTrackingOrders, setExpandedTrackingOrders] = useState<Set<string>>(new Set());
+  const [reorderingItemKey, setReorderingItemKey] = useState<string | null>(null);
+  const [downloadingInvoiceOrder, setDownloadingInvoiceOrder] = useState<string | null>(null);
 
   // Auto-expand if URL has ?track=... or ?id=...
   useEffect(() => {
@@ -120,6 +122,9 @@ export const OrdersClient: React.FC = () => {
   }), [orders, filter, searchQuery]);
 
   const handleReorder = async (item: OrderItem) => {
+    const key = `${item.productId}-${item.size}-${item.color}`;
+    if (reorderingItemKey) return;
+    setReorderingItemKey(key);
     try {
       const product = await getProduct(item.productId);
       const variant = product.variants?.find((entry) =>
@@ -129,14 +134,20 @@ export const OrdersClient: React.FC = () => {
       await addToCart(product, variant.sizeLabel || variant.size, variant.color, item.quantity);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not add this item to your cart.');
+    } finally {
+      setReorderingItemKey(null);
     }
   };
 
   const handleInvoice = async (orderNumber: string) => {
+    if (downloadingInvoiceOrder) return;
+    setDownloadingInvoiceOrder(orderNumber);
     try {
       await downloadOrderInvoice(orderNumber);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not download the invoice.');
+    } finally {
+      setDownloadingInvoiceOrder(null);
     }
   };
 
@@ -276,9 +287,22 @@ export const OrdersClient: React.FC = () => {
                             Write Review
                           </Link>
                         )}
-                        <Button variant="outline" size="sm" onClick={() => void handleReorder(item)}>
-                          Reorder
-                        </Button>
+                        {(() => {
+                          const itemKey = `${item.productId}-${item.size}-${item.color}`;
+                          const isReorderingThis = reorderingItemKey === itemKey;
+                          return (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              loading={isReorderingThis}
+                              loadingText="Reordering..."
+                              disabled={Boolean(reorderingItemKey)}
+                              onClick={() => void handleReorder(item)}
+                            >
+                              Reorder
+                            </Button>
+                          );
+                        })()}
                       </div>
                     </div>
                   ))}
@@ -322,7 +346,14 @@ export const OrdersClient: React.FC = () => {
                         }`}
                       />
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => void handleInvoice(order.orderNumber)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      loading={downloadingInvoiceOrder === order.orderNumber}
+                      loadingText="Downloading..."
+                      disabled={Boolean(downloadingInvoiceOrder)}
+                      onClick={() => void handleInvoice(order.orderNumber)}
+                    >
                       <Download className="mr-1 h-3.5 w-3.5" />
                       Invoice
                     </Button>

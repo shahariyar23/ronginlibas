@@ -119,6 +119,8 @@ function adaptBackendProduct(p: any): AdminProduct {
     description: p.description,
     tags: Array.isArray(p.tags) ? p.tags : [],
     featured: p.isFeatured,
+    isNewArrival: Boolean(p.isNewArrival),
+    isBestSeller: Boolean(p.isBestSeller),
   };
 }
 
@@ -463,6 +465,8 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         alertThreshold: product.alertThreshold !== undefined ? Number(product.alertThreshold) : 5,
         isActive: product.status !== 'Out of Stock',
         isFeatured: product.featured ?? false,
+        isNewArrival: product.isNewArrival ?? false,
+        isBestSeller: product.isBestSeller ?? false,
         tags: product.tags ?? [],
         variants: product.variants?.length
           ? product.variants.map((v) => ({
@@ -540,6 +544,8 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         description: updated.description,
         fabric: updated.fabricNote,
         isFeatured: updated.featured,
+        ...(updated.isNewArrival !== undefined && { isNewArrival: updated.isNewArrival }),
+        ...(updated.isBestSeller !== undefined && { isBestSeller: updated.isBestSeller }),
         tags: updated.tags,
         ...(categoryId && { categoryId }),
         ...(updated.alertThreshold !== undefined && { alertThreshold: Number(updated.alertThreshold) }),

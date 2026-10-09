@@ -32,6 +32,7 @@ import {
   Banknote,
   Smartphone,
   ArrowLeft,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -69,6 +70,9 @@ export default function CheckoutPage() {
 
   const paymentMethod = 'cod';
   const [couponInput, setCouponInput] = useState('');
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [updatingKey, setUpdatingKey] = useState<string | null>(null);
+  const [removingKey, setRemovingKey] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderConfirmed, setOrderConfirmed] = useState(false);
   const [orderId, setOrderId] = useState('');
@@ -97,16 +101,57 @@ export default function CheckoutPage() {
     'Mymensingh',
   ];
 
+  const getItemKey = (productId: string, size: string, color: string) =>
+    `${productId}-${size}-${color}`;
+
+  const handleUpdateQuantity = async (
+    productId: string,
+    size: string,
+    color: string,
+    newQty: number,
+  ) => {
+    const key = getItemKey(productId, size, color);
+    if (updatingKey || removingKey || isSubmitting) return;
+    setUpdatingKey(key);
+    try {
+      await updateQuantity(productId, size, color, newQty);
+    } finally {
+      setUpdatingKey(null);
+    }
+  };
+
+  const handleRemoveItem = async (
+    productId: string,
+    size: string,
+    color: string,
+  ) => {
+    const key = getItemKey(productId, size, color);
+    if (updatingKey || removingKey || isSubmitting) return;
+    setRemovingKey(key);
+    try {
+      await removeFromCart(productId, size, color);
+    } finally {
+      setRemovingKey(null);
+    }
+  };
+
   const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!couponInput.trim()) return;
-    if (await applyCoupon(couponInput)) {
-      setCouponInput('');
+    if (!couponInput.trim() || isApplyingCoupon || isSubmitting) return;
+    setIsApplyingCoupon(true);
+    try {
+      if (await applyCoupon(couponInput)) {
+        setCouponInput('');
+      }
+    } finally {
+      setIsApplyingCoupon(false);
     }
   };
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isSubmitting) return;
 
     if (items.length === 0) {
       toast.error('Your sartorial bag is empty');
@@ -155,11 +200,11 @@ export default function CheckoutPage() {
       });
       setOrderId(order.orderNumber);
       setTrackingToken(order.guestTrackingToken || '');
-      setIsSubmitting(false);
       setOrderConfirmed(true);
       await clearCart();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not place your order.');
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -219,84 +264,106 @@ export default function CheckoutPage() {
                 </div>
 
                 <div className="space-y-4">
-                  {items.map((item, idx) => (
-                    <div
-                      key={`${item.product.id}-${item.selectedSize}-${idx}`}
-                      className="flex flex-col sm:flex-row gap-4 p-3 bg-[#fbf9f2] border border-[#deddd3]"
-                    >
-                      <div className="w-20 h-24 bg-white overflow-hidden flex-shrink-0">
-                        <img
-                          src={item.product.images[0]}
-                          alt={item.product.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
+                  {items.map((item, idx) => {
+                    const itemKey = getItemKey(item.product.id, item.selectedSize, item.selectedColor);
+                    const isUpdating = updatingKey === itemKey;
+                    const isRemoving = removingKey === itemKey;
+                    const isItemBusy = isUpdating || isRemoving || isSubmitting;
 
-                      <div className="flex-1 flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-start justify-between">
-                            <h4 className="font-serif text-sm font-semibold text-[#073a2d]">
-                              {item.product.name}
-                            </h4>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                removeFromCart(item.product.id, item.selectedSize, item.selectedColor)
-                              }
-                              className="text-[#717975] hover:text-[#ba1a1a]"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                          <p className="text-xs text-[#69726d] font-sans mt-0.5">
-                            Size: <strong>{item.selectedSize}</strong> | Color:{' '}
-                            <strong>{item.selectedColor}</strong>
-                          </p>
+                    return (
+                      <div
+                        key={`${item.product.id}-${item.selectedSize}-${idx}`}
+                        className="flex flex-col sm:flex-row gap-4 p-3 bg-[#fbf9f2] border border-[#deddd3]"
+                      >
+                        <div className="w-20 h-24 bg-white overflow-hidden flex-shrink-0">
+                          <img
+                            src={item.product.images[0]}
+                            alt={item.product.name}
+                            className="w-full h-full object-cover"
+                          />
                         </div>
 
-                        <div className="flex items-center justify-between mt-3 pt-2 border-t border-[#deddd3]/60">
-                          {/* Qty */}
-                          <div className="flex items-center border border-[#deddd3] bg-white">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                updateQuantity(
-                                  item.product.id,
-                                  item.selectedSize,
-                                  item.selectedColor,
-                                  item.quantity - 1
-                                )
-                              }
-                              className="w-6 h-6 flex items-center justify-center text-xs"
-                            >
-                              <Minus className="w-3 h-3" />
-                            </button>
-                            <span className="w-7 text-center text-xs font-bold tabular-nums">
-                              {item.quantity}
+                        <div className="flex-1 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-start justify-between">
+                              <h4 className="font-serif text-sm font-semibold text-[#073a2d]">
+                                {item.product.name}
+                              </h4>
+                              <button
+                                type="button"
+                                disabled={isItemBusy}
+                                onClick={() =>
+                                  handleRemoveItem(item.product.id, item.selectedSize, item.selectedColor)
+                                }
+                                aria-label="Remove item"
+                                aria-busy={isRemoving ? 'true' : undefined}
+                                className="text-[#717975] hover:text-[#ba1a1a] disabled:opacity-50 cursor-pointer disabled:cursor-wait"
+                              >
+                                {isRemoving ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[#ba1a1a]" />
+                                ) : (
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            </div>
+                            <p className="text-xs text-[#69726d] font-sans mt-0.5">
+                              Size: <strong>{item.selectedSize}</strong> | Color:{' '}
+                              <strong>{item.selectedColor}</strong>
+                            </p>
+                          </div>
+
+                          <div className="flex items-center justify-between mt-3 pt-2 border-t border-[#deddd3]/60">
+                            {/* Qty */}
+                            <div className="flex items-center border border-[#deddd3] bg-white">
+                              <button
+                                type="button"
+                                disabled={isItemBusy}
+                                onClick={() =>
+                                  handleUpdateQuantity(
+                                    item.product.id,
+                                    item.selectedSize,
+                                    item.selectedColor,
+                                    item.quantity - 1
+                                  )
+                                }
+                                className="w-6 h-6 flex items-center justify-center text-xs disabled:opacity-50 cursor-pointer disabled:cursor-wait"
+                                aria-label="Decrease quantity"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <span className="w-7 text-center text-xs font-bold tabular-nums flex items-center justify-center">
+                                {isUpdating ? (
+                                  <Loader2 className="w-3 h-3 animate-spin text-[#073a2d]" />
+                                ) : (
+                                  item.quantity
+                                )}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={isItemBusy}
+                                onClick={() =>
+                                  handleUpdateQuantity(
+                                    item.product.id,
+                                    item.selectedSize,
+                                    item.selectedColor,
+                                    item.quantity + 1
+                                  )
+                                }
+                                className="w-6 h-6 flex items-center justify-center text-xs disabled:opacity-50 cursor-pointer disabled:cursor-wait"
+                                aria-label="Increase quantity"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                            </div>
+
+                            <span className="font-sans font-bold text-sm text-[#073a2d] tabular-nums">
+                              ৳{(item.product.price * item.quantity).toLocaleString()}
                             </span>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                updateQuantity(
-                                  item.product.id,
-                                  item.selectedSize,
-                                  item.selectedColor,
-                                  item.quantity + 1
-                                )
-                              }
-                              className="w-6 h-6 flex items-center justify-center text-xs"
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
                           </div>
-
-                          <span className="font-sans font-bold text-sm text-[#073a2d] tabular-nums">
-                            ৳{(item.product.price * item.quantity).toLocaleString()}
-                          </span>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -439,10 +506,12 @@ export default function CheckoutPage() {
               <div className="pt-2">
                 <Button
                   type="submit"
+                  loading={isSubmitting}
+                  loadingText="PROCESSING ORDER..."
                   disabled={isSubmitting}
                   className="w-full h-14 bg-[#073a2d] hover:bg-[#0d4d3b] text-[#fbf9f2] font-sans uppercase tracking-[0.18em] text-xs font-bold shadow-lg"
                 >
-                  {isSubmitting ? 'Securing Sartorial Order...' : `Confirm Sartorial Order • ৳${total.toLocaleString()}`}
+                  {`Confirm Sartorial Order • ৳${total.toLocaleString()}`}
                 </Button>
               </div>
             </form>
@@ -467,7 +536,7 @@ export default function CheckoutPage() {
                       <button
                         type="button"
                         onClick={removeCoupon}
-                        className="text-[11px] text-[#ba1a1a] hover:underline uppercase font-bold"
+                        className="text-[11px] text-[#ba1a1a] hover:underline uppercase font-bold cursor-pointer"
                       >
                         Remove
                       </button>
@@ -477,12 +546,16 @@ export default function CheckoutPage() {
                       <Input
                         placeholder="Coupon Code"
                         value={couponInput}
+                        disabled={isApplyingCoupon}
                         onChange={(e) => setCouponInput(e.target.value)}
                         className="h-10 text-xs bg-[#fbf9f2] rounded-none border-[#deddd3]"
                       />
                       <Button
                         type="submit"
                         variant="outline"
+                        loading={isApplyingCoupon}
+                        loadingText="Applying..."
+                        disabled={isApplyingCoupon || !couponInput.trim()}
                         className="h-10 px-4 text-xs font-sans uppercase tracking-wider border-[#073a2d] text-[#073a2d]"
                       >
                         Apply

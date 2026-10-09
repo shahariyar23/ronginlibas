@@ -22,6 +22,10 @@ npm run start:dev
 
 The API defaults to `http://localhost:4000/api/v1`; Swagger is at `http://localhost:4000/api/docs`.
 
+## Deploy to Vercel
+
+This NestJS app is detected by Vercel from `src/main.ts`. In this monorepo, set the Vercel project's Root Directory to `server`; no custom `vercel.json` or serverless adapter is needed. See [VERCEL.md](./VERCEL.md) for the complete Bengali setup, environment variables, database migration, deployment, and verification steps.
+
 ## Storefront catalogue
 
 The existing `GET /products` endpoint supports database filtering, sorting, and pagination. It accepts `page`, `limit` (maximum 100), `search`, `category`, repeated `size`, `color`, `fabric`, `fabricOrigin`, and `fit` values, `minPrice`, `maxPrice`, `inStock`, `featured`, `newArrival`, `bestSeller`, `onSale`, and `sort` (`featured`, `newest`, `price-asc`, `price-desc`, or `best-selling`). The response uses the global API envelope and pagination metadata.

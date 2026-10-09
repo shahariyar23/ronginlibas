@@ -28,6 +28,11 @@ export declare class OrdersController {
             createdAt: Date;
             updatedAt: Date;
             items: {
+                product: {
+                    images: {
+                        url: string;
+                    }[];
+                } | null;
                 productImage: string | null;
                 id: string;
                 createdAt: Date;
@@ -55,6 +60,11 @@ export declare class OrdersController {
         data: {
             items: {
                 items: {
+                    product: {
+                        images: {
+                            url: string;
+                        }[];
+                    } | null;
                     productImage: string | null;
                     id: string;
                     createdAt: Date;
@@ -98,6 +108,11 @@ export declare class OrdersController {
         message: string;
         data: {
             items: {
+                product: {
+                    images: {
+                        url: string;
+                    }[];
+                } | null;
                 productImage: string | null;
                 id: string;
                 createdAt: Date;
@@ -175,6 +190,11 @@ export declare class OrdersController {
             createdAt: Date;
             updatedAt: Date;
             items: {
+                product: {
+                    images: {
+                        url: string;
+                    }[];
+                } | null;
                 productImage: string | null;
                 id: string;
                 createdAt: Date;

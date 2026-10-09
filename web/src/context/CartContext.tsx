@@ -24,10 +24,10 @@ interface CartResponse {
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (product: Product, size: string, color: string, qty?: number, customNotes?: string) => Promise<void>;
-  removeFromCart: (productId: string, size: string, color: string) => Promise<void>;
-  updateQuantity: (productId: string, size: string, color: string, quantity: number) => Promise<void>;
-  clearCart: () => Promise<void>;
+  addToCart: (product: Product, size: string, color: string, qty?: number, customNotes?: string) => Promise<boolean>;
+  removeFromCart: (productId: string, size: string, color: string) => Promise<boolean>;
+  updateQuantity: (productId: string, size: string, color: string, quantity: number) => Promise<boolean>;
+  clearCart: () => Promise<boolean>;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
   appliedCoupon: string | null;
@@ -153,7 +153,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     color: string,
     quantity = 1,
     _customNotes?: string,
-  ) => {
+  ): Promise<boolean> => {
     if (!user) {
       toast.error('First login please', {
         description: 'Please login first to add items to your cart.',
@@ -166,7 +166,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           },
         },
       });
-      return;
+      return false;
     }
 
     const variant = product.variants?.find(
@@ -178,7 +178,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     );
     if (!variant) {
       toast.error('That size and color are currently unavailable.');
-      return;
+      return false;
     }
     try {
       const id = await ensureCartId();
@@ -189,8 +189,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       await hydrateCart(response);
       toast.success(`Added ${product.name} to your cart.`);
       setIsCartOpen(true);
+      return true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not add this item to your cart.');
+      return false;
     }
   };
 
@@ -202,17 +204,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         item.selectedColor === color,
     );
 
-  const removeFromCart = async (productId: string, size: string, color: string) => {
+  const removeFromCart = async (productId: string, size: string, color: string): Promise<boolean> => {
     const item = findItem(productId, size, color);
-    if (!item?.cartItemId) return;
+    if (!item?.cartItemId) return false;
     try {
       const response = await apiRequest<CartResponse>(
         `/cart/items/${encodeURIComponent(item.cartItemId)}?cartId=${encodeURIComponent(cartId ?? '')}`,
         { method: 'DELETE' },
       );
       await hydrateCart(response);
+      toast.success('Item removed from cart.');
+      return true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not remove this item.');
+      return false;
     }
   };
 
@@ -221,13 +226,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     size: string,
     color: string,
     quantity: number,
-  ) => {
+  ): Promise<boolean> => {
     if (quantity <= 0) {
-      await removeFromCart(productId, size, color);
-      return;
+      return await removeFromCart(productId, size, color);
     }
     const item = findItem(productId, size, color);
-    if (!item?.cartItemId || !cartId) return;
+    if (!item?.cartItemId || !cartId) return false;
     try {
       const response = await apiRequest<CartResponse>(
         `/cart/items/${encodeURIComponent(item.cartItemId)}`,
@@ -237,13 +241,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         },
       );
       await hydrateCart(response);
+      return true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not update this quantity.');
+      return false;
     }
   };
 
-  const clearCart = async () => {
-    if (!cartId) return;
+  const clearCart = async (): Promise<boolean> => {
+    if (!cartId) return false;
     try {
       const response = await apiRequest<CartResponse>(
         `/cart?cartId=${encodeURIComponent(cartId)}`,
@@ -252,8 +258,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       await hydrateCart(response);
       setAppliedCoupon(null);
       setDiscount(0);
+      toast.success('Cart cleared.');
+      return true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not clear your cart.');
+      return false;
     }
   };
 

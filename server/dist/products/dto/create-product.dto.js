@@ -129,7 +129,7 @@ export class CreateProductDto {
     categoryId;
     isActive = true;
     isFeatured = false;
-    isNewArrival = true;
+    isNewArrival = false;
     isBestSeller = false;
     variants;
     images;
@@ -261,7 +261,7 @@ __decorate([
     __metadata("design:type", Boolean)
 ], CreateProductDto.prototype, "isFeatured", void 0);
 __decorate([
-    ApiPropertyOptional({ default: true }),
+    ApiPropertyOptional({ default: false }),
     IsBoolean(),
     IsOptional(),
     __metadata("design:type", Boolean)

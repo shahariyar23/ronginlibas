@@ -6,9 +6,8 @@ import { Product } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
-import { Heart, ShoppingCart, Check } from 'lucide-react';
+import { Heart, ShoppingCart, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 interface ProductCardProps {
@@ -18,14 +17,17 @@ interface ProductCardProps {
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { user } = useAuth();
   const { addToCart } = useCart();
-  const { isInWishlist, toggleWishlist } = useWishlist();
+  const { isInWishlist, toggleWishlist, isItemLoading } = useWishlist();
   const [selectedColor, setSelectedColor] = useState(product.colors[0]?.name || 'Standard');
   const [isHovered, setIsHovered] = useState(false);
   const [showSizePicker, setShowSizePicker] = useState(false);
+  const [isAddingSize, setIsAddingSize] = useState<string | null>(null);
 
   const isFavorite = isInWishlist(product.id);
+  const isWishlistBusy = isItemLoading(product.id);
 
-  const handleQuickAdd = (size: string) => {
+  const handleQuickAdd = async (size: string) => {
+    if (isAddingSize) return;
     if (!user) {
       toast.error('First login please', {
         description: 'Please login first to add items to your cart.',
@@ -39,8 +41,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       setShowSizePicker(false);
       return;
     }
-    addToCart(product, size, selectedColor, 1);
-    setShowSizePicker(false);
+    setIsAddingSize(size);
+    try {
+      await addToCart(product, size, selectedColor, 1);
+    } finally {
+      setIsAddingSize(null);
+      setShowSizePicker(false);
+    }
   };
 
   const currentImage =
@@ -81,18 +88,25 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
         {/* Wishlist Floating Button */}
         <button
-          onClick={(e) => {
+          disabled={isWishlistBusy}
+          onClick={async (e) => {
             e.preventDefault();
-            toggleWishlist(product.id, product.name);
+            if (isWishlistBusy) return;
+            await toggleWishlist(product.id, product.name);
           }}
-          aria-label="Toggle Wishlist"
-          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#1b1c18] hover:text-[#073a2d] flex items-center justify-center backdrop-blur-xs transition-transform duration-200 hover:scale-110 shadow-sm z-10"
+          aria-label={isWishlistBusy ? "Updating wishlist" : "Toggle Wishlist"}
+          aria-busy={isWishlistBusy ? "true" : undefined}
+          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#1b1c18] hover:text-[#073a2d] flex items-center justify-center backdrop-blur-xs transition-transform duration-200 hover:scale-110 shadow-sm z-10 disabled:opacity-75 disabled:cursor-wait"
         >
-          <Heart
-            className={`w-4 h-4 transition-colors ${
-              isFavorite ? 'fill-[#ba1a1a] text-[#ba1a1a]' : 'text-[#1b1c18]'
-            }`}
-          />
+          {isWishlistBusy ? (
+            <Loader2 className="w-4 h-4 animate-spin text-[#073a2d]" />
+          ) : (
+            <Heart
+              className={`w-4 h-4 transition-colors ${
+                isFavorite ? 'fill-[#ba1a1a] text-[#ba1a1a]' : 'text-[#1b1c18]'
+              }`}
+            />
+          )}
         </button>
 
         {/* Quick Add Overlay */}
@@ -100,18 +114,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           {showSizePicker ? (
             <div className="bg-[#073a2d] text-white p-2.5 border border-[#c79a45]/40 shadow-xl space-y-1.5 animate-in fade-in">
               <span className="text-[10px] font-sans uppercase tracking-widest text-[#c79a45] block text-center">
-                Select Your Size
+                {isAddingSize ? 'Adding to bag...' : 'Select Your Size'}
               </span>
               <div className="flex flex-wrap gap-1 justify-center">
-                {product.sizes.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => handleQuickAdd(s)}
-                    className="px-2 py-1 bg-white/10 hover:bg-[#c79a45] hover:text-[#073a2d] text-[11px] font-sans font-semibold transition-colors"
-                  >
-                    {s}
-                  </button>
-                ))}
+                {product.sizes.map((s) => {
+                  const isCurrent = isAddingSize === s;
+                  return (
+                    <button
+                      key={s}
+                      disabled={Boolean(isAddingSize)}
+                      onClick={() => handleQuickAdd(s)}
+                      className="px-2 py-1 bg-white/10 hover:bg-[#c79a45] hover:text-[#073a2d] text-[11px] font-sans font-semibold transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center gap-1"
+                    >
+                      {isCurrent && <Loader2 className="w-3 h-3 animate-spin shrink-0" />}
+                      <span>{s}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ) : (

@@ -10,30 +10,31 @@ export declare class CustomersController {
         data: {
             email: string | null;
             phone: string;
-            lastName: string | null;
             firstName: string;
+            lastName: string | null;
+            preferredSize: string | null;
+            preferredFit: string | null;
+            marketingConsent: boolean;
             id: string;
             createdAt: Date;
             secondaryPhone: string | null;
             dateOfBirth: Date | null;
-            preferredSize: string | null;
-            preferredFit: string | null;
-            marketingConsent: boolean;
             addresses: {
                 email: string | null;
                 phone: string;
                 id: string;
+                fullName: string | null;
                 addressLine1: string;
                 addressLine2: string | null;
                 city: string;
                 division: string;
-                postalCode: string | null;
-                isDefault: boolean;
-                fullName: string | null;
                 area: string | null;
+                postalCode: string | null;
                 deliveryInstructions: string | null;
+                isDefault: boolean;
             }[];
             measurements: {
+                updatedAt: Date;
                 chest: import("@prisma/client/runtime/library").Decimal | null;
                 shoulder: import("@prisma/client/runtime/library").Decimal | null;
                 sleeveLength: import("@prisma/client/runtime/library").Decimal | null;
@@ -42,7 +43,6 @@ export declare class CustomersController {
                 trouserLength: import("@prisma/client/runtime/library").Decimal | null;
                 garmentLength: import("@prisma/client/runtime/library").Decimal | null;
                 tailoringNotes: string | null;
-                updatedAt: Date;
             } | null;
         };
     }>;
@@ -51,15 +51,15 @@ export declare class CustomersController {
         data: {
             email: string | null;
             phone: string;
-            lastName: string | null;
             firstName: string;
+            lastName: string | null;
+            preferredSize: string | null;
+            preferredFit: string | null;
+            marketingConsent: boolean;
             id: string;
             updatedAt: Date;
             secondaryPhone: string | null;
             dateOfBirth: Date | null;
-            preferredSize: string | null;
-            preferredFit: string | null;
-            marketingConsent: boolean;
         };
     }>;
     getDashboard(customerId: string): Promise<{
@@ -93,13 +93,13 @@ export declare class CustomersController {
             defaultAddress: {
                 phone: string;
                 id: string;
+                fullName: string | null;
                 addressLine1: string;
                 addressLine2: string | null;
                 city: string;
                 division: string;
-                postalCode: string | null;
-                fullName: string | null;
                 area: string | null;
+                postalCode: string | null;
             };
             wishlistCount: number;
         };
@@ -112,15 +112,15 @@ export declare class CustomersController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            fullName: string | null;
             addressLine1: string;
             addressLine2: string | null;
             city: string;
             division: string;
-            postalCode: string | null;
-            isDefault: boolean;
-            fullName: string | null;
             area: string | null;
+            postalCode: string | null;
             deliveryInstructions: string | null;
+            isDefault: boolean;
         }[];
     }>;
     createAddress(customerId: string, dto: CreateAddressDto): Promise<{
@@ -131,15 +131,15 @@ export declare class CustomersController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            fullName: string | null;
             addressLine1: string;
             addressLine2: string | null;
             city: string;
             division: string;
-            postalCode: string | null;
-            isDefault: boolean;
-            fullName: string | null;
             area: string | null;
+            postalCode: string | null;
             deliveryInstructions: string | null;
+            isDefault: boolean;
         };
     }>;
     setDefaultAddress(customerId: string, addressId: string): Promise<{
@@ -150,15 +150,15 @@ export declare class CustomersController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            fullName: string | null;
             addressLine1: string;
             addressLine2: string | null;
             city: string;
             division: string;
-            postalCode: string | null;
-            isDefault: boolean;
-            fullName: string | null;
             area: string | null;
+            postalCode: string | null;
             deliveryInstructions: string | null;
+            isDefault: boolean;
         };
     }>;
     updateAddress(customerId: string, addressId: string, dto: UpdateAddressDto): Promise<{
@@ -169,15 +169,15 @@ export declare class CustomersController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            fullName: string | null;
             addressLine1: string;
             addressLine2: string | null;
             city: string;
             division: string;
-            postalCode: string | null;
-            isDefault: boolean;
-            fullName: string | null;
             area: string | null;
+            postalCode: string | null;
             deliveryInstructions: string | null;
+            isDefault: boolean;
         };
     }>;
     deleteAddress(customerId: string, addressId: string): Promise<{
@@ -189,6 +189,8 @@ export declare class CustomersController {
     getMeasurements(customerId: string): Promise<{
         message: string;
         data: {
+            id: string;
+            updatedAt: Date;
             chest: import("@prisma/client/runtime/library").Decimal | null;
             shoulder: import("@prisma/client/runtime/library").Decimal | null;
             sleeveLength: import("@prisma/client/runtime/library").Decimal | null;
@@ -197,8 +199,6 @@ export declare class CustomersController {
             trouserLength: import("@prisma/client/runtime/library").Decimal | null;
             garmentLength: import("@prisma/client/runtime/library").Decimal | null;
             tailoringNotes: string | null;
-            id: string;
-            updatedAt: Date;
             customerId: string;
         } | {
             chest: null;
@@ -216,6 +216,8 @@ export declare class CustomersController {
     updateMeasurements(customerId: string, dto: MeasurementProfileDto): Promise<{
         message: string;
         data: {
+            id: string;
+            updatedAt: Date;
             chest: import("@prisma/client/runtime/library").Decimal | null;
             shoulder: import("@prisma/client/runtime/library").Decimal | null;
             sleeveLength: import("@prisma/client/runtime/library").Decimal | null;
@@ -224,8 +226,6 @@ export declare class CustomersController {
             trouserLength: import("@prisma/client/runtime/library").Decimal | null;
             garmentLength: import("@prisma/client/runtime/library").Decimal | null;
             tailoringNotes: string | null;
-            id: string;
-            updatedAt: Date;
             customerId: string;
         };
     }>;

@@ -29,8 +29,15 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+## Deploy on Cloudflare
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The Admin app uses dynamic product-edit routes and a request-time authentication proxy, so it must run as a Cloudflare Worker rather than a static Pages export.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Configure a Cloudflare Workers Build with:
+
+- Root directory: `admin`
+- Build command: `npm run build`
+- Deploy command: `npm run deploy`
+- Build environment variable: `NEXT_PUBLIC_API_URL` set to the deployed API base URL (for example, `https://api.example.com/api/v1`)
+
+For a local production preview, run `npm run preview`. To deploy from a terminal, run `npm run build` followed by `npm run deploy` from this directory.

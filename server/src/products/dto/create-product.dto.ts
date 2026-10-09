@@ -195,10 +195,10 @@ export class CreateProductDto {
   @IsOptional()
   isFeatured?: boolean = false;
 
-  @ApiPropertyOptional({ default: true })
+  @ApiPropertyOptional({ default: false })
   @IsBoolean()
   @IsOptional()
-  isNewArrival?: boolean = true;
+  isNewArrival?: boolean = false;
 
   @ApiPropertyOptional({ default: false })
   @IsBoolean()

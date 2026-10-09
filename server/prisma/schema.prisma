@@ -178,7 +178,7 @@ model Product {
   isActive       Boolean  @default(true)
   deletedAt      DateTime?
   isFeatured     Boolean  @default(false)
-  isNewArrival   Boolean  @default(true)
+  isNewArrival   Boolean  @default(false)
   isBestSeller   Boolean  @default(false)
   categoryId     String
   category       Category @relation(fields: [categoryId], references: [id])

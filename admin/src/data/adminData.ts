@@ -41,6 +41,8 @@ export interface AdminProduct {
   }[];
   tags?: string[];
   featured?: boolean;
+  isNewArrival?: boolean;
+  isBestSeller?: boolean;
 }
 
 export interface AdminProductDetail {
