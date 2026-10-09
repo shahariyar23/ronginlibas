@@ -5,8 +5,9 @@ import { Star, CheckCircle2, MessageSquare, Send } from 'lucide-react';
 import { adminApi, type AdminReview } from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { TablePageSkeleton } from '@/components/common/Skeleton';
+import { PermissionGuard } from '@/components/auth/PermissionGuard';
 
-export default function ReviewsPage() {
+function ReviewsContent() {
   const { toast } = useToast();
   const [reviews, setReviews] = useState<AdminReview[]>([]);
   const [isLoadingReviews, setIsLoadingReviews] = useState(true);
@@ -204,5 +205,13 @@ export default function ReviewsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ReviewsPage() {
+  return (
+    <PermissionGuard permission="reviews" moduleName="Client Reviews">
+      <ReviewsContent />
+    </PermissionGuard>
   );
 }

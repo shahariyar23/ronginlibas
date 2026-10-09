@@ -18,6 +18,7 @@ import { OrderQueryDto } from '../dto/order-query.dto.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
+import { Permissions } from '../../common/decorators/permissions.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
 let AdminOrdersController = class AdminOrdersController {
     ordersService;
@@ -92,6 +93,7 @@ AdminOrdersController = __decorate([
     ApiBearerAuth(),
     UseGuards(JwtAuthGuard, RolesGuard),
     Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER),
+    Permissions('orders'),
     Controller('admin/orders'),
     __metadata("design:paramtypes", [OrdersService])
 ], AdminOrdersController);

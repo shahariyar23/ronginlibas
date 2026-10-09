@@ -6,6 +6,7 @@ import { InventoryQueryDto } from '../dto/inventory-query.dto.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
+import { Permissions } from '../../common/decorators/permissions.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
 
@@ -13,6 +14,7 @@ import { UserRole } from '../../common/constants/roles.constant.js';
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
+@Permissions('inventory')
 @Controller('admin/inventory')
 export class AdminInventoryController {
   constructor(private readonly inventoryService: InventoryService) {}

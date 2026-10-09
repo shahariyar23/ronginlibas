@@ -383,6 +383,14 @@ export const adminApi = {
       }
     },
     getUser: () => getStoredUser(),
+    refreshUser: async (): Promise<AdminUser | null> => {
+      const res = await request<AdminUser>('/admin/users/me');
+      if (res.success && res.data) {
+        setStoredUser(res.data);
+        return res.data;
+      }
+      return getStoredUser();
+    },
     isAuthenticated: () => !!getStoredToken(),
   },
 
@@ -568,6 +576,7 @@ export const adminApi = {
 
   // Staff & Role Management
   users: {
+    getMe: () => request<StaffUser>('/admin/users/me'),
     getAll: () => request<StaffUser[]>('/admin/users'),
     getById: (id: string) => request<StaffUser>(`/admin/users/${id}`),
     create: (payload: CreateStaffUserPayload) =>

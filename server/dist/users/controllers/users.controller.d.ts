@@ -27,6 +27,21 @@ export declare class UsersController {
             message: string;
         };
     }>;
+    getMe(userId: string): Promise<{
+        message: string;
+        data: {
+            email: string;
+            firstName: string;
+            lastName: string;
+            id: string;
+            role: import("@prisma/client").$Enums.Role;
+            permissions: string[];
+            isActive: boolean;
+            mustChangePassword: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+        };
+    }>;
     findAll(): Promise<{
         message: string;
         data: {

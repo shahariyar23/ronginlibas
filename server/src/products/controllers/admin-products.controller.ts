@@ -18,11 +18,13 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
+import { Permissions } from '../../common/decorators/permissions.decorator.js';
 
 @ApiTags('Admin - Products')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
+@Permissions('products')
 @Controller('admin/products')
 export class AdminProductsController {
   constructor(private readonly productsService: ProductsService) {}

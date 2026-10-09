@@ -20,8 +20,9 @@ import { adminApi } from '@/lib/api';
 import { useAdmin } from '@/context/AdminContext';
 import { useToast } from '@/context/ToastContext';
 import { CategoriesSkeleton } from '@/components/common/Skeleton';
+import { PermissionGuard } from '@/components/auth/PermissionGuard';
 
-export default function CategoriesPage() {
+function CategoriesContent() {
   const { refreshData } = useAdmin();
   const { toast } = useToast();
   const [categories, setCategories] = useState<CategoryItem[]>(INITIAL_CATEGORIES);
@@ -261,5 +262,13 @@ export default function CategoriesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CategoriesPage() {
+  return (
+    <PermissionGuard permission="categories" moduleName="Categories">
+      <CategoriesContent />
+    </PermissionGuard>
   );
 }

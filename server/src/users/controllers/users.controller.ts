@@ -16,6 +16,7 @@ import { ChangeUserPasswordDto } from '../dto/change-user-password.dto.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
+import { Permissions } from '../../common/decorators/permissions.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
 
@@ -51,7 +52,19 @@ export class UsersController {
     };
   }
 
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
+  @Get('me')
+  @ApiOperation({ summary: 'Retrieve currently authenticated staff user profile and permissions' })
+  async getMe(@CurrentUser('sub') userId: string) {
+    const data = await this.usersService.findById(userId);
+    return {
+      message: 'Staff profile retrieved successfully',
+      data,
+    };
+  }
+
+  @Roles(UserRole.SUPER_ADMIN)
+  @Permissions('staff')
   @Get()
   @ApiOperation({ summary: 'List all administrative staff users' })
   async findAll() {
@@ -62,7 +75,8 @@ export class UsersController {
     };
   }
 
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN)
+  @Permissions('staff')
   @Get(':id')
   @ApiOperation({ summary: 'Retrieve staff user by ID' })
   async findById(@Param('id') id: string) {

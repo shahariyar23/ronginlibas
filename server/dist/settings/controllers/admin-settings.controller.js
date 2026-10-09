@@ -17,6 +17,7 @@ import { UpdateSettingsDto } from '../dto/update-settings.dto.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
+import { Permissions } from '../../common/decorators/permissions.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
 let AdminSettingsController = class AdminSettingsController {
     settingsService;
@@ -58,6 +59,7 @@ AdminSettingsController = __decorate([
     ApiBearerAuth(),
     UseGuards(JwtAuthGuard, RolesGuard),
     Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN),
+    Permissions('settings'),
     Controller('admin/settings'),
     __metadata("design:paramtypes", [SettingsService])
 ], AdminSettingsController);

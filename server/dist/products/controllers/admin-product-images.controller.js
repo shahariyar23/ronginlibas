@@ -27,6 +27,7 @@ __decorate([
     IsNotEmpty(),
     __metadata("design:type", String)
 ], DeleteProductImageDto.prototype, "publicId", void 0);
+import { Permissions } from '../../common/decorators/permissions.decorator.js';
 let AdminProductImagesController = class AdminProductImagesController {
     cloudinary;
     constructor(cloudinary) {
@@ -86,6 +87,7 @@ AdminProductImagesController = __decorate([
     ApiBearerAuth(),
     UseGuards(JwtAuthGuard, RolesGuard),
     Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER),
+    Permissions('products'),
     Controller('admin/products/images'),
     __metadata("design:paramtypes", [CloudinaryService])
 ], AdminProductImagesController);

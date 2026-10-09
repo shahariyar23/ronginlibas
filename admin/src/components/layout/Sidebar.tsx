@@ -48,15 +48,22 @@ export function Sidebar() {
   const [currentUser, setCurrentUser] = React.useState<AdminUser | null>(null);
 
   React.useEffect(() => {
-    setCurrentUser(adminApi.auth.getUser());
+    const stored = adminApi.auth.getUser();
+    if (stored) {
+      setCurrentUser(stored);
+    }
+    // Refresh live profile in background to keep permissions strictly synchronized
+    adminApi.auth.refreshUser().then((live) => {
+      if (live) setCurrentUser(live);
+    });
   }, []);
 
   const hasAccess = (item: NavItemDef) => {
     if (!item.permissionKey) return true;
-    if (!currentUser) return true;
+    if (!currentUser) return false;
     if (currentUser.role === 'SUPER_ADMIN') return true;
-    const permissions = currentUser.permissions || [];
-    return permissions.includes(item.permissionKey);
+    const permissions = (currentUser.permissions || []).map((p) => p.toLowerCase());
+    return permissions.includes(item.permissionKey.toLowerCase());
   };
 
   const visibleNavItems = NAV_ITEMS.filter(hasAccess);

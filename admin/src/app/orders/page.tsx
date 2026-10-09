@@ -33,6 +33,7 @@ import { useAdmin } from '@/context/AdminContext';
 import { AdminOrder } from '@/data/adminData';
 import { TablePageSkeleton } from '@/components/common/Skeleton';
 import { printParcelSlip } from '@/utils/printParcelSlip';
+import { PermissionGuard } from '@/components/auth/PermissionGuard';
 
 
 // Deterministic SVG Barcode graphic for courier shipping labels
@@ -1184,16 +1185,18 @@ function OrdersPageContent() {
 
 export default function OrdersPage() {
   return (
-    <Suspense
-      fallback={
-        <TablePageSkeleton
-          title="Atelier Orders & Fulfillment"
-          showAddButton={false}
-          rowCount={8}
-        />
-      }
-    >
-      <OrdersPageContent />
-    </Suspense>
+    <PermissionGuard permission="orders" moduleName="Orders">
+      <Suspense
+        fallback={
+          <TablePageSkeleton
+            title="Atelier Orders & Fulfillment"
+            showAddButton={false}
+            rowCount={8}
+          />
+        }
+      >
+        <OrdersPageContent />
+      </Suspense>
+    </PermissionGuard>
   );
 }

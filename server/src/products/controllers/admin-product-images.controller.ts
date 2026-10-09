@@ -23,10 +23,13 @@ class DeleteProductImageDto {
   publicId: string;
 }
 
+import { Permissions } from '../../common/decorators/permissions.decorator.js';
+
 @ApiTags('Admin - Product Images')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
+@Permissions('products')
 @Controller('admin/products/images')
 export class AdminProductImagesController {
   constructor(private readonly cloudinary: CloudinaryService) {}

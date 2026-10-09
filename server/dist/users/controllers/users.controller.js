@@ -19,6 +19,7 @@ import { ChangeUserPasswordDto } from '../dto/change-user-password.dto.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
+import { Permissions } from '../../common/decorators/permissions.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
 let UsersController = class UsersController {
@@ -37,6 +38,13 @@ let UsersController = class UsersController {
         const data = await this.usersService.changePassword(userId, dto);
         return {
             message: 'Password updated successfully',
+            data,
+        };
+    }
+    async getMe(userId) {
+        const data = await this.usersService.findById(userId);
+        return {
+            message: 'Staff profile retrieved successfully',
             data,
         };
     }
@@ -89,7 +97,17 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "changePassword", null);
 __decorate([
-    Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN),
+    Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER),
+    Get('me'),
+    ApiOperation({ summary: 'Retrieve currently authenticated staff user profile and permissions' }),
+    __param(0, CurrentUser('sub')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "getMe", null);
+__decorate([
+    Roles(UserRole.SUPER_ADMIN),
+    Permissions('staff'),
     Get(),
     ApiOperation({ summary: 'List all administrative staff users' }),
     __metadata("design:type", Function),
@@ -97,7 +115,8 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "findAll", null);
 __decorate([
-    Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN),
+    Roles(UserRole.SUPER_ADMIN),
+    Permissions('staff'),
     Get(':id'),
     ApiOperation({ summary: 'Retrieve staff user by ID' }),
     __param(0, Param('id')),

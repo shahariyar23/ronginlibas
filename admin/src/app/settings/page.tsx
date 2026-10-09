@@ -4,8 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useAdmin } from '@/context/AdminContext';
 import { Settings, Save, CheckCircle2, Shield, Phone, Globe, CreditCard, Truck, RefreshCw, Tag } from 'lucide-react';
 import { SettingsSkeleton } from '@/components/common/Skeleton';
+import { PermissionGuard } from '@/components/auth/PermissionGuard';
 
-export default function SettingsPage() {
+function SettingsContent() {
   const { settings, updateSettings, backendConnected, refreshData, isLoading } = useAdmin();
   const [form, setForm] = useState(settings);
   const [isSaving, setIsSaving] = useState(false);
@@ -434,5 +435,13 @@ export default function SettingsPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <PermissionGuard permission="settings" moduleName="Store Settings">
+      <SettingsContent />
+    </PermissionGuard>
   );
 }

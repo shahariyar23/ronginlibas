@@ -22,6 +22,7 @@ import {
 import { adminApi, StaffUser, CreateStaffUserPayload, UpdateStaffUserPayload, AdminUser } from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { TablePageSkeleton } from '@/components/common/Skeleton';
+import { PermissionGuard } from '@/components/auth/PermissionGuard';
 
 const MODULE_PERMISSIONS = [
   { key: 'products', label: 'Products', description: 'Catalog & apparel items' },
@@ -35,7 +36,7 @@ const MODULE_PERMISSIONS = [
   { key: 'staff', label: 'Staff & Roles', description: 'User & permission administration' },
 ];
 
-export default function StaffPage() {
+function StaffContent() {
   const { toast } = useToast();
   const [staffList, setStaffList] = useState<StaffUser[]>([]);
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
@@ -943,5 +944,13 @@ export default function StaffPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function StaffPage() {
+  return (
+    <PermissionGuard permission="staff" moduleName="Staff & Roles">
+      <StaffContent />
+    </PermissionGuard>
   );
 }

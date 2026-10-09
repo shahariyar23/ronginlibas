@@ -20,6 +20,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
+import { Permissions } from '../../common/decorators/permissions.decorator.js';
 let AdminProductsController = class AdminProductsController {
     productsService;
     constructor(productsService) {
@@ -152,6 +153,7 @@ AdminProductsController = __decorate([
     ApiBearerAuth(),
     UseGuards(JwtAuthGuard, RolesGuard),
     Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER),
+    Permissions('products'),
     Controller('admin/products'),
     __metadata("design:paramtypes", [ProductsService])
 ], AdminProductsController);
