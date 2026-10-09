@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import type { RequestHandler } from 'express';
 import { default as helmet } from 'helmet';
 import compression from 'compression';
 
@@ -13,7 +14,8 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   // Security headers & compression
-  app.use(helmet());
+  const helmetMiddleware = helmet as unknown as () => RequestHandler;
+  app.use(helmetMiddleware());
   app.use(compression());
 
   // Global API Prefix
