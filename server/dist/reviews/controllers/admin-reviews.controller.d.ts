@@ -1,9 +1,11 @@
 import { ReviewsService } from '../services/reviews.service.js';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto.js';
 import { AdminReviewFeedbackDto } from '../dto/admin-review-feedback.dto.js';
+import { AuditService, AdminAuditActor } from '../../audit/audit.service.js';
 export declare class AdminReviewsController {
     private readonly reviewsService;
-    constructor(reviewsService: ReviewsService);
+    private readonly auditService;
+    constructor(reviewsService: ReviewsService, auditService: AuditService);
     findAll(query: PaginationQueryDto, status?: string): Promise<{
         message: string;
         data: import("../../common/dto/pagination-query.dto.js").PaginatedResult<any> & {
@@ -11,30 +13,27 @@ export declare class AdminReviewsController {
             hasPrevious: boolean;
         };
     }>;
-    updateStatus(id: string, status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'HIDDEN'): Promise<{
+    updateStatus(id: string, status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'HIDDEN', actor: AdminAuditActor): Promise<{
         message: string;
         data: {
-            rating: number;
-            comment: string;
             id: string;
-            customerId: string;
-            productId: string;
-            status: import("@prisma/client").$Enums.ReviewStatus;
             createdAt: Date;
             updatedAt: Date;
+            productId: string;
+            customerId: string;
+            status: import("@prisma/client").$Enums.ReviewStatus;
+            rating: number;
+            comment: string;
+            adminFeedback: string | null;
+            adminFeedbackAt: Date | null;
         };
     }>;
-    updateFeedback(id: string, dto: AdminReviewFeedbackDto): Promise<{
+    updateFeedback(id: string, dto: AdminReviewFeedbackDto, actor: AdminAuditActor): Promise<{
         message: string;
         data: {
-            rating: number;
-            comment: string;
             id: string;
-            customerId: string;
-            productId: string;
-            status: import("@prisma/client").$Enums.ReviewStatus;
-            createdAt: Date;
-            updatedAt: Date;
+            adminFeedback: string | null;
+            adminFeedbackAt: Date | null;
         };
     }>;
 }

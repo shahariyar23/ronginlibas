@@ -20,10 +20,15 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
+import { Permissions } from '../../common/decorators/permissions.decorator.js';
+import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import { AuditService } from '../../audit/audit.service.js';
 let AdminProductsController = class AdminProductsController {
     productsService;
-    constructor(productsService) {
+    auditService;
+    constructor(productsService, auditService) {
         this.productsService = productsService;
+        this.auditService = auditService;
     }
     async findAll(query) {
         const data = await this.productsService.findAll(query, true);
@@ -39,43 +44,111 @@ let AdminProductsController = class AdminProductsController {
             data,
         };
     }
-    async create(dto) {
+    async create(dto, actor) {
         const data = await this.productsService.create(dto);
+        await this.auditService.record({
+            actor,
+            module: 'products',
+            action: 'PRODUCT_CREATED',
+            entityType: 'product',
+            entityId: data.id,
+            entityLabel: data.name,
+            summary: `Created product ${data.name}`,
+            after: data,
+        });
         return {
             message: 'Product created successfully',
             data,
         };
     }
-    async update(id, dto) {
+    async update(id, dto, actor) {
+        const before = await this.productsService.findById(id);
         const data = await this.productsService.update(id, dto);
+        await this.auditService.record({
+            actor,
+            module: 'products',
+            action: 'PRODUCT_UPDATED',
+            entityType: 'product',
+            entityId: data.id,
+            entityLabel: data.name,
+            summary: `Updated product ${data.name}`,
+            before,
+            after: data,
+        });
         return {
             message: 'Product updated successfully',
             data,
         };
     }
-    async archive(id) {
+    async archive(id, actor) {
+        const before = await this.productsService.findById(id);
         const res = await this.productsService.archive(id);
+        await this.auditService.record({
+            actor,
+            module: 'products',
+            action: 'PRODUCT_ARCHIVED',
+            entityType: 'product',
+            entityId: before.id,
+            entityLabel: before.name,
+            summary: `Archived product ${before.name}`,
+            before: { isActive: before.isActive, deletedAt: before.deletedAt },
+            after: res.data,
+        });
         return {
             message: res.message,
             data: res.data,
         };
     }
-    async restore(id) {
+    async restore(id, actor) {
+        const before = await this.productsService.findById(id);
         const res = await this.productsService.restore(id);
+        await this.auditService.record({
+            actor,
+            module: 'products',
+            action: 'PRODUCT_RESTORED',
+            entityType: 'product',
+            entityId: before.id,
+            entityLabel: before.name,
+            summary: `Restored product ${before.name}`,
+            before: { isActive: before.isActive, deletedAt: before.deletedAt },
+            after: res.data,
+        });
         return {
             message: res.message,
             data: res.data,
         };
     }
-    async deletePermanent(id) {
+    async deletePermanent(id, actor) {
+        const before = await this.productsService.findById(id);
         const res = await this.productsService.delete(id);
+        await this.auditService.record({
+            actor,
+            module: 'products',
+            action: 'PRODUCT_DELETED',
+            entityType: 'product',
+            entityId: before.id,
+            entityLabel: before.name,
+            summary: `Permanently deleted product ${before.name}`,
+            before,
+        });
         return {
             message: res.message,
             data: res.data,
         };
     }
-    async delete(id) {
+    async delete(id, actor) {
+        const before = await this.productsService.findById(id);
         const res = await this.productsService.delete(id);
+        await this.auditService.record({
+            actor,
+            module: 'products',
+            action: 'PRODUCT_DELETED',
+            entityType: 'product',
+            entityId: before.id,
+            entityLabel: before.name,
+            summary: `Permanently deleted product ${before.name}`,
+            before,
+        });
         return {
             message: res.message,
             data: res.data,
@@ -102,8 +175,9 @@ __decorate([
     Post(),
     ApiOperation({ summary: 'Create new garment silhouette with variants and lookbook media' }),
     __param(0, Body()),
+    __param(1, CurrentUser()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [CreateProductDto]),
+    __metadata("design:paramtypes", [CreateProductDto, Object]),
     __metadata("design:returntype", Promise)
 ], AdminProductsController.prototype, "create", null);
 __decorate([
@@ -111,40 +185,45 @@ __decorate([
     ApiOperation({ summary: 'Update product specifications or variants' }),
     __param(0, Param('id')),
     __param(1, Body()),
+    __param(2, CurrentUser()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, UpdateProductDto]),
+    __metadata("design:paramtypes", [String, UpdateProductDto, Object]),
     __metadata("design:returntype", Promise)
 ], AdminProductsController.prototype, "update", null);
 __decorate([
     Patch(':id/archive'),
     ApiOperation({ summary: 'Archive product (hide from customer storefront, preserve inventory & media)' }),
     __param(0, Param('id')),
+    __param(1, CurrentUser()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], AdminProductsController.prototype, "archive", null);
 __decorate([
     Patch(':id/restore'),
     ApiOperation({ summary: 'Restore an archived product to active catalog' }),
     __param(0, Param('id')),
+    __param(1, CurrentUser()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], AdminProductsController.prototype, "restore", null);
 __decorate([
     Delete(':id/permanent'),
     ApiOperation({ summary: 'Permanently remove product from database and cleanup Cloudinary media assets' }),
     __param(0, Param('id')),
+    __param(1, CurrentUser()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], AdminProductsController.prototype, "deletePermanent", null);
 __decorate([
     Delete(':id'),
     ApiOperation({ summary: 'Permanently remove product from database and cleanup Cloudinary media assets' }),
     __param(0, Param('id')),
+    __param(1, CurrentUser()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], AdminProductsController.prototype, "delete", null);
 AdminProductsController = __decorate([
@@ -152,8 +231,10 @@ AdminProductsController = __decorate([
     ApiBearerAuth(),
     UseGuards(JwtAuthGuard, RolesGuard),
     Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER),
+    Permissions('products'),
     Controller('admin/products'),
-    __metadata("design:paramtypes", [ProductsService])
+    __metadata("design:paramtypes", [ProductsService,
+        AuditService])
 ], AdminProductsController);
 export { AdminProductsController };
 //# sourceMappingURL=admin-products.controller.js.map

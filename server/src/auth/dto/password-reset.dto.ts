@@ -15,8 +15,7 @@ export class ResetPasswordDto {
 
   @ApiProperty()
   @IsString()
-  @MinLength(10)
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/)
+  @MinLength(6, { message: 'Password must be at least 6 characters long' })
   newPassword: string;
 }
 
@@ -27,7 +26,6 @@ export class ChangePasswordDto {
 
   @ApiProperty()
   @IsString()
-  @MinLength(10)
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/)
+  @MinLength(6, { message: 'Password must be at least 6 characters long' })
   newPassword: string;
 }

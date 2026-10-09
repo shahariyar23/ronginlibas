@@ -170,13 +170,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = async (data: Partial<PatronUser>, password = '', termsAccepted = false) => {
     try {
       const [firstName, ...lastNameParts] = (data.name ?? '').trim().split(/\s+/);
+      let cleanPhone = (data.phone ?? '').replace(/[\s()\-]/g, '');
+      if (cleanPhone.startsWith('+')) cleanPhone = cleanPhone.slice(1);
+      if (cleanPhone.startsWith('880')) cleanPhone = cleanPhone.slice(3);
+      if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.slice(1);
+      const normalizedPhone = cleanPhone ? `+880${cleanPhone}` : '';
+
       const session = await apiRequest<{ accessToken: string }>('/auth/register', {
         method: 'POST',
         body: JSON.stringify({
           firstName,
           lastName: lastNameParts.join(' ') || undefined,
           email: data.email,
-          phone: data.phone?.replace(/\s/g, ''),
+          phone: normalizedPhone,
           password,
           confirmPassword: password,
           preferredFit: data.tailoringProfile?.preferredFit,

@@ -76,6 +76,8 @@ export declare class ProductsController {
                 productId: string;
                 rating: number;
                 comment: string;
+                adminFeedback: string | null;
+                adminFeedbackAt: Date | null;
             })[];
             variants: {
                 id: string;

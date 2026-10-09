@@ -18,12 +18,16 @@ import { InventoryQueryDto } from '../dto/inventory-query.dto.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
+import { Permissions } from '../../common/decorators/permissions.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
+import { AuditService } from '../../audit/audit.service.js';
 let AdminInventoryController = class AdminInventoryController {
     inventoryService;
-    constructor(inventoryService) {
+    auditService;
+    constructor(inventoryService, auditService) {
         this.inventoryService = inventoryService;
+        this.auditService = auditService;
     }
     async getInventoryList(query) {
         const data = await this.inventoryService.getInventoryList(query);
@@ -32,8 +36,24 @@ let AdminInventoryController = class AdminInventoryController {
             data,
         };
     }
-    async adjustStock(dto, userId) {
+    async adjustStock(dto, userId, actor) {
         const data = await this.inventoryService.adjustStock(dto, userId);
+        await this.auditService.record({
+            actor,
+            module: 'inventory',
+            action: 'STOCK_ADJUSTED',
+            entityType: 'product_variant',
+            entityId: data.variant.id,
+            entityLabel: data.variant.sku,
+            summary: `Adjusted stock for ${data.variant.sku} by ${dto.quantityChange}`,
+            before: { stock: data.transaction.previousStock },
+            after: {
+                stock: data.transaction.newStock,
+                quantityChange: data.transaction.quantityChange,
+                reason: data.transaction.type,
+                note: data.transaction.note,
+            },
+        });
         return {
             message: 'Stock adjusted and audit transaction logged successfully',
             data,
@@ -60,8 +80,9 @@ __decorate([
     ApiOperation({ summary: 'Perform stock count adjustment with audit transaction log' }),
     __param(0, Body()),
     __param(1, CurrentUser('id')),
+    __param(2, CurrentUser()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [AdjustStockDto, String]),
+    __metadata("design:paramtypes", [AdjustStockDto, String, Object]),
     __metadata("design:returntype", Promise)
 ], AdminInventoryController.prototype, "adjustStock", null);
 __decorate([
@@ -77,8 +98,10 @@ AdminInventoryController = __decorate([
     ApiBearerAuth(),
     UseGuards(JwtAuthGuard, RolesGuard),
     Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER),
+    Permissions('inventory'),
     Controller('admin/inventory'),
-    __metadata("design:paramtypes", [InventoryService])
+    __metadata("design:paramtypes", [InventoryService,
+        AuditService])
 ], AdminInventoryController);
 export { AdminInventoryController };
 //# sourceMappingURL=admin-inventory.controller.js.map

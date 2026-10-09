@@ -23,8 +23,9 @@ import {
 import { useAdmin } from '@/context/AdminContext';
 import { AdminProduct, AdminProductDetail } from '@/data/adminData';
 import { TablePageSkeleton } from '@/components/common/Skeleton';
+import { PermissionGuard } from '@/components/auth/PermissionGuard';
 
-export default function ProductsPage() {
+function ProductsContent() {
   const {
     products,
     categories,
@@ -1105,5 +1106,13 @@ export default function ProductsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <PermissionGuard permission="products" moduleName="Products">
+      <ProductsContent />
+    </PermissionGuard>
   );
 }

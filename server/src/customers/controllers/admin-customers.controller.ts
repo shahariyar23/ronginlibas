@@ -5,12 +5,14 @@ import { PaginationQueryDto } from '../../common/dto/pagination-query.dto.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
+import { Permissions } from '../../common/decorators/permissions.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
 
 @ApiTags('Admin - Customers')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
+@Permissions('customers')
 @Controller('admin/customers')
 export class AdminCustomersController {
   constructor(private readonly customersService: CustomersService) {}

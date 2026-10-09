@@ -26,7 +26,10 @@ __decorate([
     ApiProperty({ example: '01711234567' }),
     IsString(),
     IsNotEmpty(),
-    Matches(/^(?:01[3-9]\d{8}|\+8801[3-9]\d{8})$/),
+    Transform(({ value }) => typeof value === 'string' ? value.replace(/[\s()-]/g, '') : value),
+    Matches(/^(?:\+?880)?0?1[3-9]\d{8}$/, {
+        message: 'Please provide a valid Bangladeshi phone number (e.g. 017XXXXXXXX or 17XXXXXXXX)',
+    }),
     __metadata("design:type", String)
 ], RegisterCustomerDto.prototype, "phone", void 0);
 __decorate([
@@ -45,14 +48,13 @@ __decorate([
 ], RegisterCustomerDto.prototype, "lastName", void 0);
 __decorate([
     ApiProperty({ example: 'rahim@gmail.com' }),
-    IsEmail(),
+    IsEmail({}, { message: 'Please provide a valid email address' }),
     __metadata("design:type", String)
 ], RegisterCustomerDto.prototype, "email", void 0);
 __decorate([
-    ApiProperty({ example: 'SecurePassword123' }),
+    ApiProperty({ example: 'password123' }),
     IsString(),
-    MinLength(10),
-    Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/),
+    MinLength(6, { message: 'Password must be at least 6 characters long' }),
     __metadata("design:type", String)
 ], RegisterCustomerDto.prototype, "password", void 0);
 __decorate([

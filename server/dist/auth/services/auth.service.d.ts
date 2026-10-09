@@ -11,16 +11,19 @@ export declare class AuthService {
     private readonly logger;
     constructor(prisma: PrismaService, jwtService: JwtService, configService: ConfigService);
     adminLogin(dto: LoginDto): Promise<{
+        user: {
+            id: string;
+            email: string;
+            firstName: string;
+            lastName: string;
+            role: import("@prisma/client").$Enums.Role;
+            permissions: string[];
+            mustChangePassword: boolean;
+        };
         accessToken: string;
         refreshToken: string;
         tokenType: string;
         expiresIn: string;
-        user: {
-            id: string;
-            email: string | undefined;
-            role: string;
-            type: "customer" | "admin";
-        };
     }>;
     customerLogin(dto: LoginDto): Promise<{
         accessToken: string;

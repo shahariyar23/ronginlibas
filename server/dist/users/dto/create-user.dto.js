@@ -7,7 +7,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsArray, IsBoolean, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserRole } from '../../common/constants/roles.constant.js';
 export class CreateUserDto {
@@ -16,10 +16,12 @@ export class CreateUserDto {
     firstName;
     lastName;
     role = UserRole.MANAGER;
+    permissions;
+    mustChangePassword = true;
 }
 __decorate([
     ApiProperty({ example: 'manager@ronginlibas.com' }),
-    IsEmail(),
+    IsEmail({}, { message: 'Please provide a valid email address' }),
     IsNotEmpty(),
     __metadata("design:type", String)
 ], CreateUserDto.prototype, "email", void 0);
@@ -27,7 +29,7 @@ __decorate([
     ApiProperty({ example: 'SecurePassword123' }),
     IsString(),
     IsNotEmpty(),
-    MinLength(6),
+    MinLength(6, { message: 'Password must be at least 6 characters long' }),
     __metadata("design:type", String)
 ], CreateUserDto.prototype, "password", void 0);
 __decorate([
@@ -48,4 +50,17 @@ __decorate([
     IsOptional(),
     __metadata("design:type", String)
 ], CreateUserDto.prototype, "role", void 0);
+__decorate([
+    ApiPropertyOptional({ example: ['products', 'orders'] }),
+    IsArray(),
+    IsString({ each: true }),
+    IsOptional(),
+    __metadata("design:type", Array)
+], CreateUserDto.prototype, "permissions", void 0);
+__decorate([
+    ApiPropertyOptional({ default: true }),
+    IsBoolean(),
+    IsOptional(),
+    __metadata("design:type", Boolean)
+], CreateUserDto.prototype, "mustChangePassword", void 0);
 //# sourceMappingURL=create-user.dto.js.map

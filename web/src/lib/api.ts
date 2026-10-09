@@ -135,9 +135,18 @@ export async function apiRequest<T>(
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     const error = body as { message?: string | string[] } | null;
-    const message = Array.isArray(error?.message)
+    let message = Array.isArray(error?.message)
       ? error.message.join(', ')
       : error?.message || `The server returned ${response.status}.`;
+
+    if (message.includes('phone') && message.includes('regular expression')) {
+      message = 'Please provide a valid mobile number (e.g. 017XXXXXXXX or 17XXXXXXXX)';
+    } else if (message.includes('password') && message.includes('regular expression')) {
+      message = 'Password must be at least 6 characters.';
+    } else if (message.includes('regular expression')) {
+      message = message.replace(/must match \/[^/]+\/ regular expression/g, 'is invalid');
+    }
+
     throw new ApiError(message, response.status);
   }
 

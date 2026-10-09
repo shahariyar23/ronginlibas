@@ -3,12 +3,78 @@
 import React, { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { AdminProvider } from '@/context/AdminContext';
+import { AdminProvider, useAdmin } from '@/context/AdminContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { CommandPalette } from '@/components/common/CommandPalette';
-import { getStoredToken } from '@/lib/api';
+import { PasswordPortalModal } from '@/components/auth/PasswordPortalModal';
+import { getStoredToken, adminApi, AdminUser } from '@/lib/api';
+
+function AdminLayoutShell({ children }: { children: React.ReactNode }) {
+  const { isPasswordModalOpen, setIsPasswordModalOpen } = useAdmin();
+  const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
+
+  useEffect(() => {
+    const user = adminApi.auth.getUser();
+    if (user) {
+      setCurrentUser(user);
+    }
+
+    adminApi.auth.refreshUser().then((live) => {
+      if (live) setCurrentUser(live);
+    });
+  }, []);
+
+  const mustChangePassword = Boolean(currentUser?.mustChangePassword);
+
+  return (
+    <>
+      <div className="flex h-screen overflow-hidden bg-[#fbf9f2]">
+        <Sidebar />
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {/* Security Alert Banner for Default Password */}
+          {mustChangePassword && (
+            <div className="bg-[#00231a] border-b border-[#c79a45]/40 px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-[#deddd3] shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="flex h-2 w-2 rounded-full bg-[#c79a45] animate-ping shrink-0" />
+                <span className="truncate">
+                  <strong className="text-[#c79a45]">Default Password Active:</strong> Your administrative account is using a default password. Please update your credentials.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPasswordModalOpen(true)}
+                className="shrink-0 px-3 py-1 bg-[#c79a45] hover:bg-[#d6aa53] text-[#00231a] font-bold uppercase tracking-wider text-[10px] rounded transition-colors cursor-pointer"
+              >
+                Change Password Now
+              </button>
+            </div>
+          )}
+
+          <Header />
+          <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
+            {children}
+          </main>
+        </div>
+      </div>
+
+      <CommandPalette />
+
+      {/* Global Password Portal Modal */}
+      <PasswordPortalModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+        mustChangePassword={mustChangePassword}
+        onSuccess={() => {
+          if (currentUser) {
+            setCurrentUser({ ...currentUser, mustChangePassword: false });
+          }
+        }}
+      />
+    </>
+  );
+}
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -74,16 +140,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       <AdminProvider>
-        <div className="flex h-screen overflow-hidden bg-[#fbf9f2]">
-          <Sidebar />
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-            <Header />
-            <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
-              {children}
-            </main>
-          </div>
-        </div>
-        <CommandPalette />
+        <AdminLayoutShell>{children}</AdminLayoutShell>
       </AdminProvider>
     </ToastProvider>
   );

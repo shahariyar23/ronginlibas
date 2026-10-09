@@ -2,14 +2,22 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, Bell, User, CheckCircle2, AlertTriangle, ShieldCheck, LogOut, CheckCheck } from 'lucide-react';
+import { Search, Bell, User, CheckCircle2, AlertTriangle, ShieldCheck, LogOut, CheckCheck, KeyRound, Lock, X, Menu } from 'lucide-react';
 import { useAdmin } from '@/context/AdminContext';
+import { useToast } from '@/context/ToastContext';
 import { adminApi } from '@/lib/api';
 
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
-  const { setIsSearchOpen, backendConnected, orders, inventory } = useAdmin();
+  const {
+    setIsSearchOpen,
+    backendConnected,
+    orders,
+    inventory,
+    openMobileSidebar,
+    setIsPasswordModalOpen,
+  } = useAdmin();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [userEmail, setUserEmail] = useState('admin@ronginlibas.com');
@@ -77,11 +85,27 @@ export function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const { toast } = useToast();
+  const [userName, setUserName] = useState('Master Tailor Admin');
+  const [mustChangePassword, setMustChangePassword] = useState(false);
+
   useEffect(() => {
     const user = adminApi.auth.getUser();
     if (user?.email) {
       setUserEmail(user.email);
-      setUserRole(user.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Staff');
+      setUserRole(
+        user.role === 'SUPER_ADMIN'
+          ? 'Super Admin'
+          : user.role === 'ADMIN'
+          ? 'Administrator'
+          : 'Staff Manager',
+      );
+      if (user.firstName || user.lastName) {
+        setUserName(`${user.firstName || ''} ${user.lastName || ''}`.trim());
+      }
+      if (user.mustChangePassword) {
+        setMustChangePassword(true);
+      }
     }
   }, []);
 
@@ -117,17 +141,27 @@ export function Header() {
   };
 
   return (
-    <header className="h-16 bg-[#fbf9f2] border-b border-[#deddd3] px-8 flex items-center justify-between sticky top-0 z-30">
+    <header className="h-16 bg-[#fbf9f2] border-b border-[#deddd3] px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30">
       {/* Breadcrumb & Live Status */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[#717975]">
-          <span className="font-semibold text-[#073a2d]">ATELIER SUITE</span>
-          <span className="text-[#deddd3]">/</span>
-          <span className="text-[#1b1c18] font-bold">{getPageTitle()}</span>
+      <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+        {/* Mobile Hamburger Button */}
+        <button
+          type="button"
+          onClick={openMobileSidebar}
+          className="lg:hidden p-1.5 -ml-1 text-[#073a2d] hover:bg-[#f0eee7] rounded-md transition-colors cursor-pointer"
+          aria-label="Open navigation menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[#717975] truncate">
+          <span className="hidden sm:inline font-semibold text-[#073a2d]">ATELIER SUITE</span>
+          <span className="hidden sm:inline text-[#deddd3]">/</span>
+          <span className="text-[#1b1c18] font-bold truncate max-w-[150px] sm:max-w-none">{getPageTitle()}</span>
         </div>
 
         {/* Live Backend Connection Indicator */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] tracking-wide font-medium border border-[#deddd3] bg-white shadow-xs">
+        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] tracking-wide font-medium border border-[#deddd3] bg-white shadow-xs">
           <span
             className={`w-2 h-2 rounded-full ${
               backendConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'
@@ -140,14 +174,14 @@ export function Header() {
       </div>
 
       {/* Right controls */}
-      <div className="flex items-center gap-5">
+      <div className="flex items-center gap-3 sm:gap-5">
         {/* Quick Search */}
         <div
           onClick={() => setIsSearchOpen(true)}
-          className="flex items-center gap-2.5 bg-[#f0eee7] hover:bg-[#e4e2dc] border border-[#deddd3] px-3.5 py-1.5 cursor-pointer text-xs text-[#717975] transition-colors w-64 select-none"
+          className="hidden md:flex items-center gap-2.5 bg-[#f0eee7] hover:bg-[#e4e2dc] border border-[#deddd3] px-3.5 py-1.5 cursor-pointer text-xs text-[#717975] transition-colors w-44 lg:w-64 select-none"
         >
           <Search className="w-3.5 h-3.5 text-[#073a2d]" />
-          <span className="flex-1 truncate">Quick search (Cmd+K)</span>
+          <span className="flex-1 truncate">Quick search</span>
           <kbd className="text-[10px] bg-white border border-[#deddd3] px-1.5 py-0.5 text-[#404945] font-mono">
             ⌘K
           </kbd>
@@ -278,10 +312,10 @@ export function Header() {
               setShowProfileMenu(!showProfileMenu);
               setShowNotifications(false);
             }}
-            className="flex items-center gap-2.5 pl-2 py-1 pr-1 text-xs text-[#1b1c18] hover:bg-[#f0eee7] transition-colors"
+            className="flex items-center gap-2.5 pl-2 py-1 pr-1 text-xs text-[#1b1c18] hover:bg-[#f0eee7] transition-colors cursor-pointer"
           >
             <span className="font-medium text-xs tracking-tight text-[#1b1c18]">
-              Master Tailor Admin
+              {userName}
             </span>
             <div className="w-8 h-8 rounded-full bg-[#073a2d] text-[#f8f6ef] flex items-center justify-center font-bold text-xs ring-1 ring-[#c79a45]/50">
               <User className="w-4 h-4 text-[#f8f6ef]" />
@@ -289,17 +323,36 @@ export function Header() {
           </button>
 
           {showProfileMenu && (
-            <div className="absolute right-0 mt-2 w-60 bg-white border border-[#deddd3] shadow-lg py-2 z-50 text-xs">
+            <div className="absolute right-0 mt-2 w-64 bg-white border border-[#deddd3] shadow-xl py-2 z-50 text-xs">
               <div className="px-4 py-2 border-b border-[#deddd3]">
-                <p className="font-bold text-[#073a2d]">Dhaka Flagship Atelier</p>
+                <p className="font-bold text-[#073a2d]">{userName}</p>
                 <p className="text-[11px] text-[#69726d] truncate">{userEmail}</p>
               </div>
+
+              {mustChangePassword && (
+                <div className="m-2 p-2 bg-[#fff8e1] border border-[#ffe082] text-[#8d6e63] text-[11px] rounded-xs">
+                  <p className="font-semibold text-[#6d4c41]">Password Update Required</p>
+                  <p>Please update your default password to secure your account.</p>
+                </div>
+              )}
+
               <div className="py-1">
                 <div className="px-4 py-2 text-[#404945] flex items-center gap-2">
                   <ShieldCheck className="w-3.5 h-3.5 text-[#073a2d]" />
                   <span>Clearance: {userRole}</span>
                 </div>
+                <button
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    setIsPasswordModalOpen(true);
+                  }}
+                  className="w-full text-left px-4 py-2 text-[#073a2d] hover:bg-[#f0eee7] flex items-center gap-2 font-medium transition-colors cursor-pointer"
+                >
+                  <KeyRound className="w-3.5 h-3.5 text-[#c79a45]" />
+                  <span>Change Password</span>
+                </button>
               </div>
+
               <div className="border-t border-[#deddd3] pt-1">
                 <button
                   onClick={handleSignOut}

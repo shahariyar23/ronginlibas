@@ -27,6 +27,7 @@ import {
 import { useAdmin } from '@/context/AdminContext';
 import { InventoryItem, InventoryTransactionRecord } from '@/data/adminData';
 import { TablePageSkeleton } from '@/components/common/Skeleton';
+import { PermissionGuard } from '@/components/auth/PermissionGuard';
 
 function getInventoryStatus(
   item: InventoryItem,
@@ -47,7 +48,7 @@ const ADJUSTMENT_REASONS = [
   { value: 'ORDER_CANCELLED', label: 'ORDER_CANCELLED — Restocked from cancelled order' },
 ];
 
-export default function InventoryPage() {
+function InventoryContent() {
   const {
     inventory,
     updateInventoryStock,
@@ -1416,5 +1417,13 @@ export default function InventoryPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function InventoryPage() {
+  return (
+    <PermissionGuard permission="inventory" moduleName="Inventory">
+      <InventoryContent />
+    </PermissionGuard>
   );
 }

@@ -10,6 +10,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator.js';
+import { PERMISSIONS_KEY } from '../decorators/permissions.decorator.js';
+import { UserRole } from '../constants/roles.constant.js';
 let RolesGuard = class RolesGuard {
     reflector;
     constructor(reflector) {
@@ -20,16 +22,33 @@ let RolesGuard = class RolesGuard {
             context.getHandler(),
             context.getClass(),
         ]);
-        if (!requiredRoles || requiredRoles.length === 0) {
+        const requiredPermissions = this.reflector.getAllAndOverride(PERMISSIONS_KEY, [
+            context.getHandler(),
+            context.getClass(),
+        ]);
+        if ((!requiredRoles || requiredRoles.length === 0) &&
+            (!requiredPermissions || requiredPermissions.length === 0)) {
             return true;
         }
         const { user } = context.switchToHttp().getRequest();
         if (!user || !user.role) {
             throw new ForbiddenException('Access denied. Authentication and role credentials required.');
         }
-        const hasRole = requiredRoles.includes(user.role);
-        if (!hasRole) {
-            throw new ForbiddenException(`Access forbidden. Required roles: ${requiredRoles.join(', ')}`);
+        if (user.role === UserRole.SUPER_ADMIN) {
+            return true;
+        }
+        if (requiredRoles && requiredRoles.length > 0) {
+            const hasRole = requiredRoles.includes(user.role);
+            if (!hasRole) {
+                throw new ForbiddenException(`Access forbidden. Required clearance role: ${requiredRoles.join(', ')}`);
+            }
+        }
+        if (requiredPermissions && requiredPermissions.length > 0) {
+            const userPermissions = (user.permissions || []).map((p) => p.toLowerCase());
+            const hasPermission = requiredPermissions.some((perm) => userPermissions.includes(perm.toLowerCase()));
+            if (!hasPermission) {
+                throw new ForbiddenException(`Access forbidden. You do not have permission to access the ${requiredPermissions.join(', ')} module.`);
+            }
         }
         return true;
     }

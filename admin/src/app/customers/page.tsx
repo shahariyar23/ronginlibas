@@ -33,6 +33,7 @@ import {
 import Link from 'next/link';
 import { adminApi } from '@/lib/api';
 import { TablePageSkeleton } from '@/components/common/Skeleton';
+import { PermissionGuard } from '@/components/auth/PermissionGuard';
 
 interface Patron {
   id: string;
@@ -46,7 +47,7 @@ interface Patron {
   lastOrder: string;
 }
 
-export default function CustomersPage() {
+function CustomersContent() {
   const [patrons, setPatrons] = useState<Patron[]>([]);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
   const [search, setSearch] = useState('');
@@ -1032,5 +1033,13 @@ export default function CustomersPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CustomersPage() {
+  return (
+    <PermissionGuard permission="customers" moduleName="Clientele">
+      <CustomersContent />
+    </PermissionGuard>
   );
 }

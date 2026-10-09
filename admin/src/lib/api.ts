@@ -16,8 +16,51 @@ let memoryToken: string | null = null;
 export interface AdminUser {
   id: string;
   email: string;
-  role: string;
-  type: string;
+  firstName?: string;
+  lastName?: string;
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'MANAGER' | string;
+  type?: string;
+  permissions?: string[];
+  mustChangePassword?: boolean;
+}
+
+export interface StaffUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'MANAGER';
+  permissions: string[];
+  isActive: boolean;
+  mustChangePassword: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CreateStaffUserPayload {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  role?: 'SUPER_ADMIN' | 'ADMIN' | 'MANAGER';
+  permissions?: string[];
+  mustChangePassword?: boolean;
+}
+
+export interface UpdateStaffUserPayload {
+  email?: string;
+  password?: string;
+  firstName?: string;
+  lastName?: string;
+  role?: 'SUPER_ADMIN' | 'ADMIN' | 'MANAGER';
+  permissions?: string[];
+  isActive?: boolean;
+  mustChangePassword?: boolean;
+}
+
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
 }
 
 export type DashboardPeriod = '7' | '30' | 'month';
@@ -135,6 +178,31 @@ export interface AdminReview {
 
 export interface AdminReviewListResponse {
   items: AdminReview[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface AdminAuditEvent {
+  id: string;
+  actorId: string;
+  actorName: string;
+  actorEmail: string;
+  actorRole: string;
+  module: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  entityLabel: string | null;
+  summary: string;
+  before: unknown;
+  after: unknown;
+  createdAt: string;
+}
+
+export interface AdminAuditListResponse {
+  items: AdminAuditEvent[];
   page: number;
   limit: number;
   total: number;
@@ -340,6 +408,14 @@ export const adminApi = {
       }
     },
     getUser: () => getStoredUser(),
+    refreshUser: async (): Promise<AdminUser | null> => {
+      const res = await request<AdminUser>('/admin/users/me');
+      if (res.success && res.data) {
+        setStoredUser(res.data);
+        return res.data;
+      }
+      return getStoredUser();
+    },
     isAuthenticated: () => !!getStoredToken(),
   },
 
@@ -347,6 +423,25 @@ export const adminApi = {
   dashboard: {
     getMetrics: (period: DashboardPeriod = '7') =>
       request<AdminDashboardResponse>(`/admin/dashboard?period=${period}`),
+  },
+
+  activity: {
+    getAll: (params: {
+      page?: number;
+      limit?: number;
+      module?: string;
+      action?: string;
+      actor?: string;
+      search?: string;
+      from?: string;
+      to?: string;
+    }) => {
+      const query = new URLSearchParams();
+      for (const [key, value] of Object.entries(params)) {
+        if (value) query.set(key, String(value));
+      }
+      return request<AdminAuditListResponse>(`/admin/activity?${query.toString()}`);
+    },
   },
 
   // Products
@@ -518,6 +613,32 @@ export const adminApi = {
     get: () => request<any>('/admin/settings'),
     update: (payload: any) =>
       request<any>('/admin/settings', {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      }),
+  },
+
+  // Staff & Role Management
+  users: {
+    getMe: () => request<StaffUser>('/admin/users/me'),
+    getAll: () => request<StaffUser[]>('/admin/users'),
+    getById: (id: string) => request<StaffUser>(`/admin/users/${id}`),
+    create: (payload: CreateStaffUserPayload) =>
+      request<StaffUser>('/admin/users', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    update: (id: string, payload: UpdateStaffUserPayload) =>
+      request<StaffUser>(`/admin/users/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      }),
+    delete: (id: string) =>
+      request<{ message: string }>(`/admin/users/${id}`, {
+        method: 'DELETE',
+      }),
+    changePassword: (payload: ChangePasswordPayload) =>
+      request<{ message: string }>('/admin/users/me/change-password', {
         method: 'PATCH',
         body: JSON.stringify(payload),
       }),

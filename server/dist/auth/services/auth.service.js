@@ -45,7 +45,18 @@ let AuthService = AuthService_1 = class AuthService {
             where: { id: user.id },
             data: { refreshTokenHash: await bcrypt.hash(tokens.refreshToken, 10) },
         });
-        return tokens;
+        return {
+            ...tokens,
+            user: {
+                id: user.id,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                role: user.role,
+                permissions: user.permissions ?? [],
+                mustChangePassword: user.mustChangePassword ?? false,
+            },
+        };
     }
     async customerLogin(dto) {
         const customer = await this.prisma.customer.findUnique({
@@ -296,8 +307,19 @@ AuthService = AuthService_1 = __decorate([
 ], AuthService);
 export { AuthService };
 function normalizeBangladeshPhone(phone) {
-    const digits = phone.replace(/[\s()-]/g, '');
-    return digits.startsWith('+880') ? digits : `+880${digits.slice(1)}`;
+    if (!phone)
+        return phone;
+    let digits = phone.replace(/[\s()\-]/g, '');
+    if (digits.startsWith('+')) {
+        digits = digits.slice(1);
+    }
+    if (digits.startsWith('880')) {
+        digits = digits.slice(3);
+    }
+    if (digits.startsWith('0')) {
+        digits = digits.slice(1);
+    }
+    return `+880${digits}`;
 }
 function hashToken(token) {
     return createHash('sha256').update(token).digest('hex');

@@ -16,6 +16,15 @@ export class CouponsService {
     return this.prisma.coupon.findMany({ orderBy: { createdAt: 'desc' } });
   }
 
+  async findById(id: string) {
+    try {
+      return await this.prisma.coupon.findUniqueOrThrow({ where: { id } });
+    } catch (error) {
+      if (isPrismaError(error, 'P2025')) throw new NotFoundException('Voucher not found');
+      throw error;
+    }
+  }
+
   async create(dto: CreateCouponDto) {
     const code = dto.code.toUpperCase().trim();
 

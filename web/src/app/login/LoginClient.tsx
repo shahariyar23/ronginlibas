@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Logo } from '@/components/common/Logo';
 import { LogoLoader } from '@/components/common/LogoLoader';
@@ -30,8 +30,10 @@ import {
 
 export const LoginClient: React.FC = () => {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get('tab') === 'register' ? 'register' : 'signin';
+  const isRegisterRoute = pathname?.includes('/register') || searchParams.get('tab') === 'register';
+  const initialTab = isRegisterRoute ? 'register' : 'signin';
   const { login, register, isLoggedIn, isLoading, user, logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'signin' | 'register'>(initialTab);
@@ -52,13 +54,13 @@ export const LoginClient: React.FC = () => {
   const [showRegPw, setShowRegPw] = useState(false);
   const [preferredFit, setPreferredFit] = useState('Slim Heritage Cut');
   const [preferredCollar, setPreferredCollar] = useState('High Mandarin Collar');
-  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(true);
 
   useEffect(() => {
-    if (searchParams.get('tab') === 'register') {
+    if (pathname?.includes('/register') || searchParams.get('tab') === 'register') {
       setActiveTab('register');
     }
-  }, [searchParams]);
+  }, [pathname, searchParams]);
 
   // If user is already logged in, redirect them away from login & register
   useEffect(() => {
@@ -74,14 +76,18 @@ export const LoginClient: React.FC = () => {
     }
   }, [isLoading, isLoggedIn, router, searchParams]);
 
-  // Password strength calculation
+  // Password strength calculation: simple & fail-free (at least 6 characters)
   const getPasswordStrength = (pw: string) => {
-    if (!pw) return { score: 0, label: 'Enter Password', color: 'bg-[#deddd3]' };
-    if (pw.length < 8) return { score: 25, label: 'Weak', color: 'bg-[#ba1a1a]' };
-    if (pw.length < 10 || !/[a-z]/.test(pw) || !/[A-Z]/.test(pw) || !/\d/.test(pw)) {
-      return { score: 50, label: 'Add upper/lowercase and a number', color: 'bg-[#c79a45]' };
+    if (!pw) return { score: 0, label: 'Minimum 6 characters', color: 'bg-[#deddd3]' };
+    if (pw.length < 6) {
+      const remaining = 6 - pw.length;
+      return {
+        score: Math.round((pw.length / 6) * 70),
+        label: `${remaining} more character${remaining > 1 ? 's' : ''}`,
+        color: 'bg-[#ba1a1a]',
+      };
     }
-    return { score: 100, label: 'Aristocratic & Secure', color: 'bg-[#073a2d]' };
+    return { score: 100, label: 'Password Ready', color: 'bg-[#073a2d]' };
   };
 
   const pwStrength = getPasswordStrength(regPassword);
@@ -109,13 +115,37 @@ export const LoginClient: React.FC = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
+
+    if (!termsAccepted) {
+      toast.error('Please accept the terms and privacy policy.');
+      return;
+    }
+
+    if (regPassword.length < 6) {
+      toast.error('Password must be at least 6 characters long.');
+      return;
+    }
+
+    // Clean phone number: accept '017XXXXXXXX', '17XXXXXXXX', '+880...', or '880...'
+    let digits = regMobile.replace(/[\s()\-]/g, '');
+    if (digits.startsWith('+')) digits = digits.slice(1);
+    if (digits.startsWith('880')) digits = digits.slice(3);
+    if (digits.startsWith('0')) digits = digits.slice(1);
+
+    if (!/^1[3-9]\d{8}$/.test(digits)) {
+      toast.error('Please enter a valid mobile number (e.g. 017XXXXXXXX or 17XXXXXXXX)');
+      return;
+    }
+
+    const formattedPhone = `+880${digits}`;
+
     setIsSubmitting(true);
     try {
       const registered = await register(
         {
           name: regName,
           email: regEmail,
-          phone: `+880${regMobile.replace(/\s/g, '')}`,
+          phone: formattedPhone,
           tailoringProfile: {
             height: '',
             chest: '',
@@ -492,7 +522,7 @@ export const LoginClient: React.FC = () => {
                           type="tel"
                           value={regMobile}
                           onChange={(e) => setRegMobile(e.target.value)}
-                          placeholder="17XXXXXXXX"
+                          placeholder="017XXXXXXXX or 17XXXXXXXX"
                           required
                           className="bg-[#fbf9f2] border-[#deddd3] h-11 rounded-none focus:border-[#073a2d]"
                         />
@@ -529,8 +559,8 @@ export const LoginClient: React.FC = () => {
                         type={showRegPw ? 'text' : 'password'}
                         value={regPassword}
                         onChange={(e) => setRegPassword(e.target.value)}
-                        placeholder="10+ characters with upper, lower & number"
-                        minLength={10}
+                        placeholder="At least 6 characters"
+                        minLength={6}
                         required
                         className="bg-[#fbf9f2] border-[#deddd3] h-11 pr-10 focus:border-[#073a2d]"
                       />
@@ -584,13 +614,12 @@ export const LoginClient: React.FC = () => {
                     </div>
                   </div>
 
-                  <label className="flex items-start gap-2 text-xs text-[#69726d]">
+                  <label className="flex items-start gap-2 text-xs text-[#69726d] cursor-pointer">
                     <input
                       type="checkbox"
                       checked={termsAccepted}
                       onChange={(event) => setTermsAccepted(event.target.checked)}
-                      required
-                      className="mt-0.5 accent-[#073a2d]"
+                      className="mt-0.5 accent-[#073a2d] w-4 h-4 cursor-pointer"
                     />
                     <span>I accept the terms and privacy policy for creating a customer account.</span>
                   </label>

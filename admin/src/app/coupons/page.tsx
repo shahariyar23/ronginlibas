@@ -6,6 +6,7 @@ import { adminApi } from '@/lib/api';
 import type { AdminCoupon, CouponDiscountType, CreateCouponPayload } from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { TablePageSkeleton } from '@/components/common/Skeleton';
+import { PermissionGuard } from '@/components/auth/PermissionGuard';
 
 interface Coupon {
   id: string;
@@ -53,7 +54,7 @@ function mapCoupon(coupon: AdminCoupon): Coupon {
   };
 }
 
-export default function CouponsPage() {
+function CouponsContent() {
   const { toast } = useToast();
   const [coupons, setCoupons] = useState<Coupon[]>(INITIAL_COUPONS);
   const [isLoadingCoupons, setIsLoadingCoupons] = useState(true);
@@ -540,5 +541,13 @@ export default function CouponsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CouponsPage() {
+  return (
+    <PermissionGuard permission="coupons" moduleName="Coupons & Privileges">
+      <CouponsContent />
+    </PermissionGuard>
   );
 }
