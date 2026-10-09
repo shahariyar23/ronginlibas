@@ -133,6 +133,10 @@ export declare class ProductsController {
             isNewArrival: boolean;
             isBestSeller: boolean;
             categoryId: string;
+        } & {
+            reviewsCount: number;
+            averageRating: number;
+            totalSold: number;
         };
     }>;
     findRelated(slug: string): Promise<{
@@ -143,6 +147,9 @@ export declare class ProductsController {
                 name: string;
                 slug: string;
             };
+            reviews: {
+                rating: number;
+            }[];
             variants: {
                 id: string;
                 isActive: boolean;
@@ -168,6 +175,9 @@ export declare class ProductsController {
                 productId: string;
                 publicId: string | null;
                 altText: string | null;
+            }[];
+            orderItems: {
+                quantity: number;
             }[];
         } & {
             description: string | null;
@@ -196,6 +206,10 @@ export declare class ProductsController {
             isNewArrival: boolean;
             isBestSeller: boolean;
             categoryId: string;
+        } & {
+            reviewsCount: number;
+            averageRating: number;
+            totalSold: number;
         })[];
     }>;
 }

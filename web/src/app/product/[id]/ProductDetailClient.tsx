@@ -198,6 +198,7 @@ const ProductDetailView: React.FC<{
   const [measurementUnit, setMeasurementUnit] = useState<'in' | 'cm'>('in');
   const [sizeModalOpen, setSizeModalOpen] = useState(false);
   const [openAccordion, setOpenAccordion] = useState<string | null>('accordion-1');
+  const [showMobileDetails, setShowMobileDetails] = useState(false);
   const [reviews, setReviews] = useState<ProductReview[]>(initialReviews?.items || []);
   const [totalReviews, setTotalReviews] = useState(
     initialReviews?.total ?? (initialReviews?.items?.length || 0),
@@ -700,33 +701,33 @@ const ProductDetailView: React.FC<{
                 </p>
               )}
 
-              {/* Patron Rating Row */}
-              <div className="flex items-center gap-3 pt-1">
-                <div className="flex text-[#c79a45]">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`w-4 h-4 ${
-                        totalReviews > 0 && i < Math.round(averageRating)
-                          ? 'fill-[#c79a45] text-[#c79a45]'
-                          : 'text-[#deddd3]'
-                      }`}
-                    />
-                  ))}
+              {/* Patron Rating Row - Only shown when product has reviews */}
+              {totalReviews > 0 && (
+                <div className="flex items-center gap-3 pt-1">
+                  <div className="flex text-[#c79a45]">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`w-4 h-4 ${
+                          i < Math.round(averageRating)
+                            ? 'fill-[#c79a45] text-[#c79a45]'
+                            : 'text-[#deddd3]'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="font-sans text-xs font-bold text-[#1b1c18]">
+                    {averageRating.toFixed(1)} / 5.0
+                  </span>
+                  <span className="text-[#deddd3]">•</span>
+                  <a
+                    href="#patron-reviews"
+                    className="font-sans text-xs uppercase tracking-wider text-[#717975] hover:text-[#073a2d] underline underline-offset-4 font-semibold"
+                  >
+                    {totalReviews} Verified Patron {totalReviews === 1 ? 'Review' : 'Reviews'}
+                  </a>
                 </div>
-                <span className="font-sans text-xs font-bold text-[#1b1c18]">
-                  {totalReviews > 0 ? `${averageRating.toFixed(1)} / 5.0` : '0 Reviews'}
-                </span>
-                <span className="text-[#deddd3]">•</span>
-                <a
-                  href="#patron-reviews"
-                  className="font-sans text-xs uppercase tracking-wider text-[#717975] hover:text-[#073a2d] underline underline-offset-4 font-semibold"
-                >
-                  {totalReviews > 0
-                    ? `${totalReviews} Verified Patron ${totalReviews === 1 ? 'Review' : 'Reviews'}`
-                    : 'No reviews yet'}
-                </a>
-              </div>
+              )}
             </div>
 
             {/* Pricing Card Panel */}
@@ -793,20 +794,31 @@ const ProductDetailView: React.FC<{
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
-                  {product.colors.map((c) => (
-                    <button
-                      key={c.name}
-                      type="button"
-                      onClick={() => selectColor(c.name)}
-                      title={c.name}
-                      className={`w-9 h-9 rounded-full transition-transform cursor-pointer border ${
-                        selectedColor === c.name
-                          ? 'ring-2 ring-[#073a2d] ring-offset-2 scale-110'
-                          : 'hover:scale-105 border-[#deddd3]'
-                      }`}
-                      style={{ backgroundColor: c.hex }}
-                    />
-                  ))}
+                  {product.colors.map((c) => {
+                    const isLight =
+                      !c.hex ||
+                      ['#ffffff', '#fff', '#fbf9f2', '#f5f4ed', '#fafafa', '#f8fafc'].includes(c.hex.toLowerCase()) ||
+                      c.name.toLowerCase().includes('white');
+
+                    return (
+                      <button
+                        key={c.name}
+                        type="button"
+                        onClick={() => selectColor(c.name)}
+                        title={c.name}
+                        className={`w-9 h-9 rounded-full transition-transform cursor-pointer border ${
+                          isLight
+                            ? 'border-neutral-400 shadow-[0_2px_6px_rgba(0,0,0,0.3)] ring-1 ring-black/10'
+                            : 'border-[#deddd3]'
+                        } ${
+                          selectedColor === c.name
+                            ? 'ring-2 ring-[#073a2d] ring-offset-2 scale-110'
+                            : 'hover:scale-105'
+                        }`}
+                        style={{ backgroundColor: c.hex }}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1033,9 +1045,26 @@ const ProductDetailView: React.FC<{
           </div>
         </div>
 
+        {/* Mobile View All Details Toggle (Only visible on mobile) */}
+        <div className="lg:hidden pt-2 pb-2">
+          <button
+            type="button"
+            onClick={() => setShowMobileDetails((prev) => !prev)}
+            className="w-full py-3.5 px-4 bg-white hover:bg-[#f5f4ed] border border-[#deddd3] text-[#073a2d] font-sans text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
+          >
+            <span>{showMobileDetails ? 'Hide Details' : 'View All Details'}</span>
+            <ChevronDown
+              className={`w-4 h-4 text-[#c79a45] transition-transform duration-300 ${
+                showMobileDetails ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+        </div>
 
-        {/* Editorial Specifications & Artisan Accordions */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 py-6">
+        {/* Editorial Specifications & Garment Dimensions (Always visible on desktop, toggled on mobile) */}
+        <div className={showMobileDetails ? 'block space-y-6' : 'hidden lg:block lg:space-y-6'}>
+          {/* Editorial Specifications & Artisan Accordions */}
+          <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 py-6">
           {/* Left Narrative Column */}
           <div className="lg:col-span-4 space-y-4">
             <span className="font-sans text-xs uppercase tracking-widest text-[#c79a45] font-bold">
@@ -1292,8 +1321,10 @@ const ProductDetailView: React.FC<{
               : 'Product-specific measurements are available above.'}
           </p>
         </section>
+        </div>
 
         {/* Patron Reviews & Testimonials Section */}
+        {(totalReviews > 0 || reviewEligibility?.canReview || isReviewFormOpen || reviewEligibility?.existingReview) && (
         <section className="space-y-8 py-6" id="patron-reviews">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
@@ -1441,15 +1472,10 @@ const ProductDetailView: React.FC<{
               </div>
             </div>
           ) : (
-            <div className="bg-white p-8 border border-[#deddd3] text-center space-y-3">
-              <div className="flex items-center justify-center text-[#deddd3] gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-5 h-5" />
-                ))}
-              </div>
-              <h3 className="font-serif text-2xl text-[#073a2d]">0 Reviews</h3>
+            <div className="bg-white p-6 border border-[#deddd3] text-center space-y-2">
+              <h3 className="font-serif text-xl text-[#073a2d]">Be the First to Review</h3>
               <p className="font-sans text-xs text-[#69726d] max-w-md mx-auto">
-                No reviews yet. Only verified patrons who have purchased and received this delivered garment may share their reflections.
+                Share your reflections on the craftsmanship, fit, and handloom texture of this garment.
               </p>
             </div>
           )}
@@ -1618,6 +1644,7 @@ const ProductDetailView: React.FC<{
             </div>
           )}
         </section>
+        )}
 
         {/* You May Also Admire Section */}
         <section className="space-y-6 pt-6 border-t border-[#deddd3]">
@@ -1627,14 +1654,14 @@ const ProductDetailView: React.FC<{
                 Complementary Wardrobe
               </span>
               <h2 className="font-serif text-2xl sm:text-3xl text-[#073a2d] font-normal tracking-tight mt-1">
-                You May Also Admire
+                More products you may like
               </h2>
             </div>
             <Link
               href="/shop"
               className="font-sans text-xs uppercase tracking-wider text-[#073a2d] hover:text-[#c79a45] font-bold underline underline-offset-4"
             >
-              View Atelier Catalogue &rarr;
+              All products &rarr;
             </Link>
           </div>
 

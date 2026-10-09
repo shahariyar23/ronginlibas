@@ -157,10 +157,26 @@ __decorate([
 ], ProductQueryDto.prototype, "expressAvailable", void 0);
 __decorate([
     ApiPropertyOptional({
-        enum: ['featured', 'newest', 'price-asc', 'price-desc', 'best-selling'],
+        enum: [
+            'featured',
+            'newest',
+            'price-asc',
+            'price-desc',
+            'price-low',
+            'price-high',
+            'best-selling',
+        ],
         default: 'newest',
     }),
-    IsEnum(['featured', 'newest', 'price-asc', 'price-desc', 'best-selling']),
+    IsEnum([
+        'featured',
+        'newest',
+        'price-asc',
+        'price-desc',
+        'price-low',
+        'price-high',
+        'best-selling',
+    ]),
     IsOptional(),
     __metadata("design:type", String)
 ], ProductQueryDto.prototype, "sort", void 0);

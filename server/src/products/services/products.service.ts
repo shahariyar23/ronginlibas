@@ -36,9 +36,9 @@ export class ProductsService {
     const orderBy:
       | Prisma.ProductOrderByWithRelationInput
       | Prisma.ProductOrderByWithRelationInput[] =
-      query.sort === 'price-asc'
+      query.sort === 'price-asc' || query.sort === 'price-low'
         ? { price: 'asc' }
-        : query.sort === 'price-desc'
+        : query.sort === 'price-desc' || query.sort === 'price-high'
           ? { price: 'desc' }
           : query.sort === 'best-selling'
             ? [{ orderItems: { _count: 'desc' } }, { createdAt: 'desc' }]
@@ -67,6 +67,13 @@ export class ProductsService {
               isActive: true,
               priceOverride: true,
             },
+          },
+          reviews: {
+            where: { status: 'APPROVED' },
+            select: { rating: true },
+          },
+          orderItems: {
+            select: { quantity: true },
           },
         },
         orderBy,
@@ -269,6 +276,13 @@ export class ProductsService {
             category: { select: { id: true, name: true, slug: true } },
             images: { orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }] },
             variants: { where: { isActive: true } },
+            reviews: {
+              where: { status: 'APPROVED' },
+              select: { rating: true },
+            },
+            orderItems: {
+              select: { quantity: true },
+            },
           },
         },
       },
@@ -291,6 +305,13 @@ export class ProductsService {
         category: { select: { id: true, name: true, slug: true } },
         images: { orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }] },
         variants: { where: { isActive: true } },
+        reviews: {
+          where: { status: 'APPROVED' },
+          select: { rating: true },
+        },
+        orderItems: {
+          select: { quantity: true },
+        },
       },
     });
     return relatedProducts.map(normalizeStorefrontSizeLabels);
@@ -947,12 +968,35 @@ function normalizeStorefrontSizeLabels<
       sizeLabel: string | null;
       sizeType: string | null;
     }>;
+    reviews?: Array<{ rating: number }>;
+    orderItems?: Array<{ quantity: number }>;
   },
 >(product: T) {
-  if (!product.category || !product.variants) return product;
+  const reviews = product.reviews ?? [];
+  const reviewsCount = reviews.length;
+  const averageRating =
+    reviewsCount > 0
+      ? Number(
+          (
+            reviews.reduce((sum, r) => sum + r.rating, 0) / reviewsCount
+          ).toFixed(1),
+        )
+      : 0;
+  const totalSold = (product.orderItems ?? []).reduce(
+    (sum, oi) => sum + (oi.quantity || 1),
+    0,
+  );
+
+  const base = {
+    ...product,
+    reviewsCount,
+    averageRating,
+    totalSold,
+  };
+  if (!product.category || !product.variants) return base;
   const category = { slug: product.category.slug };
   return {
-    ...product,
+    ...base,
     variants: product.variants.map((variant) => ({
       ...variant,
       sizeLabel:

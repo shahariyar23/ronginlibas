@@ -194,6 +194,12 @@ interface ApiProduct {
   isFeatured?: boolean;
   isNewArrival?: boolean;
   isBestSeller?: boolean;
+  averageRating?: number;
+  reviewsCount?: number;
+  totalSold?: number;
+  reviews?: Array<{ rating: number }>;
+  orderItems?: Array<{ quantity: number }>;
+  _count?: { reviews?: number; orderItems?: number };
   category?: { name?: string; slug?: string } | null;
   images?: Array<{ url?: string; altText?: string | null } | string>;
   variants?: ApiVariant[];
@@ -338,6 +344,22 @@ export function mapProduct(source: ApiProduct): Product {
     colors: colors.map((name) => ({ name, hex: colorHex(name) })),
     inStock: variants.some((variant) => variant.isActive !== false && variant.stock > 0),
     stockCount: variants.reduce((total, variant) => total + Math.max(0, variant.stock), 0),
+    averageRating:
+      source.averageRating !== undefined
+        ? source.averageRating
+        : source.reviews && source.reviews.length > 0
+          ? Number((source.reviews.reduce((sum, r) => sum + r.rating, 0) / source.reviews.length).toFixed(1))
+          : 0,
+    reviewsCount:
+      source.reviewsCount !== undefined
+        ? source.reviewsCount
+        : source._count?.reviews !== undefined
+          ? source._count.reviews
+          : (source.reviews?.length ?? 0),
+    totalSold:
+      source.totalSold !== undefined
+        ? source.totalSold
+        : (source.orderItems ?? []).reduce((sum, oi) => sum + (oi.quantity || 1), 0) || (source._count?.orderItems ?? 0),
     isNewArrival: source.isNewArrival,
     isBestSeller: source.isBestSeller,
     featured: source.isFeatured,
@@ -426,6 +448,14 @@ export interface ProductFilters {
 export function buildProductQuery(query: ProductListQuery = {}) {
   const params = new URLSearchParams();
   Object.entries(query).forEach(([key, value]) => {
+    if (key === 'sort' && typeof value === 'string') {
+      const sortMap: Record<string, string> = {
+        'price-low': 'price-asc',
+        'price-high': 'price-desc',
+      };
+      params.set(key, sortMap[value] || value);
+      return;
+    }
     if (Array.isArray(value)) {
       value.forEach((item) => params.append(key, item));
     } else if (value !== undefined && value !== '') {
