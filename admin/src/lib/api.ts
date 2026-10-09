@@ -16,8 +16,51 @@ let memoryToken: string | null = null;
 export interface AdminUser {
   id: string;
   email: string;
-  role: string;
-  type: string;
+  firstName?: string;
+  lastName?: string;
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'MANAGER' | string;
+  type?: string;
+  permissions?: string[];
+  mustChangePassword?: boolean;
+}
+
+export interface StaffUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'MANAGER';
+  permissions: string[];
+  isActive: boolean;
+  mustChangePassword: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CreateStaffUserPayload {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  role?: 'SUPER_ADMIN' | 'ADMIN' | 'MANAGER';
+  permissions?: string[];
+  mustChangePassword?: boolean;
+}
+
+export interface UpdateStaffUserPayload {
+  email?: string;
+  password?: string;
+  firstName?: string;
+  lastName?: string;
+  role?: 'SUPER_ADMIN' | 'ADMIN' | 'MANAGER';
+  permissions?: string[];
+  isActive?: boolean;
+  mustChangePassword?: boolean;
+}
+
+export interface ChangePasswordPayload {
+  currentPassword?: string;
+  newPassword: string;
 }
 
 export type DashboardPeriod = '7' | '30' | 'month';
@@ -518,6 +561,31 @@ export const adminApi = {
     get: () => request<any>('/admin/settings'),
     update: (payload: any) =>
       request<any>('/admin/settings', {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      }),
+  },
+
+  // Staff & Role Management
+  users: {
+    getAll: () => request<StaffUser[]>('/admin/users'),
+    getById: (id: string) => request<StaffUser>(`/admin/users/${id}`),
+    create: (payload: CreateStaffUserPayload) =>
+      request<StaffUser>('/admin/users', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    update: (id: string, payload: UpdateStaffUserPayload) =>
+      request<StaffUser>(`/admin/users/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      }),
+    delete: (id: string) =>
+      request<{ message: string }>(`/admin/users/${id}`, {
+        method: 'DELETE',
+      }),
+    changePassword: (payload: ChangePasswordPayload) =>
+      request<{ message: string }>('/admin/users/me/change-password', {
         method: 'PATCH',
         body: JSON.stringify(payload),
       }),

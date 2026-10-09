@@ -937,8 +937,8 @@ export const Header: React.FC = () => {
             className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <div className="fixed inset-y-0 left-0 w-4/5 max-w-sm bg-[#fbf9f2] border-r border-[#deddd3] p-6 flex flex-col justify-between z-10 shadow-2xl">
-            <div>
+          <div className="fixed inset-y-0 left-0 flex h-dvh max-h-dvh w-4/5 max-w-sm flex-col overflow-hidden border-r border-[#deddd3] bg-[#fbf9f2] p-6 z-10 shadow-2xl">
+            <div className="flex min-h-0 flex-1 flex-col">
               <div className="flex items-center justify-between pb-6 border-b border-[#deddd3]">
                 <Logo className="h-9 w-auto" />
                 <button
@@ -949,7 +949,7 @@ export const Header: React.FC = () => {
                 </button>
               </div>
 
-              <nav className="mt-8 flex flex-col space-y-4 font-serif text-lg font-bold text-[#073a2d]">
+              <nav className="mt-6 min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1 font-serif text-lg font-bold text-[#073a2d]">
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
@@ -978,50 +978,32 @@ export const Header: React.FC = () => {
                     {wishlist.length} saved
                   </Badge>
                 </Link>
-                <Link
-                  href="/track-order"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-sm text-[#073a2d] font-sans font-bold uppercase tracking-wider"
-                >
-                  <span className="flex items-center gap-2 font-bold">
-                    <Truck className="w-4 h-4 text-[#c79a45]" />
-                    <span>Track Consignment</span>
-                  </span>
-                  <Badge className="bg-[#073a2d] text-white text-[10px] font-bold">Active</Badge>
-                </Link>
-                <Link
-                  href="/orders"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-sm text-[#073a2d] font-sans font-bold uppercase tracking-wider"
-                >
-                  <span className="flex items-center gap-2 font-bold">
-                    <Clock className="w-4 h-4 text-[#717975]" />
-                    <span>Order History</span>
-                  </span>
-                  <ArrowRight className="w-4 h-4 text-[#c79a45]" />
-                </Link>
-                <Link
-                  href={isLoggedIn ? "/profile" : "/login"}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-sm text-[#073a2d] font-sans font-bold uppercase tracking-wider"
-                >
-                  <span className="flex items-center gap-2 font-bold">
-                    {isLoggedIn ? (
-                      <User className="w-4 h-4 text-[#717975]" />
-                    ) : (
-                      <LogIn className="w-4 h-4 text-[#c79a45]" />
-                    )}
-                    <span>{isLoggedIn ? (user?.name || 'Patron Profile') : 'Sign In / Join Atelier'}</span>
-                  </span>
-                  <div className="flex items-center gap-2">
-                    {isLoggedIn && unreadCount > 0 && (
-                      <span className="bg-[#ba1a1a] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                        {unreadCount}
+                {isLoggedIn && (
+                  <>
+                    <Link
+                      href="/track-order"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center justify-between border-b border-[#f0eee7] py-2 text-sm font-sans font-bold uppercase tracking-wider text-[#073a2d]"
+                    >
+                      <span className="flex items-center gap-2 font-bold">
+                        <Truck className="h-4 w-4 text-[#c79a45]" />
+                        <span>Track Consignment</span>
                       </span>
-                    )}
-                    <ArrowRight className="w-4 h-4 text-[#c79a45]" />
-                  </div>
-                </Link>
+                      <Badge className="bg-[#073a2d] text-[10px] font-bold text-white">Active</Badge>
+                    </Link>
+                    <Link
+                      href="/orders"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center justify-between border-b border-[#f0eee7] py-2 text-sm font-sans font-bold uppercase tracking-wider text-[#073a2d]"
+                    >
+                      <span className="flex items-center gap-2 font-bold">
+                        <Clock className="h-4 w-4 text-[#717975]" />
+                        <span>Order History</span>
+                      </span>
+                      <ArrowRight className="h-4 w-4 text-[#c79a45]" />
+                    </Link>
+                  </>
+                )}
 
                 {/* Dynamic Mobile Nav Links */}
                 <Suspense
@@ -1079,7 +1061,7 @@ export const Header: React.FC = () => {
               </nav>
             </div>
 
-            <div className="pt-6 border-t border-[#deddd3] space-y-3">
+            <div className="shrink-0 space-y-3 border-t border-[#deddd3] pt-4">
               {settings?.whatsappOrderEnabled && whatsappUrl && (
                 <a
                   href={whatsappUrl}
@@ -1094,6 +1076,28 @@ export const Header: React.FC = () => {
               <p className="text-[11px] text-center text-[#69726d] font-sans">
                 Complimentary sizing advice & custom orders
               </p>
+              <Link
+                href={isLoggedIn ? "/profile" : "/login"}
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-between border-t border-[#deddd3] pt-3 text-sm font-sans font-bold uppercase tracking-wider text-[#073a2d]"
+              >
+                <span className="flex items-center gap-2">
+                  {isLoggedIn ? (
+                    <User className="h-4 w-4 text-[#717975]" />
+                  ) : (
+                    <LogIn className="h-4 w-4 text-[#c79a45]" />
+                  )}
+                  <span>{isLoggedIn ? (user?.name || 'Patron Profile') : 'Sign In / Join Atelier'}</span>
+                </span>
+                <span className="flex items-center gap-2">
+                  {isLoggedIn && unreadCount > 0 && (
+                    <span className="rounded-full bg-[#ba1a1a] px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {unreadCount}
+                    </span>
+                  )}
+                  <ArrowRight className="h-4 w-4 text-[#c79a45]" />
+                </span>
+              </Link>
             </div>
           </div>
         </div>

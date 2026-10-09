@@ -55,7 +55,18 @@ export class AuthService {
       where: { id: user.id },
       data: { refreshTokenHash: await bcrypt.hash(tokens.refreshToken, 10) },
     });
-    return tokens;
+    return {
+      ...tokens,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        permissions: user.permissions ?? [],
+        mustChangePassword: user.mustChangePassword ?? false,
+      },
+    };
   }
 
   async customerLogin(dto: LoginDto) {

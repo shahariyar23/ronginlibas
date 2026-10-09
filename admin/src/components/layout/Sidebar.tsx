@@ -15,27 +15,52 @@ import {
   MessageSquare,
   Settings,
   LogOut,
+  UserCog,
 } from 'lucide-react';
-import { adminApi } from '@/lib/api';
+import { adminApi, AdminUser } from '@/lib/api';
 
-const NAV_ITEMS = [
+interface NavItemDef {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  permissionKey?: string;
+}
+
+const NAV_ITEMS: NavItemDef[] = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Products', href: '/products', icon: Shirt },
-  { name: 'Categories', href: '/categories', icon: Layers },
-  { name: 'Orders', href: '/orders', icon: ShoppingBag },
-  { name: 'Customers', href: '/customers', icon: Users },
-  { name: 'Inventory', href: '/inventory', icon: Warehouse },
-  { name: 'Coupons', href: '/coupons', icon: Ticket },
-  { name: 'Reviews', href: '/reviews', icon: MessageSquare },
+  { name: 'Products', href: '/products', icon: Shirt, permissionKey: 'products' },
+  { name: 'Categories', href: '/categories', icon: Layers, permissionKey: 'categories' },
+  { name: 'Orders', href: '/orders', icon: ShoppingBag, permissionKey: 'orders' },
+  { name: 'Customers', href: '/customers', icon: Users, permissionKey: 'customers' },
+  { name: 'Inventory', href: '/inventory', icon: Warehouse, permissionKey: 'inventory' },
+  { name: 'Coupons', href: '/coupons', icon: Ticket, permissionKey: 'coupons' },
+  { name: 'Reviews', href: '/reviews', icon: MessageSquare, permissionKey: 'reviews' },
+  { name: 'Staff & Roles', href: '/staff', icon: UserCog, permissionKey: 'staff' },
 ];
 
-const PREF_ITEMS = [
-  { name: 'Settings', href: '/settings', icon: Settings },
+const PREF_ITEMS: NavItemDef[] = [
+  { name: 'Settings', href: '/settings', icon: Settings, permissionKey: 'settings' },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [currentUser, setCurrentUser] = React.useState<AdminUser | null>(null);
+
+  React.useEffect(() => {
+    setCurrentUser(adminApi.auth.getUser());
+  }, []);
+
+  const hasAccess = (item: NavItemDef) => {
+    if (!item.permissionKey) return true;
+    if (!currentUser) return true;
+    if (currentUser.role === 'SUPER_ADMIN') return true;
+    const permissions = currentUser.permissions || [];
+    return permissions.includes(item.permissionKey);
+  };
+
+  const visibleNavItems = NAV_ITEMS.filter(hasAccess);
+  const visiblePrefItems = PREF_ITEMS.filter(hasAccess);
 
   const isActive = (href: string) => {
     if (href === '/') {
@@ -74,7 +99,7 @@ export function Sidebar() {
             NAVIGATION
           </div>
           <nav className="space-y-1">
-            {NAV_ITEMS.map((item) => {
+            {visibleNavItems.map((item) => {
               const active = isActive(item.href);
               const Icon = item.icon;
               return (
@@ -99,35 +124,37 @@ export function Sidebar() {
           </nav>
         </div>
 
-        <div>
-          <div className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-[#76a493]">
-            PREFERENCES
-          </div>
-          <nav className="space-y-1">
-            {PREF_ITEMS.map((item) => {
-              const active = isActive(item.href);
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`flex items-center gap-3 px-3.5 py-2.5 text-xs font-medium tracking-wide transition-colors ${
-                    active
-                      ? 'bg-[#12503e] text-white border-l-2 border-[#c79a45] shadow-sm font-semibold'
-                      : 'text-[#a1d1be] hover:text-white hover:bg-[#073a2d]/60'
-                  }`}
-                >
-                  <Icon
-                    className={`w-4 h-4 shrink-0 ${
-                      active ? 'text-[#c79a45]' : 'text-[#76a493]'
+        {visiblePrefItems.length > 0 && (
+          <div>
+            <div className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-[#76a493]">
+              PREFERENCES
+            </div>
+            <nav className="space-y-1">
+              {visiblePrefItems.map((item) => {
+                const active = isActive(item.href);
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`flex items-center gap-3 px-3.5 py-2.5 text-xs font-medium tracking-wide transition-colors ${
+                      active
+                        ? 'bg-[#12503e] text-white border-l-2 border-[#c79a45] shadow-sm font-semibold'
+                        : 'text-[#a1d1be] hover:text-white hover:bg-[#073a2d]/60'
                     }`}
-                  />
-                  <span>{item.name}</span>
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
+                  >
+                    <Icon
+                      className={`w-4 h-4 shrink-0 ${
+                        active ? 'text-[#c79a45]' : 'text-[#76a493]'
+                      }`}
+                    />
+                    <span>{item.name}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        )}
       </div>
 
       {/* Bottom Sign Out */}

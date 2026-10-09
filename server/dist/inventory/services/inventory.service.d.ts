@@ -27,11 +27,11 @@ export declare class InventoryService {
             type: import("@prisma/client").$Enums.InventoryTransactionType;
             id: string;
             createdAt: Date;
-            variantId: string;
             quantityChange: number;
             previousStock: number;
             newStock: number;
             note: string | null;
+            variantId: string;
             userId: string | null;
         };
     }>;

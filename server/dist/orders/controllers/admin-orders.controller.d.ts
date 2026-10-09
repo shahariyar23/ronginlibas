@@ -78,12 +78,12 @@ export declare class AdminOrdersController {
                 productImage: string | null;
                 id: string;
                 createdAt: Date;
+                variantId: string | null;
                 subtotal: import("@prisma/client/runtime/library").Decimal;
                 discountAmount: import("@prisma/client/runtime/library").Decimal;
                 sku: string;
                 productId: string | null;
                 orderId: string;
-                variantId: string | null;
                 productName: string;
                 variantName: string;
                 unitPrice: import("@prisma/client/runtime/library").Decimal;

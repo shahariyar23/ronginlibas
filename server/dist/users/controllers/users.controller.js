@@ -10,13 +10,16 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from '../services/users.service.js';
 import { CreateUserDto } from '../dto/create-user.dto.js';
+import { UpdateUserDto } from '../dto/update-user.dto.js';
+import { ChangeUserPasswordDto } from '../dto/change-user-password.dto.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
+import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
 let UsersController = class UsersController {
     usersService;
@@ -27,6 +30,13 @@ let UsersController = class UsersController {
         const data = await this.usersService.create(dto);
         return {
             message: 'Staff user created successfully',
+            data,
+        };
+    }
+    async changePassword(userId, dto) {
+        const data = await this.usersService.changePassword(userId, dto);
+        return {
+            message: 'Password updated successfully',
             data,
         };
     }
@@ -44,6 +54,20 @@ let UsersController = class UsersController {
             data,
         };
     }
+    async update(id, dto, currentUserId) {
+        const data = await this.usersService.update(id, dto, currentUserId);
+        return {
+            message: 'Staff user updated successfully',
+            data,
+        };
+    }
+    async delete(id, currentUserId) {
+        const data = await this.usersService.delete(id, currentUserId);
+        return {
+            message: 'Staff user deleted successfully',
+            data,
+        };
+    }
 };
 __decorate([
     Roles(UserRole.SUPER_ADMIN),
@@ -54,6 +78,16 @@ __decorate([
     __metadata("design:paramtypes", [CreateUserDto]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "create", null);
+__decorate([
+    Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER),
+    Patch('me/change-password'),
+    ApiOperation({ summary: 'Change password for currently authenticated staff or admin' }),
+    __param(0, CurrentUser('sub')),
+    __param(1, Body()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, ChangeUserPasswordDto]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "changePassword", null);
 __decorate([
     Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN),
     Get(),
@@ -71,6 +105,27 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "findById", null);
+__decorate([
+    Roles(UserRole.SUPER_ADMIN),
+    Patch(':id'),
+    ApiOperation({ summary: 'Update staff member details, role, permissions or status' }),
+    __param(0, Param('id')),
+    __param(1, Body()),
+    __param(2, CurrentUser('sub')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, UpdateUserDto, String]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "update", null);
+__decorate([
+    Roles(UserRole.SUPER_ADMIN),
+    Delete(':id'),
+    ApiOperation({ summary: 'Delete staff member' }),
+    __param(0, Param('id')),
+    __param(1, CurrentUser('sub')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "delete", null);
 UsersController = __decorate([
     ApiTags('Admin - Users'),
     ApiBearerAuth(),

@@ -78,12 +78,12 @@ export declare class CustomersService {
                 productImage: string | null;
                 id: string;
                 createdAt: Date;
+                variantId: string | null;
                 subtotal: Prisma.Decimal;
                 discountAmount: Prisma.Decimal;
                 sku: string;
                 productId: string | null;
                 orderId: string;
-                variantId: string | null;
                 productName: string;
                 variantName: string;
                 unitPrice: Prisma.Decimal;

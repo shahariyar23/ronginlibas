@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, Bell, User, CheckCircle2, AlertTriangle, ShieldCheck, LogOut, CheckCheck } from 'lucide-react';
+import { Search, Bell, User, CheckCircle2, AlertTriangle, ShieldCheck, LogOut, CheckCheck, KeyRound, Lock, X } from 'lucide-react';
 import { useAdmin } from '@/context/AdminContext';
+import { useToast } from '@/context/ToastContext';
 import { adminApi } from '@/lib/api';
 
 export function Header() {
@@ -77,17 +78,78 @@ export function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const { toast } = useToast();
+  const [userName, setUserName] = useState('Master Tailor Admin');
+  const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [isChangingPw, setIsChangingPw] = useState(false);
+
   useEffect(() => {
     const user = adminApi.auth.getUser();
     if (user?.email) {
       setUserEmail(user.email);
-      setUserRole(user.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Staff');
+      setUserRole(
+        user.role === 'SUPER_ADMIN'
+          ? 'Super Admin'
+          : user.role === 'ADMIN'
+          ? 'Administrator'
+          : 'Staff Manager',
+      );
+      if (user.firstName || user.lastName) {
+        setUserName(`${user.firstName || ''} ${user.lastName || ''}`.trim());
+      }
+      if (user.mustChangePassword) {
+        setMustChangePassword(true);
+      }
     }
   }, []);
 
   const handleSignOut = () => {
     adminApi.auth.logout();
     router.replace('/login');
+  };
+
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPw.length < 6) {
+      toast.error('New password must be at least 6 characters');
+      return;
+    }
+    if (newPw !== confirmPw) {
+      toast.error('New password and confirmation do not match');
+      return;
+    }
+
+    setIsChangingPw(true);
+    try {
+      const res = await adminApi.users.changePassword({
+        currentPassword: currentPw || undefined,
+        newPassword: newPw,
+      });
+      if (res.success) {
+        toast.success('Your password has been changed successfully');
+        setShowPasswordModal(false);
+        setMustChangePassword(false);
+        setCurrentPw('');
+        setNewPw('');
+        setConfirmPw('');
+        // Update stored user
+        const stored = adminApi.auth.getUser();
+        if (stored) {
+          stored.mustChangePassword = false;
+          adminApi.auth.getUser();
+        }
+      } else {
+        toast.error(res.error || 'Failed to update password');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Error updating password');
+    } finally {
+      setIsChangingPw(false);
+    }
   };
 
   // Keyboard shortcut for Cmd+K
@@ -278,10 +340,10 @@ export function Header() {
               setShowProfileMenu(!showProfileMenu);
               setShowNotifications(false);
             }}
-            className="flex items-center gap-2.5 pl-2 py-1 pr-1 text-xs text-[#1b1c18] hover:bg-[#f0eee7] transition-colors"
+            className="flex items-center gap-2.5 pl-2 py-1 pr-1 text-xs text-[#1b1c18] hover:bg-[#f0eee7] transition-colors cursor-pointer"
           >
             <span className="font-medium text-xs tracking-tight text-[#1b1c18]">
-              Master Tailor Admin
+              {userName}
             </span>
             <div className="w-8 h-8 rounded-full bg-[#073a2d] text-[#f8f6ef] flex items-center justify-center font-bold text-xs ring-1 ring-[#c79a45]/50">
               <User className="w-4 h-4 text-[#f8f6ef]" />
@@ -289,17 +351,36 @@ export function Header() {
           </button>
 
           {showProfileMenu && (
-            <div className="absolute right-0 mt-2 w-60 bg-white border border-[#deddd3] shadow-lg py-2 z-50 text-xs">
+            <div className="absolute right-0 mt-2 w-64 bg-white border border-[#deddd3] shadow-xl py-2 z-50 text-xs">
               <div className="px-4 py-2 border-b border-[#deddd3]">
-                <p className="font-bold text-[#073a2d]">Dhaka Flagship Atelier</p>
+                <p className="font-bold text-[#073a2d]">{userName}</p>
                 <p className="text-[11px] text-[#69726d] truncate">{userEmail}</p>
               </div>
+
+              {mustChangePassword && (
+                <div className="m-2 p-2 bg-[#fff8e1] border border-[#ffe082] text-[#8d6e63] text-[11px] rounded-xs">
+                  <p className="font-semibold text-[#6d4c41]">Password Update Required</p>
+                  <p>Please update your default password to secure your account.</p>
+                </div>
+              )}
+
               <div className="py-1">
                 <div className="px-4 py-2 text-[#404945] flex items-center gap-2">
                   <ShieldCheck className="w-3.5 h-3.5 text-[#073a2d]" />
                   <span>Clearance: {userRole}</span>
                 </div>
+                <button
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    setShowPasswordModal(true);
+                  }}
+                  className="w-full text-left px-4 py-2 text-[#073a2d] hover:bg-[#f0eee7] flex items-center gap-2 font-medium transition-colors cursor-pointer"
+                >
+                  <KeyRound className="w-3.5 h-3.5 text-[#c79a45]" />
+                  <span>Change Password</span>
+                </button>
               </div>
+
               <div className="border-t border-[#deddd3] pt-1">
                 <button
                   onClick={handleSignOut}
@@ -313,6 +394,97 @@ export function Header() {
           )}
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-[#deddd3] max-w-md w-full p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-4 border-b border-[#deddd3]">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-[#073a2d]/10 flex items-center justify-center text-[#073a2d]">
+                  <KeyRound className="w-4 h-4 text-[#073a2d]" />
+                </div>
+                <div>
+                  <h3 className="font-serif font-bold text-base text-[#1b1c18]">Change Password</h3>
+                  <p className="text-[11px] text-[#69726d]">Update your atelier staff credentials</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPasswordModal(false)}
+                className="text-[#717975] hover:text-[#1b1c18] cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleChangePasswordSubmit} className="space-y-4 pt-4">
+              {!mustChangePassword && (
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-[#404945] uppercase tracking-wider block">
+                    Current Password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={currentPw}
+                    onChange={(e) => setCurrentPw(e.target.value)}
+                    placeholder="Enter current password"
+                    className="w-full h-10 px-3 border border-[#deddd3] text-xs outline-none focus:border-[#073a2d]"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-[#404945] uppercase tracking-wider block">
+                  New Password (min 6 characters)
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={newPw}
+                  onChange={(e) => setNewPw(e.target.value)}
+                  placeholder="Enter new private password"
+                  className="w-full h-10 px-3 border border-[#deddd3] text-xs outline-none focus:border-[#073a2d]"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-[#404945] uppercase tracking-wider block">
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={confirmPw}
+                  onChange={(e) => setConfirmPw(e.target.value)}
+                  placeholder="Re-enter new password"
+                  className="w-full h-10 px-3 border border-[#deddd3] text-xs outline-none focus:border-[#073a2d]"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-[#deddd3]">
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordModal(false)}
+                  className="px-4 py-2 border border-[#deddd3] text-xs text-[#404945] hover:bg-[#f0eee7] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isChangingPw}
+                  className="px-4 py-2 bg-[#073a2d] hover:bg-[#0c4e3b] text-white text-xs font-semibold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  {isChangingPw ? 'Updating...' : 'Update Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

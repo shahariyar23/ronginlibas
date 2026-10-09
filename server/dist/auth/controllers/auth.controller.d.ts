@@ -12,16 +12,19 @@ export declare class AuthController {
     adminLogin(dto: LoginDto): Promise<{
         message: string;
         data: {
+            user: {
+                id: string;
+                email: string;
+                firstName: string;
+                lastName: string;
+                role: import("@prisma/client").$Enums.Role;
+                permissions: string[];
+                mustChangePassword: boolean;
+            };
             accessToken: string;
             refreshToken: string;
             tokenType: string;
             expiresIn: string;
-            user: {
-                id: string;
-                email: string | undefined;
-                role: string;
-                type: "customer" | "admin";
-            };
         };
     }>;
     customerLogin(dto: LoginDto, response: Response): Promise<{
