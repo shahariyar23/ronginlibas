@@ -9,7 +9,7 @@ import { Permissions } from '../../common/decorators/permissions.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
 import { AdminReviewFeedbackDto } from '../dto/admin-review-feedback.dto.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
-import { AuditService, AdminAuditActor } from '../../audit/audit.service.js';
+import { AuditService, type AdminAuditActor } from '../../audit/audit.service.js';
 
 @ApiTags('Admin - Reviews')
 @ApiBearerAuth()

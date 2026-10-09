@@ -41,8 +41,6 @@ let AdminProductImagesController = class AdminProductImagesController {
         if (!file)
             throw new BadRequestException('An image file is required');
         const uploaded = await this.cloudinary.uploadProductImage(file.buffer);
-        if (!actor)
-            throw new BadRequestException('Administrative identity is required');
         await this.auditService.record({
             actor,
             module: 'products',

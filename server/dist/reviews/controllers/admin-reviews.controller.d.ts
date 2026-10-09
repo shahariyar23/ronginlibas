@@ -1,7 +1,7 @@
 import { ReviewsService } from '../services/reviews.service.js';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto.js';
 import { AdminReviewFeedbackDto } from '../dto/admin-review-feedback.dto.js';
-import { AuditService, AdminAuditActor } from '../../audit/audit.service.js';
+import { AuditService, type AdminAuditActor } from '../../audit/audit.service.js';
 export declare class AdminReviewsController {
     private readonly reviewsService;
     private readonly auditService;
@@ -19,9 +19,9 @@ export declare class AdminReviewsController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            productId: string;
             customerId: string;
             status: import("@prisma/client").$Enums.ReviewStatus;
+            productId: string;
             rating: number;
             comment: string;
             adminFeedback: string | null;

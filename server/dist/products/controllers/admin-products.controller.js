@@ -54,7 +54,7 @@ let AdminProductsController = class AdminProductsController {
             entityId: data.id,
             entityLabel: data.name,
             summary: `Created product ${data.name}`,
-            after: data,
+            after: productAuditSnapshot(data),
         });
         return {
             message: 'Product created successfully',
@@ -72,8 +72,8 @@ let AdminProductsController = class AdminProductsController {
             entityId: data.id,
             entityLabel: data.name,
             summary: `Updated product ${data.name}`,
-            before,
-            after: data,
+            before: productAuditSnapshot(before),
+            after: productAuditSnapshot(data),
         });
         return {
             message: 'Product updated successfully',
@@ -91,7 +91,7 @@ let AdminProductsController = class AdminProductsController {
             entityId: before.id,
             entityLabel: before.name,
             summary: `Archived product ${before.name}`,
-            before: { isActive: before.isActive, deletedAt: before.deletedAt },
+            before: productAuditSnapshot(before),
             after: res.data,
         });
         return {
@@ -110,7 +110,7 @@ let AdminProductsController = class AdminProductsController {
             entityId: before.id,
             entityLabel: before.name,
             summary: `Restored product ${before.name}`,
-            before: { isActive: before.isActive, deletedAt: before.deletedAt },
+            before: productAuditSnapshot(before),
             after: res.data,
         });
         return {
@@ -129,7 +129,7 @@ let AdminProductsController = class AdminProductsController {
             entityId: before.id,
             entityLabel: before.name,
             summary: `Permanently deleted product ${before.name}`,
-            before,
+            before: productAuditSnapshot(before),
         });
         return {
             message: res.message,
@@ -147,7 +147,7 @@ let AdminProductsController = class AdminProductsController {
             entityId: before.id,
             entityLabel: before.name,
             summary: `Permanently deleted product ${before.name}`,
-            before,
+            before: productAuditSnapshot(before),
         });
         return {
             message: res.message,
@@ -237,4 +237,36 @@ AdminProductsController = __decorate([
         AuditService])
 ], AdminProductsController);
 export { AdminProductsController };
+function productAuditSnapshot(product) {
+    return {
+        id: product.id,
+        name: product.name,
+        slug: product.slug,
+        sku: product.sku,
+        price: product.price,
+        compareAtPrice: product.compareAtPrice,
+        costPrice: product.costPrice,
+        categoryId: product.categoryId,
+        isActive: product.isActive,
+        isFeatured: product.isFeatured,
+        isNewArrival: product.isNewArrival,
+        isBestSeller: product.isBestSeller,
+        deletedAt: product.deletedAt,
+        variants: product.variants?.map((variant) => ({
+            sku: variant.sku,
+            size: variant.size,
+            sizeLabel: variant.sizeLabel,
+            color: variant.color,
+            stock: variant.stock,
+            priceOverride: variant.priceOverride,
+            isActive: variant.isActive,
+        })),
+        images: product.images?.map((image) => ({
+            url: image.url,
+            publicId: image.publicId,
+            sortOrder: image.sortOrder,
+            isPrimary: image.isPrimary,
+        })),
+    };
+}
 //# sourceMappingURL=admin-products.controller.js.map

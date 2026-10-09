@@ -6,10 +6,25 @@ export declare class AdminAuditController {
     findAll(query: AuditQueryDto): Promise<{
         message: string;
         data: {
-            items: any;
+            items: {
+                id: string;
+                createdAt: Date;
+                summary: string;
+                module: string;
+                action: string;
+                actorId: string;
+                actorName: string;
+                actorEmail: string;
+                actorRole: string;
+                entityType: string;
+                entityId: string | null;
+                entityLabel: string | null;
+                before: import("@prisma/client/runtime/library").JsonValue | null;
+                after: import("@prisma/client/runtime/library").JsonValue | null;
+            }[];
             page: number;
             limit: number;
-            total: any;
+            total: number;
             totalPages: number;
         };
     }>;

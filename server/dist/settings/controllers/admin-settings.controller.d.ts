@@ -1,6 +1,6 @@
 import { SettingsService } from '../services/settings.service.js';
 import { UpdateSettingsDto } from '../dto/update-settings.dto.js';
-import { AuditService, AdminAuditActor } from '../../audit/audit.service.js';
+import { AuditService, type AdminAuditActor } from '../../audit/audit.service.js';
 export declare class AdminSettingsController {
     private readonly settingsService;
     private readonly auditService;

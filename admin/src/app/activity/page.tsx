@@ -113,12 +113,15 @@ export default function ActivityPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = adminApi.auth.getUser();
-    if (stored) setCurrentUser(stored);
+    let cancelled = false;
     adminApi.auth.refreshUser().then((live) => {
-      if (live) setCurrentUser(live);
+      if (cancelled) return;
+      setCurrentUser(live ?? adminApi.auth.getUser());
       setIsCheckingAccess(false);
     });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -166,7 +169,7 @@ export default function ActivityPage() {
     setPage(1);
   };
 
-  if (isCheckingAccess || isLoading && !currentUser) {
+  if (isCheckingAccess) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center">
         <RefreshCw className="h-7 w-7 animate-spin text-[#073a2d]" />
