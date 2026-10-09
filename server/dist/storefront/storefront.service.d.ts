@@ -17,16 +17,16 @@ export declare class StorefrontService {
             _count: {
                 products: number;
             };
-            sortOrder: number;
             slug: string;
+            sortOrder: number;
             image: string | null;
             parentId: string | null;
             children: {
                 description: string | null;
                 id: string;
                 name: string;
-                sortOrder: number;
                 slug: string;
+                sortOrder: number;
                 image: string | null;
             }[];
         }[];

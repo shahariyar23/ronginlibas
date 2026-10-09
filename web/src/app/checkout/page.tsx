@@ -210,28 +210,28 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="w-full pt-8 sm:pt-10 pb-24 bg-[#fbf9f2]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="w-full pt-6 sm:pt-10 pb-20 sm:pb-24 bg-[#fbf9f2]">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         {/* Header Breadcrumb */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <Link
             href="/shop"
-            className="inline-flex items-center gap-2 text-xs font-sans uppercase tracking-widest text-[#717975] hover:text-[#073a2d] transition-colors mb-3"
+            className="inline-flex items-center gap-1.5 text-xs font-sans uppercase tracking-widest text-[#717975] hover:text-[#073a2d] transition-colors mb-2 sm:mb-3"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Continue Shopping</span>
           </Link>
-          <h1 className="font-serif text-3xl sm:text-5xl font-normal text-[#073a2d]">
+          <h1 className="font-serif text-2xl sm:text-5xl font-normal text-[#073a2d]">
             Your Shopping Cart & Checkout
           </h1>
-          <p className="font-sans text-xs sm:text-sm text-[#69726d] mt-2">
+          <p className="font-sans text-xs sm:text-sm text-[#69726d] mt-1.5 sm:mt-2">
             Inspect your tailored selections and complete delivery details with open-box verification.
           </p>
         </div>
 
         {items.length === 0 && !orderConfirmed ? (
-          <div className="p-16 bg-white border border-[#deddd3] text-center space-y-4">
-            <h3 className="font-serif text-2xl text-[#073a2d]">Your Cart is Currently Empty</h3>
+          <div className="p-8 sm:p-16 bg-white border border-[#deddd3] text-center space-y-4">
+            <h3 className="font-serif text-xl sm:text-2xl text-[#073a2d]">Your Cart is Currently Empty</h3>
             <p className="font-sans text-xs text-[#69726d] max-w-sm mx-auto">
               Please select pieces from our Panjabi, Shirt, or Polo collection to initiate checkout.
             </p>
@@ -246,14 +246,14 @@ export default function CheckoutPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12">
             {/* Left Form Canvas (7 Cols) */}
-            <form onSubmit={handleSubmitOrder} className="lg:col-span-7 space-y-10">
+            <form onSubmit={handleSubmitOrder} className="lg:col-span-7 space-y-6 sm:space-y-10">
               {/* Step 1: Cart Items Review */}
-              <div className="bg-white border border-[#deddd3] p-6 shadow-xs">
-                <div className="flex items-center justify-between pb-4 border-b border-[#deddd3] mb-5">
-                  <h3 className="font-serif text-lg font-semibold text-[#073a2d] flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-[#073a2d] text-white text-xs flex items-center justify-center font-sans font-bold">
+              <div className="bg-white border border-[#deddd3] p-4 sm:p-6 shadow-xs">
+                <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#deddd3] mb-4 sm:mb-5">
+                  <h3 className="font-serif text-base sm:text-lg font-semibold text-[#073a2d] flex items-center gap-2">
+                    <span className="w-5.5 h-5.5 sm:w-6 sm:h-6 rounded-full bg-[#073a2d] text-white text-xs flex items-center justify-center font-sans font-bold">
                       1
                     </span>
                     <span>Review Cart Items ({items.length})</span>
@@ -263,7 +263,7 @@ export default function CheckoutPage() {
                   </Link>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {items.map((item, idx) => {
                     const itemKey = getItemKey(item.product.id, item.selectedSize, item.selectedColor);
                     const isUpdating = updatingKey === itemKey;
@@ -273,9 +273,9 @@ export default function CheckoutPage() {
                     return (
                       <div
                         key={`${item.product.id}-${item.selectedSize}-${idx}`}
-                        className="flex flex-col sm:flex-row gap-4 p-3 bg-[#fbf9f2] border border-[#deddd3]"
+                        className="flex gap-3 sm:gap-4 p-2.5 sm:p-3 bg-[#fbf9f2] border border-[#deddd3]"
                       >
-                        <div className="w-20 h-24 bg-white overflow-hidden flex-shrink-0">
+                        <div className="w-16 h-20 sm:w-20 sm:h-24 bg-white overflow-hidden shrink-0">
                           <img
                             src={item.product.images[0]}
                             alt={item.product.name}

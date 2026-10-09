@@ -17,8 +17,8 @@ export declare class AdminInventoryController {
                 createdAt: Date;
                 updatedAt: Date;
                 measurements: import("@prisma/client/runtime/library").JsonValue | null;
-                productId: string;
                 sku: string;
+                productId: string;
                 size: string;
                 color: string;
                 sizeLabel: string | null;

@@ -612,11 +612,11 @@ const ProductDetailView: React.FC<{
   const ensembleTotalPieces = 1 + ensembleCompanions.length;
 
   return (
-    <div className="w-full pt-8 sm:pt-10 pb-24 bg-[#fbf9f2]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+    <div className="w-full pt-6 sm:pt-10 pb-28 md:pb-24 bg-[#fbf9f2]">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-8 sm:space-y-12">
         {/* Subtle Breadcrumb & Artisan Reference Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 text-xs font-sans uppercase tracking-wider text-[#717975] pb-2 border-b border-[#deddd3]/60">
-          <nav className="flex items-center gap-2">
+          <nav className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
             <Link href="/" className="hover:text-[#073a2d] transition-colors">
               Home
             </Link>
@@ -639,16 +639,16 @@ const ProductDetailView: React.FC<{
         </div>
 
         {/* Main 2-Column Product Showcase Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 items-start">
           {/* LEFT COLUMN: Visual Gallery & Vertical Thumbs (7 Cols) */}
-          <div className="lg:col-span-7 flex flex-col-reverse md:flex-row gap-4">
+          <div className="lg:col-span-7 flex flex-col-reverse md:flex-row gap-3 sm:gap-4">
             {/* Vertical Thumbnail Strip */}
-            <div className="flex md:flex-col gap-3 overflow-x-auto md:overflow-visible shrink-0 pb-2 md:pb-0">
+            <div className="flex md:flex-col gap-2.5 sm:gap-3 overflow-x-auto md:overflow-visible shrink-0 pb-2 md:pb-0">
               {product.images.map((img, idx) => (
                 <button
                   key={idx}
                   onClick={() => setActiveImageIndex(idx)}
-                  className={`relative w-20 h-28 bg-[#f5f4ed] overflow-hidden border transition-all cursor-pointer ${
+                  className={`relative w-16 h-22 sm:w-20 sm:h-28 bg-[#f5f4ed] overflow-hidden border transition-all cursor-pointer ${
                     activeImageIndex === idx
                       ? 'border-[#073a2d] ring-1 ring-[#073a2d] opacity-100 shadow-xs'
                       : 'border-[#deddd3] opacity-70 hover:opacity-100'
@@ -660,9 +660,9 @@ const ProductDetailView: React.FC<{
             </div>
 
             {/* Main Interactive Zoom Canvas */}
-            <div className="relative flex-1 bg-[#f5f4ed] border border-[#deddd3] overflow-hidden group shadow-xs min-h-[500px] md:min-h-[640px]">
+            <div className="relative flex-1 bg-[#f5f4ed] border border-[#deddd3] overflow-hidden group shadow-xs min-h-[380px] sm:min-h-[500px] md:min-h-[640px]">
               {/* Floating Badges */}
-              <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+              <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10 flex flex-col gap-1.5 sm:gap-2">
                 {product.badge && (
                   <span className="bg-[#073a2d] text-white font-sans text-[10px] uppercase px-3 py-1.5 tracking-widest font-bold shadow-sm">
                     {product.badge}
@@ -1795,7 +1795,7 @@ const ProductDetailView: React.FC<{
           </div>
 
           {relatedProducts.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
               {relatedProducts.slice(0, 4).map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}
@@ -1806,6 +1806,41 @@ const ProductDetailView: React.FC<{
             </div>
           )}
         </section>
+      </div>
+
+      {/* Sticky Mobile Add To Cart / Buy Bar */}
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-[#fbf9f2]/95 backdrop-blur-md border-t border-[#deddd3] p-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <span className="font-serif font-bold text-base text-[#073a2d] block leading-tight">
+              ৳{currentPrice.toLocaleString()}
+            </span>
+            <span className="text-[10px] text-[#717975] uppercase tracking-wider block truncate">
+              {selectedSize ? `Size: ${selectedSize}` : 'Select Size'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              loading={isAddingToCart}
+              loadingText="Adding..."
+              disabled={isAddingToCart || isBuyingNow}
+              onClick={handleAddToCart}
+              className="h-9 px-3.5 bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-wider font-bold shadow-xs cursor-pointer"
+            >
+              <ShoppingCart className="w-3.5 h-3.5 mr-1 text-[#c79a45]" />
+              Add
+            </Button>
+            <Button
+              loading={isBuyingNow}
+              loadingText="Preparing..."
+              disabled={isAddingToCart || isBuyingNow}
+              onClick={handleBuyNow}
+              className="h-9 px-3.5 bg-[#c79a45] hover:bg-[#b58b3a] text-[#073a2d] font-sans text-xs uppercase tracking-wider font-bold shadow-xs cursor-pointer"
+            >
+              Buy Now
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Sizing Matrix Dialog Modal */}

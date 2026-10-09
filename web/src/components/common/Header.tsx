@@ -25,6 +25,7 @@ import {
   CheckCheck,
   Star,
   LogOut,
+  LogIn,
   Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -434,6 +435,8 @@ export const Header: React.FC = () => {
               productName: string;
               status: string;
               createdAt: string;
+              adminFeedback?: string | null;
+              adminFeedbackAt?: string | null;
             }>
           >('/reviews/mine'),
         ]);
@@ -505,6 +508,17 @@ export const Header: React.FC = () => {
                 status: 'PENDING',
                 type: 'review',
                 timestamp: new Date(rev.createdAt).getTime(),
+                link: '/profile',
+              });
+            }
+            if (rev.adminFeedback && rev.adminFeedbackAt) {
+              notifs.push({
+                id: `review-${rev.id}-ADMIN_FEEDBACK-${rev.adminFeedbackAt}`,
+                title: `Atelier replied to your review for ${rev.productName}`,
+                message: rev.adminFeedback,
+                status: 'ADMIN_FEEDBACK',
+                type: 'review',
+                timestamp: new Date(rev.adminFeedbackAt).getTime(),
                 link: '/profile',
               });
             }
@@ -602,17 +616,17 @@ export const Header: React.FC = () => {
         </div>
 
         {/* Main Navigation Bar */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-20 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
           {/* Left: Mobile hamburger & Logo */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
             <button
               onClick={() => setMobileMenuOpen(true)}
               aria-label="Open Navigation Menu"
-              className="lg:hidden text-[#1b1c18] hover:text-[#073a2d] p-1.5 focus:outline-none"
+              className="lg:hidden text-[#1b1c18] hover:text-[#073a2d] p-1.5 focus:outline-none cursor-pointer"
             >
-              <Menu className="w-6 h-6" />
+              <Menu className="w-5.5 h-5.5 sm:w-6 sm:h-6" />
             </button>
-            <Logo className="h-9 sm:h-10 w-auto" />
+            <Logo className="h-8 sm:h-10 w-auto" />
           </div>
 
           {/* Desktop Navigation Links with Active State Highlighting */}
@@ -631,18 +645,18 @@ export const Header: React.FC = () => {
           </Suspense>
 
           {/* Right Action Icons: Wishlist, Cart, and Luxury User Sanctuary Button */}
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             {/* Wishlist & Cart Container */}
-            <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-2.5">
               {/* 1. Wishlist Icon Button */}
               <Link
                 href="/shop?wishlist=true"
-                className="relative w-10 h-10 rounded-full bg-white hover:bg-[#fbf9f2] border border-[#deddd3] hover:border-[#c79a45] transition-all duration-300 shadow-xs hover:shadow-md flex items-center justify-center text-[#1b1c18] hover:text-[#073a2d] group cursor-pointer"
+                className="hidden sm:flex relative w-8.5 h-8.5 sm:w-10 sm:h-10 rounded-full bg-white hover:bg-[#fbf9f2] border border-[#deddd3] hover:border-[#c79a45] transition-all duration-300 shadow-xs hover:shadow-md items-center justify-center text-[#1b1c18] hover:text-[#073a2d] group cursor-pointer"
                 aria-label="Wishlist"
                 title="Saved Wishlist"
               >
-                <Heart className="w-4.5 h-4.5 transition-transform duration-300 group-hover:scale-110" />
-                <span className="absolute -top-1 -right-1 bg-gradient-to-r from-[#c79a45] via-[#dfb76c] to-[#c79a45] text-[#073a2d] text-[10px] font-sans font-black min-w-5 h-5 px-1 rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+                <Heart className="w-4 h-4 sm:w-4.5 sm:h-4.5 transition-transform duration-300 group-hover:scale-110" />
+                <span className="absolute -top-1 -right-1 bg-gradient-to-r from-[#c79a45] via-[#dfb76c] to-[#c79a45] text-[#073a2d] text-[9px] sm:text-[10px] font-sans font-black min-w-4.5 sm:min-w-5 h-4.5 sm:h-5 px-1 rounded-full flex items-center justify-center border-2 border-white shadow-xs">
                   {wishlist.length}
                 </span>
               </Link>
@@ -650,12 +664,12 @@ export const Header: React.FC = () => {
               {/* 2. Shopping Cart Trigger Button */}
               <button
                 onClick={() => setIsCartOpen(true)}
-                className="relative w-10 h-10 rounded-full bg-white hover:bg-[#fbf9f2] border border-[#deddd3] hover:border-[#c79a45] transition-all duration-300 shadow-xs hover:shadow-md flex items-center justify-center text-[#1b1c18] hover:text-[#073a2d] cursor-pointer group"
+                className="relative w-8.5 h-8.5 sm:w-10 sm:h-10 rounded-full bg-white hover:bg-[#fbf9f2] border border-[#deddd3] hover:border-[#c79a45] transition-all duration-300 shadow-xs hover:shadow-md flex items-center justify-center text-[#1b1c18] hover:text-[#073a2d] cursor-pointer group"
                 aria-label="Shopping Cart"
                 title="Shopping Cart"
               >
-                <ShoppingCart className="w-4.5 h-4.5 transition-transform duration-300 group-hover:scale-110" />
-                <span className="absolute -top-1 -right-1 bg-gradient-to-r from-[#c79a45] via-[#dfb76c] to-[#c79a45] text-[#073a2d] text-[10px] font-sans font-black min-w-5 h-5 px-1 rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+                <ShoppingCart className="w-4 h-4 sm:w-4.5 sm:h-4.5 transition-transform duration-300 group-hover:scale-110" />
+                <span className="absolute -top-1 -right-1 bg-gradient-to-r from-[#c79a45] via-[#dfb76c] to-[#c79a45] text-[#073a2d] text-[9px] sm:text-[10px] font-sans font-black min-w-4.5 sm:min-w-5 h-4.5 sm:h-5 px-1 rounded-full flex items-center justify-center border-2 border-white shadow-xs">
                   {totalCount}
                 </span>
               </button>
@@ -667,21 +681,21 @@ export const Header: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="inline-flex items-center gap-2.5 px-4.5 sm:px-5 py-2.5 bg-[#073a2d] hover:bg-[#0c4e3b] text-[#fbf9f2] rounded-md border-0 transition-colors duration-300 group cursor-pointer relative"
+                  className="inline-flex items-center justify-center gap-2 w-8.5 h-8.5 sm:w-auto p-0 sm:px-4.5 sm:py-2.5 bg-[#073a2d] hover:bg-[#0c4e3b] text-[#fbf9f2] rounded-full sm:rounded-md border-0 transition-colors duration-300 group cursor-pointer relative shrink-0"
                   aria-label="Patron Sanctuary Menu"
                   aria-expanded={isUserMenuOpen}
                   title={`Patron Sanctuary: ${user?.name}`}
                 >
                   <div className="relative flex items-center justify-center">
-                    <User className="w-4.5 h-4.5 text-[#c79a45] transition-transform duration-300 group-hover:scale-110" />
+                    <User className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-[#c79a45] transition-transform duration-300 group-hover:scale-110" />
                   </div>
-                  <span className="font-sans text-xs font-semibold uppercase tracking-[0.16em] text-[#fbf9f2] group-hover:text-white transition-colors">
+                  <span className="hidden sm:inline font-sans text-xs font-semibold uppercase tracking-[0.16em] text-[#fbf9f2] group-hover:text-white transition-colors">
                     {user?.name?.split(' ')[0] || 'Patron'}
                   </span>
                   {unreadCount > 0 && (
                     <span
                       key={unreadCount}
-                      className="absolute -top-1.5 -right-1.5 bg-[#ba1a1a] text-white text-[10px] font-bold min-w-5 h-5 px-1 rounded-full flex items-center justify-center border-2 border-white shadow-xs"
+                      className="absolute -top-1 -right-1 sm:-top-1.5 sm:-right-1.5 bg-[#ba1a1a] text-white text-[9px] sm:text-[10px] font-bold min-w-4.5 sm:min-w-5 h-4.5 sm:h-5 px-1 rounded-full flex items-center justify-center border-2 border-white shadow-xs"
                     >
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
@@ -690,12 +704,12 @@ export const Header: React.FC = () => {
               ) : (
                 <Link
                   href="/login"
-                  className="inline-flex items-center gap-2.5 px-4.5 sm:px-5 py-2.5 bg-[#073a2d] hover:bg-[#0c4e3b] text-[#fbf9f2] rounded-md border-0 transition-colors duration-300 group cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4.5 py-1.5 sm:py-2.5 bg-[#073a2d] hover:bg-[#0c4e3b] text-[#fbf9f2] rounded-md border-0 transition-colors duration-300 group cursor-pointer shrink-0 shadow-xs"
                   aria-label="Sign In to Patron Sanctuary"
                   title="Sign In to Patron Sanctuary"
                 >
-                  <User className="w-4.5 h-4.5 text-[#c79a45] transition-transform duration-300 group-hover:scale-110" />
-                  <span className="font-sans text-xs font-semibold uppercase tracking-[0.16em] text-[#fbf9f2] group-hover:text-white transition-colors">
+                  <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#c79a45] transition-transform duration-300 group-hover:translate-x-0.5" />
+                  <span className="font-sans text-[11px] sm:text-xs font-semibold uppercase tracking-[0.14em] sm:tracking-[0.16em] text-[#fbf9f2] group-hover:text-white transition-colors">
                     Login
                   </span>
                 </Link>
@@ -703,7 +717,7 @@ export const Header: React.FC = () => {
 
               {/* Patron Menu & Notifications Dropdown */}
               {isLoggedIn && isUserMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white border border-[#deddd3] rounded-lg shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute right-0 top-full mt-2 w-[calc(100vw-24px)] max-w-sm sm:w-96 bg-white border border-[#deddd3] rounded-lg shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                   {/* Patron Profile Header */}
                   <div className="bg-[#073a2d] text-white p-4">
                     <div className="flex items-center justify-between">
@@ -855,7 +869,7 @@ export const Header: React.FC = () => {
                     >
                       <span className="flex items-center gap-2">
                         <Package className="w-3.5 h-3.5 text-[#073a2d]" />
-                        <span>My Orders & Consignments</span>
+                        <span>My Orders </span>
                       </span>
                       <ArrowRight className="w-3 h-3 text-[#c79a45]" />
                     </Link>
@@ -877,7 +891,7 @@ export const Header: React.FC = () => {
                     >
                       <span className="flex items-center gap-2">
                         <User className="w-3.5 h-3.5 text-[#073a2d]" />
-                        <span>Patron Profile & Sizing</span>
+                        <span>My Profile</span>
                       </span>
                       <ArrowRight className="w-3 h-3 text-[#c79a45]" />
                     </Link>
@@ -990,7 +1004,11 @@ export const Header: React.FC = () => {
                   className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-sm text-[#073a2d] font-sans font-bold uppercase tracking-wider"
                 >
                   <span className="flex items-center gap-2 font-bold">
-                    <User className="w-4 h-4 text-[#717975]" />
+                    {isLoggedIn ? (
+                      <User className="w-4 h-4 text-[#717975]" />
+                    ) : (
+                      <LogIn className="w-4 h-4 text-[#c79a45]" />
+                    )}
                     <span>{isLoggedIn ? (user?.name || 'Patron Profile') : 'Sign In / Join Atelier'}</span>
                   </span>
                   <div className="flex items-center gap-2">

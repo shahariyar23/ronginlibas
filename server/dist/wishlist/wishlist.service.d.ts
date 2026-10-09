@@ -17,8 +17,8 @@ export declare class WishlistService {
             shortDescription: string | null;
             images: {
                 url: string;
-                altText: string | null;
                 isPrimary: boolean;
+                altText: string | null;
             }[];
         };
     }[]>;

@@ -39,17 +39,67 @@ let CustomersService = class CustomersService {
                     lastName: true,
                     phone: true,
                     email: true,
+                    secondaryPhone: true,
+                    preferredSize: true,
+                    preferredFit: true,
                     isActive: true,
                     createdAt: true,
                     updatedAt: true,
+                    addresses: {
+                        select: {
+                            id: true,
+                            fullName: true,
+                            phone: true,
+                            addressLine1: true,
+                            addressLine2: true,
+                            city: true,
+                            division: true,
+                            postalCode: true,
+                            area: true,
+                            isDefault: true,
+                        },
+                        orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
+                    },
+                    orders: {
+                        select: {
+                            id: true,
+                            orderNumber: true,
+                            totalAmount: true,
+                            shippingAddress: true,
+                            status: true,
+                            createdAt: true,
+                        },
+                        orderBy: { createdAt: 'desc' },
+                    },
                     _count: { select: { orders: true, reviews: true } },
                 },
                 orderBy: { createdAt: 'desc' },
             }),
             this.prisma.customer.count({ where }),
         ]);
+        const mappedItems = items.map((c) => {
+            const orders = c.orders || [];
+            const totalSpent = orders.reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
+            const defaultAddress = c.addresses?.find((a) => a.isDefault) || c.addresses?.[0];
+            let location = defaultAddress
+                ? [defaultAddress.city, defaultAddress.division].filter(Boolean).join(', ') || defaultAddress.addressLine1
+                : null;
+            if (!location) {
+                const orderWithAddr = orders.find((o) => o.shippingAddress);
+                if (orderWithAddr && typeof orderWithAddr.shippingAddress === 'object') {
+                    const sAddr = orderWithAddr.shippingAddress;
+                    location = [sAddr.addressLine1, sAddr.city, sAddr.division].filter(Boolean).join(', ') || sAddr.city || null;
+                }
+            }
+            return {
+                ...c,
+                totalSpent,
+                location,
+                lastOrderDate: orders[0]?.createdAt || null,
+            };
+        });
         return {
-            items,
+            items: mappedItems,
             page,
             limit,
             total,
@@ -59,24 +109,99 @@ let CustomersService = class CustomersService {
     async findById(id) {
         const customer = await this.prisma.customer.findUnique({
             where: { id },
-            select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                phone: true,
-                email: true,
-                isActive: true,
-                createdAt: true,
-                addresses: true,
+            include: {
+                addresses: {
+                    orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
+                },
+                measurements: true,
                 orders: {
-                    take: 5,
+                    include: {
+                        items: {
+                            include: {
+                                product: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        slug: true,
+                                        price: true,
+                                        images: {
+                                            take: 1,
+                                            orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+                                            select: { url: true, altText: true },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
                     orderBy: { createdAt: 'desc' },
+                },
+                reviews: {
+                    include: {
+                        product: {
+                            select: {
+                                id: true,
+                                name: true,
+                                slug: true,
+                                price: true,
+                                images: {
+                                    take: 1,
+                                    orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+                                    select: { url: true, altText: true },
+                                },
+                            },
+                        },
+                    },
+                    orderBy: { createdAt: 'desc' },
+                },
+                _count: {
+                    select: {
+                        orders: true,
+                        reviews: true,
+                    },
                 },
             },
         });
         if (!customer)
             throw new NotFoundException('Customer record not found');
-        return customer;
+        const totalSpent = customer.orders.reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
+        const completedOrders = customer.orders.filter((o) => o.status === 'DELIVERED').length;
+        const orderAddresses = customer.orders
+            .filter((o) => o.shippingAddress && typeof o.shippingAddress === 'object')
+            .map((o) => {
+            const sAddr = o.shippingAddress;
+            return {
+                id: `order-dest-${o.id}`,
+                source: 'ORDER_DESTINATION',
+                orderNumber: o.orderNumber,
+                fullName: sAddr.fullName || `${customer.firstName} ${customer.lastName || ''}`.trim(),
+                phone: sAddr.phone || customer.phone,
+                addressLine1: sAddr.addressLine1 || '',
+                addressLine2: sAddr.addressLine2 || null,
+                city: sAddr.city || '',
+                division: sAddr.division || '',
+                postalCode: sAddr.postalCode || '',
+                area: sAddr.area || null,
+                deliveryInstructions: sAddr.deliveryInstructions || null,
+                isDefault: false,
+                createdAt: o.createdAt,
+            };
+        });
+        const existingAddresses = [...customer.addresses];
+        const uniqueOrderAddresses = orderAddresses.filter((oa) => {
+            return !existingAddresses.some((ea) => ea.addressLine1?.toLowerCase().trim() === oa.addressLine1?.toLowerCase().trim() &&
+                ea.city?.toLowerCase().trim() === oa.city?.toLowerCase().trim());
+        });
+        const combinedAddresses = [...existingAddresses, ...uniqueOrderAddresses];
+        return {
+            ...customer,
+            addresses: combinedAddresses,
+            orderAddresses: uniqueOrderAddresses,
+            totalSpent,
+            completedOrders,
+            ordersCount: customer._count?.orders ?? customer.orders.length,
+            reviewsCount: customer._count?.reviews ?? customer.reviews.length,
+        };
     }
     async findMyProfile(customerId) {
         const customer = await this.prisma.customer.findUnique({

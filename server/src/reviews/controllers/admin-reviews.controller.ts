@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
+import { AdminReviewFeedbackDto } from '../dto/admin-review-feedback.dto.js';
 
 @ApiTags('Admin - Reviews')
 @ApiBearerAuth()
@@ -34,6 +35,16 @@ export class AdminReviewsController {
     const data = await this.reviewsService.updateStatus(id, status);
     return {
       message: `Review status updated to ${status}`,
+      data,
+    };
+  }
+
+  @Patch(':id/feedback')
+  @ApiOperation({ summary: 'Send feedback on a customer review' })
+  async updateFeedback(@Param('id') id: string, @Body() dto: AdminReviewFeedbackDto) {
+    const data = await this.reviewsService.updateAdminFeedback(id, dto.feedback);
+    return {
+      message: 'Review feedback sent successfully',
       data,
     };
   }

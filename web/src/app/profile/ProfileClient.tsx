@@ -280,11 +280,11 @@ export const ProfileClient: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen pt-8 sm:pt-10 pb-24 bg-[#fbf9f2]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+    <div className="min-h-screen pt-6 sm:pt-10 pb-20 sm:pb-24 bg-[#fbf9f2]">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-6 sm:space-y-8">
         {/* Top Breadcrumb & Sanctuary Header */}
         <div>
-          <nav className="mb-4 flex items-center gap-2 text-xs font-sans uppercase tracking-widest text-[#717975]">
+          <nav className="mb-3 sm:mb-4 flex items-center gap-2 text-xs font-sans uppercase tracking-widest text-[#717975]">
             <Link href="/" className="hover:text-[#073a2d] transition-colors">
               Home
             </Link>
@@ -293,23 +293,23 @@ export const ProfileClient: React.FC = () => {
           </nav>
 
           {/* Patron Banner Card */}
-          <div className="bg-[#073a2d] text-[#fbf9f2] p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-md border-l-4 border-[#c79a45] relative overflow-hidden">
-            <div className="relative z-10 flex items-center gap-4 sm:gap-6">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[#c79a45] text-[#073a2d] font-serif text-2xl sm:text-3xl font-bold flex items-center justify-center shrink-0 shadow-inner">
+          <div className="bg-[#073a2d] text-[#fbf9f2] p-4 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 shadow-md border-l-4 border-[#c79a45] relative overflow-hidden">
+            <div className="relative z-10 flex items-center gap-3.5 sm:gap-6">
+              <div className="w-13 h-13 sm:w-20 sm:h-20 bg-[#c79a45] text-[#073a2d] font-serif text-xl sm:text-3xl font-bold flex items-center justify-center shrink-0 shadow-inner">
                 {name.charAt(0)}
               </div>
               <div>
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1">
-                  <span className="font-sans text-[11px] uppercase tracking-[0.2em] text-[#c79a45] font-semibold flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 mb-1">
+                  <span className="font-sans text-[10px] sm:text-[11px] uppercase tracking-[0.16em] sm:tracking-[0.2em] text-[#c79a45] font-semibold flex items-center gap-1">
                     <Crown className="w-3.5 h-3.5" />
                     {user?.tier || 'Heritage Atelier Tier'}
                   </span>
                   <span className="text-[#76a493] text-xs">•</span>
-                  <span className="font-mono text-xs text-[#deddd3]">
+                  <span className="font-mono text-[11px] sm:text-xs text-[#deddd3]">
                     ID: {user?.membershipId || ''}
                   </span>
                 </div>
-                <h1 className="font-serif text-2xl sm:text-3xl text-white font-normal">
+                <h1 className="font-serif text-xl sm:text-3xl text-white font-normal">
                   {name}
                 </h1>
                 <p className="font-sans text-xs text-[#76a493] mt-1">

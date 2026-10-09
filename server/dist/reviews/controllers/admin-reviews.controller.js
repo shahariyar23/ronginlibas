@@ -18,6 +18,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
+import { AdminReviewFeedbackDto } from '../dto/admin-review-feedback.dto.js';
 let AdminReviewsController = class AdminReviewsController {
     reviewsService;
     constructor(reviewsService) {
@@ -34,6 +35,13 @@ let AdminReviewsController = class AdminReviewsController {
         const data = await this.reviewsService.updateStatus(id, status);
         return {
             message: `Review status updated to ${status}`,
+            data,
+        };
+    }
+    async updateFeedback(id, dto) {
+        const data = await this.reviewsService.updateAdminFeedback(id, dto.feedback);
+        return {
+            message: 'Review feedback sent successfully',
             data,
         };
     }
@@ -56,6 +64,15 @@ __decorate([
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], AdminReviewsController.prototype, "updateStatus", null);
+__decorate([
+    Patch(':id/feedback'),
+    ApiOperation({ summary: 'Send feedback on a customer review' }),
+    __param(0, Param('id')),
+    __param(1, Body()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, AdminReviewFeedbackDto]),
+    __metadata("design:returntype", Promise)
+], AdminReviewsController.prototype, "updateFeedback", null);
 AdminReviewsController = __decorate([
     ApiTags('Admin - Reviews'),
     ApiBearerAuth(),

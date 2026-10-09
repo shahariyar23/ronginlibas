@@ -15,6 +15,8 @@ export declare class ReviewsController {
             rating: number;
             comment: string;
             status: import("@prisma/client").$Enums.ReviewStatus;
+            adminFeedback: any;
+            adminFeedbackAt: any;
             createdAt: Date;
             updatedAt: Date;
         }[];
@@ -38,12 +40,12 @@ export declare class ReviewsController {
     update(reviewId: string, customerId: string, dto: UpdateReviewDto): Promise<{
         message: string;
         data: {
-            id: string;
-            updatedAt: Date;
-            status: import("@prisma/client").$Enums.ReviewStatus;
-            productId: string;
             rating: number;
             comment: string;
+            id: string;
+            productId: string;
+            status: import("@prisma/client").$Enums.ReviewStatus;
+            updatedAt: Date;
         };
     }>;
     remove(reviewId: string, customerId: string): Promise<{
@@ -56,8 +58,8 @@ export declare class ReviewsController {
         message: string;
         data: {
             id: string;
-            createdAt: Date;
             customerId: string;
+            createdAt: Date;
             reviewId: string;
             helpful: boolean;
         };

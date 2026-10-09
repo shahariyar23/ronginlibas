@@ -39,10 +39,10 @@ export declare class ProductReviewsController {
             canReview: boolean;
             reason: string;
             existingReview: {
-                id: string;
-                createdAt: Date;
-                status: import("@prisma/client").$Enums.ReviewStatus;
                 rating: number;
+                id: string;
+                status: import("@prisma/client").$Enums.ReviewStatus;
+                createdAt: Date;
             };
             orderNumber?: undefined;
         } | {
@@ -60,12 +60,12 @@ export declare class ProductReviewsController {
     create(productId: string, customerId: string, dto: CreateProductReviewDto): Promise<{
         message: string;
         data: {
-            id: string;
-            createdAt: Date;
-            status: import("@prisma/client").$Enums.ReviewStatus;
-            productId: string;
             rating: number;
             comment: string;
+            id: string;
+            productId: string;
+            status: import("@prisma/client").$Enums.ReviewStatus;
+            createdAt: Date;
         };
     }>;
 }

@@ -202,10 +202,10 @@ export const LoginClient: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen pt-8 sm:pt-10 pb-20 bg-[#fbf9f2]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen pt-6 sm:pt-10 pb-16 sm:pb-20 bg-[#fbf9f2]">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         {/* Breadcrumb */}
-        <nav className="mb-6 flex items-center gap-2 text-xs font-sans uppercase tracking-widest text-[#717975]">
+        <nav className="mb-4 sm:mb-6 flex items-center gap-2 text-xs font-sans uppercase tracking-widest text-[#717975]">
           <Link href="/" className="hover:text-[#073a2d] transition-colors">
             Home
           </Link>
@@ -215,7 +215,7 @@ export const LoginClient: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 bg-white shadow-xl overflow-hidden">
           {/* Left Editorial Privilege Sanctuary (5 Cols) */}
-          <div className="lg:col-span-5 bg-[#073a2d] text-[#fbf9f2] p-8 sm:p-12 flex flex-col justify-between relative overflow-hidden">
+          <div className="lg:col-span-5 bg-[#073a2d] text-[#fbf9f2] p-5 sm:p-12 flex flex-col justify-between relative overflow-hidden">
             {/* Background geometric motif */}
             <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-[#0d4d3b]/40 blur-3xl pointer-events-none" />
             <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-[#c79a45]/20 blur-3xl pointer-events-none" />
@@ -291,21 +291,21 @@ export const LoginClient: React.FC = () => {
           </div>
 
           {/* Right Dual-Tabbed Auth Sanctuary (7 Cols) */}
-          <div className="lg:col-span-7 p-6 sm:p-10 md:p-12 flex flex-col justify-center bg-white">
+          <div className="lg:col-span-7 p-4 sm:p-10 md:p-12 flex flex-col justify-center bg-white">
             {/* Crest & Title */}
-            <div className="text-center pb-6">
-              <div className="flex justify-center mb-4">
-                <Logo className="h-11 w-auto" />
+            <div className="text-center pb-5 sm:pb-6">
+              <div className="flex justify-center mb-3 sm:mb-4">
+                <Logo className="h-9 sm:h-11 w-auto" />
               </div>
               <h2 className="font-serif text-2xl sm:text-3xl text-[#073a2d] mt-1 font-normal">
-                Patron Sanctuary Portal
+                Welcome Back!
               </h2>
             </div>
 
             {/* Unauthenticated Alert Banner */}
-            <div className="max-w-md mx-auto w-full mb-6 p-4 bg-[#fdf8ed] border border-[#e8d5aa] text-[#073a2d] flex items-start gap-3 shadow-xs">
-              <div className="w-8 h-8 rounded-full bg-[#c79a45]/20 text-[#073a2d] flex items-center justify-center shrink-0 mt-0.5">
-                <Lock className="w-4 h-4 text-[#073a2d]" />
+            <div className="max-w-md mx-auto w-full mb-5 sm:mb-6 p-3 sm:p-4 bg-[#fdf8ed] border border-[#e8d5aa] text-[#073a2d] flex items-start gap-3 shadow-xs">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#c79a45]/20 text-[#073a2d] flex items-center justify-center shrink-0 mt-0.5">
+                <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#073a2d]" />
               </div>
               <div>
                 <h3 className="font-serif text-sm font-semibold text-[#073a2d]">
@@ -320,11 +320,11 @@ export const LoginClient: React.FC = () => {
             </div>
 
             {/* Dual Tab Switcher */}
-            <div className="flex max-w-md mx-auto w-full mb-8 bg-[#f5f4ed] p-1">
+            <div className="flex max-w-md mx-auto w-full mb-6 sm:mb-8 bg-[#f5f4ed] p-1">
               <button
                 type="button"
                 onClick={() => setActiveTab('signin')}
-                className={`flex-1 py-3 px-4 font-sans text-xs uppercase tracking-wider font-semibold transition-all ${
+                className={`flex-1 py-2.5 sm:py-3 px-3 sm:px-4 font-sans text-xs uppercase tracking-wider font-semibold transition-all ${
                   activeTab === 'signin'
                     ? 'bg-[#073a2d] text-white shadow-xs'
                     : 'text-[#69726d] hover:text-[#073a2d]'
@@ -341,13 +341,13 @@ export const LoginClient: React.FC = () => {
                     : 'text-[#69726d] hover:text-[#073a2d]'
                 }`}
               >
-                <span>Join Atelier</span>
-                <Badge
+                <span>Create New Account</span>
+                {/* <Badge
                   variant="outline"
                   className="text-[9px] uppercase tracking-normal bg-[#c79a45] text-[#073a2d] border-0 px-1.5 py-0 font-bold"
                 >
                   ৳500 Gift
-                </Badge>
+                </Badge> */}
               </button>
             </div>
 
@@ -357,7 +357,7 @@ export const LoginClient: React.FC = () => {
                 <form onSubmit={handleSignIn} className="space-y-5">
                   <div className="space-y-1.5">
                     <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">
-                      Patron Email Address
+                      Email Address
                     </Label>
                     <div className="relative">
                       <Input
@@ -375,7 +375,7 @@ export const LoginClient: React.FC = () => {
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">
-                        Secret Key / Password
+                        Password
                       </Label>
                       <button
                         type="button"
@@ -423,13 +423,13 @@ export const LoginClient: React.FC = () => {
                     disabled={isSubmitting}
                     className="w-full bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-[0.16em] h-13 shadow-md flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <span>Enter Patron Portal</span>
+                    <span>Sign in</span>
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 </form>
 
                 {/* Quick Demo Pre-fill for reviewer */}
-                <div className="pt-4 border-t border-[#f0eee7] text-center">
+                {/* <div className="pt-4 border-t border-[#f0eee7] text-center">
                   <p className="font-sans text-xs text-[#717975] mb-2">
                     Reviewing the atelier experience?
                   </p>
@@ -444,7 +444,7 @@ export const LoginClient: React.FC = () => {
                   >
                     Fill Demo Patron Credentials (Mahfuzur Rahman)
                   </Button>
-                </div>
+                </div> */}
               </div>
             )}
 

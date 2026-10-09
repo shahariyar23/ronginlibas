@@ -37,7 +37,19 @@ export class ReviewsService {
         skip,
         take: limit,
         include: {
-          customer: { select: { firstName: true, lastName: true } },
+          customer: {
+            select: {
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+              addresses: {
+                where: { isDefault: true },
+                select: { city: true, division: true },
+                take: 1,
+              },
+            },
+          },
           product: { select: { name: true, sku: true } },
         },
         orderBy: { createdAt: 'desc' },
@@ -224,6 +236,8 @@ export class ReviewsService {
       rating: r.rating,
       comment: r.comment,
       status: r.status,
+      adminFeedback: r.adminFeedback,
+      adminFeedbackAt: r.adminFeedbackAt,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
     }));
@@ -375,7 +389,13 @@ export class ReviewsService {
     if (!review) throw new NotFoundException('Review not found');
     return this.prisma.review.update({
       where: { id: review.id },
-      data: { rating: dto.rating, comment: dto.comment, status: 'PENDING' },
+      data: {
+        rating: dto.rating,
+        comment: dto.comment,
+        status: 'PENDING',
+        adminFeedback: null,
+        adminFeedbackAt: null,
+      },
       select: { id: true, productId: true, rating: true, comment: true, status: true, updatedAt: true },
     });
   }
@@ -403,6 +423,17 @@ export class ReviewsService {
     return this.prisma.review.update({
       where: { id },
       data: { status },
+    });
+  }
+
+  async updateAdminFeedback(id: string, feedback: string) {
+    const trimmedFeedback = feedback.trim();
+    if (!trimmedFeedback) throw new BadRequestException('Review feedback cannot be empty');
+
+    return this.prisma.review.update({
+      where: { id },
+      data: { adminFeedback: trimmedFeedback, adminFeedbackAt: new Date() },
+      select: { id: true, adminFeedback: true, adminFeedbackAt: true },
     });
   }
 }

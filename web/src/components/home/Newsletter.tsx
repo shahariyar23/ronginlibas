@@ -37,15 +37,15 @@ export const Newsletter: React.FC = () => {
   };
 
   return (
-    <section className="w-full py-24 bg-[#00231a] text-[#fbf9f2] border-t border-[#073a2d]">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
-        <span className="font-sans text-xs uppercase tracking-[0.3em] text-[#c79a45] font-semibold block">
+    <section className="w-full py-12 sm:py-24 bg-[#00231a] text-[#fbf9f2] border-t border-[#073a2d]">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4 sm:space-y-6">
+        <span className="font-sans text-[11px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] text-[#c79a45] font-semibold block">
           THE VIP ATELIER
         </span>
-        <h2 className="font-serif text-3xl sm:text-5xl font-normal text-[#fbf9f2]">
+        <h2 className="font-serif text-2xl sm:text-5xl font-normal text-[#fbf9f2]">
           BE THE FIRST TO KNOW
         </h2>
-        <p className="font-sans text-sm sm:text-base text-[#c0c8c3] max-w-lg mx-auto font-light leading-relaxed">
+        <p className="font-sans text-xs sm:text-base text-[#c0c8c3] max-w-lg mx-auto font-light leading-relaxed">
           Gain private access to limited festive drops, bespoke panjabi capsules, and sartorial journal essays.
         </p>
 

@@ -13,16 +13,16 @@ export declare class CategoriesService {
         _count: {
             products: number;
         };
-        sortOrder: number;
         slug: string;
+        sortOrder: number;
         image: string | null;
         parentId: string | null;
         children: {
             description: string | null;
             id: string;
             name: string;
-            sortOrder: number;
             slug: string;
+            sortOrder: number;
             image: string | null;
         }[];
     }[]>;
@@ -52,8 +52,8 @@ export declare class CategoriesService {
         createdAt: Date;
         updatedAt: Date;
         name: string;
-        sortOrder: number;
         slug: string;
+        sortOrder: number;
         image: string | null;
         parentId: string | null;
     }>;

@@ -103,14 +103,14 @@ export const CartDrawer: React.FC = () => {
         className="w-full sm:max-w-md p-0 flex flex-col bg-[#fbf9f2] border-l border-[#deddd3] text-[#1b1c18]"
       >
         {/* Header */}
-        <SheetHeader className="p-6 border-b border-[#deddd3] bg-white">
+        <SheetHeader className="p-4 sm:p-6 border-b border-[#deddd3] bg-white">
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-[11px] font-sans font-semibold tracking-[0.2em] text-[#c79a45] uppercase block flex items-center gap-1.5">
+              <span className="text-[10px] sm:text-[11px] font-sans font-semibold tracking-[0.2em] text-[#c79a45] uppercase block flex items-center gap-1.5">
                 <ShoppingCart className="w-3.5 h-3.5" />
                 Atelier Selection
               </span>
-              <SheetTitle className="font-serif text-2xl font-normal text-[#073a2d]">
+              <SheetTitle className="font-serif text-xl sm:text-2xl font-normal text-[#073a2d]">
                 Shopping Cart
               </SheetTitle>
             </div>
@@ -121,18 +121,18 @@ export const CartDrawer: React.FC = () => {
 
           {/* Free Shipping Progress Indicator */}
           {showFreeShippingProgress && (
-            <div className="mt-4 pt-4 border-t border-[#f0eee7]">
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-[#f0eee7]">
               <div className="flex items-center justify-between text-xs mb-1.5 font-sans">
                 {remainingForFreeShipping > 0 ? (
-                  <span className="text-[#69726d]">
-                    Add <strong className="text-[#073a2d]">৳{remainingForFreeShipping.toLocaleString()}</strong> more for complimentary shipping
+                  <span className="text-[#69726d] text-[11px] sm:text-xs">
+                    Add <strong className="text-[#073a2d]">৳{remainingForFreeShipping.toLocaleString()}</strong> more for free shipping
                   </span>
                 ) : (
-                  <span className="text-[#073a2d] font-semibold flex items-center gap-1">
-                    ✓ Complimentary Nationwide Delivery Unlocked
+                  <span className="text-[#073a2d] font-semibold text-[11px] sm:text-xs flex items-center gap-1">
+                    ✓ Free Delivery Unlocked
                   </span>
                 )}
-                <span className="font-bold text-[#073a2d]">{Math.round(freeShippingProgress)}%</span>
+                <span className="font-bold text-[#073a2d] text-xs">{Math.round(freeShippingProgress)}%</span>
               </div>
               <div className="w-full h-1.5 bg-[#eae8e1] overflow-hidden">
                 <div
@@ -145,7 +145,7 @@ export const CartDrawer: React.FC = () => {
         </SheetHeader>
 
         {/* Bag Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-3.5 sm:space-y-5">
           {items.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center py-12">
               <div className="w-16 h-16 flex items-center justify-center mb-4">
@@ -265,11 +265,11 @@ export const CartDrawer: React.FC = () => {
 
         {/* Footer / Checkout CTA */}
         {items.length > 0 && (
-          <div className="p-6 border-t border-[#deddd3] bg-white space-y-4">
+          <div className="p-4 sm:p-6 border-t border-[#deddd3] bg-white space-y-3 sm:space-y-4">
             {/* Coupon Code Input */}
             <div>
               {appliedCoupon ? (
-                <div className="flex items-center justify-between p-2.5 bg-[#f0eee7] border border-[#c79a45]/40 text-xs">
+                <div className="flex items-center justify-between p-2 sm:p-2.5 bg-[#f0eee7] border border-[#c79a45]/40 text-xs">
                   <div className="flex items-center gap-2 text-[#073a2d]">
                     <Tag className="w-3.5 h-3.5 text-[#c79a45]" />
                     <span>Coupon <strong>{appliedCoupon}</strong> Applied</span>
@@ -288,7 +288,7 @@ export const CartDrawer: React.FC = () => {
                     value={couponInput}
                     disabled={isApplyingCoupon}
                     onChange={(e) => setCouponInput(e.target.value)}
-                    className="h-10 text-xs bg-[#fbf9f2] border-[#deddd3] rounded-none focus-visible:ring-[#073a2d]"
+                    className="h-9 sm:h-10 text-xs bg-[#fbf9f2] border-[#deddd3] rounded-none focus-visible:ring-[#073a2d]"
                   />
                   <Button
                     type="submit"
@@ -296,7 +296,7 @@ export const CartDrawer: React.FC = () => {
                     loading={isApplyingCoupon}
                     loadingText="Applying..."
                     disabled={isApplyingCoupon || !couponInput.trim()}
-                    className="h-10 px-4 text-xs font-sans uppercase tracking-wider border-[#073a2d] text-[#073a2d] hover:bg-[#073a2d] hover:text-white"
+                    className="h-9 sm:h-10 px-3 sm:px-4 text-xs font-sans uppercase tracking-wider border-[#073a2d] text-[#073a2d] hover:bg-[#073a2d] hover:text-white"
                   >
                     Apply
                   </Button>
@@ -305,7 +305,7 @@ export const CartDrawer: React.FC = () => {
             </div>
 
             {/* Price Calculations */}
-            <div className="space-y-1.5 text-xs text-[#69726d] font-sans">
+            <div className="space-y-1 sm:space-y-1.5 text-xs text-[#69726d] font-sans">
               <div className="flex justify-between">
                 <span>Subtotal</span>
                 <span className="font-semibold text-[#1b1c18] tabular-nums">
@@ -328,7 +328,7 @@ export const CartDrawer: React.FC = () => {
                   )}
                 </span>
               </div>
-              <Separator className="my-2 bg-[#deddd3]" />
+              <Separator className="my-1.5 sm:my-2 bg-[#deddd3]" />
               <div className="flex justify-between text-base font-bold text-[#073a2d]">
                 <span className="font-serif">Estimated Total</span>
                 <span className="tabular-nums">৳{total.toLocaleString()}</span>
@@ -344,7 +344,7 @@ export const CartDrawer: React.FC = () => {
               onClick={() => setIsCartOpen(false)}
               className={cn(
                 buttonVariants({ variant: 'default' }),
-                'w-full bg-[#073a2d] hover:bg-[#0d4d3b] text-[#fbf9f2] font-sans uppercase tracking-[0.16em] text-xs h-13 py-4 shadow-md flex items-center justify-center gap-2 group'
+                'w-full bg-[#073a2d] hover:bg-[#0d4d3b] text-[#fbf9f2] font-sans uppercase tracking-[0.16em] text-xs h-11 sm:h-13 py-3 sm:py-4 shadow-md flex items-center justify-center gap-2 group'
               )}
             >
               <span>Proceed to Checkout</span>

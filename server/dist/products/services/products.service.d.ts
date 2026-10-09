@@ -57,8 +57,8 @@ export declare class ProductsService {
             createdAt: Date;
             updatedAt: Date;
             name: string;
-            sortOrder: number;
             slug: string;
+            sortOrder: number;
             image: string | null;
             parentId: string | null;
         };
@@ -83,8 +83,8 @@ export declare class ProductsService {
             createdAt: Date;
             updatedAt: Date;
             measurements: Prisma.JsonValue | null;
-            productId: string;
             sku: string;
+            productId: string;
             size: string;
             color: string;
             sizeLabel: string | null;
@@ -97,11 +97,11 @@ export declare class ProductsService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
+            isPrimary: boolean;
             productId: string;
             publicId: string | null;
             altText: string | null;
-            sortOrder: number;
-            isPrimary: boolean;
         }[];
     } & {
         description: string | null;
@@ -111,25 +111,25 @@ export declare class ProductsService {
         updatedAt: Date;
         name: string;
         tags: string[];
-        sku: string;
         slug: string;
-        shortDescription: string | null;
         price: Prisma.Decimal;
         compareAtPrice: Prisma.Decimal | null;
         costPrice: Prisma.Decimal | null;
+        sku: string;
         gender: import("@prisma/client").$Enums.Gender;
         fabric: string | null;
-        fabricOrigin: string | null;
         fit: string | null;
+        shortDescription: string | null;
+        fabricOrigin: string | null;
         gsm: number | null;
         careInstructions: string | null;
-        alertThreshold: number;
         isExpressAvailable: boolean;
-        categoryId: string;
+        alertThreshold: number;
+        deletedAt: Date | null;
         isFeatured: boolean;
         isNewArrival: boolean;
         isBestSeller: boolean;
-        deletedAt: Date | null;
+        categoryId: string;
     }>;
     findById(id: string): Promise<{
         category: {
@@ -139,8 +139,8 @@ export declare class ProductsService {
             createdAt: Date;
             updatedAt: Date;
             name: string;
-            sortOrder: number;
             slug: string;
+            sortOrder: number;
             image: string | null;
             parentId: string | null;
         };
@@ -150,8 +150,8 @@ export declare class ProductsService {
             createdAt: Date;
             updatedAt: Date;
             measurements: Prisma.JsonValue | null;
-            productId: string;
             sku: string;
+            productId: string;
             size: string;
             color: string;
             sizeLabel: string | null;
@@ -164,11 +164,11 @@ export declare class ProductsService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
+            isPrimary: boolean;
             productId: string;
             publicId: string | null;
             altText: string | null;
-            sortOrder: number;
-            isPrimary: boolean;
         }[];
     } & {
         description: string | null;
@@ -178,25 +178,25 @@ export declare class ProductsService {
         updatedAt: Date;
         name: string;
         tags: string[];
-        sku: string;
         slug: string;
-        shortDescription: string | null;
         price: Prisma.Decimal;
         compareAtPrice: Prisma.Decimal | null;
         costPrice: Prisma.Decimal | null;
+        sku: string;
         gender: import("@prisma/client").$Enums.Gender;
         fabric: string | null;
-        fabricOrigin: string | null;
         fit: string | null;
+        shortDescription: string | null;
+        fabricOrigin: string | null;
         gsm: number | null;
         careInstructions: string | null;
-        alertThreshold: number;
         isExpressAvailable: boolean;
-        categoryId: string;
+        alertThreshold: number;
+        deletedAt: Date | null;
         isFeatured: boolean;
         isNewArrival: boolean;
         isBestSeller: boolean;
-        deletedAt: Date | null;
+        categoryId: string;
     }>;
     findRelated(slug: string, relationType: 'RELATED' | 'COMPLEMENTARY'): Promise<({
         category: {
@@ -210,8 +210,8 @@ export declare class ProductsService {
             createdAt: Date;
             updatedAt: Date;
             measurements: Prisma.JsonValue | null;
-            productId: string;
             sku: string;
+            productId: string;
             size: string;
             color: string;
             sizeLabel: string | null;
@@ -224,11 +224,11 @@ export declare class ProductsService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
+            isPrimary: boolean;
             productId: string;
             publicId: string | null;
             altText: string | null;
-            sortOrder: number;
-            isPrimary: boolean;
         }[];
     } & {
         description: string | null;
@@ -238,25 +238,25 @@ export declare class ProductsService {
         updatedAt: Date;
         name: string;
         tags: string[];
-        sku: string;
         slug: string;
-        shortDescription: string | null;
         price: Prisma.Decimal;
         compareAtPrice: Prisma.Decimal | null;
         costPrice: Prisma.Decimal | null;
+        sku: string;
         gender: import("@prisma/client").$Enums.Gender;
         fabric: string | null;
-        fabricOrigin: string | null;
         fit: string | null;
+        shortDescription: string | null;
+        fabricOrigin: string | null;
         gsm: number | null;
         careInstructions: string | null;
-        alertThreshold: number;
         isExpressAvailable: boolean;
-        categoryId: string;
+        alertThreshold: number;
+        deletedAt: Date | null;
         isFeatured: boolean;
         isNewArrival: boolean;
         isBestSeller: boolean;
-        deletedAt: Date | null;
+        categoryId: string;
     })[]>;
     create(dto: CreateProductDto): Promise<{
         variants: {
@@ -265,8 +265,8 @@ export declare class ProductsService {
             createdAt: Date;
             updatedAt: Date;
             measurements: Prisma.JsonValue | null;
-            productId: string;
             sku: string;
+            productId: string;
             size: string;
             color: string;
             sizeLabel: string | null;
@@ -279,11 +279,11 @@ export declare class ProductsService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
+            isPrimary: boolean;
             productId: string;
             publicId: string | null;
             altText: string | null;
-            sortOrder: number;
-            isPrimary: boolean;
         }[];
     } & {
         description: string | null;
@@ -293,25 +293,25 @@ export declare class ProductsService {
         updatedAt: Date;
         name: string;
         tags: string[];
-        sku: string;
         slug: string;
-        shortDescription: string | null;
         price: Prisma.Decimal;
         compareAtPrice: Prisma.Decimal | null;
         costPrice: Prisma.Decimal | null;
+        sku: string;
         gender: import("@prisma/client").$Enums.Gender;
         fabric: string | null;
-        fabricOrigin: string | null;
         fit: string | null;
+        shortDescription: string | null;
+        fabricOrigin: string | null;
         gsm: number | null;
         careInstructions: string | null;
-        alertThreshold: number;
         isExpressAvailable: boolean;
-        categoryId: string;
+        alertThreshold: number;
+        deletedAt: Date | null;
         isFeatured: boolean;
         isNewArrival: boolean;
         isBestSeller: boolean;
-        deletedAt: Date | null;
+        categoryId: string;
     }>;
     update(id: string, dto: UpdateProductDto): Promise<({
         category: {
@@ -321,8 +321,8 @@ export declare class ProductsService {
             createdAt: Date;
             updatedAt: Date;
             name: string;
-            sortOrder: number;
             slug: string;
+            sortOrder: number;
             image: string | null;
             parentId: string | null;
         };
@@ -332,8 +332,8 @@ export declare class ProductsService {
             createdAt: Date;
             updatedAt: Date;
             measurements: Prisma.JsonValue | null;
-            productId: string;
             sku: string;
+            productId: string;
             size: string;
             color: string;
             sizeLabel: string | null;
@@ -346,11 +346,11 @@ export declare class ProductsService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
+            isPrimary: boolean;
             productId: string;
             publicId: string | null;
             altText: string | null;
-            sortOrder: number;
-            isPrimary: boolean;
         }[];
     } & {
         description: string | null;
@@ -360,25 +360,25 @@ export declare class ProductsService {
         updatedAt: Date;
         name: string;
         tags: string[];
-        sku: string;
         slug: string;
-        shortDescription: string | null;
         price: Prisma.Decimal;
         compareAtPrice: Prisma.Decimal | null;
         costPrice: Prisma.Decimal | null;
+        sku: string;
         gender: import("@prisma/client").$Enums.Gender;
         fabric: string | null;
-        fabricOrigin: string | null;
         fit: string | null;
+        shortDescription: string | null;
+        fabricOrigin: string | null;
         gsm: number | null;
         careInstructions: string | null;
-        alertThreshold: number;
         isExpressAvailable: boolean;
-        categoryId: string;
+        alertThreshold: number;
+        deletedAt: Date | null;
         isFeatured: boolean;
         isNewArrival: boolean;
         isBestSeller: boolean;
-        deletedAt: Date | null;
+        categoryId: string;
     }) | {
         imageCleanupWarning: string;
         category: {
@@ -388,8 +388,8 @@ export declare class ProductsService {
             createdAt: Date;
             updatedAt: Date;
             name: string;
-            sortOrder: number;
             slug: string;
+            sortOrder: number;
             image: string | null;
             parentId: string | null;
         };
@@ -399,8 +399,8 @@ export declare class ProductsService {
             createdAt: Date;
             updatedAt: Date;
             measurements: Prisma.JsonValue | null;
-            productId: string;
             sku: string;
+            productId: string;
             size: string;
             color: string;
             sizeLabel: string | null;
@@ -413,11 +413,11 @@ export declare class ProductsService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
+            isPrimary: boolean;
             productId: string;
             publicId: string | null;
             altText: string | null;
-            sortOrder: number;
-            isPrimary: boolean;
         }[];
         description: string | null;
         id: string;
@@ -426,25 +426,25 @@ export declare class ProductsService {
         updatedAt: Date;
         name: string;
         tags: string[];
-        sku: string;
         slug: string;
-        shortDescription: string | null;
         price: Prisma.Decimal;
         compareAtPrice: Prisma.Decimal | null;
         costPrice: Prisma.Decimal | null;
+        sku: string;
         gender: import("@prisma/client").$Enums.Gender;
         fabric: string | null;
-        fabricOrigin: string | null;
         fit: string | null;
+        shortDescription: string | null;
+        fabricOrigin: string | null;
         gsm: number | null;
         careInstructions: string | null;
-        alertThreshold: number;
         isExpressAvailable: boolean;
-        categoryId: string;
+        alertThreshold: number;
+        deletedAt: Date | null;
         isFeatured: boolean;
         isNewArrival: boolean;
         isBestSeller: boolean;
-        deletedAt: Date | null;
+        categoryId: string;
     }>;
     archive(id: string): Promise<{
         message: string;
@@ -456,8 +456,8 @@ export declare class ProductsService {
                 createdAt: Date;
                 updatedAt: Date;
                 name: string;
-                sortOrder: number;
                 slug: string;
+                sortOrder: number;
                 image: string | null;
                 parentId: string | null;
             };
@@ -467,8 +467,8 @@ export declare class ProductsService {
                 createdAt: Date;
                 updatedAt: Date;
                 measurements: Prisma.JsonValue | null;
-                productId: string;
                 sku: string;
+                productId: string;
                 size: string;
                 color: string;
                 sizeLabel: string | null;
@@ -481,11 +481,11 @@ export declare class ProductsService {
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
+                sortOrder: number;
+                isPrimary: boolean;
                 productId: string;
                 publicId: string | null;
                 altText: string | null;
-                sortOrder: number;
-                isPrimary: boolean;
             }[];
         } & {
             description: string | null;
@@ -495,25 +495,25 @@ export declare class ProductsService {
             updatedAt: Date;
             name: string;
             tags: string[];
-            sku: string;
             slug: string;
-            shortDescription: string | null;
             price: Prisma.Decimal;
             compareAtPrice: Prisma.Decimal | null;
             costPrice: Prisma.Decimal | null;
+            sku: string;
             gender: import("@prisma/client").$Enums.Gender;
             fabric: string | null;
-            fabricOrigin: string | null;
             fit: string | null;
+            shortDescription: string | null;
+            fabricOrigin: string | null;
             gsm: number | null;
             careInstructions: string | null;
-            alertThreshold: number;
             isExpressAvailable: boolean;
-            categoryId: string;
+            alertThreshold: number;
+            deletedAt: Date | null;
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
-            deletedAt: Date | null;
+            categoryId: string;
         };
     }>;
     restore(id: string): Promise<{
@@ -526,8 +526,8 @@ export declare class ProductsService {
                 createdAt: Date;
                 updatedAt: Date;
                 name: string;
-                sortOrder: number;
                 slug: string;
+                sortOrder: number;
                 image: string | null;
                 parentId: string | null;
             };
@@ -537,8 +537,8 @@ export declare class ProductsService {
                 createdAt: Date;
                 updatedAt: Date;
                 measurements: Prisma.JsonValue | null;
-                productId: string;
                 sku: string;
+                productId: string;
                 size: string;
                 color: string;
                 sizeLabel: string | null;
@@ -551,11 +551,11 @@ export declare class ProductsService {
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
+                sortOrder: number;
+                isPrimary: boolean;
                 productId: string;
                 publicId: string | null;
                 altText: string | null;
-                sortOrder: number;
-                isPrimary: boolean;
             }[];
         } & {
             description: string | null;
@@ -565,25 +565,25 @@ export declare class ProductsService {
             updatedAt: Date;
             name: string;
             tags: string[];
-            sku: string;
             slug: string;
-            shortDescription: string | null;
             price: Prisma.Decimal;
             compareAtPrice: Prisma.Decimal | null;
             costPrice: Prisma.Decimal | null;
+            sku: string;
             gender: import("@prisma/client").$Enums.Gender;
             fabric: string | null;
-            fabricOrigin: string | null;
             fit: string | null;
+            shortDescription: string | null;
+            fabricOrigin: string | null;
             gsm: number | null;
             careInstructions: string | null;
-            alertThreshold: number;
             isExpressAvailable: boolean;
-            categoryId: string;
+            alertThreshold: number;
+            deletedAt: Date | null;
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
-            deletedAt: Date | null;
+            categoryId: string;
         };
     }>;
     delete(id: string): Promise<{

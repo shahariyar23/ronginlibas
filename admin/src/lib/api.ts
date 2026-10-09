@@ -115,6 +115,32 @@ export interface CreateCouponPayload {
   isActive: boolean;
 }
 
+export interface AdminReview {
+  id: string;
+  rating: number;
+  comment: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'HIDDEN';
+  adminFeedback: string | null;
+  adminFeedbackAt: string | null;
+  createdAt: string;
+  customer: {
+    firstName: string;
+    lastName: string | null;
+    email: string | null;
+    phone: string;
+    addresses: Array<{ city: string; division: string }>;
+  };
+  product: { name: string; sku: string };
+}
+
+export interface AdminReviewListResponse {
+  items: AdminReview[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 export const getStoredToken = (): string | null => {
   if (typeof window === 'undefined') return memoryToken;
   try {
@@ -399,6 +425,23 @@ export const adminApi = {
         method: 'PATCH',
         body: JSON.stringify(payload),
       }),
+  },
+
+  // Reviews
+  reviews: {
+    getAll: (params?: { page?: number; limit?: number; status?: string }) => {
+      const query = new URLSearchParams();
+      if (params?.page) query.set('page', params.page.toString());
+      if (params?.limit) query.set('limit', params.limit.toString());
+      if (params?.status && params.status !== 'ALL') query.set('status', params.status);
+      const qs = query.toString();
+      return request<AdminReviewListResponse>(`/admin/reviews${qs ? `?${qs}` : ''}`);
+    },
+    sendFeedback: (id: string, feedback: string) =>
+      request<Pick<AdminReview, 'id' | 'adminFeedback' | 'adminFeedbackAt'>>(
+        `/admin/reviews/${encodeURIComponent(id)}/feedback`,
+        { method: 'PATCH', body: JSON.stringify({ feedback }) },
+      ),
   },
 
   // Inventory

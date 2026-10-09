@@ -192,8 +192,8 @@ export const OrdersClient: React.FC = () => {
   }
 
   return (
-    <main className="min-h-screen bg-[#fbf9f2] py-10">
-      <div className="mx-auto max-w-6xl space-y-8 px-4 sm:px-6">
+    <main className="min-h-screen bg-[#fbf9f2] py-6 sm:py-10">
+      <div className="mx-auto max-w-6xl space-y-6 sm:space-y-8 px-3 sm:px-6">
         <nav className="text-xs uppercase tracking-widest text-[#717975]">
           <Link href="/" className="hover:text-[#073a2d]">Home</Link>
           <span className="px-2">/</span>
@@ -202,11 +202,11 @@ export const OrdersClient: React.FC = () => {
           <span className="text-[#073a2d]">Orders</span>
         </nav>
 
-        <header className="flex flex-col gap-5 border-b border-[#deddd3] pb-6 sm:flex-row sm:items-end sm:justify-between">
+        <header className="flex flex-col gap-4 sm:gap-5 border-b border-[#deddd3] pb-5 sm:pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c79a45]">Account</span>
-            <h1 className="mt-1 font-serif text-3xl text-[#073a2d] sm:text-4xl">Your Orders</h1>
-            <p className="mt-2 text-sm text-[#69726d]">Order history and delivery information for {user?.name}.</p>
+            <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c79a45]">Account</span>
+            <h1 className="mt-1 font-serif text-2xl text-[#073a2d] sm:text-4xl">Your Orders</h1>
+            <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-[#69726d]">Order history and delivery information for {user?.name}.</p>
           </div>
           <div className="relative w-full sm:max-w-xs">
             <Search className="absolute left-3 top-3 h-4 w-4 text-[#717975]" />
@@ -214,7 +214,7 @@ export const OrdersClient: React.FC = () => {
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search order number or item"
-              className="pl-9"
+              className="pl-9 h-10 text-xs"
             />
           </div>
         </header>
@@ -229,7 +229,7 @@ export const OrdersClient: React.FC = () => {
               key={value}
               variant={filter === value ? 'default' : 'outline'}
               onClick={() => setFilter(value)}
-              className={filter === value ? 'bg-[#073a2d] text-white' : ''}
+              className={`text-xs h-8 sm:h-9 ${filter === value ? 'bg-[#073a2d] text-white' : ''}`}
             >
               {label}
             </Button>
@@ -239,36 +239,36 @@ export const OrdersClient: React.FC = () => {
         {isLoading ? (
           <LogoLoader />
         ) : filteredOrders.length === 0 ? (
-          <div className="space-y-3 border border-[#deddd3] bg-white p-12 text-center">
+          <div className="space-y-3 border border-[#deddd3] bg-white p-8 sm:p-12 text-center">
             <Package className="mx-auto h-10 w-10 text-[#c79a45]" />
             <h2 className="font-serif text-xl text-[#073a2d]">No matching orders</h2>
-            <p className="text-sm text-[#69726d]">Orders placed with this account will appear here.</p>
-            <Link href="/shop" className="inline-block text-sm font-semibold text-[#073a2d] underline">
+            <p className="text-xs sm:text-sm text-[#69726d]">Orders placed with this account will appear here.</p>
+            <Link href="/shop" className="inline-block text-xs sm:text-sm font-semibold text-[#073a2d] underline">
               Browse the collection
             </Link>
           </div>
         ) : (
-          <div className="space-y-5">
+          <div className="space-y-4 sm:space-y-5">
             {filteredOrders.map((order) => (
               <article key={order.orderNumber} className="border border-[#deddd3] bg-white">
-                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#deddd3] bg-[#f5f4ed] p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 border-b border-[#deddd3] bg-[#f5f4ed] p-3.5 sm:p-5">
                   <div>
-                    <span className="text-[10px] uppercase tracking-widest text-[#717975]">Order</span>
-                    <h2 className="font-serif text-xl font-semibold text-[#073a2d]">{order.orderNumber}</h2>
-                    <span className="mt-1 inline-flex items-center gap-1 text-xs text-[#69726d]">
+                    <span className="text-[9px] sm:text-[10px] uppercase tracking-widest text-[#717975]">Order</span>
+                    <h2 className="font-serif text-lg sm:text-xl font-semibold text-[#073a2d]">{order.orderNumber}</h2>
+                    <span className="mt-0.5 sm:mt-1 inline-flex items-center gap-1 text-[11px] sm:text-xs text-[#69726d]">
                       <Calendar className="h-3.5 w-3.5" />
                       {new Date(order.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Badge className="rounded-none bg-[#073a2d] px-3 py-1 uppercase text-white">
+                  <div className="flex items-center gap-2.5 sm:gap-3">
+                    <Badge className="rounded-none bg-[#073a2d] px-2.5 py-0.5 sm:px-3 sm:py-1 uppercase text-white text-[10px] sm:text-xs">
                       {order.status.replaceAll('_', ' ')}
                     </Badge>
-                    <span className="font-semibold text-[#073a2d]">৳{order.totalAmount.toLocaleString()}</span>
+                    <span className="font-semibold text-sm sm:base text-[#073a2d]">৳{order.totalAmount.toLocaleString()}</span>
                   </div>
                 </div>
 
-                <div className="divide-y divide-[#f0eee7] px-5">
+                <div className="divide-y divide-[#f0eee7] px-3.5 sm:px-5">
                   {order.items.map((item, index) => (
                     <div key={`${item.productId}-${index}`} className="flex flex-wrap items-center justify-between gap-3 py-4">
                       <div>

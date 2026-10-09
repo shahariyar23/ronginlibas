@@ -343,6 +343,8 @@ model Review {
   rating     Int          // 1-5
   comment    String
   status     ReviewStatus @default(PENDING)
+  adminFeedback String?
+  adminFeedbackAt DateTime?
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
   votes ReviewVote[]

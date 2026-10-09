@@ -14,8 +14,8 @@ export declare class InventoryService {
             createdAt: Date;
             updatedAt: Date;
             measurements: Prisma.JsonValue | null;
-            productId: string;
             sku: string;
+            productId: string;
             size: string;
             color: string;
             sizeLabel: string | null;

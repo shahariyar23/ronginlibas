@@ -23,8 +23,8 @@ export declare class CartController {
                     slug: string;
                     image: {
                         url: string;
-                        altText: string | null;
                         isPrimary: boolean;
+                        altText: string | null;
                     };
                 };
                 variant: {
@@ -65,8 +65,8 @@ export declare class CartController {
                     slug: string;
                     image: {
                         url: string;
-                        altText: string | null;
                         isPrimary: boolean;
+                        altText: string | null;
                     };
                 };
                 variant: {
@@ -107,8 +107,8 @@ export declare class CartController {
                     slug: string;
                     image: {
                         url: string;
-                        altText: string | null;
                         isPrimary: boolean;
+                        altText: string | null;
                     };
                 };
                 variant: {
@@ -149,8 +149,8 @@ export declare class CartController {
                     slug: string;
                     image: {
                         url: string;
-                        altText: string | null;
                         isPrimary: boolean;
+                        altText: string | null;
                     };
                 };
                 variant: {
@@ -191,8 +191,8 @@ export declare class CartController {
                     slug: string;
                     image: {
                         url: string;
-                        altText: string | null;
                         isPrimary: boolean;
+                        altText: string | null;
                     };
                 };
                 variant: {
@@ -233,8 +233,8 @@ export declare class CartController {
                     slug: string;
                     image: {
                         url: string;
-                        altText: string | null;
                         isPrimary: boolean;
+                        altText: string | null;
                     };
                 };
                 variant: {
@@ -279,8 +279,8 @@ export declare class CartMergeController {
                     slug: string;
                     image: {
                         url: string;
-                        altText: string | null;
                         isPrimary: boolean;
+                        altText: string | null;
                     };
                 };
                 variant: {

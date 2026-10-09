@@ -9,14 +9,22 @@ export declare class CustomersService {
     constructor(prisma: PrismaService);
     findAll(query: PaginationQueryDto): Promise<PaginatedResult<any>>;
     findById(id: string): Promise<{
-        email: string | null;
-        phone: string;
-        firstName: string;
-        lastName: string | null;
-        id: string;
-        isActive: boolean;
-        createdAt: Date;
-        addresses: {
+        addresses: ({
+            id: string;
+            source: string;
+            orderNumber: string;
+            fullName: any;
+            phone: any;
+            addressLine1: any;
+            addressLine2: any;
+            city: any;
+            division: any;
+            postalCode: any;
+            area: any;
+            deliveryInstructions: any;
+            isDefault: boolean;
+            createdAt: Date;
+        } | {
             email: string | null;
             phone: string;
             id: string;
@@ -33,8 +41,57 @@ export declare class CustomersService {
             isDefault: boolean;
             customerId: string;
             country: string;
+        })[];
+        orderAddresses: {
+            id: string;
+            source: string;
+            orderNumber: string;
+            fullName: any;
+            phone: any;
+            addressLine1: any;
+            addressLine2: any;
+            city: any;
+            division: any;
+            postalCode: any;
+            area: any;
+            deliveryInstructions: any;
+            isDefault: boolean;
+            createdAt: Date;
         }[];
-        orders: {
+        totalSpent: number;
+        completedOrders: number;
+        ordersCount: number;
+        reviewsCount: number;
+        orders: ({
+            items: ({
+                product: {
+                    id: string;
+                    name: string;
+                    slug: string;
+                    price: Prisma.Decimal;
+                    images: {
+                        url: string;
+                        altText: string | null;
+                    }[];
+                } | null;
+            } & {
+                productImage: string | null;
+                id: string;
+                createdAt: Date;
+                subtotal: Prisma.Decimal;
+                discountAmount: Prisma.Decimal;
+                sku: string;
+                productId: string | null;
+                orderId: string;
+                variantId: string | null;
+                productName: string;
+                variantName: string;
+                unitPrice: Prisma.Decimal;
+                quantity: number;
+                size: string | null;
+                color: string | null;
+            })[];
+        } & {
             id: string;
             createdAt: Date;
             updatedAt: Date;
@@ -58,7 +115,62 @@ export declare class CustomersService {
             shippingAddress: Prisma.JsonValue;
             customerNotes: string | null;
             adminNotes: string | null;
-        }[];
+        })[];
+        reviews: ({
+            product: {
+                id: string;
+                name: string;
+                slug: string;
+                price: Prisma.Decimal;
+                images: {
+                    url: string;
+                    altText: string | null;
+                }[];
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            customerId: string;
+            status: import("@prisma/client").$Enums.ReviewStatus;
+            productId: string;
+            rating: number;
+            comment: string;
+        })[];
+        measurements: {
+            id: string;
+            updatedAt: Date;
+            chest: Prisma.Decimal | null;
+            shoulder: Prisma.Decimal | null;
+            sleeveLength: Prisma.Decimal | null;
+            collar: Prisma.Decimal | null;
+            waist: Prisma.Decimal | null;
+            trouserLength: Prisma.Decimal | null;
+            garmentLength: Prisma.Decimal | null;
+            tailoringNotes: string | null;
+            customerId: string;
+        } | null;
+        _count: {
+            orders: number;
+            reviews: number;
+        };
+        email: string | null;
+        phone: string;
+        firstName: string;
+        lastName: string | null;
+        preferredSize: string | null;
+        preferredFit: string | null;
+        marketingConsent: boolean;
+        id: string;
+        passwordHash: string | null;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        refreshTokenHash: string | null;
+        resetTokenHash: string | null;
+        resetTokenExpiresAt: Date | null;
+        secondaryPhone: string | null;
+        dateOfBirth: Date | null;
     }>;
     findMyProfile(customerId: string): Promise<{
         email: string | null;

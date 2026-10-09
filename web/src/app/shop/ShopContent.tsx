@@ -538,80 +538,20 @@ export const ShopContent: React.FC = () => {
       </div>
 
       {/* Main Interactive Controls Bar */}
-      <div className="sticky top-20 z-30 bg-[#fbf9f2]/95 backdrop-blur-md border-b border-[#deddd3] py-3.5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-4">
-          {/* Mobile Filter Sheet Trigger */}
-          <div className="flex items-center gap-3">
-            <Sheet open={mobileFilterOpen} onOpenChange={setMobileFilterOpen}>
-              <SheetTrigger
-                render={
-                  <Button
-                    variant="outline"
-                    className="lg:hidden h-9 px-3.5 text-xs font-sans uppercase tracking-wider border-[#073a2d] text-[#073a2d] flex items-center gap-2"
-                  >
-                    <SlidersHorizontal className="w-3.5 h-3.5" />
-                    <span>Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}</span>
-                  </Button>
-                }
-              />
-              <SheetContent side="left" className="w-4/5 max-w-sm bg-[#fbf9f2] p-6 overflow-y-auto">
-                <SheetHeader className="pb-4 border-b border-[#deddd3]">
-                  <SheetTitle className="font-serif text-xl text-[#073a2d]">
-                    Filter Collection
-                  </SheetTitle>
-                </SheetHeader>
-                <div className="mt-6">
-                  {renderFilterPanel()}
-                </div>
-              </SheetContent>
-            </Sheet>
-
-            <span className="text-xs font-sans text-[#69726d]">
-              Showing <strong className="text-[#073a2d]">{pageMeta.total}</strong> Sartorial Pieces
-            </span>
-          </div>
-
-          {/* Active Filter Pills */}
-          {activeFiltersCount > 0 && (
-            <div className="hidden sm:flex items-center gap-2 flex-wrap">
-              {selectedCategory !== 'all' && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#deddd3] text-[11px] text-[#073a2d]">
-                  {categories.find((c) => c.slug === selectedCategory)?.name}
-                  <button onClick={() => updateQuery({ category: null })}>
-                    <X className="w-3 h-3 text-[#717975] hover:text-black" />
-                  </button>
-                </span>
-              )}
-              {selectedSizes.map((s) => (
-                <span
-                  key={s}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#deddd3] text-[11px] text-[#073a2d]"
-                >
-                  Size: {s}
-                  <button onClick={() => toggleQueryValue('size', s)}>
-                    <X className="w-3 h-3 text-[#717975] hover:text-black" />
-                  </button>
-                </span>
-              ))}
-              <button
-                onClick={clearAllFilters}
-                className="text-[11px] text-[#ba1a1a] hover:underline font-semibold ml-1"
-              >
-                Clear All
-              </button>
-            </div>
-          )}
-
-          {/* Right Layout & Sorting */}
-          <div className="flex items-center gap-4">
+      <div className="sticky top-16 sm:top-20 z-30 bg-[#fbf9f2]/95 backdrop-blur-md border-b border-[#deddd3] py-2.5 sm:py-3.5">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          {/* Mobile view (< sm): Clean two-row mobile-first toolbar */}
+          <div className="flex flex-col gap-2.5 sm:hidden">
+            {/* Row 1: Full-width search bar */}
             <form
               onSubmit={(event) => {
                 event.preventDefault();
                 updateQuery({ q: searchDraft.trim() || null });
               }}
-              className="flex items-center border border-[#deddd3] bg-white"
+              className="flex items-center border border-[#deddd3] bg-white h-9 px-3 w-full shadow-2xs"
               role="search"
             >
+              <Search className="h-3.5 w-3.5 text-[#717975] shrink-0 mr-2" />
               <input
                 value={searchDraft}
                 onChange={(event) =>
@@ -620,54 +560,208 @@ export const ShopContent: React.FC = () => {
                     value: event.target.value,
                   })
                 }
-                placeholder="Search products"
-                aria-label="Search products"
-                className="w-28 sm:w-40 bg-transparent px-2 py-1.5 text-xs outline-none"
+                placeholder="Search collection..."
+                aria-label="Search collection"
+                className="w-full bg-transparent text-xs outline-none placeholder:text-[#9ea6a1]"
               />
-              <button type="submit" aria-label="Submit product search" className="px-2 text-[#073a2d]">
-                <Search className="h-4 w-4" />
-              </button>
+              {searchDraft && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchEdit({ query: initialQueryFromUrl, value: '' });
+                    updateQuery({ q: null });
+                  }}
+                  className="p-1 text-[#717975] hover:text-[#1b1c18]"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </form>
-            {/* Sorting Dropdown */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-sans text-[#717975] hidden sm:inline">Sort:</span>
+
+            {/* Row 2: Filter Button & Sort Dropdown side by side */}
+            <div className="grid grid-cols-2 gap-2">
+              <Sheet open={mobileFilterOpen} onOpenChange={setMobileFilterOpen}>
+                <SheetTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      className="w-full h-9 px-3 text-[11px] font-sans uppercase tracking-wider border-[#073a2d] text-[#073a2d] flex items-center justify-center gap-1.5 bg-white font-semibold shadow-2xs"
+                    >
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-[#c79a45]" />
+                      <span>Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}</span>
+                    </Button>
+                  }
+                />
+                <SheetContent side="left" className="w-[85vw] max-w-sm bg-[#fbf9f2] p-5 overflow-y-auto">
+                  <SheetHeader className="pb-3 border-b border-[#deddd3]">
+                    <SheetTitle className="font-serif text-lg text-[#073a2d]">
+                      Filter Collection
+                    </SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-4">
+                    {renderFilterPanel()}
+                  </div>
+                </SheetContent>
+              </Sheet>
+
               <select
                 value={sortBy}
                 onChange={(e) => updateQuery({ sort: e.target.value === 'featured' ? null : e.target.value })}
-                className="bg-white border border-[#deddd3] text-xs font-sans px-3 py-1.5 text-[#1b1c18] focus:outline-none focus:border-[#073a2d]"
+                className="w-full h-9 bg-white border border-[#deddd3] text-[11px] font-sans px-2.5 text-[#1b1c18] focus:outline-none focus:border-[#073a2d] shadow-2xs"
               >
-                <option value="featured">Featured Atelier Pieces</option>
+                <option value="featured">Featured</option>
                 <option value="price-low">Price: Low to High</option>
                 <option value="price-high">Price: High to Low</option>
-                <option value="newest">Newest Loom Drops</option>
+                <option value="newest">Newest Drops</option>
                 <option value="best-selling">Best Selling</option>
               </select>
             </div>
 
-            {/* Layout Toggle */}
-            <div className="hidden md:flex items-center border border-[#deddd3] bg-white">
-              <button
-                onClick={() => setGridCols(3)}
-                className={`p-1.5 ${gridCols === 3 ? 'bg-[#073a2d] text-white' : 'text-[#717975] hover:text-black'}`}
-                title="3 Columns"
+            {/* Row 3: Count and mobile active filter tags */}
+            <div className="flex items-center justify-between text-[11px] text-[#69726d] pt-0.5">
+              <span>Showing <strong className="text-[#073a2d] font-semibold">{pageMeta.total}</strong> pieces</span>
+              {activeFiltersCount > 0 && (
+                <button
+                  onClick={clearAllFilters}
+                  className="text-[11px] text-[#ba1a1a] font-semibold hover:underline"
+                >
+                  Clear Filters ({activeFiltersCount})
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Desktop & Tablet view (sm:flex) */}
+          <div className="hidden sm:flex flex-wrap items-center justify-between gap-4">
+            {/* Mobile Filter Sheet Trigger */}
+            <div className="flex items-center gap-3">
+              <Sheet open={mobileFilterOpen} onOpenChange={setMobileFilterOpen}>
+                <SheetTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      className="lg:hidden h-9 px-3.5 text-xs font-sans uppercase tracking-wider border-[#073a2d] text-[#073a2d] flex items-center gap-2"
+                    >
+                      <SlidersHorizontal className="w-3.5 h-3.5" />
+                      <span>Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}</span>
+                    </Button>
+                  }
+                />
+                <SheetContent side="left" className="w-4/5 max-w-sm bg-[#fbf9f2] p-6 overflow-y-auto">
+                  <SheetHeader className="pb-4 border-b border-[#deddd3]">
+                    <SheetTitle className="font-serif text-xl text-[#073a2d]">
+                      Filter Collection
+                    </SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-6">
+                    {renderFilterPanel()}
+                  </div>
+                </SheetContent>
+              </Sheet>
+
+              <span className="text-xs font-sans text-[#69726d]">
+                Showing <strong className="text-[#073a2d]">{pageMeta.total}</strong> Sartorial Pieces
+              </span>
+            </div>
+
+            {/* Active Filter Pills */}
+            {activeFiltersCount > 0 && (
+              <div className="hidden sm:flex items-center gap-2 flex-wrap">
+                {selectedCategory !== 'all' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#deddd3] text-[11px] text-[#073a2d]">
+                    {categories.find((c) => c.slug === selectedCategory)?.name}
+                    <button onClick={() => updateQuery({ category: null })}>
+                      <X className="w-3 h-3 text-[#717975] hover:text-black" />
+                    </button>
+                  </span>
+                )}
+                {selectedSizes.map((s) => (
+                  <span
+                    key={s}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#deddd3] text-[11px] text-[#073a2d]"
+                  >
+                    Size: {s}
+                    <button onClick={() => toggleQueryValue('size', s)}>
+                      <X className="w-3 h-3 text-[#717975] hover:text-black" />
+                    </button>
+                  </span>
+                ))}
+                <button
+                  onClick={clearAllFilters}
+                  className="text-[11px] text-[#ba1a1a] hover:underline font-semibold ml-1"
+                >
+                  Clear All
+                </button>
+              </div>
+            )}
+
+            {/* Right Layout & Sorting */}
+            <div className="flex items-center gap-4">
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  updateQuery({ q: searchDraft.trim() || null });
+                }}
+                className="flex items-center border border-[#deddd3] bg-white"
+                role="search"
               >
-                <LayoutGrid className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setGridCols(4)}
-                className={`p-1.5 ${gridCols === 4 ? 'bg-[#073a2d] text-white' : 'text-[#717975] hover:text-black'}`}
-                title="4 Columns"
-              >
-                <Grid3X3 className="w-4 h-4" />
-              </button>
+                <input
+                  value={searchDraft}
+                  onChange={(event) =>
+                    setSearchEdit({
+                      query: initialQueryFromUrl,
+                      value: event.target.value,
+                    })
+                  }
+                  placeholder="Search products"
+                  aria-label="Search products"
+                  className="w-28 sm:w-40 bg-transparent px-2 py-1.5 text-xs outline-none"
+                />
+                <button type="submit" aria-label="Submit product search" className="px-2 text-[#073a2d]">
+                  <Search className="h-4 w-4" />
+                </button>
+              </form>
+              {/* Sorting Dropdown */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-sans text-[#717975] hidden sm:inline">Sort:</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => updateQuery({ sort: e.target.value === 'featured' ? null : e.target.value })}
+                  className="bg-white border border-[#deddd3] text-xs font-sans px-3 py-1.5 text-[#1b1c18] focus:outline-none focus:border-[#073a2d]"
+                >
+                  <option value="featured">Featured Atelier Pieces</option>
+                  <option value="price-low">Price: Low to High</option>
+                  <option value="price-high">Price: High to Low</option>
+                  <option value="newest">Newest Loom Drops</option>
+                  <option value="best-selling">Best Selling</option>
+                </select>
+              </div>
+
+              {/* Layout Toggle */}
+              <div className="hidden md:flex items-center border border-[#deddd3] bg-white">
+                <button
+                  onClick={() => setGridCols(3)}
+                  className={`p-1.5 ${gridCols === 3 ? 'bg-[#073a2d] text-white' : 'text-[#717975] hover:text-black'}`}
+                  title="3 Columns"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setGridCols(4)}
+                  className={`p-1.5 ${gridCols === 4 ? 'bg-[#073a2d] text-white' : 'text-[#717975] hover:text-black'}`}
+                  title="4 Columns"
+                >
+                  <Grid3X3 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Main Canvas: Left Sidebar + Right Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10">
           {/* Desktop Left Sidebar Filters (3 Cols) */}
           <div className="hidden lg:block lg:col-span-3">
             <div className="sticky top-38 p-6 bg-white border border-[#deddd3] shadow-xs">
@@ -704,9 +798,9 @@ export const ShopContent: React.FC = () => {
               </div>
             ) : (
               <div
-                className={`grid grid-cols-1 sm:grid-cols-2 ${
+                className={`grid grid-cols-2 gap-3 sm:gap-6 ${
                   gridCols === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
-                } gap-6`}
+                }`}
               >
                 {products.map((p) => (
                   <ProductCard key={p.id} product={p} />

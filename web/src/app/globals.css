@@ -101,18 +101,24 @@
 @layer base {
   * {
     border-color: var(--border);
-    border-radius: 0px !important;
+    border-radius: 0px;
+  }
+  html, body {
+    overscroll-behavior: auto;
   }
   body {
     background-color: var(--background);
     color: var(--foreground);
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-    overscroll-behavior: none;
     -webkit-font-smoothing: antialiased;
   }
   h1, h2, h3, .font-serif {
     font-family: 'Playfair Display', Georgia, serif;
   }
+}
+
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
 
 /* Custom scrollbars */
