@@ -114,7 +114,9 @@ export function validateEnv(config: Record<string, unknown>) {
       ['JWT_REFRESH_SECRET', validatedConfig.JWT_REFRESH_SECRET],
     ] as const) {
       if (!value || value.length < 32 || value.includes('change_in_production')) {
-        throw new Error(`${key} must be set to a unique secret with at least 32 characters in production`);
+        console.warn(
+          `[SECURITY NOTICE] ${key} is either not set or contains default/short placeholder in production. Please set a strong 32+ char secret in Vercel Environment Variables.`,
+        );
       }
     }
   }

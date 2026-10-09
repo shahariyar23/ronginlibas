@@ -40,6 +40,8 @@ async function bootstrap() {
     'http://localhost:3001',
     'https://ronginlibas.com',
     'https://www.ronginlibas.com',
+    'https://admin.ronginlibas.com',
+    'https://www.admin.ronginlibas.com'
   ];
 
   app.enableCors({
@@ -47,11 +49,11 @@ async function bootstrap() {
       origin: string | undefined,
       callback: (err: Error | null, allow?: boolean) => void,
     ) => {
-      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
-      if (!origin || corsOrigins.includes(origin)) {
+      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server) or vercel deployments
+      if (!origin || corsOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
         callback(null, true);
       } else {
-        callback(new Error('Origin is not allowed by CORS configuration'));
+        callback(null, false);
       }
     },
     credentials: true,
@@ -85,8 +87,8 @@ async function bootstrap() {
   });
 
   // Application Port
-  const port = configService.get<number>('app.port') || 4000;
-  await app.listen(port);
+  const port = Number(process.env.PORT) || configService.get<number>('app.port') || 4000;
+  await app.listen(port, '0.0.0.0');
 
   logger.log(`=======================================================`);
   logger.log(`  Rongin Libas Backend Server Initialized Successfully `);
@@ -97,4 +99,8 @@ async function bootstrap() {
   logger.log(`=======================================================`);
 }
 
-await bootstrap();
+bootstrap().catch((err) => {
+  const logger = new Logger('Bootstrap');
+  logger.error('Failed to bootstrap NestJS application', err);
+  process.exit(1);
+});

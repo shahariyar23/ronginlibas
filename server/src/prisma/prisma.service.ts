@@ -15,14 +15,16 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   async onModuleInit() {
-    try {
-      await this.$connect();
-      this.logger.log('PostgreSQL database connection established successfully via Prisma.');
-    } catch (error) {
-      this.logger.warn(
-        `Unable to connect to PostgreSQL at startup (${(error as Error).message}). Server will continue running in decoupled mode.`,
-      );
-    }
+    // Non-blocking connection so serverless cold start and health check don't time out
+    this.$connect()
+      .then(() => {
+        this.logger.log('PostgreSQL database connection established successfully via Prisma.');
+      })
+      .catch((error) => {
+        this.logger.warn(
+          `Unable to connect to PostgreSQL at startup (${(error as Error).message}). Server will continue running in decoupled mode.`,
+        );
+      });
   }
 
   async onModuleDestroy() {

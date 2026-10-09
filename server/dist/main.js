@@ -30,11 +30,11 @@ async function bootstrap() {
     ];
     app.enableCors({
         origin: (origin, callback) => {
-            if (!origin || corsOrigins.includes(origin)) {
+            if (!origin || corsOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
                 callback(null, true);
             }
             else {
-                callback(new Error('Origin is not allowed by CORS configuration'));
+                callback(null, false);
             }
         },
         credentials: true,
@@ -58,8 +58,8 @@ async function bootstrap() {
             persistAuthorization: true,
         },
     });
-    const port = configService.get('app.port') || 4000;
-    await app.listen(port);
+    const port = Number(process.env.PORT) || configService.get('app.port') || 4000;
+    await app.listen(port, '0.0.0.0');
     logger.log(`=======================================================`);
     logger.log(`  Rongin Libas Backend Server Initialized Successfully `);
     logger.log(`  Application Port : http://localhost:${port}          `);
@@ -68,5 +68,9 @@ async function bootstrap() {
     logger.log(`  Health Endpoint  : http://localhost:${port}${apiPrefix}/health`);
     logger.log(`=======================================================`);
 }
-await bootstrap();
+bootstrap().catch((err) => {
+    const logger = new Logger('Bootstrap');
+    logger.error('Failed to bootstrap NestJS application', err);
+    process.exit(1);
+});
 //# sourceMappingURL=main.js.map

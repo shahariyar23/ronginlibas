@@ -21,13 +21,13 @@ let PrismaService = PrismaService_1 = class PrismaService extends PrismaClient {
         });
     }
     async onModuleInit() {
-        try {
-            await this.$connect();
+        this.$connect()
+            .then(() => {
             this.logger.log('PostgreSQL database connection established successfully via Prisma.');
-        }
-        catch (error) {
+        })
+            .catch((error) => {
             this.logger.warn(`Unable to connect to PostgreSQL at startup (${error.message}). Server will continue running in decoupled mode.`);
-        }
+        });
     }
     async onModuleDestroy() {
         await this.$disconnect();
