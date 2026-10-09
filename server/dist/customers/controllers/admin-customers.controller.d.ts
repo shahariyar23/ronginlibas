@@ -12,8 +12,8 @@ export declare class AdminCustomersController {
         data: {
             email: string | null;
             phone: string;
-            firstName: string;
             lastName: string | null;
+            firstName: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -23,17 +23,17 @@ export declare class AdminCustomersController {
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                fullName: string | null;
+                customerId: string;
                 addressLine1: string;
                 addressLine2: string | null;
                 city: string;
                 division: string;
-                area: string | null;
                 postalCode: string | null;
-                deliveryInstructions: string | null;
-                isDefault: boolean;
-                customerId: string;
                 country: string;
+                isDefault: boolean;
+                fullName: string | null;
+                area: string | null;
+                deliveryInstructions: string | null;
             }[];
             orders: {
                 id: string;

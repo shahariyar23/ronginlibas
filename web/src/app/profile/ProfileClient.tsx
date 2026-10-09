@@ -589,7 +589,8 @@ export const ProfileClient: React.FC = () => {
                         <Input
                           type="number"
                           min="0"
-                          step="0.1"
+                          max="500"
+                          step="0.01"
                           value={shoulder ?? ''}
                           onChange={(e) => setShoulder(e.target.value)}
                           className="bg-[#fbf9f2] border-[#deddd3] h-11"
@@ -603,7 +604,8 @@ export const ProfileClient: React.FC = () => {
                         <Input
                           type="number"
                           min="0"
-                          step="0.1"
+                          max="500"
+                          step="0.01"
                           value={chest ?? ''}
                           onChange={(e) => setChest(e.target.value)}
                           className="bg-[#fbf9f2] border-[#deddd3] h-11"
@@ -617,7 +619,8 @@ export const ProfileClient: React.FC = () => {
                         <Input
                           type="number"
                           min="0"
-                          step="0.1"
+                          max="500"
+                          step="0.01"
                           value={panjabiLength ?? ''}
                           onChange={(e) => setPanjabiLength(e.target.value)}
                           className="bg-[#fbf9f2] border-[#deddd3] h-11"
@@ -646,7 +649,8 @@ export const ProfileClient: React.FC = () => {
                         <Input
                           type="number"
                           min="0"
-                          step="0.1"
+                          max="500"
+                          step="0.01"
                           value={collar ?? ''}
                           onChange={(e) => setCollar(e.target.value)}
                           className="bg-[#fbf9f2] border-[#deddd3] h-11"

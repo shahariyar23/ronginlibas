@@ -21,7 +21,7 @@ export class MeasurementProfileDto {
     tailoringNotes;
 }
 __decorate([
-    ApiPropertyOptional(),
+    ApiPropertyOptional({ type: Number, example: 14.4 }),
     Type(() => Number),
     IsNumber({ maxDecimalPlaces: 2 }),
     Min(0),
@@ -30,7 +30,7 @@ __decorate([
     __metadata("design:type", Number)
 ], MeasurementProfileDto.prototype, "chest", void 0);
 __decorate([
-    ApiPropertyOptional(),
+    ApiPropertyOptional({ type: Number, example: 16.4 }),
     Type(() => Number),
     IsNumber({ maxDecimalPlaces: 2 }),
     Min(0),
@@ -39,7 +39,7 @@ __decorate([
     __metadata("design:type", Number)
 ], MeasurementProfileDto.prototype, "shoulder", void 0);
 __decorate([
-    ApiPropertyOptional(),
+    ApiPropertyOptional({ type: Number, example: 14.4 }),
     Type(() => Number),
     IsNumber({ maxDecimalPlaces: 2 }),
     Min(0),
@@ -48,7 +48,7 @@ __decorate([
     __metadata("design:type", Number)
 ], MeasurementProfileDto.prototype, "sleeveLength", void 0);
 __decorate([
-    ApiPropertyOptional(),
+    ApiPropertyOptional({ type: Number, example: 14.4 }),
     Type(() => Number),
     IsNumber({ maxDecimalPlaces: 2 }),
     Min(0),
@@ -57,7 +57,7 @@ __decorate([
     __metadata("design:type", Number)
 ], MeasurementProfileDto.prototype, "collar", void 0);
 __decorate([
-    ApiPropertyOptional(),
+    ApiPropertyOptional({ type: Number, example: 16.4 }),
     Type(() => Number),
     IsNumber({ maxDecimalPlaces: 2 }),
     Min(0),
@@ -66,7 +66,7 @@ __decorate([
     __metadata("design:type", Number)
 ], MeasurementProfileDto.prototype, "waist", void 0);
 __decorate([
-    ApiPropertyOptional(),
+    ApiPropertyOptional({ type: Number, example: 32.5 }),
     Type(() => Number),
     IsNumber({ maxDecimalPlaces: 2 }),
     Min(0),
@@ -75,7 +75,7 @@ __decorate([
     __metadata("design:type", Number)
 ], MeasurementProfileDto.prototype, "trouserLength", void 0);
 __decorate([
-    ApiPropertyOptional(),
+    ApiPropertyOptional({ type: Number, example: 157.48 }),
     Type(() => Number),
     IsNumber({ maxDecimalPlaces: 2 }),
     Min(0),

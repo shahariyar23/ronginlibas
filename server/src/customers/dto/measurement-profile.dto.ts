@@ -3,7 +3,7 @@ import { Type } from 'class-transformer';
 import { IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class MeasurementProfileDto {
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: Number, example: 14.4 })
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
@@ -11,7 +11,7 @@ export class MeasurementProfileDto {
   @IsOptional()
   chest?: number;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: Number, example: 16.4 })
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
@@ -19,7 +19,7 @@ export class MeasurementProfileDto {
   @IsOptional()
   shoulder?: number;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: Number, example: 14.4 })
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
@@ -27,7 +27,7 @@ export class MeasurementProfileDto {
   @IsOptional()
   sleeveLength?: number;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: Number, example: 14.4 })
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
@@ -35,7 +35,7 @@ export class MeasurementProfileDto {
   @IsOptional()
   collar?: number;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: Number, example: 16.4 })
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
@@ -43,7 +43,7 @@ export class MeasurementProfileDto {
   @IsOptional()
   waist?: number;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: Number, example: 32.5 })
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
@@ -51,7 +51,7 @@ export class MeasurementProfileDto {
   @IsOptional()
   trouserLength?: number;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: Number, example: 157.48 })
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)

@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { Product } from '@/types';
-import { getProductFilters, getShopProducts, ProductFilters, ProductListQuery } from '@/lib/api';
+import { colorHex, getProductFilters, getShopProducts, ProductFilters, ProductListQuery } from '@/lib/api';
 import { getWhatsAppUrl, useStorefront } from '@/context/StorefrontContext';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { toast } from 'sonner';
@@ -336,6 +336,7 @@ export const ShopContent: React.FC = () => {
               <button
                 key={color.slug}
                 onClick={() => toggleQueryValue('color', color.name)}
+                aria-pressed={active}
                 className={`flex items-center gap-2 px-2.5 py-1.5 border text-xs transition-all ${
                   active
                     ? 'border-[#073a2d] bg-[#073a2d] text-white'
@@ -344,7 +345,7 @@ export const ShopContent: React.FC = () => {
               >
                 <span
                   className="w-3 h-3 rounded-full border border-black/20"
-                  style={{ backgroundColor: '#f0eee7' }}
+                  style={{ backgroundColor: colorHex(color.name) }}
                 />
                 <span>{formatOption(color.name, color.count)}</span>
               </button>
