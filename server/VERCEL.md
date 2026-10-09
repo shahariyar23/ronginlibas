@@ -1,6 +1,6 @@
 # Vercel-এ API deploy করার নির্দেশনা
 
-এই NestJS API-টি Vercel-এর NestJS detection-এর সঙ্গে সামঞ্জস্যপূর্ণ: entry point হলো `src/main.ts`, আর `package.json`-এ build script আছে। Vercel NestJS-কে স্বয়ংক্রিয়ভাবে একটি serverless Function হিসেবে deploy করে, তাই এখানে আলাদা `vercel.json`, rewrite rule, বা custom serverless adapter দরকার নেই। Vercel-এর Project Settings-এ `server`-কে Root Directory হিসেবে নির্বাচন করাই monorepo-র জন্য প্রয়োজনীয় সেটআপ।
+এই NestJS API-টির entry point `src/main.ts` এবং build script `package.json`-এ আছে। Vercel NestJS-কে serverless Function হিসেবে deploy করে, তাই এখানে আলাদা `vercel.json`, rewrite rule, বা custom serverless adapter দরকার নেই। Vercel-এর Project Settings-এ `server`-কে Root Directory হিসেবে নির্বাচন করুন। Backend-এ NestJS 11 ব্যবহার করা হয়েছে, যাতে CommonJS `@nestjs/throttler` ও Nest-এর module format সামঞ্জস্যপূর্ণ থাকে।
 
 ## ১. আগে যা প্রস্তুত করবেন
 
