@@ -1,7 +1,7 @@
 import { OrdersService } from '../services/orders.service.js';
 import { UpdateOrderStatusDto } from '../dto/update-order-status.dto.js';
 import { OrderQueryDto } from '../dto/order-query.dto.js';
-import { AuditService, AdminAuditActor } from '../../audit/audit.service.js';
+import { AuditService, type AdminAuditActor } from '../../audit/audit.service.js';
 export declare class AdminOrdersController {
     private readonly ordersService;
     private readonly auditService;
@@ -13,42 +13,34 @@ export declare class AdminOrdersController {
     findById(id: string): Promise<{
         message: string;
         data: {
+            customer: {
+                email: string | null;
+                phone: string;
+                firstName: string;
+                lastName: string | null;
+                id: string;
+            } | null;
             items: ({
-                variant: {
-                    id: string;
-                    isActive: boolean;
-                    createdAt: Date;
-                    updatedAt: Date;
-                    sku: string;
-                    size: string;
-                    color: string;
-                    stock: number;
-                    priceOverride: import("@prisma/client/runtime/library").Decimal | null;
-                    sizeLabel: string | null;
-                    sizeType: string | null;
-                    measurements: import("@prisma/client/runtime/library").JsonValue | null;
-                    productId: string;
-                } | null;
                 product: ({
                     images: {
+                        url: string;
                         id: string;
                         createdAt: Date;
                         updatedAt: Date;
                         sortOrder: number;
                         isPrimary: boolean;
                         productId: string;
-                        url: string;
                         publicId: string | null;
                         altText: string | null;
                     }[];
                 } & {
-                    tags: string[];
                     description: string | null;
                     id: string;
                     isActive: boolean;
                     createdAt: Date;
                     updatedAt: Date;
                     name: string;
+                    tags: string[];
                     slug: string;
                     price: import("@prisma/client/runtime/library").Decimal;
                     compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
@@ -69,45 +61,51 @@ export declare class AdminOrdersController {
                     isBestSeller: boolean;
                     categoryId: string;
                 }) | null;
+                variant: {
+                    id: string;
+                    isActive: boolean;
+                    createdAt: Date;
+                    updatedAt: Date;
+                    measurements: import("@prisma/client/runtime/library").JsonValue | null;
+                    sku: string;
+                    productId: string;
+                    size: string;
+                    color: string;
+                    sizeLabel: string | null;
+                    sizeType: string | null;
+                    stock: number;
+                    priceOverride: import("@prisma/client/runtime/library").Decimal | null;
+                } | null;
             } & {
+                productImage: string | null;
                 id: string;
                 createdAt: Date;
                 variantId: string | null;
+                subtotal: import("@prisma/client/runtime/library").Decimal;
+                discountAmount: import("@prisma/client/runtime/library").Decimal;
                 sku: string;
-                size: string | null;
-                color: string | null;
+                productId: string | null;
+                orderId: string;
                 productName: string;
                 variantName: string;
                 unitPrice: import("@prisma/client/runtime/library").Decimal;
                 quantity: number;
-                subtotal: import("@prisma/client/runtime/library").Decimal;
-                discountAmount: import("@prisma/client/runtime/library").Decimal;
-                productImage: string | null;
-                orderId: string;
-                productId: string | null;
+                size: string | null;
+                color: string | null;
             })[];
-            customer: {
-                id: string;
-                email: string | null;
-                firstName: string;
-                lastName: string | null;
-                phone: string;
-            } | null;
             trackingEvents: {
                 description: string | null;
                 id: string;
                 createdAt: Date;
-                orderId: string;
                 status: import("@prisma/client").$Enums.OrderStatus;
+                orderId: string;
                 customerVisible: boolean;
             }[];
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            subtotal: import("@prisma/client/runtime/library").Decimal;
-            discountAmount: import("@prisma/client/runtime/library").Decimal;
-            orderNumber: string;
             customerId: string | null;
+            orderNumber: string;
             guestName: string | null;
             guestEmail: string | null;
             guestPhone: string | null;
@@ -118,6 +116,8 @@ export declare class AdminOrdersController {
             status: import("@prisma/client").$Enums.OrderStatus;
             paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
             paymentMethod: import("@prisma/client").$Enums.PaymentMethod;
+            subtotal: import("@prisma/client/runtime/library").Decimal;
+            discountAmount: import("@prisma/client/runtime/library").Decimal;
             deliveryCharge: import("@prisma/client/runtime/library").Decimal;
             totalAmount: import("@prisma/client/runtime/library").Decimal;
             shippingAddress: import("@prisma/client/runtime/library").JsonValue;
@@ -131,10 +131,8 @@ export declare class AdminOrdersController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            subtotal: import("@prisma/client/runtime/library").Decimal;
-            discountAmount: import("@prisma/client/runtime/library").Decimal;
-            orderNumber: string;
             customerId: string | null;
+            orderNumber: string;
             guestName: string | null;
             guestEmail: string | null;
             guestPhone: string | null;
@@ -146,6 +144,8 @@ export declare class AdminOrdersController {
             status: import("@prisma/client").$Enums.OrderStatus;
             paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
             paymentMethod: import("@prisma/client").$Enums.PaymentMethod;
+            subtotal: import("@prisma/client/runtime/library").Decimal;
+            discountAmount: import("@prisma/client/runtime/library").Decimal;
             deliveryCharge: import("@prisma/client/runtime/library").Decimal;
             totalAmount: import("@prisma/client/runtime/library").Decimal;
             shippingAddress: import("@prisma/client/runtime/library").JsonValue;
@@ -159,10 +159,8 @@ export declare class AdminOrdersController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            subtotal: import("@prisma/client/runtime/library").Decimal;
-            discountAmount: import("@prisma/client/runtime/library").Decimal;
-            orderNumber: string;
             customerId: string | null;
+            orderNumber: string;
             guestName: string | null;
             guestEmail: string | null;
             guestPhone: string | null;
@@ -174,6 +172,8 @@ export declare class AdminOrdersController {
             status: import("@prisma/client").$Enums.OrderStatus;
             paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
             paymentMethod: import("@prisma/client").$Enums.PaymentMethod;
+            subtotal: import("@prisma/client/runtime/library").Decimal;
+            discountAmount: import("@prisma/client/runtime/library").Decimal;
             deliveryCharge: import("@prisma/client/runtime/library").Decimal;
             totalAmount: import("@prisma/client/runtime/library").Decimal;
             shippingAddress: import("@prisma/client/runtime/library").JsonValue;

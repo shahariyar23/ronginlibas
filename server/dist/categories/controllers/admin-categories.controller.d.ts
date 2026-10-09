@@ -1,6 +1,6 @@
 import { CategoriesService } from '../services/categories.service.js';
 import { CreateCategoryDto } from '../dto/create-category.dto.js';
-import { AuditService, AdminAuditActor } from '../../audit/audit.service.js';
+import { AuditService, type AdminAuditActor } from '../../audit/audit.service.js';
 export declare class AdminCategoriesController {
     private readonly categoriesService;
     private readonly auditService;
@@ -10,10 +10,10 @@ export declare class AdminCategoriesController {
         data: {
             description: string | null;
             id: string;
+            name: string;
             _count: {
                 products: number;
             };
-            name: string;
             slug: string;
             sortOrder: number;
             image: string | null;

@@ -20,7 +20,7 @@ import { Roles } from '../../common/decorators/roles.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
 import { Permissions } from '../../common/decorators/permissions.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
-import { AuditService, AdminAuditActor } from '../../audit/audit.service.js';
+import { AuditService, type AdminAuditActor } from '../../audit/audit.service.js';
 
 @ApiTags('Admin - Products')
 @ApiBearerAuth()
@@ -66,7 +66,7 @@ export class AdminProductsController {
       entityId: data.id,
       entityLabel: data.name,
       summary: `Created product ${data.name}`,
-      after: data,
+      after: productAuditSnapshot(data),
     });
     return {
       message: 'Product created successfully',
@@ -91,8 +91,8 @@ export class AdminProductsController {
       entityId: data.id,
       entityLabel: data.name,
       summary: `Updated product ${data.name}`,
-      before,
-      after: data,
+      before: productAuditSnapshot(before),
+      after: productAuditSnapshot(data),
     });
     return {
       message: 'Product updated successfully',
@@ -113,7 +113,7 @@ export class AdminProductsController {
       entityId: before.id,
       entityLabel: before.name,
       summary: `Archived product ${before.name}`,
-      before: { isActive: before.isActive, deletedAt: before.deletedAt },
+      before: productAuditSnapshot(before),
       after: res.data,
     });
     return {
@@ -135,7 +135,7 @@ export class AdminProductsController {
       entityId: before.id,
       entityLabel: before.name,
       summary: `Restored product ${before.name}`,
-      before: { isActive: before.isActive, deletedAt: before.deletedAt },
+      before: productAuditSnapshot(before),
       after: res.data,
     });
     return {
@@ -157,7 +157,7 @@ export class AdminProductsController {
       entityId: before.id,
       entityLabel: before.name,
       summary: `Permanently deleted product ${before.name}`,
-      before,
+      before: productAuditSnapshot(before),
     });
     return {
       message: res.message,
@@ -178,11 +178,73 @@ export class AdminProductsController {
       entityId: before.id,
       entityLabel: before.name,
       summary: `Permanently deleted product ${before.name}`,
-      before,
+      before: productAuditSnapshot(before),
     });
     return {
       message: res.message,
       data: res.data,
     };
   }
+}
+
+function productAuditSnapshot(product: {
+  id: string;
+  name: string;
+  slug: string;
+  sku: string;
+  price: unknown;
+  compareAtPrice?: unknown;
+  costPrice?: unknown;
+  categoryId?: string | null;
+  isActive: boolean;
+  isFeatured: boolean;
+  isNewArrival: boolean;
+  isBestSeller: boolean;
+  deletedAt?: Date | null;
+  variants?: Array<{
+    sku: string;
+    size: string;
+    sizeLabel?: string | null;
+    color: string;
+    stock: number;
+    priceOverride?: unknown;
+    isActive: boolean;
+  }>;
+  images?: Array<{
+    url: string;
+    publicId?: string | null;
+    sortOrder: number;
+    isPrimary: boolean;
+  }>;
+}) {
+  return {
+    id: product.id,
+    name: product.name,
+    slug: product.slug,
+    sku: product.sku,
+    price: product.price,
+    compareAtPrice: product.compareAtPrice,
+    costPrice: product.costPrice,
+    categoryId: product.categoryId,
+    isActive: product.isActive,
+    isFeatured: product.isFeatured,
+    isNewArrival: product.isNewArrival,
+    isBestSeller: product.isBestSeller,
+    deletedAt: product.deletedAt,
+    variants: product.variants?.map((variant) => ({
+      sku: variant.sku,
+      size: variant.size,
+      sizeLabel: variant.sizeLabel,
+      color: variant.color,
+      stock: variant.stock,
+      priceOverride: variant.priceOverride,
+      isActive: variant.isActive,
+    })),
+    images: product.images?.map((image) => ({
+      url: image.url,
+      publicId: image.publicId,
+      sortOrder: image.sortOrder,
+      isPrimary: image.isPrimary,
+    })),
+  };
 }

@@ -25,7 +25,7 @@ class DeleteProductImageDto {
 
 import { Permissions } from '../../common/decorators/permissions.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
-import { AuditService, AdminAuditActor } from '../../audit/audit.service.js';
+import { AuditService, type AdminAuditActor } from '../../audit/audit.service.js';
 
 @ApiTags('Admin - Product Images')
 @ApiBearerAuth()
@@ -62,12 +62,11 @@ export class AdminProductImagesController {
     }),
   )
   async upload(
-    @UploadedFile() file?: { buffer: Buffer; mimetype: string },
-    @CurrentUser() actor?: AdminAuditActor,
+    @UploadedFile() file: { buffer: Buffer; mimetype: string } | undefined,
+    @CurrentUser() actor: AdminAuditActor,
   ) {
     if (!file) throw new BadRequestException('An image file is required');
     const uploaded = await this.cloudinary.uploadProductImage(file.buffer);
-    if (!actor) throw new BadRequestException('Administrative identity is required');
     await this.auditService.record({
       actor,
       module: 'products',

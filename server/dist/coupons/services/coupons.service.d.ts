@@ -5,14 +5,14 @@ export declare class CouponsService {
     private readonly prisma;
     constructor(prisma: PrismaService);
     findAll(): Promise<{
-        id: string;
+        value: import("@prisma/client/runtime/library").Decimal;
+        type: import("@prisma/client").$Enums.CouponType;
         description: string | null;
+        id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        type: import("@prisma/client").$Enums.CouponType;
         code: string;
-        value: import("@prisma/client/runtime/library").Decimal;
         minimumOrderAmount: import("@prisma/client/runtime/library").Decimal;
         maximumDiscount: import("@prisma/client/runtime/library").Decimal | null;
         startDate: Date;
@@ -21,14 +21,14 @@ export declare class CouponsService {
         usageCount: number;
     }[]>;
     findById(id: string): Promise<{
-        id: string;
+        value: import("@prisma/client/runtime/library").Decimal;
+        type: import("@prisma/client").$Enums.CouponType;
         description: string | null;
+        id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        type: import("@prisma/client").$Enums.CouponType;
         code: string;
-        value: import("@prisma/client/runtime/library").Decimal;
         minimumOrderAmount: import("@prisma/client/runtime/library").Decimal;
         maximumDiscount: import("@prisma/client/runtime/library").Decimal | null;
         startDate: Date;
@@ -37,14 +37,14 @@ export declare class CouponsService {
         usageCount: number;
     }>;
     create(dto: CreateCouponDto): Promise<{
-        id: string;
+        value: import("@prisma/client/runtime/library").Decimal;
+        type: import("@prisma/client").$Enums.CouponType;
         description: string | null;
+        id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        type: import("@prisma/client").$Enums.CouponType;
         code: string;
-        value: import("@prisma/client/runtime/library").Decimal;
         minimumOrderAmount: import("@prisma/client/runtime/library").Decimal;
         maximumDiscount: import("@prisma/client/runtime/library").Decimal | null;
         startDate: Date;
@@ -62,14 +62,14 @@ export declare class CouponsService {
         currency: string;
     }>;
     update(id: string, partial: Partial<CreateCouponDto>): Promise<{
-        id: string;
+        value: import("@prisma/client/runtime/library").Decimal;
+        type: import("@prisma/client").$Enums.CouponType;
         description: string | null;
+        id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        type: import("@prisma/client").$Enums.CouponType;
         code: string;
-        value: import("@prisma/client/runtime/library").Decimal;
         minimumOrderAmount: import("@prisma/client/runtime/library").Decimal;
         maximumDiscount: import("@prisma/client/runtime/library").Decimal | null;
         startDate: Date;
@@ -78,14 +78,14 @@ export declare class CouponsService {
         usageCount: number;
     }>;
     remove(id: string): Promise<{
-        id: string;
+        value: import("@prisma/client/runtime/library").Decimal;
+        type: import("@prisma/client").$Enums.CouponType;
         description: string | null;
+        id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        type: import("@prisma/client").$Enums.CouponType;
         code: string;
-        value: import("@prisma/client/runtime/library").Decimal;
         minimumOrderAmount: import("@prisma/client/runtime/library").Decimal;
         maximumDiscount: import("@prisma/client/runtime/library").Decimal | null;
         startDate: Date;

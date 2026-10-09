@@ -41,6 +41,7 @@ let AuditService = class AuditService {
         const page = query.page ?? 1;
         const limit = query.limit ?? 20;
         const where = {};
+        const andFilters = [];
         if (query.module)
             where.module = query.module;
         if (query.action)
@@ -48,14 +49,16 @@ let AuditService = class AuditService {
         if (query.actorId)
             where.actorId = query.actorId;
         if (query.actor) {
-            where.OR = [
-                { actorName: { contains: query.actor, mode: 'insensitive' } },
-                { actorEmail: { contains: query.actor, mode: 'insensitive' } },
-            ];
+            andFilters.push({
+                OR: [
+                    { actorName: { contains: query.actor, mode: 'insensitive' } },
+                    { actorEmail: { contains: query.actor, mode: 'insensitive' } },
+                ],
+            });
         }
         if (query.from || query.to) {
             const toDate = query.to ? new Date(query.to) : undefined;
-            if (toDate && /^\d{4}-\d{2}-\d{2}$/.test(query.to)) {
+            if (toDate && query.to && /^\d{4}-\d{2}-\d{2}$/.test(query.to)) {
                 toDate.setUTCHours(23, 59, 59, 999);
             }
             where.createdAt = {
@@ -64,15 +67,17 @@ let AuditService = class AuditService {
             };
         }
         if (query.search) {
-            where.OR = [
-                { actorName: { contains: query.search, mode: 'insensitive' } },
-                { actorEmail: { contains: query.search, mode: 'insensitive' } },
-                { entityType: { contains: query.search, mode: 'insensitive' } },
-                { entityId: { contains: query.search, mode: 'insensitive' } },
-                { entityLabel: { contains: query.search, mode: 'insensitive' } },
-                { summary: { contains: query.search, mode: 'insensitive' } },
-            ];
+            andFilters.push({
+                OR: [
+                    { entityType: { contains: query.search, mode: 'insensitive' } },
+                    { entityId: { contains: query.search, mode: 'insensitive' } },
+                    { entityLabel: { contains: query.search, mode: 'insensitive' } },
+                    { summary: { contains: query.search, mode: 'insensitive' } },
+                ],
+            });
         }
+        if (andFilters.length)
+            where.AND = andFilters;
         const [items, total] = await Promise.all([
             this.prisma.adminAuditLog.findMany({
                 where,
@@ -90,7 +95,7 @@ AuditService = __decorate([
     __metadata("design:paramtypes", [PrismaService])
 ], AuditService);
 export { AuditService };
-const sensitiveKey = /password|token|secret|authorization|credential|api.?key/i;
+const sensitiveKey = /password|token|secret|authorization|credential|api.?key|private.?key|merchant.?key|app.?key|client.?id|signature|salt/i;
 function toAuditJson(value) {
     if (value === undefined)
         return undefined;
@@ -113,6 +118,10 @@ function sanitizeAuditValue(value, depth) {
         return value.slice(0, 100).map((item) => sanitizeAuditValue(item, depth + 1));
     }
     if (typeof value === 'object') {
+        const toJSON = value.toJSON;
+        if (typeof toJSON === 'function') {
+            return sanitizeAuditValue(toJSON.call(value), depth + 1);
+        }
         const object = value;
         const result = {};
         for (const [key, item] of Object.entries(object).slice(0, 100)) {
@@ -122,6 +131,8 @@ function sanitizeAuditValue(value, depth) {
         }
         return result;
     }
-    return String(value).slice(0, 2000);
+    if (typeof value === 'symbol')
+        return value.description ?? '[symbol]';
+    return '[unsupported value]';
 }
 //# sourceMappingURL=audit.service.js.map

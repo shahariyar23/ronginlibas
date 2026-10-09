@@ -2,15 +2,15 @@ import { CloudinaryService } from '../services/cloudinary.service.js';
 declare class DeleteProductImageDto {
     publicId: string;
 }
-import { AuditService, AdminAuditActor } from '../../audit/audit.service.js';
+import { AuditService, type AdminAuditActor } from '../../audit/audit.service.js';
 export declare class AdminProductImagesController {
     private readonly cloudinary;
     private readonly auditService;
     constructor(cloudinary: CloudinaryService, auditService: AuditService);
-    upload(file?: {
+    upload(file: {
         buffer: Buffer;
         mimetype: string;
-    }, actor?: AdminAuditActor): Promise<{
+    } | undefined, actor: AdminAuditActor): Promise<{
         message: string;
         data: {
             url: string;

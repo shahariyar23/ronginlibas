@@ -8,7 +8,7 @@ import { Roles } from '../../common/decorators/roles.decorator.js';
 import { Permissions } from '../../common/decorators/permissions.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
-import { AuditService, AdminAuditActor } from '../../audit/audit.service.js';
+import { AuditService, type AdminAuditActor } from '../../audit/audit.service.js';
 
 @ApiTags('Admin - Categories')
 @ApiBearerAuth()

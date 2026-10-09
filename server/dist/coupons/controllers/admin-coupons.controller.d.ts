@@ -1,6 +1,6 @@
 import { CouponsService } from '../services/coupons.service.js';
 import { CreateCouponDto } from '../dto/create-coupon.dto.js';
-import { AuditService, AdminAuditActor } from '../../audit/audit.service.js';
+import { AuditService, type AdminAuditActor } from '../../audit/audit.service.js';
 export declare class AdminCouponsController {
     private readonly couponsService;
     private readonly auditService;
@@ -8,14 +8,14 @@ export declare class AdminCouponsController {
     findAll(): Promise<{
         message: string;
         data: {
+            value: import("@prisma/client/runtime/library").Decimal;
+            type: import("@prisma/client").$Enums.CouponType;
             description: string | null;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            type: import("@prisma/client").$Enums.CouponType;
             code: string;
-            value: import("@prisma/client/runtime/library").Decimal;
             minimumOrderAmount: import("@prisma/client/runtime/library").Decimal;
             maximumDiscount: import("@prisma/client/runtime/library").Decimal | null;
             startDate: Date;
@@ -27,14 +27,14 @@ export declare class AdminCouponsController {
     create(dto: CreateCouponDto, actor: AdminAuditActor): Promise<{
         message: string;
         data: {
+            value: import("@prisma/client/runtime/library").Decimal;
+            type: import("@prisma/client").$Enums.CouponType;
             description: string | null;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            type: import("@prisma/client").$Enums.CouponType;
             code: string;
-            value: import("@prisma/client/runtime/library").Decimal;
             minimumOrderAmount: import("@prisma/client/runtime/library").Decimal;
             maximumDiscount: import("@prisma/client/runtime/library").Decimal | null;
             startDate: Date;
@@ -46,14 +46,14 @@ export declare class AdminCouponsController {
     update(id: string, body: Partial<CreateCouponDto>, actor: AdminAuditActor): Promise<{
         message: string;
         data: {
+            value: import("@prisma/client/runtime/library").Decimal;
+            type: import("@prisma/client").$Enums.CouponType;
             description: string | null;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            type: import("@prisma/client").$Enums.CouponType;
             code: string;
-            value: import("@prisma/client/runtime/library").Decimal;
             minimumOrderAmount: import("@prisma/client/runtime/library").Decimal;
             maximumDiscount: import("@prisma/client/runtime/library").Decimal | null;
             startDate: Date;
@@ -65,14 +65,14 @@ export declare class AdminCouponsController {
     remove(id: string, actor: AdminAuditActor): Promise<{
         message: string;
         data: {
+            value: import("@prisma/client/runtime/library").Decimal;
+            type: import("@prisma/client").$Enums.CouponType;
             description: string | null;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            type: import("@prisma/client").$Enums.CouponType;
             code: string;
-            value: import("@prisma/client/runtime/library").Decimal;
             minimumOrderAmount: import("@prisma/client/runtime/library").Decimal;
             maximumDiscount: import("@prisma/client/runtime/library").Decimal | null;
             startDate: Date;

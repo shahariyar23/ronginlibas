@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditQueryDto } from './dto/audit-query.dto.js';
 export interface AdminAuditActor {
@@ -21,12 +22,42 @@ export interface AdminAuditEntry {
 export declare class AuditService {
     private readonly prisma;
     constructor(prisma: PrismaService);
-    record(entry: AdminAuditEntry): Promise<any>;
+    record(entry: AdminAuditEntry): Promise<{
+        id: string;
+        createdAt: Date;
+        summary: string;
+        module: string;
+        action: string;
+        actorId: string;
+        actorName: string;
+        actorEmail: string;
+        actorRole: string;
+        entityType: string;
+        entityId: string | null;
+        entityLabel: string | null;
+        before: Prisma.JsonValue | null;
+        after: Prisma.JsonValue | null;
+    }>;
     findAll(query: AuditQueryDto): Promise<{
-        items: any;
+        items: {
+            id: string;
+            createdAt: Date;
+            summary: string;
+            module: string;
+            action: string;
+            actorId: string;
+            actorName: string;
+            actorEmail: string;
+            actorRole: string;
+            entityType: string;
+            entityId: string | null;
+            entityLabel: string | null;
+            before: Prisma.JsonValue | null;
+            after: Prisma.JsonValue | null;
+        }[];
         page: number;
         limit: number;
-        total: any;
+        total: number;
         totalPages: number;
     }>;
 }
