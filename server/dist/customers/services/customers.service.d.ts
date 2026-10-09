@@ -136,6 +136,8 @@ export declare class CustomersService {
             productId: string;
             rating: number;
             comment: string;
+            adminFeedback: string | null;
+            adminFeedbackAt: Date | null;
         })[];
         measurements: {
             id: string;

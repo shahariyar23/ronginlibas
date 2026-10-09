@@ -8,7 +8,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
 export class ForgotPasswordDto {
     email;
 }
@@ -30,8 +30,7 @@ __decorate([
 __decorate([
     ApiProperty(),
     IsString(),
-    MinLength(10),
-    Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/),
+    MinLength(6, { message: 'Password must be at least 6 characters long' }),
     __metadata("design:type", String)
 ], ResetPasswordDto.prototype, "newPassword", void 0);
 export class ChangePasswordDto {
@@ -46,8 +45,7 @@ __decorate([
 __decorate([
     ApiProperty(),
     IsString(),
-    MinLength(10),
-    Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/),
+    MinLength(6, { message: 'Password must be at least 6 characters long' }),
     __metadata("design:type", String)
 ], ChangePasswordDto.prototype, "newPassword", void 0);
 //# sourceMappingURL=password-reset.dto.js.map

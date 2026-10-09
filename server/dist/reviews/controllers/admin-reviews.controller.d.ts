@@ -14,27 +14,24 @@ export declare class AdminReviewsController {
     updateStatus(id: string, status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'HIDDEN'): Promise<{
         message: string;
         data: {
-            rating: number;
-            comment: string;
             id: string;
-            customerId: string;
-            productId: string;
-            status: import("@prisma/client").$Enums.ReviewStatus;
             createdAt: Date;
             updatedAt: Date;
+            customerId: string;
+            status: import("@prisma/client").$Enums.ReviewStatus;
+            productId: string;
+            rating: number;
+            comment: string;
+            adminFeedback: string | null;
+            adminFeedbackAt: Date | null;
         };
     }>;
     updateFeedback(id: string, dto: AdminReviewFeedbackDto): Promise<{
         message: string;
         data: {
-            rating: number;
-            comment: string;
             id: string;
-            customerId: string;
-            productId: string;
-            status: import("@prisma/client").$Enums.ReviewStatus;
-            createdAt: Date;
-            updatedAt: Date;
+            adminFeedback: string | null;
+            adminFeedbackAt: Date | null;
         };
     }>;
 }

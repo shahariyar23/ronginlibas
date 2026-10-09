@@ -16,7 +16,10 @@ export class RegisterCustomerDto {
   @ApiProperty({ example: '01711234567' })
   @IsString()
   @IsNotEmpty()
-  @Matches(/^(?:01[3-9]\d{8}|\+8801[3-9]\d{8})$/)
+  @Transform(({ value }) => typeof value === 'string' ? value.replace(/[\s()-]/g, '') : value)
+  @Matches(/^(?:\+?880)?0?1[3-9]\d{8}$/, {
+    message: 'Please provide a valid Bangladeshi phone number (e.g. 017XXXXXXXX or 17XXXXXXXX)',
+  })
   phone: string;
 
   @ApiProperty({ example: 'Rahim' })
@@ -32,13 +35,12 @@ export class RegisterCustomerDto {
   lastName?: string;
 
   @ApiProperty({ example: 'rahim@gmail.com' })
-  @IsEmail()
+  @IsEmail({}, { message: 'Please provide a valid email address' })
   email: string;
 
-  @ApiProperty({ example: 'SecurePassword123' })
+  @ApiProperty({ example: 'password123' })
   @IsString()
-  @MinLength(10)
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/)
+  @MinLength(6, { message: 'Password must be at least 6 characters long' })
   password: string;
 
   @ApiProperty()

@@ -532,8 +532,18 @@ export class CustomersService {
   }
 
   function normalizeBangladeshPhone(phone: string): string {
-    const digits = phone.replace(/[\s()-]/g, '');
-    return digits.startsWith('+880') ? digits : `+880${digits.slice(1)}`;
+    if (!phone) return phone;
+    let digits = phone.replace(/[\s()\-]/g, '');
+    if (digits.startsWith('+')) {
+      digits = digits.slice(1);
+    }
+    if (digits.startsWith('880')) {
+      digits = digits.slice(3);
+    }
+    if (digits.startsWith('0')) {
+      digits = digits.slice(1);
+    }
+    return `+880${digits}`;
   }
 
   const customerAddressSelect = {

@@ -296,8 +296,19 @@ AuthService = AuthService_1 = __decorate([
 ], AuthService);
 export { AuthService };
 function normalizeBangladeshPhone(phone) {
-    const digits = phone.replace(/[\s()-]/g, '');
-    return digits.startsWith('+880') ? digits : `+880${digits.slice(1)}`;
+    if (!phone)
+        return phone;
+    let digits = phone.replace(/[\s()\-]/g, '');
+    if (digits.startsWith('+')) {
+        digits = digits.slice(1);
+    }
+    if (digits.startsWith('880')) {
+        digits = digits.slice(3);
+    }
+    if (digits.startsWith('0')) {
+        digits = digits.slice(1);
+    }
+    return `+880${digits}`;
 }
 function hashToken(token) {
     return createHash('sha256').update(token).digest('hex');

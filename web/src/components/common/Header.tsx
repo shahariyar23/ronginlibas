@@ -516,7 +516,7 @@ export const Header: React.FC = () => {
                 id: `review-${rev.id}-ADMIN_FEEDBACK-${rev.adminFeedbackAt}`,
                 title: `Atelier replied to your review for ${rev.productName}`,
                 message: rev.adminFeedback,
-                status: 'ADMIN_FEEDBACK',
+                status: 'REPLIED',
                 type: 'review',
                 timestamp: new Date(rev.adminFeedbackAt).getTime(),
                 link: '/profile',
@@ -534,9 +534,11 @@ export const Header: React.FC = () => {
     }
 
     loadNotifications();
+    const refreshInterval = window.setInterval(loadNotifications, 60_000);
 
     return () => {
       active = false;
+      window.clearInterval(refreshInterval);
     };
   }, [isLoggedIn, user?.id]);
 

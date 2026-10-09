@@ -10,12 +10,12 @@ export declare class ReviewsService {
         hasPrevious: boolean;
     }>;
     create(dto: CreateReviewDto, customerId: string): Promise<{
+        id: string;
+        createdAt: Date;
+        status: import("@prisma/client").$Enums.ReviewStatus;
+        productId: string;
         rating: number;
         comment: string;
-        id: string;
-        productId: string;
-        status: import("@prisma/client").$Enums.ReviewStatus;
-        createdAt: Date;
     }>;
     findProductReviews(productId: string, query: PaginationQueryDto): Promise<{
         items: {
@@ -47,10 +47,10 @@ export declare class ReviewsService {
         canReview: boolean;
         reason: string;
         existingReview: {
-            rating: number;
             id: string;
-            status: import("@prisma/client").$Enums.ReviewStatus;
             createdAt: Date;
+            status: import("@prisma/client").$Enums.ReviewStatus;
+            rating: number;
         };
         orderNumber?: undefined;
     } | {
@@ -73,8 +73,8 @@ export declare class ReviewsService {
         rating: number;
         comment: string;
         status: import("@prisma/client").$Enums.ReviewStatus;
-        adminFeedback: any;
-        adminFeedbackAt: any;
+        adminFeedback: string | null;
+        adminFeedbackAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
     }[]>;
@@ -92,49 +92,46 @@ export declare class ReviewsService {
         color: string;
     }[]>;
     createForProduct(productId: string, dto: Pick<CreateReviewDto, 'rating' | 'comment'>, customerId: string): Promise<{
+        id: string;
+        createdAt: Date;
+        status: import("@prisma/client").$Enums.ReviewStatus;
+        productId: string;
         rating: number;
         comment: string;
-        id: string;
-        productId: string;
-        status: import("@prisma/client").$Enums.ReviewStatus;
-        createdAt: Date;
     }>;
     updateOwned(reviewId: string, customerId: string, dto: UpdateReviewDto): Promise<{
+        id: string;
+        updatedAt: Date;
+        status: import("@prisma/client").$Enums.ReviewStatus;
+        productId: string;
         rating: number;
         comment: string;
-        id: string;
-        productId: string;
-        status: import("@prisma/client").$Enums.ReviewStatus;
-        updatedAt: Date;
     }>;
     deleteOwned(reviewId: string, customerId: string): Promise<{
         deleted: boolean;
     }>;
     vote(reviewId: string, customerId: string, helpful: boolean): Promise<{
         id: string;
-        customerId: string;
         createdAt: Date;
+        customerId: string;
         reviewId: string;
         helpful: boolean;
     }>;
     updateStatus(id: string, status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'HIDDEN'): Promise<{
-        rating: number;
-        comment: string;
         id: string;
-        customerId: string;
-        productId: string;
-        status: import("@prisma/client").$Enums.ReviewStatus;
         createdAt: Date;
         updatedAt: Date;
+        customerId: string;
+        status: import("@prisma/client").$Enums.ReviewStatus;
+        productId: string;
+        rating: number;
+        comment: string;
+        adminFeedback: string | null;
+        adminFeedbackAt: Date | null;
     }>;
     updateAdminFeedback(id: string, feedback: string): Promise<{
-        rating: number;
-        comment: string;
         id: string;
-        customerId: string;
-        productId: string;
-        status: import("@prisma/client").$Enums.ReviewStatus;
-        createdAt: Date;
-        updatedAt: Date;
+        adminFeedback: string | null;
+        adminFeedbackAt: Date | null;
     }>;
 }
