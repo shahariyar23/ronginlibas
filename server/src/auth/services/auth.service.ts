@@ -10,12 +10,12 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { createHash, randomBytes } from 'node:crypto';
 import bcrypt from 'bcrypt';
-import nodemailer from 'nodemailer';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { ChangePasswordDto, ResetPasswordDto } from '../dto/password-reset.dto.js';
 import { LoginDto } from '../dto/login.dto.js';
 import { RegisterCustomerDto } from '../dto/register.dto.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
+import { MailService } from '../../mail/mail.service.js';
 
 interface AuthPayload {
   sub: string;
@@ -32,6 +32,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly mailService: MailService,
   ) {}
 
   async adminLogin(dto: LoginDto) {
@@ -116,7 +117,7 @@ export class AuthService {
           preferredFit: dto.preferredFit,
           marketingConsent: dto.marketingConsent ?? false,
         },
-        select: { id: true, email: true },
+        select: { id: true, email: true, firstName: true },
       });
     } catch (error) {
       if (isUniqueConstraintError(error)) {
@@ -124,6 +125,13 @@ export class AuthService {
       }
       throw error;
     }
+
+    if (customer.email) {
+      this.mailService.sendWelcomeEmail(customer.email, customer.firstName).catch((err) => {
+        this.logger.warn(`Failed to dispatch welcome email to ${customer.email}: ${err.message}`);
+      });
+    }
+
     return this.issueCustomerSession(customer.id, customer.email ?? undefined);
   }
 
@@ -207,18 +215,9 @@ export class AuthService {
   }
 
   async requestPasswordReset(email: string) {
-    const host = this.configService.get<string>('SMTP_HOST');
-    const user = this.configService.get<string>('SMTP_USER');
-    const password = this.configService.get<string>('SMTP_PASS');
-    const from = this.configService.get<string>('SMTP_FROM');
-    const webUrl = this.configService.get<string>('app.webFrontendUrl');
-    if (!host || !user || !password || !from || !webUrl) {
-      throw new ServiceUnavailableException('Password reset email service is not configured');
-    }
-
     const customer = await this.prisma.customer.findUnique({
       where: { email: email.toLowerCase() },
-      select: { id: true, email: true, isActive: true },
+      select: { id: true, email: true, firstName: true, isActive: true },
     });
     if (!customer?.isActive || !customer.email) {
       return { message: 'If an account exists for that address, a reset link will be sent.' };
@@ -231,28 +230,20 @@ export class AuthService {
       where: { id: customer.id },
       data: { resetTokenHash, resetTokenExpiresAt: expiresAt },
     });
-    const transport = nodemailer.createTransport({
-      host,
-      port: Number(this.configService.get<string>('SMTP_PORT') || 587),
-      secure: this.configService.get<string>('SMTP_SECURE') === 'true',
-      auth: { user, pass: password },
-    });
+
     try {
-      await transport.sendMail({
-        from,
-        to: customer.email,
-        subject: 'Reset your Rongin Libas password',
-        text: `Reset your password: ${webUrl.replace(/\/$/, '')}/reset-password?token=${encodeURIComponent(resetToken)}`,
-      });
-    } catch {
+      await this.mailService.sendPasswordResetEmail(
+        customer.email,
+        resetToken,
+        customer.firstName || undefined,
+      );
+    } catch (err) {
       await this.prisma.customer.update({
         where: { id: customer.id },
         data: { resetTokenHash: null, resetTokenExpiresAt: null },
       });
-      this.logger.error('Password reset email delivery failed');
+      this.logger.error(`Password reset email delivery failed: ${(err as Error).message}`);
       throw new ServiceUnavailableException('Password reset email could not be sent');
-    } finally {
-      transport.close();
     }
     return { message: 'If an account exists for that address, a reset link will be sent.' };
   }
@@ -264,7 +255,7 @@ export class AuthService {
         resetTokenExpiresAt: { gt: new Date() },
         isActive: true,
       },
-      select: { id: true },
+      select: { id: true, email: true, firstName: true },
     });
     if (!customer) throw new UnauthorizedException('Password reset token is invalid or expired');
     await this.prisma.customer.update({
@@ -276,6 +267,15 @@ export class AuthService {
         refreshTokenHash: null,
       },
     });
+
+    if (customer.email) {
+      this.mailService
+        .sendPasswordResetSuccessEmail(customer.email, customer.firstName || undefined)
+        .catch((err) => {
+          this.logger.warn(`Failed to dispatch password reset success notification: ${err.message}`);
+        });
+    }
+
     return { passwordReset: true };
   }
 

@@ -9,8 +9,8 @@ export declare class AdminCategoriesController {
         message: string;
         data: {
             description: string | null;
-            id: string;
             name: string;
+            id: string;
             _count: {
                 products: number;
             };
@@ -20,8 +20,8 @@ export declare class AdminCategoriesController {
             parentId: string | null;
             children: {
                 description: string | null;
-                id: string;
                 name: string;
+                id: string;
                 slug: string;
                 sortOrder: number;
                 image: string | null;
@@ -32,11 +32,11 @@ export declare class AdminCategoriesController {
         message: string;
         data: {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             slug: string;
             sortOrder: number;
             image: string | null;

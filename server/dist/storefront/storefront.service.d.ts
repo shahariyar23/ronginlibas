@@ -12,8 +12,8 @@ export declare class StorefrontService {
         bestSellers: any[];
         categories: {
             description: string | null;
-            id: string;
             name: string;
+            id: string;
             _count: {
                 products: number;
             };
@@ -23,8 +23,8 @@ export declare class StorefrontService {
             parentId: string | null;
             children: {
                 description: string | null;
-                id: string;
                 name: string;
+                id: string;
                 slug: string;
                 sortOrder: number;
                 image: string | null;

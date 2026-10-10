@@ -407,13 +407,12 @@ export const LoginClient: React.FC = () => {
                       <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">
                         Password
                       </Label>
-                      <button
-                        type="button"
-                        onClick={() => alert('Password reset instructions will be sent to your registered email.')}
-                        className="font-sans text-xs text-[#c79a45] hover:underline"
+                      <Link
+                        href="/forgot-password"
+                        className="font-sans text-xs text-[#c79a45] hover:underline cursor-pointer"
                       >
                         Forgot Password?
-                      </button>
+                      </Link>
                     </div>
                     <div className="relative">
                       <Input
@@ -494,7 +493,7 @@ export const LoginClient: React.FC = () => {
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div className="space-y-1">
                     <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">
-                      Full Sartorial Name
+                      Full Name
                     </Label>
                     <div className="relative">
                       <Input
@@ -512,7 +511,7 @@ export const LoginClient: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">
-                        BD Mobile (SMS Alerts)
+                        BD Mobile 
                       </Label>
                       <div className="flex items-center">
                         <span className="bg-[#eae8e1] border border-r-0 border-[#deddd3] px-2.5 h-11 text-xs font-semibold flex items-center text-[#404945]">
@@ -531,7 +530,7 @@ export const LoginClient: React.FC = () => {
 
                     <div className="space-y-1">
                       <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">
-                        Patron Email
+                        Email (SMS Alerts)
                       </Label>
                       <Input
                         type="email"
@@ -548,7 +547,7 @@ export const LoginClient: React.FC = () => {
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">
-                        Create Atelier Password
+                        Create Password
                       </Label>
                       <span className="font-sans text-[11px] font-semibold text-[#073a2d]">
                         {pwStrength.label}
@@ -582,7 +581,7 @@ export const LoginClient: React.FC = () => {
                   </div>
 
                   {/* Curated Sizing & Cut Preference */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  {/* <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                     <div className="space-y-1">
                       <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">
                         Preferred Cut & Fit
@@ -612,7 +611,7 @@ export const LoginClient: React.FC = () => {
                         <option value="Royal Embroidered Collar">Royal Embroidered Collar</option>
                       </select>
                     </div>
-                  </div>
+                  </div> */}
 
                   <label className="flex items-start gap-2 text-xs text-[#69726d] cursor-pointer">
                     <input

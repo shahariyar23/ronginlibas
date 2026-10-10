@@ -429,7 +429,7 @@ export const ProfileClient: React.FC = () => {
               href="/register?next=%2Fprofile"
               className="w-full inline-flex items-center justify-center gap-2 bg-[#f5f4ed] hover:bg-[#eae8e1] text-[#073a2d] font-sans text-xs uppercase tracking-wider py-3 px-6 font-semibold transition-all cursor-pointer"
             >
-              <span>Join Atelier (৳500 Gift)</span>
+              <span>Create New Account</span>
             </Link>
           </div>
         </div>

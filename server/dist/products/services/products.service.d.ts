@@ -52,11 +52,11 @@ export declare class ProductsService {
     findBySlug(slug: string): Promise<{
         category: {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             slug: string;
             sortOrder: number;
             image: string | null;
@@ -108,11 +108,11 @@ export declare class ProductsService {
         }[];
     } & {
         description: string | null;
+        name: string;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         tags: string[];
         slug: string;
         price: Prisma.Decimal;
@@ -141,11 +141,11 @@ export declare class ProductsService {
     findById(id: string): Promise<{
         category: {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             slug: string;
             sortOrder: number;
             image: string | null;
@@ -179,11 +179,11 @@ export declare class ProductsService {
         }[];
     } & {
         description: string | null;
+        name: string;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         tags: string[];
         slug: string;
         price: Prisma.Decimal;
@@ -207,8 +207,8 @@ export declare class ProductsService {
     }>;
     findRelated(slug: string, relationType: 'RELATED' | 'COMPLEMENTARY'): Promise<({
         category: {
-            id: string;
             name: string;
+            id: string;
             slug: string;
         };
         reviews: {
@@ -245,11 +245,11 @@ export declare class ProductsService {
         }[];
     } & {
         description: string | null;
+        name: string;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         tags: string[];
         slug: string;
         price: Prisma.Decimal;
@@ -304,11 +304,11 @@ export declare class ProductsService {
         }[];
     } & {
         description: string | null;
+        name: string;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         tags: string[];
         slug: string;
         price: Prisma.Decimal;
@@ -333,11 +333,11 @@ export declare class ProductsService {
     update(id: string, dto: UpdateProductDto): Promise<({
         category: {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             slug: string;
             sortOrder: number;
             image: string | null;
@@ -371,11 +371,11 @@ export declare class ProductsService {
         }[];
     } & {
         description: string | null;
+        name: string;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         tags: string[];
         slug: string;
         price: Prisma.Decimal;
@@ -400,11 +400,11 @@ export declare class ProductsService {
         imageCleanupWarning: string;
         category: {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             slug: string;
             sortOrder: number;
             image: string | null;
@@ -437,11 +437,11 @@ export declare class ProductsService {
             altText: string | null;
         }[];
         description: string | null;
+        name: string;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         tags: string[];
         slug: string;
         price: Prisma.Decimal;
@@ -468,11 +468,11 @@ export declare class ProductsService {
         data: {
             category: {
                 description: string | null;
+                name: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 slug: string;
                 sortOrder: number;
                 image: string | null;
@@ -506,11 +506,11 @@ export declare class ProductsService {
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             tags: string[];
             slug: string;
             price: Prisma.Decimal;
@@ -538,11 +538,11 @@ export declare class ProductsService {
         data: {
             category: {
                 description: string | null;
+                name: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 slug: string;
                 sortOrder: number;
                 image: string | null;
@@ -576,11 +576,11 @@ export declare class ProductsService {
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             tags: string[];
             slug: string;
             price: Prisma.Decimal;

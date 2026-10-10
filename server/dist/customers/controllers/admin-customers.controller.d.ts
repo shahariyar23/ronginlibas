@@ -66,8 +66,8 @@ export declare class AdminCustomersController {
             orders: ({
                 items: ({
                     product: {
-                        id: string;
                         name: string;
+                        id: string;
                         slug: string;
                         price: import("@prisma/client/runtime/library").Decimal;
                         images: {
@@ -119,8 +119,8 @@ export declare class AdminCustomersController {
             })[];
             reviews: ({
                 product: {
-                    id: string;
                     name: string;
+                    id: string;
                     slug: string;
                     price: import("@prisma/client/runtime/library").Decimal;
                     images: {

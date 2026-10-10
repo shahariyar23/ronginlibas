@@ -35,11 +35,11 @@ export declare class AdminOrdersController {
                     }[];
                 } & {
                     description: string | null;
+                    name: string;
                     id: string;
                     isActive: boolean;
                     createdAt: Date;
                     updatedAt: Date;
-                    name: string;
                     tags: string[];
                     slug: string;
                     price: import("@prisma/client/runtime/library").Decimal;

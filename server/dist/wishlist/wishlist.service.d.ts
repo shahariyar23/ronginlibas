@@ -11,8 +11,8 @@ export declare class WishlistService {
                 name: string;
                 slug: string;
             };
-            id: string;
             name: string;
+            id: string;
             slug: string;
             shortDescription: string | null;
             images: {

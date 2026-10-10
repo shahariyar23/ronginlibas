@@ -26,6 +26,7 @@ import { CartModule } from '../cart/cart.module.js';
 import { WishlistModule } from '../wishlist/wishlist.module.js';
 import { NewsletterModule } from '../newsletter/newsletter.module.js';
 import { AuditModule } from '../audit/audit.module.js';
+import { MailModule } from '../mail/mail.module.js';
 
 import { HealthController } from './health.controller.js';
 import { TransformInterceptor } from '../common/interceptors/transform.interceptor.js';
@@ -58,6 +59,7 @@ import { AllExceptionsFilter } from '../common/filters/all-exceptions.filter.js'
     WishlistModule,
     NewsletterModule,
     AuditModule,
+    MailModule,
   ],
   controllers: [HealthController],
   providers: [

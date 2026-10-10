@@ -16,11 +16,11 @@ export declare class AdminProductsController {
         data: {
             category: {
                 description: string | null;
+                name: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 slug: string;
                 sortOrder: number;
                 image: string | null;
@@ -54,11 +54,11 @@ export declare class AdminProductsController {
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -112,11 +112,11 @@ export declare class AdminProductsController {
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -144,11 +144,11 @@ export declare class AdminProductsController {
         data: ({
             category: {
                 description: string | null;
+                name: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 slug: string;
                 sortOrder: number;
                 image: string | null;
@@ -182,11 +182,11 @@ export declare class AdminProductsController {
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -211,11 +211,11 @@ export declare class AdminProductsController {
             imageCleanupWarning: string;
             category: {
                 description: string | null;
+                name: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 slug: string;
                 sortOrder: number;
                 image: string | null;
@@ -248,11 +248,11 @@ export declare class AdminProductsController {
                 altText: string | null;
             }[];
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -280,11 +280,11 @@ export declare class AdminProductsController {
         data: {
             category: {
                 description: string | null;
+                name: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 slug: string;
                 sortOrder: number;
                 image: string | null;
@@ -318,11 +318,11 @@ export declare class AdminProductsController {
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -350,11 +350,11 @@ export declare class AdminProductsController {
         data: {
             category: {
                 description: string | null;
+                name: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 slug: string;
                 sortOrder: number;
                 image: string | null;
@@ -388,11 +388,11 @@ export declare class AdminProductsController {
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;

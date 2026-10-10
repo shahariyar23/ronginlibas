@@ -65,8 +65,8 @@ export declare class CustomersService {
         orders: ({
             items: ({
                 product: {
-                    id: string;
                     name: string;
+                    id: string;
                     slug: string;
                     price: Prisma.Decimal;
                     images: {
@@ -118,8 +118,8 @@ export declare class CustomersService {
         })[];
         reviews: ({
             product: {
-                id: string;
                 name: string;
+                id: string;
                 slug: string;
                 price: Prisma.Decimal;
                 images: {
