@@ -119,6 +119,60 @@ export default function CheckoutPage() {
     return getThanasByDistrict(formData.division, formData.district);
   }, [formData.division, formData.district]);
 
+  // Delivery rate calculations from store settings
+  const dhakaDeliveryCharge = Number(settings?.dhakaDeliveryCharge ?? 80);
+  const outsideDhakaDeliveryCharge = Number(settings?.outsideDhakaDeliveryCharge ?? 150);
+  const freeDeliveryThreshold = Number(settings?.freeDeliveryThreshold ?? 2999);
+  const netSubtotal = Math.max(0, subtotal - discount);
+  const isFreeDelivery =
+    settings?.freeShippingEnabled !== false &&
+    netSubtotal >= freeDeliveryThreshold;
+
+  // Inside Dhaka check:
+  // If District is chosen: is it 'Dhaka'? (Note: other districts in Dhaka division like Gazipur/Narayanganj are outside Dhaka)
+  // If District is NOT chosen yet, but Division is 'Dhaka': treat as Dhaka
+  const isDhakaLocation = React.useMemo(() => {
+    const district = formData.district?.trim().toLowerCase();
+    const division = formData.division?.trim().toLowerCase();
+    if (district === 'dhaka') return true;
+    if (!district && division === 'dhaka') return true;
+    return false;
+  }, [formData.district, formData.division]);
+
+  const isLocationChosen = Boolean(formData.district || formData.division);
+
+  const effectiveDeliveryFee = React.useMemo(() => {
+    if (isFreeDelivery) return 0;
+    if (!isLocationChosen) {
+      return shippingFee || outsideDhakaDeliveryCharge;
+    }
+    return isDhakaLocation ? dhakaDeliveryCharge : outsideDhakaDeliveryCharge;
+  }, [
+    isFreeDelivery,
+    isLocationChosen,
+    isDhakaLocation,
+    dhakaDeliveryCharge,
+    outsideDhakaDeliveryCharge,
+    shippingFee,
+  ]);
+
+  const effectiveGrandTotal = React.useMemo(() => {
+    return Math.max(0, netSubtotal + effectiveDeliveryFee);
+  }, [netSubtotal, effectiveDeliveryFee]);
+
+  const deliveryLabel = React.useMemo(() => {
+    if (isFreeDelivery) {
+      return 'Complimentary Delivery';
+    }
+    if (formData.district) {
+      return isDhakaLocation ? 'Inside Dhaka Delivery' : 'Outside Dhaka Delivery';
+    }
+    if (formData.division) {
+      return isDhakaLocation ? 'Inside Dhaka Delivery' : 'Outside Dhaka Delivery';
+    }
+    return 'Nationwide Delivery';
+  }, [isFreeDelivery, formData.district, formData.division, isDhakaLocation]);
+
   const handleDivisionChange = (newDivision: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -342,15 +396,15 @@ export default function CheckoutPage() {
           </div>
         )}
 
-        <div className="flex justify-between">
-          <span>Nationwide Delivery</span>
+        <div className="flex justify-between items-center">
+          <span>{deliveryLabel}</span>
           <span className="font-semibold tabular-nums text-[#1b1c18]">
-            {shippingFee === 0 ? (
+            {effectiveDeliveryFee === 0 ? (
               <span className="text-[#073a2d] font-bold uppercase text-[10px]">
-                Free (Order &gt; ৳3,000)
+                Free (Order ≥ ৳{freeDeliveryThreshold.toLocaleString()})
               </span>
             ) : (
-              `৳${shippingFee}`
+              `৳${effectiveDeliveryFee.toLocaleString()}`
             )}
           </span>
         </div>
@@ -359,7 +413,7 @@ export default function CheckoutPage() {
 
         <div className="flex justify-between text-base sm:text-lg font-bold text-[#073a2d]">
           <span className="font-serif">Grand Total</span>
-          <span className="tabular-nums">৳{total.toLocaleString()}</span>
+          <span className="tabular-nums">৳{effectiveGrandTotal.toLocaleString()}</span>
         </div>
       </div>
 
@@ -793,7 +847,7 @@ export default function CheckoutPage() {
                   disabled={isSubmitting}
                   className="w-full h-14 bg-[#073a2d] hover:bg-[#0d4d3b] text-[#fbf9f2] font-sans uppercase tracking-[0.18em] text-xs font-bold shadow-lg cursor-pointer"
                 >
-                  {`Place Order - ৳${total.toLocaleString()}`}
+                  {`Place Order - ৳${effectiveGrandTotal.toLocaleString()}`}
                 </Button>
               </div>
 

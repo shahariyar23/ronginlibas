@@ -11,7 +11,7 @@ var MailService_1;
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import nodemailer from 'nodemailer';
-import { renderPasswordResetEmail, renderPasswordResetSuccessEmail, renderWelcomeEmail, } from './templates/index.js';
+import { renderPasswordResetEmail, renderPasswordResetSuccessEmail, renderWelcomeEmail, renderAccountBannedEmail, renderStaffWelcomeEmail, renderOrderConfirmationEmail, renderOrderStatusUpdateEmail, renderOrderEditEmail, } from './templates/index.js';
 let MailService = MailService_1 = class MailService {
     configService;
     logger = new Logger(MailService_1.name);
@@ -38,15 +38,22 @@ let MailService = MailService_1 = class MailService {
     getFromAddress(type = 'auth') {
         if (type === 'orders') {
             const ordersFrom = this.configService.get('SMTP_FROM_ORDERS');
-            if (ordersFrom)
-                return ordersFrom;
+            if (ordersFrom) {
+                return ordersFrom.includes('<') ? ordersFrom : `Rongin Libas Orders <${ordersFrom}>`;
+            }
+            return 'Rongin Libas Orders <orders@ronginlibas.com>';
         }
-        return (this.configService.get('SMTP_FROM') ||
-            'Rongin Libas <noreply@ronginlibas.com>');
+        const authFrom = this.configService.get('SMTP_FROM') ||
+            'Rongin Libas <noreply@ronginlibas.com>';
+        return authFrom.includes('<') ? authFrom : `Rongin Libas <${authFrom}>`;
     }
     getWebUrl() {
         return (this.configService.get('app.webFrontendUrl') ||
             'http://localhost:3000').replace(/\/$/, '');
+    }
+    getAdminUrl() {
+        return (this.configService.get('app.adminFrontendUrl') ||
+            'http://localhost:3001').replace(/\/$/, '');
     }
     async sendPasswordResetEmail(email, resetToken, name) {
         const transporter = this.getTransporter();
@@ -139,6 +146,222 @@ let MailService = MailService_1 = class MailService {
         }
         catch (error) {
             this.logger.warn(`Failed to dispatch welcome email to ${email}: ${error.message}`);
+            return false;
+        }
+        finally {
+            transporter.close();
+        }
+    }
+    async sendAccountBannedEmail(email, reason, name) {
+        const transporter = this.getTransporter();
+        if (!transporter)
+            return false;
+        const webUrl = this.getWebUrl();
+        const from = this.getFromAddress('auth');
+        const { subject, html, text } = renderAccountBannedEmail({
+            name,
+            reason,
+            webUrl,
+        });
+        try {
+            const info = await transporter.sendMail({
+                from,
+                to: email,
+                subject,
+                html,
+                text,
+            });
+            this.logger.log(`Account banned notification dispatched to ${email} (Message ID: ${info.messageId})`);
+            return true;
+        }
+        catch (error) {
+            this.logger.warn(`Failed to dispatch account banned email to ${email}: ${error.message}`);
+            return false;
+        }
+        finally {
+            transporter.close();
+        }
+    }
+    async sendStaffWelcomeEmail(params) {
+        const transporter = this.getTransporter();
+        if (!transporter)
+            return false;
+        const adminUrl = this.getAdminUrl();
+        const loginUrl = `${adminUrl}/login`;
+        const webUrl = this.getWebUrl();
+        const from = this.getFromAddress('auth');
+        const { subject, html, text } = renderStaffWelcomeEmail({
+            fullName: params.fullName,
+            email: params.email,
+            userId: params.userId,
+            role: params.role,
+            password: params.password,
+            loginUrl,
+            mustChangePassword: params.mustChangePassword,
+            webUrl,
+        });
+        try {
+            const info = await transporter.sendMail({
+                from,
+                to: params.email,
+                subject,
+                html,
+                text,
+            });
+            this.logger.log(`Staff welcome credentials email dispatched to ${params.email} (Message ID: ${info.messageId})`);
+            return true;
+        }
+        catch (error) {
+            this.logger.warn(`Failed to dispatch staff welcome credentials email to ${params.email}: ${error.message}`);
+            return false;
+        }
+        finally {
+            transporter.close();
+        }
+    }
+    async sendOrderConfirmationEmail(params) {
+        const transporter = this.getTransporter();
+        if (!transporter)
+            return false;
+        const webUrl = this.getWebUrl();
+        const trackQuery = new URLSearchParams();
+        trackQuery.set('id', params.orderNumber);
+        if (params.trackingToken) {
+            trackQuery.set('trackingToken', params.trackingToken);
+        }
+        const trackUrl = `${webUrl}/track-order?${trackQuery.toString()}`;
+        const from = this.getFromAddress('orders');
+        const cleanOrderNum = params.orderNumber.replace(/[^a-zA-Z0-9-_]/g, '');
+        const { subject, html, text } = renderOrderConfirmationEmail({
+            orderNumber: params.orderNumber,
+            customerName: params.customerName,
+            items: params.items,
+            subtotal: params.subtotal,
+            deliveryCharge: params.deliveryCharge,
+            discountAmount: params.discountAmount,
+            totalAmount: params.totalAmount,
+            paymentMethod: params.paymentMethod,
+            paymentStatus: params.paymentStatus,
+            shippingAddress: params.shippingAddress,
+            customerNotes: params.customerNotes,
+            trackUrl,
+            webUrl,
+            hasInvoiceAttachment: Boolean(params.invoiceBuffer),
+        });
+        const attachments = params.invoiceBuffer
+            ? [
+                {
+                    filename: `Rongin-Libas-Invoice-${cleanOrderNum}.pdf`,
+                    content: params.invoiceBuffer,
+                    contentType: 'application/pdf',
+                },
+            ]
+            : undefined;
+        try {
+            const info = await transporter.sendMail({
+                from,
+                to: params.email,
+                subject,
+                html,
+                text,
+                attachments,
+            });
+            this.logger.log(`Order confirmation email dispatched to ${params.email} for ${params.orderNumber} (Invoice attached: ${Boolean(params.invoiceBuffer)}) via ${from} (Message ID: ${info.messageId})`);
+            return true;
+        }
+        catch (error) {
+            this.logger.warn(`Failed to dispatch order confirmation email to ${params.email} for ${params.orderNumber}: ${error.message}`);
+            return false;
+        }
+        finally {
+            transporter.close();
+        }
+    }
+    async sendOrderStatusUpdateEmail(params) {
+        const transporter = this.getTransporter();
+        if (!transporter)
+            return false;
+        const webUrl = this.getWebUrl();
+        const trackQuery = new URLSearchParams();
+        trackQuery.set('id', params.orderNumber);
+        if (params.trackingToken) {
+            trackQuery.set('trackingToken', params.trackingToken);
+        }
+        const trackUrl = `${webUrl}/track-order?${trackQuery.toString()}`;
+        const from = this.getFromAddress('orders');
+        const { subject, html, text } = renderOrderStatusUpdateEmail({
+            orderNumber: params.orderNumber,
+            customerName: params.customerName,
+            newStatus: params.newStatus,
+            previousStatus: params.previousStatus,
+            courierName: params.courierName,
+            trackingNumber: params.trackingNumber,
+            trackingUrl: params.trackingUrl,
+            estimatedDelivery: params.estimatedDelivery,
+            adminNotes: params.adminNotes,
+            totalAmount: params.totalAmount,
+            shippingAddress: params.shippingAddress,
+            trackUrl,
+            webUrl,
+        });
+        try {
+            const info = await transporter.sendMail({
+                from,
+                to: params.email,
+                subject,
+                html,
+                text,
+            });
+            this.logger.log(`Order status update email (${params.newStatus}) dispatched to ${params.email} for ${params.orderNumber} via ${from} (Message ID: ${info.messageId})`);
+            return true;
+        }
+        catch (error) {
+            this.logger.warn(`Failed to dispatch order status update email to ${params.email} for ${params.orderNumber}: ${error.message}`);
+            return false;
+        }
+        finally {
+            transporter.close();
+        }
+    }
+    async sendOrderEditEmail(params) {
+        const transporter = this.getTransporter();
+        if (!transporter)
+            return false;
+        const webUrl = this.getWebUrl();
+        const trackQuery = new URLSearchParams();
+        trackQuery.set('id', params.orderNumber);
+        if (params.trackingToken) {
+            trackQuery.set('trackingToken', params.trackingToken);
+        }
+        const trackUrl = `${webUrl}/track-order?${trackQuery.toString()}`;
+        const from = this.getFromAddress('orders');
+        const { subject, html, text } = renderOrderEditEmail({
+            orderNumber: params.orderNumber,
+            customerName: params.customerName,
+            status: params.status,
+            totalAmount: params.totalAmount,
+            changeSummary: params.changeSummary,
+            shippingAddress: params.shippingAddress,
+            courierName: params.courierName,
+            trackingNumber: params.trackingNumber,
+            trackingUrl: params.trackingUrl,
+            adminNotes: params.adminNotes,
+            trackUrl,
+            webUrl,
+        });
+        try {
+            const info = await transporter.sendMail({
+                from,
+                to: params.email,
+                subject,
+                html,
+                text,
+            });
+            this.logger.log(`Order edit email dispatched to ${params.email} for ${params.orderNumber} via ${from} (Message ID: ${info.messageId})`);
+            return true;
+        }
+        catch (error) {
+            this.logger.warn(`Failed to dispatch order edit email to ${params.email} for ${params.orderNumber}: ${error.message}`);
             return false;
         }
         finally {

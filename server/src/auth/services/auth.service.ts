@@ -74,9 +74,18 @@ export class AuthService {
     const customer = await this.prisma.customer.findUnique({
       where: { email: dto.email.toLowerCase() },
     });
+
+    if (customer && !customer.isActive) {
+      if (customer.banReason) {
+        throw new UnauthorizedException(
+          `Your account has been suspended by the shop administration. Reason: ${customer.banReason}`,
+        );
+      }
+      throw new UnauthorizedException('Your account is currently inactive. Please contact support.');
+    }
+
     if (
       !customer ||
-      !customer.isActive ||
       !customer.passwordHash ||
       !(await bcrypt.compare(dto.password, customer.passwordHash))
     ) {

@@ -30,6 +30,7 @@ export declare class AdminInventoryController {
             };
             transaction: {
                 type: import("@prisma/client").$Enums.InventoryTransactionType;
+                userId: string | null;
                 id: string;
                 createdAt: Date;
                 quantityChange: number;
@@ -37,7 +38,6 @@ export declare class AdminInventoryController {
                 newStock: number;
                 note: string | null;
                 variantId: string;
-                userId: string | null;
             };
         };
     }>;

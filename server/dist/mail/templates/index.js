@@ -2,4 +2,9 @@ export * from './base.template.js';
 export * from './password-reset.template.js';
 export * from './password-reset-success.template.js';
 export * from './welcome.template.js';
+export * from './account-banned.template.js';
+export * from './staff-welcome.template.js';
+export * from './order-confirmation.template.js';
+export * from './order-status-update.template.js';
+export * from './order-edit.template.js';
 //# sourceMappingURL=index.js.map

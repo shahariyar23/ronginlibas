@@ -25,6 +25,7 @@ export declare class InventoryService {
         };
         transaction: {
             type: import("@prisma/client").$Enums.InventoryTransactionType;
+            userId: string | null;
             id: string;
             createdAt: Date;
             quantityChange: number;
@@ -32,7 +33,6 @@ export declare class InventoryService {
             newStock: number;
             note: string | null;
             variantId: string;
-            userId: string | null;
         };
     }>;
     getTransactionHistory(variantId: string): Promise<{

@@ -1,13 +1,19 @@
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
-import { PaginationQueryDto, PaginatedResult } from '../../common/dto/pagination-query.dto.js';
+import { PaginatedResult, PaginationQueryDto } from '../../common/dto/pagination-query.dto.js';
 import { UpdateCustomerProfileDto } from '../dto/update-customer-profile.dto.js';
 import { CreateAddressDto, UpdateAddressDto } from '../dto/address.dto.js';
 import { MeasurementProfileDto } from '../dto/measurement-profile.dto.js';
+import { CustomerQueryDto, UpdateCustomerStatusDto, PermanentDeleteCustomerDto } from '../dto/admin-customer.dto.js';
+import { MailService } from '../../mail/mail.service.js';
+import { AuditService, type AdminAuditActor } from '../../audit/audit.service.js';
 export declare class CustomersService {
     private readonly prisma;
-    constructor(prisma: PrismaService);
-    findAll(query: PaginationQueryDto): Promise<PaginatedResult<any>>;
+    private readonly mailService;
+    private readonly auditService;
+    private readonly logger;
+    constructor(prisma: PrismaService, mailService: MailService, auditService: AuditService);
+    findAll(query: CustomerQueryDto): Promise<PaginatedResult<any>>;
     findById(id: string): Promise<{
         addresses: ({
             id: string;
@@ -27,9 +33,6 @@ export declare class CustomersService {
         } | {
             email: string | null;
             phone: string;
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
             fullName: string | null;
             addressLine1: string;
             addressLine2: string | null;
@@ -38,6 +41,9 @@ export declare class CustomersService {
             area: string | null;
             postalCode: string | null;
             deliveryInstructions: string | null;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
             isDefault: boolean;
             customerId: string;
             country: string;
@@ -76,11 +82,11 @@ export declare class CustomersService {
                 } | null;
             } & {
                 productImage: string | null;
+                subtotal: Prisma.Decimal;
+                discountAmount: Prisma.Decimal;
                 id: string;
                 createdAt: Date;
                 variantId: string | null;
-                subtotal: Prisma.Decimal;
-                discountAmount: Prisma.Decimal;
                 sku: string;
                 productId: string | null;
                 orderId: string;
@@ -92,29 +98,29 @@ export declare class CustomersService {
                 color: string | null;
             })[];
         } & {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            customerId: string | null;
             orderNumber: string;
-            guestName: string | null;
-            guestEmail: string | null;
-            guestPhone: string | null;
-            trackingTokenHash: string | null;
+            subtotal: Prisma.Decimal;
+            deliveryCharge: Prisma.Decimal;
+            discountAmount: Prisma.Decimal;
+            totalAmount: Prisma.Decimal;
+            paymentMethod: import("@prisma/client").$Enums.PaymentMethod;
+            paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
+            shippingAddress: Prisma.JsonValue;
+            customerNotes: string | null;
             courierName: string | null;
             trackingNumber: string | null;
             trackingUrl: string | null;
             estimatedDelivery: Date | null;
-            status: import("@prisma/client").$Enums.OrderStatus;
-            paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
-            paymentMethod: import("@prisma/client").$Enums.PaymentMethod;
-            subtotal: Prisma.Decimal;
-            discountAmount: Prisma.Decimal;
-            deliveryCharge: Prisma.Decimal;
-            totalAmount: Prisma.Decimal;
-            shippingAddress: Prisma.JsonValue;
-            customerNotes: string | null;
             adminNotes: string | null;
+            status: import("@prisma/client").$Enums.OrderStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            customerId: string | null;
+            guestName: string | null;
+            guestEmail: string | null;
+            guestPhone: string | null;
+            trackingTokenHash: string | null;
         })[];
         reviews: ({
             product: {
@@ -128,11 +134,11 @@ export declare class CustomersService {
                 }[];
             };
         } & {
+            status: import("@prisma/client").$Enums.ReviewStatus;
             id: string;
             createdAt: Date;
             updatedAt: Date;
             customerId: string;
-            status: import("@prisma/client").$Enums.ReviewStatus;
             images: string[];
             productId: string;
             rating: number;
@@ -170,6 +176,9 @@ export declare class CustomersService {
         createdAt: Date;
         updatedAt: Date;
         refreshTokenHash: string | null;
+        banReason: string | null;
+        bannedAt: Date | null;
+        deletedAt: Date | null;
         resetTokenHash: string | null;
         resetTokenExpiresAt: Date | null;
         secondaryPhone: string | null;
@@ -190,7 +199,6 @@ export declare class CustomersService {
         addresses: {
             email: string | null;
             phone: string;
-            id: string;
             fullName: string | null;
             addressLine1: string;
             addressLine2: string | null;
@@ -199,6 +207,7 @@ export declare class CustomersService {
             area: string | null;
             postalCode: string | null;
             deliveryInstructions: string | null;
+            id: string;
             isDefault: boolean;
         }[];
         measurements: {
@@ -233,11 +242,11 @@ export declare class CustomersService {
         };
         activeOrderCount: number;
         activeOrders: {
-            createdAt: Date;
             orderNumber: string;
-            status: import("@prisma/client").$Enums.OrderStatus;
-            paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
             totalAmount: Prisma.Decimal;
+            paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
+            status: import("@prisma/client").$Enums.OrderStatus;
+            createdAt: Date;
         }[];
         recentOrders: {
             items: {
@@ -246,15 +255,14 @@ export declare class CustomersService {
                 unitPrice: Prisma.Decimal;
                 quantity: number;
             }[];
-            createdAt: Date;
             orderNumber: string;
-            status: import("@prisma/client").$Enums.OrderStatus;
-            paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
             totalAmount: Prisma.Decimal;
+            paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
+            status: import("@prisma/client").$Enums.OrderStatus;
+            createdAt: Date;
         }[];
         defaultAddress: {
             phone: string;
-            id: string;
             fullName: string | null;
             addressLine1: string;
             addressLine2: string | null;
@@ -262,15 +270,13 @@ export declare class CustomersService {
             division: string;
             area: string | null;
             postalCode: string | null;
+            id: string;
         };
         wishlistCount: number;
     }>;
     findAddresses(customerId: string): Promise<{
         email: string | null;
         phone: string;
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
         fullName: string | null;
         addressLine1: string;
         addressLine2: string | null;
@@ -279,14 +285,14 @@ export declare class CustomersService {
         area: string | null;
         postalCode: string | null;
         deliveryInstructions: string | null;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
         isDefault: boolean;
     }[]>;
     createAddress(customerId: string, dto: CreateAddressDto): Promise<{
         email: string | null;
         phone: string;
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
         fullName: string | null;
         addressLine1: string;
         addressLine2: string | null;
@@ -295,14 +301,14 @@ export declare class CustomersService {
         area: string | null;
         postalCode: string | null;
         deliveryInstructions: string | null;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
         isDefault: boolean;
     }>;
     updateAddress(customerId: string, addressId: string, dto: UpdateAddressDto): Promise<{
         email: string | null;
         phone: string;
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
         fullName: string | null;
         addressLine1: string;
         addressLine2: string | null;
@@ -311,14 +317,14 @@ export declare class CustomersService {
         area: string | null;
         postalCode: string | null;
         deliveryInstructions: string | null;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
         isDefault: boolean;
     }>;
     setDefaultAddress(customerId: string, addressId: string): Promise<{
         email: string | null;
         phone: string;
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
         fullName: string | null;
         addressLine1: string;
         addressLine2: string | null;
@@ -327,6 +333,9 @@ export declare class CustomersService {
         area: string | null;
         postalCode: string | null;
         deliveryInstructions: string | null;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
         isDefault: boolean;
     }>;
     deleteAddress(customerId: string, addressId: string): Promise<{
@@ -370,4 +379,124 @@ export declare class CustomersService {
         customerId: string;
     }>;
     private requireOwnedAddress;
+    sendPasswordResetLink(id: string, actor: AdminAuditActor): Promise<{
+        message: string;
+        data: {
+            customerId: string;
+            email: string;
+        };
+    }>;
+    updateStatus(id: string, dto: UpdateCustomerStatusDto, actor: AdminAuditActor): Promise<{
+        message: string;
+        data: {
+            email: string | null;
+            phone: string;
+            firstName: string;
+            lastName: string | null;
+            preferredSize: string | null;
+            preferredFit: string | null;
+            marketingConsent: boolean;
+            id: string;
+            passwordHash: string | null;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            refreshTokenHash: string | null;
+            banReason: string | null;
+            bannedAt: Date | null;
+            deletedAt: Date | null;
+            resetTokenHash: string | null;
+            resetTokenExpiresAt: Date | null;
+            secondaryPhone: string | null;
+            dateOfBirth: Date | null;
+        };
+    }>;
+    softDelete(id: string, actor: AdminAuditActor): Promise<{
+        message: string;
+        data: {
+            email: string | null;
+            phone: string;
+            firstName: string;
+            lastName: string | null;
+            preferredSize: string | null;
+            preferredFit: string | null;
+            marketingConsent: boolean;
+            id: string;
+            passwordHash: string | null;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            refreshTokenHash: string | null;
+            banReason: string | null;
+            bannedAt: Date | null;
+            deletedAt: Date | null;
+            resetTokenHash: string | null;
+            resetTokenExpiresAt: Date | null;
+            secondaryPhone: string | null;
+            dateOfBirth: Date | null;
+        };
+    }>;
+    restore(id: string, actor: AdminAuditActor): Promise<{
+        message: string;
+        data: {
+            email: string | null;
+            phone: string;
+            firstName: string;
+            lastName: string | null;
+            preferredSize: string | null;
+            preferredFit: string | null;
+            marketingConsent: boolean;
+            id: string;
+            passwordHash: string | null;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            refreshTokenHash: string | null;
+            banReason: string | null;
+            bannedAt: Date | null;
+            deletedAt: Date | null;
+            resetTokenHash: string | null;
+            resetTokenExpiresAt: Date | null;
+            secondaryPhone: string | null;
+            dateOfBirth: Date | null;
+        };
+    }>;
+    permanentDelete(id: string, dto: PermanentDeleteCustomerDto, actor: AdminAuditActor): Promise<{
+        message: string;
+        data: {
+            email: string | null;
+            phone: string;
+            firstName: string;
+            lastName: string | null;
+            id: string;
+            deletedAt: Date;
+            secondaryPhone: string | null;
+            addresses: Prisma.JsonValue | null;
+            measurements: Prisma.JsonValue | null;
+            originalId: string;
+            ordersSnapshot: Prisma.JsonValue | null;
+            totalSpent: Prisma.Decimal;
+            totalOrders: number;
+            deletedBy: string | null;
+            deleteReason: string | null;
+        };
+    }>;
+    findAllArchives(query: PaginationQueryDto): Promise<PaginatedResult<any>>;
+    findArchiveById(id: string): Promise<{
+        email: string | null;
+        phone: string;
+        firstName: string;
+        lastName: string | null;
+        id: string;
+        deletedAt: Date;
+        secondaryPhone: string | null;
+        addresses: Prisma.JsonValue | null;
+        measurements: Prisma.JsonValue | null;
+        originalId: string;
+        ordersSnapshot: Prisma.JsonValue | null;
+        totalSpent: Prisma.Decimal;
+        totalOrders: number;
+        deletedBy: string | null;
+        deleteReason: string | null;
+    }>;
 }

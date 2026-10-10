@@ -584,15 +584,47 @@ export const adminApi = {
 
   // Customers
   customers: {
-    getAll: (params?: { page?: number; limit?: number; search?: string }) => {
+    getAll: (params?: { page?: number; limit?: number; search?: string; status?: string }) => {
+      const query = new URLSearchParams();
+      if (params?.page) query.set('page', params.page.toString());
+      if (params?.limit) query.set('limit', params.limit.toString());
+      if (params?.search) query.set('search', params.search);
+      if (params?.status) query.set('status', params.status);
+      const qs = query.toString();
+      return request<any>(`/admin/customers${qs ? `?${qs}` : ''}`);
+    },
+    getById: (id: string) => request<any>(`/admin/customers/${id}`),
+    sendResetPassword: (id: string) =>
+      request<any>(`/admin/customers/${id}/reset-password`, {
+        method: 'POST',
+      }),
+    updateStatus: (id: string, payload: { isActive: boolean; reason?: string }) =>
+      request<any>(`/admin/customers/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      }),
+    softDelete: (id: string) =>
+      request<any>(`/admin/customers/${id}/soft`, {
+        method: 'DELETE',
+      }),
+    restore: (id: string) =>
+      request<any>(`/admin/customers/${id}/restore`, {
+        method: 'POST',
+      }),
+    permanentDelete: (id: string, payload: { confirm: boolean; reason?: string }) =>
+      request<any>(`/admin/customers/${id}/permanent`, {
+        method: 'DELETE',
+        body: JSON.stringify(payload),
+      }),
+    getArchives: (params?: { page?: number; limit?: number; search?: string }) => {
       const query = new URLSearchParams();
       if (params?.page) query.set('page', params.page.toString());
       if (params?.limit) query.set('limit', params.limit.toString());
       if (params?.search) query.set('search', params.search);
       const qs = query.toString();
-      return request<any>(`/admin/customers${qs ? `?${qs}` : ''}`);
+      return request<any>(`/admin/customers/archives${qs ? `?${qs}` : ''}`);
     },
-    getById: (id: string) => request<any>(`/admin/customers/${id}`),
+    getArchiveById: (id: string) => request<any>(`/admin/customers/archives/${id}`),
   },
 
   // Coupons

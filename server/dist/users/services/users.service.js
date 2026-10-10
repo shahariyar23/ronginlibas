@@ -7,15 +7,20 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { Injectable, ConflictException, NotFoundException, BadRequestException, ForbiddenException, } from '@nestjs/common';
+var UsersService_1;
+import { Injectable, ConflictException, NotFoundException, BadRequestException, ForbiddenException, Logger, } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
-let UsersService = class UsersService {
+import { MailService } from '../../mail/mail.service.js';
+let UsersService = UsersService_1 = class UsersService {
     prisma;
-    constructor(prisma) {
+    mailService;
+    logger = new Logger(UsersService_1.name);
+    constructor(prisma, mailService) {
         this.prisma = prisma;
+        this.mailService = mailService;
     }
     async create(dto) {
         const existing = await this.prisma.user.findUnique({
@@ -26,7 +31,7 @@ let UsersService = class UsersService {
             throw new ConflictException('A staff user with this email already exists');
         }
         try {
-            return await this.prisma.user.create({
+            const user = await this.prisma.user.create({
                 data: {
                     email: dto.email.toLowerCase(),
                     passwordHash: await bcrypt.hash(dto.password, 10),
@@ -49,6 +54,22 @@ let UsersService = class UsersService {
                     updatedAt: true,
                 },
             });
+            try {
+                const fullName = `${user.firstName} ${user.lastName}`.trim();
+                await this.mailService.sendStaffWelcomeEmail({
+                    email: user.email,
+                    fullName,
+                    userId: user.id,
+                    role: user.role,
+                    password: dto.password,
+                    mustChangePassword: user.mustChangePassword,
+                });
+                this.logger.log(`Dispatched onboarding credentials email to new staff member ${user.email} (${user.id})`);
+            }
+            catch (mailError) {
+                this.logger.warn(`Failed to dispatch staff welcome credentials email to ${user.email}: ${mailError.message}`);
+            }
+            return user;
         }
         catch (error) {
             if (isUniqueConstraintError(error)) {
@@ -193,9 +214,10 @@ let UsersService = class UsersService {
         return { success: true, message: 'Password updated successfully' };
     }
 };
-UsersService = __decorate([
+UsersService = UsersService_1 = __decorate([
     Injectable(),
-    __metadata("design:paramtypes", [PrismaService])
+    __metadata("design:paramtypes", [PrismaService,
+        MailService])
 ], UsersService);
 export { UsersService };
 function isUniqueConstraintError(error) {

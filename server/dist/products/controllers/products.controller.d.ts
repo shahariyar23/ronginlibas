@@ -68,11 +68,11 @@ export declare class ProductsController {
                     lastName: string | null;
                 };
             } & {
+                status: import("@prisma/client").$Enums.ReviewStatus;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
                 customerId: string;
-                status: import("@prisma/client").$Enums.ReviewStatus;
                 images: string[];
                 productId: string;
                 rating: number;
@@ -113,6 +113,7 @@ export declare class ProductsController {
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -128,7 +129,6 @@ export declare class ProductsController {
             careInstructions: string | null;
             isExpressAvailable: boolean;
             alertThreshold: number;
-            deletedAt: Date | null;
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
@@ -186,6 +186,7 @@ export declare class ProductsController {
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -201,7 +202,6 @@ export declare class ProductsController {
             careInstructions: string | null;
             isExpressAvailable: boolean;
             alertThreshold: number;
-            deletedAt: Date | null;
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;

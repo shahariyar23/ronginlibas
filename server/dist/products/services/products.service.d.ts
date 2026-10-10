@@ -68,11 +68,11 @@ export declare class ProductsService {
                 lastName: string | null;
             };
         } & {
+            status: import("@prisma/client").$Enums.ReviewStatus;
             id: string;
             createdAt: Date;
             updatedAt: Date;
             customerId: string;
-            status: import("@prisma/client").$Enums.ReviewStatus;
             images: string[];
             productId: string;
             rating: number;
@@ -113,6 +113,7 @@ export declare class ProductsService {
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        deletedAt: Date | null;
         tags: string[];
         slug: string;
         price: Prisma.Decimal;
@@ -128,7 +129,6 @@ export declare class ProductsService {
         careInstructions: string | null;
         isExpressAvailable: boolean;
         alertThreshold: number;
-        deletedAt: Date | null;
         isFeatured: boolean;
         isNewArrival: boolean;
         isBestSeller: boolean;
@@ -184,6 +184,7 @@ export declare class ProductsService {
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        deletedAt: Date | null;
         tags: string[];
         slug: string;
         price: Prisma.Decimal;
@@ -199,7 +200,6 @@ export declare class ProductsService {
         careInstructions: string | null;
         isExpressAvailable: boolean;
         alertThreshold: number;
-        deletedAt: Date | null;
         isFeatured: boolean;
         isNewArrival: boolean;
         isBestSeller: boolean;
@@ -250,6 +250,7 @@ export declare class ProductsService {
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        deletedAt: Date | null;
         tags: string[];
         slug: string;
         price: Prisma.Decimal;
@@ -265,7 +266,6 @@ export declare class ProductsService {
         careInstructions: string | null;
         isExpressAvailable: boolean;
         alertThreshold: number;
-        deletedAt: Date | null;
         isFeatured: boolean;
         isNewArrival: boolean;
         isBestSeller: boolean;
@@ -309,6 +309,7 @@ export declare class ProductsService {
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        deletedAt: Date | null;
         tags: string[];
         slug: string;
         price: Prisma.Decimal;
@@ -324,7 +325,6 @@ export declare class ProductsService {
         careInstructions: string | null;
         isExpressAvailable: boolean;
         alertThreshold: number;
-        deletedAt: Date | null;
         isFeatured: boolean;
         isNewArrival: boolean;
         isBestSeller: boolean;
@@ -376,6 +376,7 @@ export declare class ProductsService {
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        deletedAt: Date | null;
         tags: string[];
         slug: string;
         price: Prisma.Decimal;
@@ -391,7 +392,6 @@ export declare class ProductsService {
         careInstructions: string | null;
         isExpressAvailable: boolean;
         alertThreshold: number;
-        deletedAt: Date | null;
         isFeatured: boolean;
         isNewArrival: boolean;
         isBestSeller: boolean;
@@ -442,6 +442,7 @@ export declare class ProductsService {
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        deletedAt: Date | null;
         tags: string[];
         slug: string;
         price: Prisma.Decimal;
@@ -457,7 +458,6 @@ export declare class ProductsService {
         careInstructions: string | null;
         isExpressAvailable: boolean;
         alertThreshold: number;
-        deletedAt: Date | null;
         isFeatured: boolean;
         isNewArrival: boolean;
         isBestSeller: boolean;
@@ -511,6 +511,7 @@ export declare class ProductsService {
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: Prisma.Decimal;
@@ -526,7 +527,6 @@ export declare class ProductsService {
             careInstructions: string | null;
             isExpressAvailable: boolean;
             alertThreshold: number;
-            deletedAt: Date | null;
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
@@ -581,6 +581,7 @@ export declare class ProductsService {
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: Prisma.Decimal;
@@ -596,7 +597,6 @@ export declare class ProductsService {
             careInstructions: string | null;
             isExpressAvailable: boolean;
             alertThreshold: number;
-            deletedAt: Date | null;
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
