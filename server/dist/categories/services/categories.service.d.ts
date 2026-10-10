@@ -8,8 +8,8 @@ export declare class CategoriesService {
     constructor(prisma: PrismaService, productsService: ProductsService);
     findAll(isAdmin?: boolean): Promise<{
         description: string | null;
-        id: string;
         name: string;
+        id: string;
         _count: {
             products: number;
         };
@@ -19,8 +19,8 @@ export declare class CategoriesService {
         parentId: string | null;
         children: {
             description: string | null;
-            id: string;
             name: string;
+            id: string;
             slug: string;
             sortOrder: number;
             image: string | null;
@@ -28,8 +28,8 @@ export declare class CategoriesService {
     }[]>;
     findBySlug(slug: string): Promise<{
         description: string | null;
-        id: string;
         name: string;
+        id: string;
         _count: {
             products: number;
         };
@@ -38,8 +38,8 @@ export declare class CategoriesService {
         parentId: string | null;
         children: {
             description: string | null;
-            id: string;
             name: string;
+            id: string;
             slug: string;
             image: string | null;
         }[];
@@ -47,11 +47,11 @@ export declare class CategoriesService {
     findProductsBySlug(slug: string, query: ProductQueryDto): Promise<import("../../common/dto/pagination-query.dto.js").PaginatedResult<any>>;
     create(dto: CreateCategoryDto): Promise<{
         description: string | null;
+        name: string;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         slug: string;
         sortOrder: number;
         image: string | null;

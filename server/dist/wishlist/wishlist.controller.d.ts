@@ -13,8 +13,8 @@ export declare class WishlistController {
                     name: string;
                     slug: string;
                 };
-                id: string;
                 name: string;
+                id: string;
                 slug: string;
                 shortDescription: string | null;
                 images: {

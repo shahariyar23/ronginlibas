@@ -4,12 +4,14 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { ChangePasswordDto, ResetPasswordDto } from '../dto/password-reset.dto.js';
 import { LoginDto } from '../dto/login.dto.js';
 import { RegisterCustomerDto } from '../dto/register.dto.js';
+import { MailService } from '../../mail/mail.service.js';
 export declare class AuthService {
     private readonly prisma;
     private readonly jwtService;
     private readonly configService;
+    private readonly mailService;
     private readonly logger;
-    constructor(prisma: PrismaService, jwtService: JwtService, configService: ConfigService);
+    constructor(prisma: PrismaService, jwtService: JwtService, configService: ConfigService, mailService: MailService);
     adminLogin(dto: LoginDto): Promise<{
         user: {
             id: string;

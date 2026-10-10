@@ -33,11 +33,11 @@ export declare class OrdersService {
                 }[];
             } & {
                 description: string | null;
+                name: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 tags: string[];
                 slug: string;
                 price: Prisma.Decimal;

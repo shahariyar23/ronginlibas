@@ -52,11 +52,11 @@ export declare class ProductsController {
         data: {
             category: {
                 description: string | null;
+                name: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 slug: string;
                 sortOrder: number;
                 image: string | null;
@@ -108,11 +108,11 @@ export declare class ProductsController {
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -143,8 +143,8 @@ export declare class ProductsController {
         message: string;
         data: ({
             category: {
-                id: string;
                 name: string;
+                id: string;
                 slug: string;
             };
             reviews: {
@@ -181,11 +181,11 @@ export declare class ProductsController {
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;

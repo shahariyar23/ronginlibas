@@ -660,3 +660,17 @@ export async function getEligibleReviews() {
   return apiRequest<EligibleReviewProduct[]>('/reviews/eligible');
 }
 
+export async function requestForgotPassword(email: string) {
+  return apiRequest<{ message: string }>('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function resetPasswordWithToken(token: string, newPassword: string) {
+  return apiRequest<{ message: string; passwordReset?: boolean }>('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, newPassword }),
+  });
+}
+

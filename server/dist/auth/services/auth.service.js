@@ -13,18 +13,20 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { createHash, randomBytes } from 'node:crypto';
 import bcrypt from 'bcrypt';
-import nodemailer from 'nodemailer';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
+import { MailService } from '../../mail/mail.service.js';
 let AuthService = AuthService_1 = class AuthService {
     prisma;
     jwtService;
     configService;
+    mailService;
     logger = new Logger(AuthService_1.name);
-    constructor(prisma, jwtService, configService) {
+    constructor(prisma, jwtService, configService, mailService) {
         this.prisma = prisma;
         this.jwtService = jwtService;
         this.configService = configService;
+        this.mailService = mailService;
     }
     async adminLogin(dto) {
         const user = await this.prisma.user.findUnique({
@@ -101,7 +103,7 @@ let AuthService = AuthService_1 = class AuthService {
                     preferredFit: dto.preferredFit,
                     marketingConsent: dto.marketingConsent ?? false,
                 },
-                select: { id: true, email: true },
+                select: { id: true, email: true, firstName: true },
             });
         }
         catch (error) {
@@ -109,6 +111,11 @@ let AuthService = AuthService_1 = class AuthService {
                 throw new ConflictException('A customer with this phone number or email is already registered');
             }
             throw error;
+        }
+        if (customer.email) {
+            this.mailService.sendWelcomeEmail(customer.email, customer.firstName).catch((err) => {
+                this.logger.warn(`Failed to dispatch welcome email to ${customer.email}: ${err.message}`);
+            });
         }
         return this.issueCustomerSession(customer.id, customer.email ?? undefined);
     }
@@ -185,17 +192,9 @@ let AuthService = AuthService_1 = class AuthService {
         return { passwordChanged: true };
     }
     async requestPasswordReset(email) {
-        const host = this.configService.get('SMTP_HOST');
-        const user = this.configService.get('SMTP_USER');
-        const password = this.configService.get('SMTP_PASS');
-        const from = this.configService.get('SMTP_FROM');
-        const webUrl = this.configService.get('app.webFrontendUrl');
-        if (!host || !user || !password || !from || !webUrl) {
-            throw new ServiceUnavailableException('Password reset email service is not configured');
-        }
         const customer = await this.prisma.customer.findUnique({
             where: { email: email.toLowerCase() },
-            select: { id: true, email: true, isActive: true },
+            select: { id: true, email: true, firstName: true, isActive: true },
         });
         if (!customer?.isActive || !customer.email) {
             return { message: 'If an account exists for that address, a reset link will be sent.' };
@@ -207,30 +206,16 @@ let AuthService = AuthService_1 = class AuthService {
             where: { id: customer.id },
             data: { resetTokenHash, resetTokenExpiresAt: expiresAt },
         });
-        const transport = nodemailer.createTransport({
-            host,
-            port: Number(this.configService.get('SMTP_PORT') || 587),
-            secure: this.configService.get('SMTP_SECURE') === 'true',
-            auth: { user, pass: password },
-        });
         try {
-            await transport.sendMail({
-                from,
-                to: customer.email,
-                subject: 'Reset your Rongin Libas password',
-                text: `Reset your password: ${webUrl.replace(/\/$/, '')}/reset-password?token=${encodeURIComponent(resetToken)}`,
-            });
+            await this.mailService.sendPasswordResetEmail(customer.email, resetToken, customer.firstName || undefined);
         }
-        catch {
+        catch (err) {
             await this.prisma.customer.update({
                 where: { id: customer.id },
                 data: { resetTokenHash: null, resetTokenExpiresAt: null },
             });
-            this.logger.error('Password reset email delivery failed');
+            this.logger.error(`Password reset email delivery failed: ${err.message}`);
             throw new ServiceUnavailableException('Password reset email could not be sent');
-        }
-        finally {
-            transport.close();
         }
         return { message: 'If an account exists for that address, a reset link will be sent.' };
     }
@@ -241,7 +226,7 @@ let AuthService = AuthService_1 = class AuthService {
                 resetTokenExpiresAt: { gt: new Date() },
                 isActive: true,
             },
-            select: { id: true },
+            select: { id: true, email: true, firstName: true },
         });
         if (!customer)
             throw new UnauthorizedException('Password reset token is invalid or expired');
@@ -254,6 +239,13 @@ let AuthService = AuthService_1 = class AuthService {
                 refreshTokenHash: null,
             },
         });
+        if (customer.email) {
+            this.mailService
+                .sendPasswordResetSuccessEmail(customer.email, customer.firstName || undefined)
+                .catch((err) => {
+                this.logger.warn(`Failed to dispatch password reset success notification: ${err.message}`);
+            });
+        }
         return { passwordReset: true };
     }
     async issueCustomerSession(customerId, email) {
@@ -303,7 +295,8 @@ AuthService = AuthService_1 = __decorate([
     Injectable(),
     __metadata("design:paramtypes", [PrismaService,
         JwtService,
-        ConfigService])
+        ConfigService,
+        MailService])
 ], AuthService);
 export { AuthService };
 function normalizeBangladeshPhone(phone) {
