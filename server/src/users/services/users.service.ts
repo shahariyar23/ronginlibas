@@ -4,6 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { Prisma, Role } from '@prisma/client';
 import bcrypt from 'bcrypt';
@@ -12,10 +13,16 @@ import { CreateUserDto } from '../dto/create-user.dto.js';
 import { UpdateUserDto } from '../dto/update-user.dto.js';
 import { ChangeUserPasswordDto } from '../dto/change-user-password.dto.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
+import { MailService } from '../../mail/mail.service.js';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(UsersService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
+  ) {}
 
   async create(dto: CreateUserDto) {
     const existing = await this.prisma.user.findUnique({
@@ -27,7 +34,7 @@ export class UsersService {
     }
 
     try {
-      return await this.prisma.user.create({
+      const user = await this.prisma.user.create({
         data: {
           email: dto.email.toLowerCase(),
           passwordHash: await bcrypt.hash(dto.password, 10),
@@ -50,6 +57,24 @@ export class UsersService {
           updatedAt: true,
         },
       });
+
+      // Dispatch onboarding credentials email with role, ID, password, and password change instructions
+      try {
+        const fullName = `${user.firstName} ${user.lastName}`.trim();
+        await this.mailService.sendStaffWelcomeEmail({
+          email: user.email,
+          fullName,
+          userId: user.id,
+          role: user.role,
+          password: dto.password,
+          mustChangePassword: user.mustChangePassword,
+        });
+        this.logger.log(`Dispatched onboarding credentials email to new staff member ${user.email} (${user.id})`);
+      } catch (mailError) {
+        this.logger.warn(`Failed to dispatch staff welcome credentials email to ${user.email}: ${(mailError as Error).message}`);
+      }
+
+      return user;
     } catch (error) {
       if (isUniqueConstraintError(error)) {
         throw new ConflictException('A staff user with this email already exists');

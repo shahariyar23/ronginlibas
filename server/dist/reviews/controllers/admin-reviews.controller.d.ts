@@ -16,11 +16,11 @@ export declare class AdminReviewsController {
     updateStatus(id: string, status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'HIDDEN', actor: AdminAuditActor): Promise<{
         message: string;
         data: {
+            status: import("@prisma/client").$Enums.ReviewStatus;
             id: string;
             createdAt: Date;
             updatedAt: Date;
             customerId: string;
-            status: import("@prisma/client").$Enums.ReviewStatus;
             images: string[];
             productId: string;
             rating: number;

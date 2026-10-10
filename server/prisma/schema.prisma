@@ -118,6 +118,9 @@ model Customer {
   lastName     String?
   passwordHash String?
   isActive     Boolean   @default(true)
+  banReason    String?
+  bannedAt     DateTime?
+  deletedAt    DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   refreshTokenHash String?
@@ -137,6 +140,8 @@ model Customer {
   measurements CustomerMeasurementProfile?
   reviewVotes ReviewVote[]
 
+  @@index([isActive, deletedAt])
+  @@index([deletedAt])
   @@map("customers")
 }
 
@@ -496,4 +501,27 @@ model StoreSetting {
   updatedAt   DateTime @updatedAt
 
   @@map("store_settings")
+}
+
+model CustomerArchive {
+  id             String    @id @default(uuid())
+  originalId     String
+  firstName      String
+  lastName       String?
+  email          String?
+  phone          String
+  secondaryPhone String?
+  addresses      Json?
+  measurements   Json?
+  ordersSnapshot Json?
+  totalSpent     Decimal   @default(0.00) @db.Decimal(10, 2)
+  totalOrders    Int       @default(0)
+  deletedBy      String?
+  deleteReason   String?
+  deletedAt      DateTime  @default(now())
+
+  @@index([originalId])
+  @@index([email])
+  @@index([phone])
+  @@map("customer_archives")
 }

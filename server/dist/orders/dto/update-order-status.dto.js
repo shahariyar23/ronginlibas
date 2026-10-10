@@ -7,15 +7,20 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsDateString, IsEnum, IsObject, IsOptional, IsString } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { OrderStatus } from '@prisma/client';
 export class UpdateOrderStatusDto {
     status;
     adminNotes;
+    courierName;
+    trackingNumber;
+    trackingUrl;
+    estimatedDelivery;
+    shippingAddress;
 }
 __decorate([
-    ApiProperty({
+    ApiPropertyOptional({
         enum: [
             'PENDING',
             'CONFIRMED',
@@ -31,7 +36,7 @@ __decorate([
         ],
     }),
     IsEnum(OrderStatus),
-    IsNotEmpty(),
+    IsOptional(),
     __metadata("design:type", String)
 ], UpdateOrderStatusDto.prototype, "status", void 0);
 __decorate([
@@ -40,4 +45,34 @@ __decorate([
     IsOptional(),
     __metadata("design:type", String)
 ], UpdateOrderStatusDto.prototype, "adminNotes", void 0);
+__decorate([
+    ApiPropertyOptional({ example: 'Steadfast Courier' }),
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], UpdateOrderStatusDto.prototype, "courierName", void 0);
+__decorate([
+    ApiPropertyOptional({ example: 'SF89234' }),
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], UpdateOrderStatusDto.prototype, "trackingNumber", void 0);
+__decorate([
+    ApiPropertyOptional({ example: 'https://steadfast.com.bd/track/SF89234' }),
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], UpdateOrderStatusDto.prototype, "trackingUrl", void 0);
+__decorate([
+    ApiPropertyOptional({ example: '2026-10-15T00:00:00.000Z' }),
+    IsDateString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], UpdateOrderStatusDto.prototype, "estimatedDelivery", void 0);
+__decorate([
+    ApiPropertyOptional({ description: 'Updated shipping address details' }),
+    IsObject(),
+    IsOptional(),
+    __metadata("design:type", Object)
+], UpdateOrderStatusDto.prototype, "shippingAddress", void 0);
 //# sourceMappingURL=update-order-status.dto.js.map

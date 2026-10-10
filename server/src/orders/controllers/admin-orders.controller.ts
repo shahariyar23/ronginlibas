@@ -66,7 +66,9 @@ export class AdminOrdersController {
       after: { status: data.status, adminNotes: data.adminNotes },
     });
     return {
-      message: `Order status transitioned to ${dto.status} successfully`,
+      message: dto.status
+        ? `Order status transitioned to ${dto.status} successfully`
+        : 'Order updated successfully',
       data,
     };
   }
@@ -94,7 +96,9 @@ export class AdminOrdersController {
       after: { status: data.status, adminNotes: data.adminNotes },
     });
     return {
-      message: `Order status transitioned to ${dto.status} successfully`,
+      message: dto.status
+        ? `Order status transitioned to ${dto.status} successfully`
+        : 'Order updated successfully',
       data,
     };
   }

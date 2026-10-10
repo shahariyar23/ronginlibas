@@ -7,27 +7,52 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+var CustomersService_1;
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException, } from '@nestjs/common';
+import { randomBytes, createHash } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service.js';
-let CustomersService = class CustomersService {
+import { MailService } from '../../mail/mail.service.js';
+import { AuditService } from '../../audit/audit.service.js';
+let CustomersService = CustomersService_1 = class CustomersService {
     prisma;
-    constructor(prisma) {
+    mailService;
+    auditService;
+    logger = new Logger(CustomersService_1.name);
+    constructor(prisma, mailService, auditService) {
         this.prisma = prisma;
+        this.mailService = mailService;
+        this.auditService = auditService;
     }
     async findAll(query) {
         const page = query.page || 1;
         const limit = query.limit || 20;
         const skip = (page - 1) * limit;
-        const where = query.search
-            ? {
+        const andFilters = [];
+        if (query.search) {
+            andFilters.push({
                 OR: [
                     { firstName: { contains: query.search, mode: 'insensitive' } },
                     { lastName: { contains: query.search, mode: 'insensitive' } },
                     { phone: { contains: query.search } },
                     { email: { contains: query.search, mode: 'insensitive' } },
                 ],
-            }
-            : {};
+            });
+        }
+        if (query.status === 'archived') {
+            andFilters.push({ deletedAt: { not: null } });
+        }
+        else if (query.status === 'banned') {
+            andFilters.push({ isActive: false, deletedAt: null });
+        }
+        else if (query.status === 'active') {
+            andFilters.push({ isActive: true, deletedAt: null });
+        }
+        else if (query.status === 'all') {
+        }
+        else {
+            andFilters.push({ deletedAt: null });
+        }
+        const where = andFilters.length > 0 ? { AND: andFilters } : {};
         const [items, total] = await Promise.all([
             this.prisma.customer.findMany({
                 where,
@@ -43,6 +68,9 @@ let CustomersService = class CustomersService {
                     preferredSize: true,
                     preferredFit: true,
                     isActive: true,
+                    banReason: true,
+                    bannedAt: true,
+                    deletedAt: true,
                     createdAt: true,
                     updatedAt: true,
                     addresses: {
@@ -506,10 +534,431 @@ let CustomersService = class CustomersService {
         if (!address)
             throw new NotFoundException('Address not found');
     }
+    async sendPasswordResetLink(id, actor) {
+        const customer = await this.prisma.customer.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                email: true,
+                phone: true,
+                firstName: true,
+                lastName: true,
+                isActive: true,
+                deletedAt: true,
+            },
+        });
+        if (!customer || customer.deletedAt) {
+            throw new NotFoundException('Customer record not found');
+        }
+        if (!customer.email || !customer.email.trim()) {
+            throw new BadRequestException('This customer does not have an email address associated with their account.');
+        }
+        const resetToken = randomBytes(32).toString('base64url');
+        const resetTokenHash = createHash('sha256').update(resetToken).digest('hex');
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+        await this.prisma.customer.update({
+            where: { id: customer.id },
+            data: {
+                resetTokenHash,
+                resetTokenExpiresAt: expiresAt,
+            },
+        });
+        try {
+            await this.mailService.sendPasswordResetEmail(customer.email, resetToken, customer.firstName || undefined);
+        }
+        catch (err) {
+            await this.prisma.customer.update({
+                where: { id: customer.id },
+                data: {
+                    resetTokenHash: null,
+                    resetTokenExpiresAt: null,
+                },
+            });
+            this.logger.error(`Failed to send password reset email to customer ${customer.email}: ${err.message}`);
+            throw new BadRequestException(`Failed to dispatch reset email: ${err.message}`);
+        }
+        const patronName = `${customer.firstName} ${customer.lastName || ''}`.trim();
+        await this.auditService.record({
+            actor,
+            module: 'customers',
+            action: 'CUSTOMER_PASSWORD_RESET_SENT',
+            entityType: 'customer',
+            entityId: customer.id,
+            entityLabel: `${patronName} (${customer.email})`,
+            summary: `Dispatched bespoke password reset link to customer email: ${customer.email}`,
+            after: {
+                email: customer.email,
+                expiresAt,
+                dispatchedAt: new Date(),
+            },
+        });
+        return {
+            message: `Password reset link successfully sent to ${customer.email}`,
+            data: {
+                customerId: customer.id,
+                email: customer.email,
+            },
+        };
+    }
+    async updateStatus(id, dto, actor) {
+        const existing = await this.prisma.customer.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+                isActive: true,
+                banReason: true,
+                bannedAt: true,
+                deletedAt: true,
+            },
+        });
+        if (!existing || existing.deletedAt) {
+            throw new NotFoundException('Customer record not found');
+        }
+        const patronName = `${existing.firstName} ${existing.lastName || ''}`.trim() || 'Patron Client';
+        if (!dto.isActive) {
+            const reason = dto.reason?.trim();
+            if (!reason) {
+                throw new BadRequestException('A specific reason is required when banning or deactivating a customer.');
+            }
+            const updated = await this.prisma.customer.update({
+                where: { id: existing.id },
+                data: {
+                    isActive: false,
+                    banReason: reason,
+                    bannedAt: new Date(),
+                    refreshTokenHash: null,
+                    resetTokenHash: null,
+                },
+            });
+            let emailDispatched = false;
+            if (existing.email) {
+                try {
+                    emailDispatched = await this.mailService.sendAccountBannedEmail(existing.email, reason, existing.firstName);
+                }
+                catch (mailErr) {
+                    this.logger.warn(`Failed to dispatch ban email notification to ${existing.email}: ${mailErr.message}`);
+                }
+            }
+            await this.auditService.record({
+                actor,
+                module: 'customers',
+                action: 'CUSTOMER_BANNED',
+                entityType: 'customer',
+                entityId: existing.id,
+                entityLabel: `${patronName} (${existing.phone})`,
+                summary: `Customer account suspended by shop administration. Stated reason: "${reason}".`,
+                before: {
+                    isActive: existing.isActive,
+                    banReason: existing.banReason,
+                    bannedAt: existing.bannedAt,
+                },
+                after: {
+                    isActive: false,
+                    banReason: reason,
+                    bannedAt: updated.bannedAt,
+                    noticeEmailSent: emailDispatched,
+                },
+            });
+            return {
+                message: `Customer "${patronName}" has been banned successfully. ${emailDispatched ? 'Ban explanation email dispatched to customer.' : ''}`.trim(),
+                data: updated,
+            };
+        }
+        else {
+            const updated = await this.prisma.customer.update({
+                where: { id: existing.id },
+                data: {
+                    isActive: true,
+                    banReason: null,
+                    bannedAt: null,
+                },
+            });
+            await this.auditService.record({
+                actor,
+                module: 'customers',
+                action: 'CUSTOMER_ACTIVATED',
+                entityType: 'customer',
+                entityId: existing.id,
+                entityLabel: `${patronName} (${existing.phone})`,
+                summary: `Customer account reactivated. Ban status and restrictions cleared.`,
+                before: {
+                    isActive: existing.isActive,
+                    banReason: existing.banReason,
+                    bannedAt: existing.bannedAt,
+                },
+                after: {
+                    isActive: true,
+                    banReason: null,
+                    bannedAt: null,
+                },
+            });
+            return {
+                message: `Customer "${patronName}" account has been reactivated successfully.`,
+                data: updated,
+            };
+        }
+    }
+    async softDelete(id, actor) {
+        const existing = await this.prisma.customer.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+                isActive: true,
+                deletedAt: true,
+            },
+        });
+        if (!existing) {
+            throw new NotFoundException('Customer record not found');
+        }
+        if (existing.deletedAt) {
+            throw new BadRequestException('Customer is already soft-deleted');
+        }
+        const patronName = `${existing.firstName} ${existing.lastName || ''}`.trim();
+        const updated = await this.prisma.customer.update({
+            where: { id: existing.id },
+            data: {
+                deletedAt: new Date(),
+                isActive: false,
+                refreshTokenHash: null,
+                resetTokenHash: null,
+            },
+        });
+        await this.auditService.record({
+            actor,
+            module: 'customers',
+            action: 'CUSTOMER_ARCHIVED',
+            entityType: 'customer',
+            entityId: existing.id,
+            entityLabel: `${patronName} (${existing.phone})`,
+            summary: `Customer soft-deleted / archived from active clientele roster.`,
+            before: {
+                deletedAt: null,
+                isActive: existing.isActive,
+            },
+            after: {
+                deletedAt: updated.deletedAt,
+                isActive: false,
+            },
+        });
+        return {
+            message: `Customer "${patronName}" soft-deleted successfully`,
+            data: updated,
+        };
+    }
+    async restore(id, actor) {
+        const existing = await this.prisma.customer.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+                isActive: true,
+                deletedAt: true,
+            },
+        });
+        if (!existing) {
+            throw new NotFoundException('Customer record not found');
+        }
+        if (!existing.deletedAt) {
+            throw new BadRequestException('Customer is not currently soft-deleted');
+        }
+        const patronName = `${existing.firstName} ${existing.lastName || ''}`.trim();
+        const updated = await this.prisma.customer.update({
+            where: { id: existing.id },
+            data: {
+                deletedAt: null,
+                isActive: true,
+                banReason: null,
+                bannedAt: null,
+            },
+        });
+        await this.auditService.record({
+            actor,
+            module: 'customers',
+            action: 'CUSTOMER_RESTORED',
+            entityType: 'customer',
+            entityId: existing.id,
+            entityLabel: `${patronName} (${existing.phone})`,
+            summary: `Customer restored to active roster from soft delete archive.`,
+            before: {
+                deletedAt: existing.deletedAt,
+                isActive: existing.isActive,
+            },
+            after: {
+                deletedAt: null,
+                isActive: true,
+            },
+        });
+        return {
+            message: `Customer "${patronName}" restored successfully`,
+            data: updated,
+        };
+    }
+    async permanentDelete(id, dto, actor) {
+        if (!dto.confirm) {
+            throw new BadRequestException('Mandatory confirmation checkbox is required for permanent customer deletion.');
+        }
+        const customer = await this.prisma.customer.findUnique({
+            where: { id },
+            include: {
+                addresses: true,
+                measurements: true,
+                orders: {
+                    include: {
+                        items: true,
+                    },
+                    orderBy: { createdAt: 'desc' },
+                },
+            },
+        });
+        if (!customer) {
+            throw new NotFoundException('Customer record not found');
+        }
+        const fullName = `${customer.firstName} ${customer.lastName || ''}`.trim() || 'Patron Client';
+        const totalOrders = customer.orders.length;
+        const totalSpent = customer.orders.reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
+        const ordersSnapshot = customer.orders.map((order) => ({
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            status: order.status,
+            paymentStatus: order.paymentStatus,
+            paymentMethod: order.paymentMethod,
+            subtotal: Number(order.subtotal),
+            discountAmount: Number(order.discountAmount),
+            deliveryCharge: Number(order.deliveryCharge),
+            totalAmount: Number(order.totalAmount),
+            createdAt: order.createdAt,
+            shippingAddress: order.shippingAddress,
+            customerNotes: order.customerNotes,
+            items: (order.items || []).map((item) => ({
+                id: item.id,
+                productId: item.productId,
+                productName: item.productName,
+                variantName: item.variantName,
+                sku: item.sku,
+                unitPrice: Number(item.unitPrice),
+                quantity: item.quantity,
+                subtotal: Number(item.subtotal),
+                size: item.size,
+                color: item.color,
+                productImage: item.productImage,
+            })),
+        }));
+        const archive = await this.prisma.$transaction(async (tx) => {
+            const createdArchive = await tx.customerArchive.create({
+                data: {
+                    originalId: customer.id,
+                    firstName: customer.firstName,
+                    lastName: customer.lastName,
+                    email: customer.email,
+                    phone: customer.phone,
+                    secondaryPhone: customer.secondaryPhone,
+                    addresses: customer.addresses,
+                    measurements: customer.measurements,
+                    ordersSnapshot: ordersSnapshot,
+                    totalSpent,
+                    totalOrders,
+                    deletedBy: actor.email,
+                    deleteReason: dto.reason || 'Admin permanent deletion',
+                    deletedAt: new Date(),
+                },
+            });
+            await tx.order.updateMany({
+                where: { customerId: customer.id },
+                data: {
+                    guestName: fullName,
+                    guestEmail: customer.email || undefined,
+                    guestPhone: customer.phone,
+                },
+            });
+            await tx.customer.delete({
+                where: { id: customer.id },
+            });
+            return createdArchive;
+        });
+        await this.auditService.record({
+            actor,
+            module: 'customers',
+            action: 'CUSTOMER_PERMANENTLY_DELETED',
+            entityType: 'customer',
+            entityId: customer.id,
+            entityLabel: `${fullName} (${customer.phone})`,
+            summary: `Permanently deleted customer. Preserved full purchase snapshot of ${totalOrders} orders totaling ৳${totalSpent.toLocaleString()} in archive (Archive ID: ${archive.id}).`,
+            before: {
+                id: customer.id,
+                name: fullName,
+                email: customer.email,
+                phone: customer.phone,
+                ordersCount: totalOrders,
+                totalSpent,
+            },
+            after: {
+                archiveId: archive.id,
+                deletedBy: actor.email,
+                deletedAt: archive.deletedAt,
+            },
+        });
+        return {
+            message: `Customer "${fullName}" permanently deleted. Complete purchase snapshot preserved in archive.`,
+            data: archive,
+        };
+    }
+    async findAllArchives(query) {
+        const page = query.page || 1;
+        const limit = query.limit || 20;
+        const skip = (page - 1) * limit;
+        const where = query.search
+            ? {
+                OR: [
+                    { firstName: { contains: query.search, mode: 'insensitive' } },
+                    { lastName: { contains: query.search, mode: 'insensitive' } },
+                    { phone: { contains: query.search } },
+                    { email: { contains: query.search, mode: 'insensitive' } },
+                ],
+            }
+            : {};
+        const [items, total] = await Promise.all([
+            this.prisma.customerArchive.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { deletedAt: 'desc' },
+            }),
+            this.prisma.customerArchive.count({ where }),
+        ]);
+        return {
+            items,
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+        };
+    }
+    async findArchiveById(id) {
+        const archive = await this.prisma.customerArchive.findUnique({
+            where: { id },
+        });
+        if (!archive) {
+            throw new NotFoundException('Customer archive record not found');
+        }
+        return archive;
+    }
 };
-CustomersService = __decorate([
+CustomersService = CustomersService_1 = __decorate([
     Injectable(),
-    __metadata("design:paramtypes", [PrismaService])
+    __metadata("design:paramtypes", [PrismaService,
+        MailService,
+        AuditService])
 ], CustomersService);
 export { CustomersService };
 function normalizeBangladeshPhone(phone) {

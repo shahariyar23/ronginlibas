@@ -22,7 +22,6 @@ export declare class CustomersController {
             addresses: {
                 email: string | null;
                 phone: string;
-                id: string;
                 fullName: string | null;
                 addressLine1: string;
                 addressLine2: string | null;
@@ -31,6 +30,7 @@ export declare class CustomersController {
                 area: string | null;
                 postalCode: string | null;
                 deliveryInstructions: string | null;
+                id: string;
                 isDefault: boolean;
             }[];
             measurements: {
@@ -71,11 +71,11 @@ export declare class CustomersController {
             };
             activeOrderCount: number;
             activeOrders: {
-                createdAt: Date;
                 orderNumber: string;
-                status: import("@prisma/client").$Enums.OrderStatus;
-                paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
                 totalAmount: import("@prisma/client/runtime/library").Decimal;
+                paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
+                status: import("@prisma/client").$Enums.OrderStatus;
+                createdAt: Date;
             }[];
             recentOrders: {
                 items: {
@@ -84,15 +84,14 @@ export declare class CustomersController {
                     unitPrice: import("@prisma/client/runtime/library").Decimal;
                     quantity: number;
                 }[];
-                createdAt: Date;
                 orderNumber: string;
-                status: import("@prisma/client").$Enums.OrderStatus;
-                paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
                 totalAmount: import("@prisma/client/runtime/library").Decimal;
+                paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
+                status: import("@prisma/client").$Enums.OrderStatus;
+                createdAt: Date;
             }[];
             defaultAddress: {
                 phone: string;
-                id: string;
                 fullName: string | null;
                 addressLine1: string;
                 addressLine2: string | null;
@@ -100,6 +99,7 @@ export declare class CustomersController {
                 division: string;
                 area: string | null;
                 postalCode: string | null;
+                id: string;
             };
             wishlistCount: number;
         };
@@ -109,9 +109,6 @@ export declare class CustomersController {
         data: {
             email: string | null;
             phone: string;
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
             fullName: string | null;
             addressLine1: string;
             addressLine2: string | null;
@@ -120,6 +117,9 @@ export declare class CustomersController {
             area: string | null;
             postalCode: string | null;
             deliveryInstructions: string | null;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
             isDefault: boolean;
         }[];
     }>;
@@ -128,9 +128,6 @@ export declare class CustomersController {
         data: {
             email: string | null;
             phone: string;
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
             fullName: string | null;
             addressLine1: string;
             addressLine2: string | null;
@@ -139,6 +136,9 @@ export declare class CustomersController {
             area: string | null;
             postalCode: string | null;
             deliveryInstructions: string | null;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
             isDefault: boolean;
         };
     }>;
@@ -147,9 +147,6 @@ export declare class CustomersController {
         data: {
             email: string | null;
             phone: string;
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
             fullName: string | null;
             addressLine1: string;
             addressLine2: string | null;
@@ -158,6 +155,9 @@ export declare class CustomersController {
             area: string | null;
             postalCode: string | null;
             deliveryInstructions: string | null;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
             isDefault: boolean;
         };
     }>;
@@ -166,9 +166,6 @@ export declare class CustomersController {
         data: {
             email: string | null;
             phone: string;
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
             fullName: string | null;
             addressLine1: string;
             addressLine2: string | null;
@@ -177,6 +174,9 @@ export declare class CustomersController {
             area: string | null;
             postalCode: string | null;
             deliveryInstructions: string | null;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
             isDefault: boolean;
         };
     }>;

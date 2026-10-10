@@ -53,9 +53,9 @@ export declare class ReviewsController {
     update(reviewId: string, customerId: string, dto: UpdateReviewDto): Promise<{
         message: string;
         data: {
+            status: import("@prisma/client").$Enums.ReviewStatus;
             id: string;
             updatedAt: Date;
-            status: import("@prisma/client").$Enums.ReviewStatus;
             images: string[];
             productId: string;
             rating: number;

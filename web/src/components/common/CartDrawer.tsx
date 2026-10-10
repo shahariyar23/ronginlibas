@@ -319,7 +319,7 @@ export const CartDrawer: React.FC = () => {
                 </div>
               )}
               <div className="flex justify-between">
-                <span>Nationwide Delivery</span>
+                <span>Estimated Delivery</span>
                 <span className="font-semibold tabular-nums text-[#1b1c18]">
                   {shippingFee === 0 ? (
                     <span className="text-[#073a2d] uppercase text-[10px] tracking-wider">Free</span>
@@ -328,6 +328,12 @@ export const CartDrawer: React.FC = () => {
                   )}
                 </span>
               </div>
+              {shippingFee > 0 && (
+                <div className="text-[10px] text-[#717975] flex justify-between">
+                  <span>(৳{settings?.dhakaDeliveryCharge ?? 80} Dhaka / ৳{settings?.outsideDhakaDeliveryCharge ?? 150} outside)</span>
+                  <span>Set at checkout</span>
+                </div>
+              )}
               <Separator className="my-1.5 sm:my-2 bg-[#deddd3]" />
               <div className="flex justify-between text-base font-bold text-[#073a2d]">
                 <span className="font-serif">Estimated Total</span>

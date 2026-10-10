@@ -7,7 +7,11 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException, } from '@nestjs/common';
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var OrdersService_1;
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, Optional, ServiceUnavailableException, } from '@nestjs/common';
 import PDFDocument from 'pdfkit';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import fs from 'node:fs';
@@ -15,6 +19,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { SettingsService } from '../../settings/services/settings.service.js';
+import { MailService } from '../../mail/mail.service.js';
 const orderItemCustomerSelect = {
     id: true,
     productId: true,
@@ -84,12 +89,15 @@ const orderAccessSelect = {
         },
     },
 };
-let OrdersService = class OrdersService {
+let OrdersService = OrdersService_1 = class OrdersService {
     prisma;
     settingsService;
-    constructor(prisma, settingsService) {
+    mailService;
+    logger = new Logger(OrdersService_1.name);
+    constructor(prisma, settingsService, mailService) {
         this.prisma = prisma;
         this.settingsService = settingsService;
+        this.mailService = mailService;
     }
     async findAll(query) {
         const page = query.page ?? 1;
@@ -219,21 +227,44 @@ let OrdersService = class OrdersService {
         return order;
     }
     async updateStatus(id, dto) {
-        return this.prisma.$transaction(async (transaction) => {
+        const { updated, previousStatus, statusChanged, changes } = await this.prisma.$transaction(async (transaction) => {
             const order = await transaction.order.findFirst({
                 where: { OR: [{ id }, { orderNumber: id }, { orderNumber: this.normalizeOrderNumber(id) }] },
-                include: { items: { select: { variantId: true, quantity: true } } },
+                include: {
+                    items: {
+                        select: {
+                            variantId: true,
+                            quantity: true,
+                            productName: true,
+                            variantName: true,
+                            sku: true,
+                            size: true,
+                            color: true,
+                            unitPrice: true,
+                            subtotal: true,
+                        },
+                    },
+                    customer: {
+                        select: {
+                            id: true,
+                            firstName: true,
+                            lastName: true,
+                            email: true,
+                            phone: true,
+                        },
+                    },
+                },
             });
             if (!order)
                 throw new NotFoundException(`Order not found: ${id}`);
-            if (order.status === 'CANCELLED' && dto.status !== 'CANCELLED') {
+            if (dto.status && order.status === 'CANCELLED' && dto.status !== 'CANCELLED') {
                 throw new BadRequestException('A cancelled order cannot be reopened');
             }
             if (dto.status === 'CANCELLED' &&
                 ['SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(order.status)) {
                 throw new BadRequestException('An order cannot be cancelled after shipment');
             }
-            if (order.status !== 'CANCELLED' && dto.status === 'CANCELLED') {
+            if (dto.status && order.status !== 'CANCELLED' && dto.status === 'CANCELLED') {
                 for (const item of order.items) {
                     if (!item.variantId)
                         continue;
@@ -264,19 +295,69 @@ let OrdersService = class OrdersService {
                     });
                 }
             }
+            const previousStatus = order.status;
+            const statusChanged = dto.status !== undefined && dto.status !== previousStatus;
+            const changes = [];
+            if (statusChanged) {
+                changes.push(`Order status transitioned from ${previousStatus} to ${dto.status}`);
+            }
+            if (dto.courierName && dto.courierName !== order.courierName) {
+                changes.push(`Courier set to ${dto.courierName}`);
+            }
+            if (dto.trackingNumber && dto.trackingNumber !== order.trackingNumber) {
+                changes.push(`Consignment/Tracking Number assigned: ${dto.trackingNumber}`);
+            }
+            if (dto.estimatedDelivery) {
+                changes.push(`Estimated Delivery Date updated`);
+            }
+            if (dto.shippingAddress) {
+                changes.push(`Delivery Address specifications updated`);
+            }
+            if (dto.adminNotes && dto.adminNotes !== order.adminNotes) {
+                changes.push(`Concierge note updated`);
+            }
+            const updateData = {
+                ...(dto.status ? { status: dto.status } : {}),
+                ...(dto.adminNotes !== undefined ? { adminNotes: dto.adminNotes } : {}),
+                ...(dto.courierName !== undefined ? { courierName: dto.courierName } : {}),
+                ...(dto.trackingNumber !== undefined ? { trackingNumber: dto.trackingNumber } : {}),
+                ...(dto.trackingUrl !== undefined ? { trackingUrl: dto.trackingUrl } : {}),
+                ...(dto.estimatedDelivery !== undefined
+                    ? { estimatedDelivery: dto.estimatedDelivery ? new Date(dto.estimatedDelivery) : null }
+                    : {}),
+                ...(dto.shippingAddress ? { shippingAddress: dto.shippingAddress } : {}),
+            };
             const updated = await transaction.order.update({
                 where: { id: order.id },
-                data: { status: dto.status, adminNotes: dto.adminNotes },
-            });
-            await transaction.orderTrackingEvent.create({
-                data: {
-                    orderId: order.id,
-                    status: updated.status,
-                    description: dto.adminNotes,
+                data: updateData,
+                include: {
+                    items: true,
+                    customer: {
+                        select: {
+                            id: true,
+                            firstName: true,
+                            lastName: true,
+                            email: true,
+                            phone: true,
+                        },
+                    },
                 },
             });
-            return updated;
+            if (statusChanged || dto.adminNotes) {
+                await transaction.orderTrackingEvent.create({
+                    data: {
+                        orderId: order.id,
+                        status: updated.status,
+                        description: dto.adminNotes || `Order transitioned to ${updated.status}`,
+                    },
+                });
+            }
+            return { updated, previousStatus, statusChanged, changes };
         }, { maxWait: 10000, timeout: 30000 });
+        this.dispatchOrderStatusOrEditNotification(updated, previousStatus, statusChanged, changes).catch((err) => {
+            this.logger.warn(`Failed to dispatch order notification for ${updated.orderNumber}: ${err.message}`);
+        });
+        return updated;
     }
     async create(dto, customerId) {
         if (!dto.items.length)
@@ -407,7 +488,30 @@ let OrdersService = class OrdersService {
                 if (!update.count)
                     throw new BadRequestException('Coupon redemption limit has been reached');
             }
-            const isDhaka = dto.shippingAddress.division.toLowerCase().includes('dhaka');
+            const cityLower = (dto.shippingAddress.city || '').trim().toLowerCase();
+            const divisionLower = (dto.shippingAddress.division || '').trim().toLowerCase();
+            const areaLower = (dto.shippingAddress.area || '').trim().toLowerCase();
+            const outsideDhakaDistricts = [
+                'gazipur', 'narayanganj', 'tangail', 'kishoreganj', 'manikganj',
+                'munshiganj', 'narsingdi', 'faridpur', 'gopalganj', 'madaripur',
+                'rajbari', 'shariatpur'
+            ];
+            const isOutsideDhakaDistrict = outsideDhakaDistricts.includes(cityLower);
+            const dhakaMetroAreas = [
+                'dhaka', 'dhanmondi', 'gulshan', 'banani', 'uttara', 'mirpur', 'mohammadpur',
+                'motijheel', 'tejgaon', 'badda', 'khilgaon', 'paltan', 'ramna',
+                'shahbagh', 'lalbagh', 'sutrapur', 'kotwali', 'wari', 'jatrabari',
+                'demra', 'kadamtali', 'shyampur', 'kamrangirchar', 'hazaribagh',
+                'new market', 'kalabagan', 'cantonment', 'kafrul', 'pallabi',
+                'rupnagar', 'darus salam', 'shah ali', 'vashantek', 'bhatara',
+                'khilkhet', 'dakshinkhan', 'uttarkhan', 'turag', 'airport',
+                'rampura', 'sabujbagh', 'mugda', 'gandaria', 'chawkbazar',
+                'bangshal', 'keraniganj', 'savar', 'dhamrai', 'dohar', 'nawabganj'
+            ];
+            const isDhaka = !isOutsideDhakaDistrict &&
+                (cityLower === 'dhaka' ||
+                    dhakaMetroAreas.some((a) => cityLower.includes(a) || areaLower.includes(a)) ||
+                    (divisionLower.includes('dhaka') && (!cityLower || cityLower === 'dhaka')));
             const deliveryCharge = settings.freeShippingEnabled !== false &&
                 subtotal - discountAmount >= freeDeliveryThreshold
                 ? 0
@@ -463,6 +567,9 @@ let OrdersService = class OrdersService {
             });
             return { order, couponId };
         }, { maxWait: 10000, timeout: 30000 });
+        this.dispatchOrderConfirmationNotification(createdOrder.order, trackingToken, customerId).catch((err) => {
+            this.logger.warn(`Failed to dispatch order confirmation email for ${createdOrder.order.orderNumber}: ${err.message}`);
+        });
         return {
             id: createdOrder.order.id,
             orderNumber: createdOrder.order.orderNumber,
@@ -485,6 +592,149 @@ let OrdersService = class OrdersService {
             trackingEvents: createdOrder.order.trackingEvents,
             ...(trackingToken ? { guestTrackingToken: trackingToken } : {}),
         };
+    }
+    async dispatchOrderConfirmationNotification(order, trackingToken, customerId) {
+        if (!this.mailService)
+            return;
+        let customerEmail;
+        let customerName;
+        const shipping = order.shippingAddress || {};
+        if (shipping.email && typeof shipping.email === 'string')
+            customerEmail = shipping.email.trim();
+        if (shipping.fullName && typeof shipping.fullName === 'string')
+            customerName = shipping.fullName.trim();
+        if (!customerEmail && order.guestEmail)
+            customerEmail = order.guestEmail.trim();
+        if (!customerName && order.guestName)
+            customerName = order.guestName.trim();
+        if (!customerEmail && customerId) {
+            const customer = await this.prisma.customer.findUnique({
+                where: { id: customerId },
+                select: { email: true, firstName: true, lastName: true },
+            });
+            if (customer) {
+                if (!customerEmail && customer.email)
+                    customerEmail = customer.email;
+                if (!customerName) {
+                    customerName = `${customer.firstName} ${customer.lastName || ''}`.trim();
+                }
+            }
+        }
+        if (!customerEmail) {
+            this.logger.debug(`No recipient email address found for order ${order.orderNumber}. Skipping confirmation email.`);
+            return;
+        }
+        const items = (order.items || []).map((item) => ({
+            productName: item.productName,
+            variantName: item.variantName,
+            sku: item.sku,
+            size: item.size,
+            color: item.color,
+            quantity: Number(item.quantity),
+            unitPrice: Number(item.unitPrice),
+            subtotal: Number(item.subtotal),
+            productImage: item.productImage || item.product?.images?.[0]?.url,
+        }));
+        let invoiceBuffer;
+        try {
+            const orderForInvoice = {
+                ...order,
+                guestName: customerName,
+                guestPhone: shipping.phone || order.guestPhone,
+                guestEmail: customerEmail,
+            };
+            invoiceBuffer = await this.generateInvoiceBuffer(orderForInvoice);
+            if (invoiceBuffer) {
+                this.logger.log(`Official PDF invoice generated for order confirmation: ${order.orderNumber} (${invoiceBuffer.length} bytes)`);
+            }
+        }
+        catch (err) {
+            this.logger.warn(`Could not generate PDF invoice attachment for ${order.orderNumber}: ${err.message}`);
+        }
+        await this.mailService.sendOrderConfirmationEmail({
+            email: customerEmail,
+            orderNumber: order.orderNumber,
+            customerName,
+            items,
+            subtotal: Number(order.subtotal),
+            deliveryCharge: Number(order.deliveryCharge),
+            discountAmount: Number(order.discountAmount || 0),
+            totalAmount: Number(order.totalAmount),
+            paymentMethod: order.paymentMethod,
+            paymentStatus: order.paymentStatus,
+            shippingAddress: shipping,
+            customerNotes: order.customerNotes,
+            trackingToken,
+            invoiceBuffer,
+        });
+    }
+    async dispatchOrderStatusOrEditNotification(order, previousStatus, statusChanged, changes) {
+        if (!this.mailService)
+            return;
+        let customerEmail;
+        let customerName;
+        const shipping = order.shippingAddress || {};
+        if (shipping.email && typeof shipping.email === 'string')
+            customerEmail = shipping.email.trim();
+        if (shipping.fullName && typeof shipping.fullName === 'string')
+            customerName = shipping.fullName.trim();
+        if (!customerEmail && order.guestEmail)
+            customerEmail = order.guestEmail.trim();
+        if (!customerName && order.guestName)
+            customerName = order.guestName.trim();
+        if (!customerEmail && order.customer?.email)
+            customerEmail = order.customer.email.trim();
+        if (!customerName && order.customer) {
+            customerName = `${order.customer.firstName} ${order.customer.lastName || ''}`.trim();
+        }
+        if (!customerEmail && order.customerId) {
+            const customer = await this.prisma.customer.findUnique({
+                where: { id: order.customerId },
+                select: { email: true, firstName: true, lastName: true },
+            });
+            if (customer) {
+                if (!customerEmail && customer.email)
+                    customerEmail = customer.email;
+                if (!customerName) {
+                    customerName = `${customer.firstName} ${customer.lastName || ''}`.trim();
+                }
+            }
+        }
+        if (!customerEmail) {
+            this.logger.debug(`No recipient email address found for order ${order.orderNumber}. Skipping notification.`);
+            return;
+        }
+        if (statusChanged) {
+            await this.mailService.sendOrderStatusUpdateEmail({
+                email: customerEmail,
+                orderNumber: order.orderNumber,
+                customerName,
+                newStatus: order.status,
+                previousStatus,
+                courierName: order.courierName,
+                trackingNumber: order.trackingNumber,
+                trackingUrl: order.trackingUrl,
+                estimatedDelivery: order.estimatedDelivery,
+                adminNotes: order.adminNotes,
+                totalAmount: Number(order.totalAmount),
+                shippingAddress: shipping,
+            });
+        }
+        else if (changes.length > 0) {
+            await this.mailService.sendOrderEditEmail({
+                email: customerEmail,
+                orderNumber: order.orderNumber,
+                customerName,
+                status: order.status,
+                totalAmount: Number(order.totalAmount),
+                changeSummary: changes,
+                shippingAddress: shipping,
+                courierName: order.courierName,
+                trackingNumber: order.trackingNumber,
+                trackingUrl: order.trackingUrl,
+                adminNotes: order.adminNotes,
+            });
+        }
     }
     async findOrderForAccess(orderNumber, customerId, phone, trackingToken) {
         const order = await this.prisma.order.findUnique({
@@ -542,7 +792,10 @@ let OrdersService = class OrdersService {
     }
     async generateInvoice(orderNumber, customerId, phone, trackingToken) {
         const order = await this.findOrderForAccess(orderNumber, customerId, phone, trackingToken);
-        const itemThumbnails = await Promise.all(order.items.map((item) => {
+        return this.generateInvoiceBuffer(order);
+    }
+    async generateInvoiceBuffer(order) {
+        const itemThumbnails = await Promise.all((order.items || []).map((item) => {
             const imgUrl = item.productImage || item.product?.images?.[0]?.url;
             return fetchThumbnailBuffer(imgUrl);
         }));
@@ -1014,10 +1267,12 @@ let OrdersService = class OrdersService {
         return normalized.startsWith('#') ? normalized : `#${normalized}`;
     }
 };
-OrdersService = __decorate([
+OrdersService = OrdersService_1 = __decorate([
     Injectable(),
+    __param(2, Optional()),
     __metadata("design:paramtypes", [PrismaService,
-        SettingsService])
+        SettingsService,
+        MailService])
 ], OrdersService);
 export { OrdersService };
 function hashToken(token) {

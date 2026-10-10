@@ -59,6 +59,7 @@ export declare class AdminProductsController {
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -74,7 +75,6 @@ export declare class AdminProductsController {
             careInstructions: string | null;
             isExpressAvailable: boolean;
             alertThreshold: number;
-            deletedAt: Date | null;
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
@@ -117,6 +117,7 @@ export declare class AdminProductsController {
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -132,7 +133,6 @@ export declare class AdminProductsController {
             careInstructions: string | null;
             isExpressAvailable: boolean;
             alertThreshold: number;
-            deletedAt: Date | null;
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
@@ -187,6 +187,7 @@ export declare class AdminProductsController {
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -202,7 +203,6 @@ export declare class AdminProductsController {
             careInstructions: string | null;
             isExpressAvailable: boolean;
             alertThreshold: number;
-            deletedAt: Date | null;
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
@@ -253,6 +253,7 @@ export declare class AdminProductsController {
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -268,7 +269,6 @@ export declare class AdminProductsController {
             careInstructions: string | null;
             isExpressAvailable: boolean;
             alertThreshold: number;
-            deletedAt: Date | null;
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
@@ -323,6 +323,7 @@ export declare class AdminProductsController {
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -338,7 +339,6 @@ export declare class AdminProductsController {
             careInstructions: string | null;
             isExpressAvailable: boolean;
             alertThreshold: number;
-            deletedAt: Date | null;
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
@@ -393,6 +393,7 @@ export declare class AdminProductsController {
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -408,7 +409,6 @@ export declare class AdminProductsController {
             careInstructions: string | null;
             isExpressAvailable: boolean;
             alertThreshold: number;
-            deletedAt: Date | null;
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;

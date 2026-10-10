@@ -10,9 +10,9 @@ export declare class ReviewsService {
         hasPrevious: boolean;
     }>;
     create(dto: CreateReviewDto, customerId: string): Promise<{
+        status: import("@prisma/client").$Enums.ReviewStatus;
         id: string;
         createdAt: Date;
-        status: import("@prisma/client").$Enums.ReviewStatus;
         images: string[];
         productId: string;
         rating: number;
@@ -51,9 +51,9 @@ export declare class ReviewsService {
         canReview: boolean;
         reason: string;
         existingReview: {
+            status: import("@prisma/client").$Enums.ReviewStatus;
             id: string;
             createdAt: Date;
-            status: import("@prisma/client").$Enums.ReviewStatus;
             rating: number;
         };
         orderNumber?: undefined;
@@ -97,18 +97,18 @@ export declare class ReviewsService {
         color: string;
     }[]>;
     createForProduct(productId: string, dto: Pick<CreateReviewDto, 'rating' | 'comment' | 'images'>, customerId: string): Promise<{
+        status: import("@prisma/client").$Enums.ReviewStatus;
         id: string;
         createdAt: Date;
-        status: import("@prisma/client").$Enums.ReviewStatus;
         images: string[];
         productId: string;
         rating: number;
         comment: string;
     }>;
     updateOwned(reviewId: string, customerId: string, dto: UpdateReviewDto): Promise<{
+        status: import("@prisma/client").$Enums.ReviewStatus;
         id: string;
         updatedAt: Date;
-        status: import("@prisma/client").$Enums.ReviewStatus;
         images: string[];
         productId: string;
         rating: number;
@@ -125,11 +125,11 @@ export declare class ReviewsService {
         helpful: boolean;
     }>;
     updateStatus(id: string, status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'HIDDEN'): Promise<{
+        status: import("@prisma/client").$Enums.ReviewStatus;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         customerId: string;
-        status: import("@prisma/client").$Enums.ReviewStatus;
         images: string[];
         productId: string;
         rating: number;
@@ -138,8 +138,8 @@ export declare class ReviewsService {
         adminFeedbackAt: Date | null;
     }>;
     getAdminAuditState(id: string): Promise<{
-        id: string;
         status: import("@prisma/client").$Enums.ReviewStatus;
+        id: string;
         adminFeedback: string | null;
     }>;
     updateAdminFeedback(id: string, feedback: string): Promise<{

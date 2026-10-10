@@ -150,7 +150,10 @@ function StaffContent() {
     try {
       const res = await adminApi.users.create(addForm);
       if (res.success && res.data) {
-        toast.success(`Staff user "${res.data.email}" created successfully`);
+        toast.success(
+          `Staff member "${res.data.email}" created successfully and credentials email dispatched.`,
+          'STAFF ONBOARDED',
+        );
         setShowAddModal(false);
         setAddForm({
           firstName: '',
@@ -506,6 +509,18 @@ function StaffContent() {
             </div>
 
             <form onSubmit={handleAddSubmit} className="space-y-4 pt-4">
+              <div className="bg-[#f7faf8] border border-[#d4e7df] p-3 text-xs text-[#073a2d] flex items-start gap-2.5">
+                <Mail className="w-4 h-4 text-[#073a2d] shrink-0 mt-0.5" />
+                <div className="leading-relaxed">
+                  <strong className="block text-[11px] uppercase tracking-wider text-[#073a2d]">
+                    Automated Credentials Dispatch
+                  </strong>
+                  <span>
+                    Upon account creation, an email will be automatically sent from the no-reply address with their Full Name, Staff ID, Login Email, Clearance Role, Initial Password, and instructions to change their password on first login.
+                  </span>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[11px] font-semibold text-[#404945] uppercase tracking-wider block">

@@ -2,7 +2,9 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
+  Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { OrderStatus, PaymentMethod, Prisma } from '@prisma/client';
@@ -13,6 +15,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { SettingsService } from '../../settings/services/settings.service.js';
+import { MailService } from '../../mail/mail.service.js';
 import { CreateOrderDto } from '../dto/create-order.dto.js';
 import { UpdateOrderStatusDto } from '../dto/update-order-status.dto.js';
 import { OrderQueryDto } from '../dto/order-query.dto.js';
@@ -93,9 +96,12 @@ const orderAccessSelect = {
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly settingsService: SettingsService,
+    @Optional() private readonly mailService?: MailService,
   ) {}
 
   async findAll(query: OrderQueryDto): Promise<PaginatedResult<any>> {
@@ -227,67 +233,150 @@ export class OrdersService {
   }
 
   async updateStatus(id: string, dto: UpdateOrderStatusDto) {
-    return this.prisma.$transaction(
+    const { updated, previousStatus, statusChanged, changes } = await this.prisma.$transaction(
       async (transaction) => {
-      const order = await transaction.order.findFirst({
-        where: { OR: [{ id }, { orderNumber: id }, { orderNumber: this.normalizeOrderNumber(id) }] },
-        include: { items: { select: { variantId: true, quantity: true } } },
-      });
-      if (!order) throw new NotFoundException(`Order not found: ${id}`);
-      if (order.status === 'CANCELLED' && dto.status !== 'CANCELLED') {
-        throw new BadRequestException('A cancelled order cannot be reopened');
-      }
-      if (
-        dto.status === 'CANCELLED' &&
-        ['SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(order.status)
-      ) {
-        throw new BadRequestException('An order cannot be cancelled after shipment');
-      }
+        const order = await transaction.order.findFirst({
+          where: { OR: [{ id }, { orderNumber: id }, { orderNumber: this.normalizeOrderNumber(id) }] },
+          include: {
+            items: {
+              select: {
+                variantId: true,
+                quantity: true,
+                productName: true,
+                variantName: true,
+                sku: true,
+                size: true,
+                color: true,
+                unitPrice: true,
+                subtotal: true,
+              },
+            },
+            customer: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+        });
+        if (!order) throw new NotFoundException(`Order not found: ${id}`);
+        if (dto.status && order.status === 'CANCELLED' && dto.status !== 'CANCELLED') {
+          throw new BadRequestException('A cancelled order cannot be reopened');
+        }
+        if (
+          dto.status === 'CANCELLED' &&
+          ['SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(order.status)
+        ) {
+          throw new BadRequestException('An order cannot be cancelled after shipment');
+        }
 
-      if (order.status !== 'CANCELLED' && dto.status === 'CANCELLED') {
-        for (const item of order.items) {
-          if (!item.variantId) continue;
-          const variant = await transaction.productVariant.findUnique({
-            where: { id: item.variantId },
-            select: { id: true, stock: true },
-          });
-          if (!variant) {
-            throw new NotFoundException(`Order variant not found: ${item.variantId}`);
+        if (dto.status && order.status !== 'CANCELLED' && dto.status === 'CANCELLED') {
+          for (const item of order.items) {
+            if (!item.variantId) continue;
+            const variant = await transaction.productVariant.findUnique({
+              where: { id: item.variantId },
+              select: { id: true, stock: true },
+            });
+            if (!variant) {
+              throw new NotFoundException(`Order variant not found: ${item.variantId}`);
+            }
+            const newStock = variant.stock + item.quantity;
+            const restored = await transaction.productVariant.updateMany({
+              where: { id: variant.id, stock: variant.stock },
+              data: { stock: newStock },
+            });
+            if (!restored.count) {
+              throw new BadRequestException('Inventory changed while cancelling; retry the status update');
+            }
+            await transaction.inventoryTransaction.create({
+              data: {
+                variantId: variant.id,
+                quantityChange: item.quantity,
+                previousStock: variant.stock,
+                newStock,
+                type: 'RETURN',
+                note: `Order cancellation ${order.orderNumber}`,
+              },
+            });
           }
-          const newStock = variant.stock + item.quantity;
-          const restored = await transaction.productVariant.updateMany({
-            where: { id: variant.id, stock: variant.stock },
-            data: { stock: newStock },
-          });
-          if (!restored.count) {
-            throw new BadRequestException('Inventory changed while cancelling; retry the status update');
-          }
-          await transaction.inventoryTransaction.create({
+        }
+
+        const previousStatus = order.status;
+        const statusChanged = dto.status !== undefined && dto.status !== previousStatus;
+        const changes: string[] = [];
+
+        if (statusChanged) {
+          changes.push(`Order status transitioned from ${previousStatus} to ${dto.status}`);
+        }
+        if (dto.courierName && dto.courierName !== order.courierName) {
+          changes.push(`Courier set to ${dto.courierName}`);
+        }
+        if (dto.trackingNumber && dto.trackingNumber !== order.trackingNumber) {
+          changes.push(`Consignment/Tracking Number assigned: ${dto.trackingNumber}`);
+        }
+        if (dto.estimatedDelivery) {
+          changes.push(`Estimated Delivery Date updated`);
+        }
+        if (dto.shippingAddress) {
+          changes.push(`Delivery Address specifications updated`);
+        }
+        if (dto.adminNotes && dto.adminNotes !== order.adminNotes) {
+          changes.push(`Concierge note updated`);
+        }
+
+        const updateData: Prisma.OrderUpdateInput = {
+          ...(dto.status ? { status: dto.status as OrderStatus } : {}),
+          ...(dto.adminNotes !== undefined ? { adminNotes: dto.adminNotes } : {}),
+          ...(dto.courierName !== undefined ? { courierName: dto.courierName } : {}),
+          ...(dto.trackingNumber !== undefined ? { trackingNumber: dto.trackingNumber } : {}),
+          ...(dto.trackingUrl !== undefined ? { trackingUrl: dto.trackingUrl } : {}),
+          ...(dto.estimatedDelivery !== undefined
+            ? { estimatedDelivery: dto.estimatedDelivery ? new Date(dto.estimatedDelivery) : null }
+            : {}),
+          ...(dto.shippingAddress ? { shippingAddress: dto.shippingAddress as any } : {}),
+        };
+
+        const updated = await transaction.order.update({
+          where: { id: order.id },
+          data: updateData,
+          include: {
+            items: true,
+            customer: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+        });
+
+        if (statusChanged || dto.adminNotes) {
+          await transaction.orderTrackingEvent.create({
             data: {
-              variantId: variant.id,
-              quantityChange: item.quantity,
-              previousStock: variant.stock,
-              newStock,
-              type: 'RETURN',
-              note: `Order cancellation ${order.orderNumber}`,
+              orderId: order.id,
+              status: updated.status,
+              description: dto.adminNotes || `Order transitioned to ${updated.status}`,
             },
           });
         }
-      }
 
-      const updated = await transaction.order.update({
-        where: { id: order.id },
-        data: { status: dto.status as OrderStatus, adminNotes: dto.adminNotes },
-      });
-      await transaction.orderTrackingEvent.create({
-        data: {
-          orderId: order.id,
-          status: updated.status,
-          description: dto.adminNotes,
-        },
-      });
-      return updated;
-    }, { maxWait: 10000, timeout: 30000 });
+        return { updated, previousStatus, statusChanged, changes };
+      },
+      { maxWait: 10000, timeout: 30000 }
+    );
+
+    // Asynchronously dispatch notification via orders@ronginlibas.com
+    this.dispatchOrderStatusOrEditNotification(updated, previousStatus, statusChanged, changes).catch((err) => {
+      this.logger.warn(`Failed to dispatch order notification for ${updated.orderNumber}: ${err.message}`);
+    });
+
+    return updated;
   }
 
   async create(dto: CreateOrderDto, customerId?: string) {
@@ -425,7 +514,36 @@ export class OrdersService {
         if (!update.count) throw new BadRequestException('Coupon redemption limit has been reached');
       }
 
-      const isDhaka = dto.shippingAddress.division.toLowerCase().includes('dhaka');
+      const cityLower = (dto.shippingAddress.city || '').trim().toLowerCase();
+      const divisionLower = (dto.shippingAddress.division || '').trim().toLowerCase();
+      const areaLower = (dto.shippingAddress.area || '').trim().toLowerCase();
+
+      // Non-Dhaka districts that belong to Dhaka Division
+      const outsideDhakaDistricts = [
+        'gazipur', 'narayanganj', 'tangail', 'kishoreganj', 'manikganj',
+        'munshiganj', 'narsingdi', 'faridpur', 'gopalganj', 'madaripur',
+        'rajbari', 'shariatpur'
+      ];
+      const isOutsideDhakaDistrict = outsideDhakaDistricts.includes(cityLower);
+
+      // Dhaka metro areas & thanas
+      const dhakaMetroAreas = [
+        'dhaka', 'dhanmondi', 'gulshan', 'banani', 'uttara', 'mirpur', 'mohammadpur',
+        'motijheel', 'tejgaon', 'badda', 'khilgaon', 'paltan', 'ramna',
+        'shahbagh', 'lalbagh', 'sutrapur', 'kotwali', 'wari', 'jatrabari',
+        'demra', 'kadamtali', 'shyampur', 'kamrangirchar', 'hazaribagh',
+        'new market', 'kalabagan', 'cantonment', 'kafrul', 'pallabi',
+        'rupnagar', 'darus salam', 'shah ali', 'vashantek', 'bhatara',
+        'khilkhet', 'dakshinkhan', 'uttarkhan', 'turag', 'airport',
+        'rampura', 'sabujbagh', 'mugda', 'gandaria', 'chawkbazar',
+        'bangshal', 'keraniganj', 'savar', 'dhamrai', 'dohar', 'nawabganj'
+      ];
+
+      const isDhaka =
+        !isOutsideDhakaDistrict &&
+        (cityLower === 'dhaka' ||
+          dhakaMetroAreas.some((a) => cityLower.includes(a) || areaLower.includes(a)) ||
+          (divisionLower.includes('dhaka') && (!cityLower || cityLower === 'dhaka')));
       const deliveryCharge =
         settings.freeShippingEnabled !== false &&
         subtotal - discountAmount >= freeDeliveryThreshold
@@ -482,6 +600,12 @@ export class OrdersService {
       });
       return { order, couponId };
     }, { maxWait: 10000, timeout: 30000 });
+
+    // Asynchronously dispatch Order Confirmation email to customer via orders@ronginlibas.com
+    this.dispatchOrderConfirmationNotification(createdOrder.order, trackingToken, customerId).catch((err) => {
+      this.logger.warn(`Failed to dispatch order confirmation email for ${createdOrder.order.orderNumber}: ${err.message}`);
+    });
+
     return {
       id: createdOrder.order.id,
       orderNumber: createdOrder.order.orderNumber,
@@ -504,6 +628,164 @@ export class OrdersService {
       trackingEvents: createdOrder.order.trackingEvents,
       ...(trackingToken ? { guestTrackingToken: trackingToken } : {}),
     };
+  }
+
+  private async dispatchOrderConfirmationNotification(
+    order: any,
+    trackingToken?: string,
+    customerId?: string,
+  ) {
+    if (!this.mailService) return;
+
+    let customerEmail: string | undefined;
+    let customerName: string | undefined;
+
+    const shipping = (order.shippingAddress as any) || {};
+    if (shipping.email && typeof shipping.email === 'string') customerEmail = shipping.email.trim();
+    if (shipping.fullName && typeof shipping.fullName === 'string') customerName = shipping.fullName.trim();
+
+    if (!customerEmail && order.guestEmail) customerEmail = order.guestEmail.trim();
+    if (!customerName && order.guestName) customerName = order.guestName.trim();
+
+    if (!customerEmail && customerId) {
+      const customer = await this.prisma.customer.findUnique({
+        where: { id: customerId },
+        select: { email: true, firstName: true, lastName: true },
+      });
+      if (customer) {
+        if (!customerEmail && customer.email) customerEmail = customer.email;
+        if (!customerName) {
+          customerName = `${customer.firstName} ${customer.lastName || ''}`.trim();
+        }
+      }
+    }
+
+    if (!customerEmail) {
+      this.logger.debug(`No recipient email address found for order ${order.orderNumber}. Skipping confirmation email.`);
+      return;
+    }
+
+    const items = (order.items || []).map((item: any) => ({
+      productName: item.productName,
+      variantName: item.variantName,
+      sku: item.sku,
+      size: item.size,
+      color: item.color,
+      quantity: Number(item.quantity),
+      unitPrice: Number(item.unitPrice),
+      subtotal: Number(item.subtotal),
+      productImage: item.productImage || item.product?.images?.[0]?.url,
+    }));
+
+    let invoiceBuffer: Buffer | undefined;
+    try {
+      const orderForInvoice = {
+        ...order,
+        guestName: customerName,
+        guestPhone: shipping.phone || order.guestPhone,
+        guestEmail: customerEmail,
+      };
+      invoiceBuffer = await this.generateInvoiceBuffer(orderForInvoice);
+      if (invoiceBuffer) {
+        this.logger.log(
+          `Official PDF invoice generated for order confirmation: ${order.orderNumber} (${invoiceBuffer.length} bytes)`
+        );
+      }
+    } catch (err) {
+      this.logger.warn(
+        `Could not generate PDF invoice attachment for ${order.orderNumber}: ${(err as Error).message}`
+      );
+    }
+
+    await this.mailService.sendOrderConfirmationEmail({
+      email: customerEmail,
+      orderNumber: order.orderNumber,
+      customerName,
+      items,
+      subtotal: Number(order.subtotal),
+      deliveryCharge: Number(order.deliveryCharge),
+      discountAmount: Number(order.discountAmount || 0),
+      totalAmount: Number(order.totalAmount),
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      shippingAddress: shipping,
+      customerNotes: order.customerNotes,
+      trackingToken,
+      invoiceBuffer,
+    });
+  }
+
+  private async dispatchOrderStatusOrEditNotification(
+    order: any,
+    previousStatus: string,
+    statusChanged: boolean,
+    changes: string[],
+  ) {
+    if (!this.mailService) return;
+
+    let customerEmail: string | undefined;
+    let customerName: string | undefined;
+
+    const shipping = (order.shippingAddress as any) || {};
+    if (shipping.email && typeof shipping.email === 'string') customerEmail = shipping.email.trim();
+    if (shipping.fullName && typeof shipping.fullName === 'string') customerName = shipping.fullName.trim();
+
+    if (!customerEmail && order.guestEmail) customerEmail = order.guestEmail.trim();
+    if (!customerName && order.guestName) customerName = order.guestName.trim();
+
+    if (!customerEmail && order.customer?.email) customerEmail = order.customer.email.trim();
+    if (!customerName && order.customer) {
+      customerName = `${order.customer.firstName} ${order.customer.lastName || ''}`.trim();
+    }
+
+    if (!customerEmail && order.customerId) {
+      const customer = await this.prisma.customer.findUnique({
+        where: { id: order.customerId },
+        select: { email: true, firstName: true, lastName: true },
+      });
+      if (customer) {
+        if (!customerEmail && customer.email) customerEmail = customer.email;
+        if (!customerName) {
+          customerName = `${customer.firstName} ${customer.lastName || ''}`.trim();
+        }
+      }
+    }
+
+    if (!customerEmail) {
+      this.logger.debug(`No recipient email address found for order ${order.orderNumber}. Skipping notification.`);
+      return;
+    }
+
+    if (statusChanged) {
+      await this.mailService.sendOrderStatusUpdateEmail({
+        email: customerEmail,
+        orderNumber: order.orderNumber,
+        customerName,
+        newStatus: order.status,
+        previousStatus,
+        courierName: order.courierName,
+        trackingNumber: order.trackingNumber,
+        trackingUrl: order.trackingUrl,
+        estimatedDelivery: order.estimatedDelivery,
+        adminNotes: order.adminNotes,
+        totalAmount: Number(order.totalAmount),
+        shippingAddress: shipping,
+      });
+    } else if (changes.length > 0) {
+      await this.mailService.sendOrderEditEmail({
+        email: customerEmail,
+        orderNumber: order.orderNumber,
+        customerName,
+        status: order.status,
+        totalAmount: Number(order.totalAmount),
+        changeSummary: changes,
+        shippingAddress: shipping,
+        courierName: order.courierName,
+        trackingNumber: order.trackingNumber,
+        trackingUrl: order.trackingUrl,
+        adminNotes: order.adminNotes,
+      });
+    }
   }
 
   async findOrderForAccess(
@@ -582,11 +864,14 @@ export class OrdersService {
     trackingToken?: string,
   ): Promise<Buffer> {
     const order = await this.findOrderForAccess(orderNumber, customerId, phone, trackingToken);
+    return this.generateInvoiceBuffer(order);
+  }
 
+  async generateInvoiceBuffer(order: any): Promise<Buffer> {
     // Preload item images in parallel (Cloudinary JPEG or remote images)
     const itemThumbnails = await Promise.all(
-      order.items.map((item) => {
-        const imgUrl = item.productImage || (item as any).product?.images?.[0]?.url;
+      (order.items || []).map((item: any) => {
+        const imgUrl = item.productImage || item.product?.images?.[0]?.url;
         return fetchThumbnailBuffer(imgUrl);
       }),
     );
@@ -832,7 +1117,7 @@ export class OrdersService {
         let currentY = tableY + tableHdrHeight;
 
         if (order.items && order.items.length > 0) {
-          order.items.forEach((item, index) => {
+          (order.items as any[]).forEach((item: any, index: number) => {
             const isAlt = index % 2 === 1;
             if (isAlt) {
               doc.rect(margin, currentY, contentWidth, rowHeight).fill('#FBFBFA');
