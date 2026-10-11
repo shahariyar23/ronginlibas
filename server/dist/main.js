@@ -13,7 +13,9 @@ async function bootstrap() {
     app.use(helmetMiddleware());
     app.use(compression());
     const apiPrefix = configService.get('app.apiPrefix') || '/api/v1';
-    app.setGlobalPrefix(apiPrefix.replace(/^\//, ''));
+    app.setGlobalPrefix(apiPrefix.replace(/^\//, ''), {
+        exclude: ['/'],
+    });
     app.useGlobalPipes(new ValidationPipe({
         whitelist: true,
         forbidNonWhitelisted: true,

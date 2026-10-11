@@ -34,6 +34,7 @@ import { MailModule } from '../mail/mail.module.js';
 import { OffersModule } from '../offers/offers.module.js';
 import { CollectionsModule } from '../collections/collections.module.js';
 import { ReportsModule } from '../reports/reports.module.js';
+import { AppController } from './app.controller.js';
 import { HealthController } from './health.controller.js';
 import { TransformInterceptor } from '../common/interceptors/transform.interceptor.js';
 import { AllExceptionsFilter } from '../common/filters/all-exceptions.filter.js';
@@ -72,7 +73,7 @@ AppModule = __decorate([
             AuditModule,
             MailModule,
         ],
-        controllers: [HealthController],
+        controllers: [AppController, HealthController],
         providers: [
             {
                 provide: APP_INTERCEPTOR,
