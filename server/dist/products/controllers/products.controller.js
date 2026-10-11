@@ -35,9 +35,13 @@ let ProductsController = class ProductsController {
     }
     async findBySlug(slug) {
         const data = await this.productsService.findBySlug(slug);
+        const isRedirect = Boolean(data?.isRedirect);
+        const redirectTargetSlug = data?.redirectTargetSlug;
         return {
-            message: 'Garment retrieved successfully',
+            message: isRedirect ? 'Garment relocated' : 'Garment retrieved successfully',
             data,
+            redirect: isRedirect,
+            redirectTargetSlug,
         };
     }
     async findRelated(slug) {

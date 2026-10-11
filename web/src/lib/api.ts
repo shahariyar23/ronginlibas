@@ -201,8 +201,13 @@ interface ApiProduct {
   orderItems?: Array<{ quantity: number }>;
   _count?: { reviews?: number; orderItems?: number };
   category?: { name?: string; slug?: string } | null;
-  images?: Array<{ url?: string; altText?: string | null } | string>;
+  images?: Array<{ url?: string; altText?: string | null; isPrimary?: boolean; publicId?: string | null } | string>;
   variants?: ApiVariant[];
+  seoTitle?: string | null;
+  metaDescription?: string | null;
+  canonicalUrl?: string | null;
+  redirectTargetSlug?: string;
+  isRedirect?: boolean;
 }
 
 const categoryAliases: Record<string, Product['category']> = {
@@ -308,9 +313,26 @@ export function mapProduct(source: ApiProduct): Product {
   ];
   const categoryLabel = source.category?.name || 'Collection';
   const category = categoryAliases[categorySlug.toLowerCase()] || 'casual';
-  const images = (source.images ?? [])
-    .map((image) => (typeof image === 'string' ? image : image.url))
-    .filter((image): image is string => Boolean(image));
+  const imageDetails = (source.images ?? [])
+    .map((image, idx) => {
+      if (typeof image === 'string') {
+        return {
+          url: image,
+          altText: `${source.name} - View ${idx + 1}`,
+          isPrimary: idx === 0,
+          publicId: null,
+        };
+      }
+      return {
+        url: image.url || '',
+        altText: image.altText || `${source.name} - View ${idx + 1}`,
+        isPrimary: image.isPrimary ?? idx === 0,
+        publicId: image.publicId || null,
+      };
+    })
+    .filter((img) => Boolean(img.url));
+
+  const images = imageDetails.map((image) => image.url);
 
   return {
     id: source.id,
@@ -329,6 +351,12 @@ export function mapProduct(source: ApiProduct): Product {
           ? 'New Arrival'
           : undefined,
     images,
+    imageDetails,
+    seoTitle: source.seoTitle || undefined,
+    metaDescription: source.metaDescription || undefined,
+    canonicalUrl: source.canonicalUrl || undefined,
+    redirectTargetSlug: source.redirectTargetSlug,
+    isRedirect: source.isRedirect,
     description: source.description || source.shortDescription || '',
     shortDescription: source.shortDescription || undefined,
     fabric: source.fabric || 'Atelier fabric',
@@ -408,6 +436,10 @@ export interface StorefrontCategory {
   id: string;
   name: string;
   slug: string;
+  description?: string | null;
+  seoTitle?: string | null;
+  metaDescription?: string | null;
+  isActive?: boolean;
   image?: string | null;
   sortOrder?: number;
   _count?: { products: number };
@@ -500,6 +532,10 @@ export async function getStorefrontSettings() {
 
 export async function getStorefrontCategories() {
   return apiRequest<StorefrontCategory[]>('/categories');
+}
+
+export async function getCategoryBySlug(slug: string) {
+  return apiRequest<StorefrontCategory>(`/categories/${encodeURIComponent(slug)}`);
 }
 
 export async function getProducts(query: ProductListQuery = {}) {

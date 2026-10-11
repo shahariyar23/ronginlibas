@@ -410,12 +410,20 @@ export const adminApi = {
     },
     getUser: () => getStoredUser(),
     refreshUser: async (): Promise<AdminUser | null> => {
-      const res = await request<AdminUser>('/admin/users/me');
-      if (res.success && res.data) {
-        setStoredUser(res.data);
-        return res.data;
+      if (!getStoredToken()) {
+        return null;
       }
-      return getStoredUser();
+      try {
+        const res = await request<AdminUser>('/admin/users/me');
+        if (res.success && res.data) {
+          setStoredUser(res.data);
+          return res.data;
+        }
+        return getStoredUser();
+      } catch (err) {
+        console.warn('[AdminAPI] Refresh user error:', err);
+        return getStoredUser();
+      }
     },
     isAuthenticated: () => !!getStoredToken(),
   },

@@ -49,7 +49,7 @@ export declare class ProductsController {
     }>;
     findBySlug(slug: string): Promise<{
         message: string;
-        data: {
+        data: ({
             category: {
                 description: string | null;
                 name: string;
@@ -58,6 +58,8 @@ export declare class ProductsController {
                 createdAt: Date;
                 updatedAt: Date;
                 slug: string;
+                seoTitle: string | null;
+                metaDescription: string | null;
                 sortOrder: number;
                 image: string | null;
                 parentId: string | null;
@@ -132,12 +134,110 @@ export declare class ProductsController {
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
+            seoTitle: string | null;
+            metaDescription: string | null;
+            canonicalUrl: string | null;
             categoryId: string;
         } & {
             reviewsCount: number;
             averageRating: number;
             totalSold: number;
+        }) | {
+            isRedirect: boolean;
+            redirectTargetSlug: string;
+            category: {
+                description: string | null;
+                name: string;
+                id: string;
+                isActive: boolean;
+                createdAt: Date;
+                updatedAt: Date;
+                slug: string;
+                seoTitle: string | null;
+                metaDescription: string | null;
+                sortOrder: number;
+                image: string | null;
+                parentId: string | null;
+            };
+            reviews: ({
+                customer: {
+                    firstName: string;
+                    lastName: string | null;
+                };
+            } & {
+                status: import("@prisma/client").$Enums.ReviewStatus;
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                customerId: string;
+                images: string[];
+                productId: string;
+                rating: number;
+                comment: string;
+                adminFeedback: string | null;
+                adminFeedbackAt: Date | null;
+            })[];
+            variants: {
+                id: string;
+                isActive: boolean;
+                createdAt: Date;
+                updatedAt: Date;
+                measurements: import("@prisma/client/runtime/library").JsonValue | null;
+                sku: string;
+                productId: string;
+                size: string;
+                color: string;
+                sizeLabel: string | null;
+                sizeType: string | null;
+                stock: number;
+                priceOverride: import("@prisma/client/runtime/library").Decimal | null;
+            }[];
+            images: {
+                url: string;
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                sortOrder: number;
+                isPrimary: boolean;
+                productId: string;
+                publicId: string | null;
+                altText: string | null;
+            }[];
+            description: string | null;
+            name: string;
+            id: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            deletedAt: Date | null;
+            tags: string[];
+            slug: string;
+            price: import("@prisma/client/runtime/library").Decimal;
+            compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
+            costPrice: import("@prisma/client/runtime/library").Decimal | null;
+            sku: string;
+            gender: import("@prisma/client").$Enums.Gender;
+            fabric: string | null;
+            fit: string | null;
+            shortDescription: string | null;
+            fabricOrigin: string | null;
+            gsm: number | null;
+            careInstructions: string | null;
+            isExpressAvailable: boolean;
+            alertThreshold: number;
+            isFeatured: boolean;
+            isNewArrival: boolean;
+            isBestSeller: boolean;
+            seoTitle: string | null;
+            metaDescription: string | null;
+            canonicalUrl: string | null;
+            categoryId: string;
+            reviewsCount: number;
+            averageRating: number;
+            totalSold: number;
         };
+        redirect: boolean;
+        redirectTargetSlug: any;
     }>;
     findRelated(slug: string): Promise<{
         message: string;
@@ -205,6 +305,9 @@ export declare class ProductsController {
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
+            seoTitle: string | null;
+            metaDescription: string | null;
+            canonicalUrl: string | null;
             categoryId: string;
         } & {
             reviewsCount: number;

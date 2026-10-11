@@ -21,9 +21,14 @@ function AdminLayoutShell({ children }: { children: React.ReactNode }) {
       setCurrentUser(user);
     }
 
-    adminApi.auth.refreshUser().then((live) => {
-      if (live) setCurrentUser(live);
-    });
+    if (adminApi.auth.isAuthenticated()) {
+      adminApi.auth
+        .refreshUser()
+        .then((live) => {
+          if (live) setCurrentUser(live);
+        })
+        .catch(() => {});
+    }
   }, []);
 
   const mustChangePassword = Boolean(currentUser?.mustChangePassword);

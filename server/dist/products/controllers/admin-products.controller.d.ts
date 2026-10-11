@@ -22,6 +22,8 @@ export declare class AdminProductsController {
                 createdAt: Date;
                 updatedAt: Date;
                 slug: string;
+                seoTitle: string | null;
+                metaDescription: string | null;
                 sortOrder: number;
                 image: string | null;
                 parentId: string | null;
@@ -78,6 +80,9 @@ export declare class AdminProductsController {
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
+            seoTitle: string | null;
+            metaDescription: string | null;
+            canonicalUrl: string | null;
             categoryId: string;
         };
     }>;
@@ -136,6 +141,9 @@ export declare class AdminProductsController {
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
+            seoTitle: string | null;
+            metaDescription: string | null;
+            canonicalUrl: string | null;
             categoryId: string;
         };
     }>;
@@ -150,6 +158,8 @@ export declare class AdminProductsController {
                 createdAt: Date;
                 updatedAt: Date;
                 slug: string;
+                seoTitle: string | null;
+                metaDescription: string | null;
                 sortOrder: number;
                 image: string | null;
                 parentId: string | null;
@@ -206,6 +216,9 @@ export declare class AdminProductsController {
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
+            seoTitle: string | null;
+            metaDescription: string | null;
+            canonicalUrl: string | null;
             categoryId: string;
         }) | {
             imageCleanupWarning: string;
@@ -217,6 +230,8 @@ export declare class AdminProductsController {
                 createdAt: Date;
                 updatedAt: Date;
                 slug: string;
+                seoTitle: string | null;
+                metaDescription: string | null;
                 sortOrder: number;
                 image: string | null;
                 parentId: string | null;
@@ -272,6 +287,9 @@ export declare class AdminProductsController {
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
+            seoTitle: string | null;
+            metaDescription: string | null;
+            canonicalUrl: string | null;
             categoryId: string;
         };
     }>;
@@ -286,6 +304,8 @@ export declare class AdminProductsController {
                 createdAt: Date;
                 updatedAt: Date;
                 slug: string;
+                seoTitle: string | null;
+                metaDescription: string | null;
                 sortOrder: number;
                 image: string | null;
                 parentId: string | null;
@@ -342,6 +362,9 @@ export declare class AdminProductsController {
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
+            seoTitle: string | null;
+            metaDescription: string | null;
+            canonicalUrl: string | null;
             categoryId: string;
         };
     }>;
@@ -356,6 +379,8 @@ export declare class AdminProductsController {
                 createdAt: Date;
                 updatedAt: Date;
                 slug: string;
+                seoTitle: string | null;
+                metaDescription: string | null;
                 sortOrder: number;
                 image: string | null;
                 parentId: string | null;
@@ -412,6 +437,9 @@ export declare class AdminProductsController {
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
+            seoTitle: string | null;
+            metaDescription: string | null;
+            canonicalUrl: string | null;
             categoryId: string;
         };
     }>;

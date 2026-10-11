@@ -103,7 +103,7 @@ function NavigationLinks({
 
       {/* NEW ARRIVALS */}
       <Link
-        href="/shop?newArrival=true"
+        href="/collections/new-arrivals"
         className={`transition-colors py-2 relative group font-semibold ${
           isNewArrivalActive ? 'text-[#073a2d] font-bold' : 'text-[#404945] hover:text-[#073a2d]'
         }`}
@@ -136,7 +136,7 @@ function NavigationLinks({
             {visibleCategories.map((category) => (
               <Link
                 key={category.id}
-                href={`/shop?category=${encodeURIComponent(category.slug)}`}
+                href={`/categories/${encodeURIComponent(category.slug)}`}
                 className="block px-4 py-2 text-xs tracking-normal text-[#404945] hover:bg-white hover:text-[#073a2d]"
               >
                 {category.name}
@@ -148,7 +148,7 @@ function NavigationLinks({
 
       {/* BEST SELLERS */}
       <Link
-        href="/shop?bestSeller=true"
+        href="/collections/bestsellers"
         className={`transition-colors py-2 relative group font-semibold ${
           isBestSellerActive ? 'text-[#073a2d] font-bold' : 'text-[#404945] hover:text-[#073a2d]'
         }`}
@@ -227,7 +227,7 @@ function NavigationFallback({
             {visibleCategories.map((category) => (
               <Link
                 key={category.id}
-                href={`/shop?category=${encodeURIComponent(category.slug)}`}
+                href={`/categories/${encodeURIComponent(category.slug)}`}
                 className="block px-4 py-2 text-xs tracking-normal text-[#404945] hover:bg-white hover:text-[#073a2d]"
               >
                 {category.name}
@@ -325,7 +325,7 @@ function MobileNavLinks({
       {visibleCategories.map((category) => (
         <Link
           key={category.id}
-          href={`/shop?category=${encodeURIComponent(category.slug)}`}
+          href={`/categories/${encodeURIComponent(category.slug)}`}
           onClick={onClose}
           className="flex items-center justify-between py-2 pl-4 border-b border-[#f0eee7] text-sm font-medium text-[#404945] hover:text-[#073a2d]"
         >

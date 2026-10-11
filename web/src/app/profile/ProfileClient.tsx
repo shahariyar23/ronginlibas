@@ -1122,7 +1122,7 @@ export const ProfileClient: React.FC = () => {
                               )}
                               <div>
                                 <Link
-                                  href={`/product/${rev.productSlug}`}
+                                  href={`/products/${rev.productSlug}`}
                                   className="font-serif text-base text-[#073a2d] font-semibold hover:text-[#c79a45] transition-colors"
                                 >
                                   {rev.productName}

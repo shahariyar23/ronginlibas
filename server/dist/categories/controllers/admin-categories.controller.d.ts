@@ -38,6 +38,8 @@ export declare class AdminCategoriesController {
             createdAt: Date;
             updatedAt: Date;
             slug: string;
+            seoTitle: string | null;
+            metaDescription: string | null;
             sortOrder: number;
             image: string | null;
             parentId: string | null;

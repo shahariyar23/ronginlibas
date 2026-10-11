@@ -32,7 +32,8 @@ async function bootstrap() {
     ];
     app.enableCors({
         origin: (origin, callback) => {
-            if (!origin || corsOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+            const isLocalDev = origin && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+            if (!origin || corsOrigins.includes(origin) || origin.endsWith('.vercel.app') || isLocalDev) {
                 callback(null, true);
             }
             else {

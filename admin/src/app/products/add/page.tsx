@@ -42,6 +42,7 @@ import {
   isProductSizeType,
   ProductSizeType,
 } from '@/lib/product-size';
+import { ProductSeoSection } from '@/components/products/ProductSeoSection';
 
 function generateCategorySku(catName: string): string {
   const clean = (catName || 'Panjabi').trim();
@@ -80,6 +81,13 @@ function ProductFormContent() {
   const [category, setCategory] = useState('Panjabi');
   const [fabricNote, setFabricNote] = useState('');
   const [description, setDescription] = useState('');
+
+  // SEO states
+  const [slug, setSlug] = useState('');
+  const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
+  const [seoTitle, setSeoTitle] = useState('');
+  const [metaDescription, setMetaDescription] = useState('');
+  const [canonicalUrl, setCanonicalUrl] = useState('');
 
   // Pricing
   const [regularPrice, setRegularPrice] = useState('');
@@ -153,6 +161,13 @@ function ProductFormContent() {
         setLifecycleState(cached.status === 'Active' ? 'Active' : 'Draft');
         setTags(Array.isArray(cached.tags) ? cached.tags : []);
         setImages(cached.images ?? []);
+        if ((cached as any).slug) {
+          setSlug((cached as any).slug);
+          setIsSlugManuallyEdited(true);
+        }
+        if (cached.seoTitle) setSeoTitle(cached.seoTitle);
+        if (cached.metaDescription) setMetaDescription(cached.metaDescription);
+        if (cached.canonicalUrl) setCanonicalUrl(cached.canonicalUrl);
       }
 
       // 2. Fetch full specifications directly from backend API
@@ -187,6 +202,14 @@ function ProductFormContent() {
           
           setTags(Array.isArray(detailed.tags) ? detailed.tags : []);
           
+          if (detailed.slug) {
+            setSlug(detailed.slug);
+            setIsSlugManuallyEdited(true);
+          }
+          if (detailed.seoTitle) setSeoTitle(detailed.seoTitle);
+          if (detailed.metaDescription) setMetaDescription(detailed.metaDescription);
+          if (detailed.canonicalUrl) setCanonicalUrl(detailed.canonicalUrl);
+
           setImages((detailed.images ?? []).map((img: any) =>
             typeof img === 'string' ? { url: img } : {
               url: img.url,
@@ -493,12 +516,35 @@ function ProductFormContent() {
     const parsedThreshold = parseInt(alertThreshold, 10);
     const validAlertThreshold = !Number.isNaN(parsedThreshold) ? parsedThreshold : 5;
 
+    const finalSlug =
+      slug.trim() ||
+      title
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '');
+    const finalSeoTitle = seoTitle.trim() || `${title} | Rongin Libas — Bespoke Menswear`;
+    const finalMetaDescription =
+      metaDescription.trim() ||
+      description.replace(/<[^>]*>?/gm, '').trim().slice(0, 155) ||
+      fabricNote ||
+      `Handcrafted ${title} tailored by the Rongin Libas atelier in Dhaka.`;
+
     setIsSubmitting(true);
     try {
       const uploadedImages = await uploadPendingProductImages(images);
+      const imagesWithAlt = uploadedImages.images.map((img, idx) => ({
+        ...img,
+        altText: img.altText || `${title} - View ${idx + 1} (${category})`,
+      }));
+
       if (isEditing && editId) {
         const updatedProduct: Partial<AdminProduct> = {
           name: title,
+          slug: finalSlug,
+          seoTitle: finalSeoTitle,
+          metaDescription: finalMetaDescription,
+          canonicalUrl: canonicalUrl.trim() || undefined,
           sku: sku,
           barcode: barcode || undefined,
           category: category,
@@ -513,8 +559,8 @@ function ProductFormContent() {
               : finalStock === 0
               ? 'Out of Stock'
               : 'Active',
-          image: uploadedImages.images[0]?.url,
-          images: uploadedImages.images,
+          image: imagesWithAlt[0]?.url,
+          images: imagesWithAlt,
           fabricNote: fabricNote,
           description: description,
           tags: tags,
@@ -540,6 +586,10 @@ function ProductFormContent() {
       const newProduct: AdminProduct = {
         id: `p-${Date.now()}`,
         name: title,
+        slug: finalSlug,
+        seoTitle: finalSeoTitle,
+        metaDescription: finalMetaDescription,
+        canonicalUrl: canonicalUrl.trim() || undefined,
         sku: sku || `RL-${Date.now().toString().slice(-6)}`,
         barcode: barcode || undefined,
         category: category,
@@ -554,8 +604,8 @@ function ProductFormContent() {
             : finalStock === 0
             ? 'Out of Stock'
             : 'Active',
-        image: uploadedImages.images[0]?.url || '',
-        images: uploadedImages.images,
+        image: imagesWithAlt[0]?.url || '',
+        images: imagesWithAlt,
         fabricNote: fabricNote,
         description: description,
         tags: tags,
@@ -701,7 +751,19 @@ function ProductFormContent() {
               <input
                 type="text"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setTitle(val);
+                  if (!isSlugManuallyEdited) {
+                    setSlug(
+                      val
+                        .toLowerCase()
+                        .trim()
+                        .replace(/[^a-z0-9]+/g, '-')
+                        .replace(/(^-|-$)+/g, ''),
+                    );
+                  }
+                }}
                 placeholder="Imperial Zari Embroidered Panjabi - Heritage Olive"
                 className="w-full mt-1.5 px-3.5 py-2.5 bg-[#fbf9f2] border border-[#deddd3] text-sm text-[#1b1c18] focus:border-[#073a2d] outline-hidden font-medium"
               />
@@ -1364,6 +1426,25 @@ function ProductFormContent() {
               </div>
             </div>
           </div>          </div>
+
+          {/* Section 05: Search Engine Optimization */}
+          <ProductSeoSection
+            productTitle={title}
+            productDescription={description}
+            productFabric={fabricNote}
+            slug={slug}
+            setSlug={(val) => {
+              setSlug(val);
+              setIsSlugManuallyEdited(true);
+            }}
+            seoTitle={seoTitle}
+            setSeoTitle={setSeoTitle}
+            metaDescription={metaDescription}
+            setMetaDescription={setMetaDescription}
+            canonicalUrl={canonicalUrl}
+            setCanonicalUrl={setCanonicalUrl}
+            isEditing={isEditing}
+          />
         </div>
 
         {/* Right Column (4 cols): Lookbook Media & Publishing */}

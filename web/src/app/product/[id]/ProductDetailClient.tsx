@@ -349,7 +349,7 @@ const ProductDetailView: React.FC<{
         description: 'Please login first to submit a review.',
         action: {
           label: 'Login',
-          onClick: () => router.push(`/login?next=${encodeURIComponent(`/product/${product.slug}#patron-reviews`)}`),
+          onClick: () => router.push(`/login?next=${encodeURIComponent(`/products/${product.slug}#patron-reviews`)}`),
         },
       });
       return;
@@ -377,7 +377,7 @@ const ProductDetailView: React.FC<{
       toast.error('First login please', {
         description: 'Please login first to submit a review.',
       });
-      router.push(`/login?next=${encodeURIComponent(`/product/${product.slug}#patron-reviews`)}`);
+      router.push(`/login?next=${encodeURIComponent(`/products/${product.slug}#patron-reviews`)}`);
       return;
     }
     if (!reviewEligibility?.canReview) {
@@ -416,7 +416,7 @@ const ProductDetailView: React.FC<{
         description: 'Please login to vote on patron reviews.',
         action: {
           label: 'Login',
-          onClick: () => router.push(`/login?next=${encodeURIComponent(`/product/${product.slug}#patron-reviews`)}`),
+          onClick: () => router.push(`/login?next=${encodeURIComponent(`/products/${product.slug}#patron-reviews`)}`),
         },
       });
       return;
@@ -470,7 +470,7 @@ const ProductDetailView: React.FC<{
         description: 'Please login first to add items to your cart.',
         action: {
           label: 'Login',
-          onClick: () => router.push(`/login?next=${encodeURIComponent(`/product/${product.slug}`)}`),
+          onClick: () => router.push(`/login?next=${encodeURIComponent(`/products/${product.slug}`)}`),
         },
       });
       return;
@@ -498,7 +498,7 @@ const ProductDetailView: React.FC<{
         description: 'Please login first to proceed to checkout.',
         action: {
           label: 'Login',
-          onClick: () => router.push(`/login?next=${encodeURIComponent(`/product/${product.slug}`)}`),
+          onClick: () => router.push(`/login?next=${encodeURIComponent(`/products/${product.slug}`)}`),
         },
       });
       return;
