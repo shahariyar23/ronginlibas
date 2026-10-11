@@ -10,6 +10,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var _a;
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UnauthorizedException, UseGuards, } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
@@ -124,7 +125,7 @@ __decorate([
     __param(0, CurrentUser('id')),
     __param(1, Body()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, CartContactDto]),
+    __metadata("design:paramtypes", [Object, typeof (_a = typeof CartContactDto !== "undefined" && CartContactDto) === "function" ? _a : Object]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "saveContact", null);
 CartController = __decorate([

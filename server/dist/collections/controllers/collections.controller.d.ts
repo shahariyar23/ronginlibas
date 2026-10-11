@@ -10,11 +10,11 @@ export declare class CollectionsController {
             };
         } & {
             description: string | null;
-            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            name: string;
             slug: string;
             seoTitle: string | null;
             metaDescription: string | null;
@@ -30,12 +30,8 @@ export declare class CollectionsController {
                 products: number;
             };
             products: {
-                category: {
-                    name: string;
-                    slug: string;
-                };
-                name: string;
                 id: string;
+                name: string;
                 slug: string;
                 price: import("@prisma/client/runtime/library").Decimal;
                 compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
@@ -44,6 +40,10 @@ export declare class CollectionsController {
                 isFeatured: boolean;
                 isNewArrival: boolean;
                 isBestSeller: boolean;
+                category: {
+                    name: string;
+                    slug: string;
+                };
                 variants: {
                     id: string;
                     size: string;
@@ -51,19 +51,19 @@ export declare class CollectionsController {
                     stock: number;
                 }[];
                 images: {
-                    url: string;
                     id: string;
+                    url: string;
                     isPrimary: boolean;
                     altText: string | null;
                 }[];
             }[];
         } & {
             description: string | null;
-            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            name: string;
             slug: string;
             seoTitle: string | null;
             metaDescription: string | null;
