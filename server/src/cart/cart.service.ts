@@ -111,18 +111,18 @@ export class CartService {
     });
     const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
     const settings = await this.settingsService.getPublicSettings();
-    const deliveryCharge =
+    const isFree =
       settings.freeShippingEnabled !== false &&
-      subtotal >= Number(settings.freeDeliveryThreshold)
-        ? 0
-        : Number(settings.outsideDhakaDeliveryCharge);
+      subtotal >= Number(settings.freeDeliveryThreshold);
+    // In shopping cart before checkout, address is not chosen yet, so delivery is 0 until address is selected
+    const deliveryCharge = 0;
     return {
       cartId: cartWithItems.guestId ?? cartWithItems.id,
       items,
       subtotal,
       discountAmount: 0,
       deliveryCharge,
-      total: subtotal + deliveryCharge,
+      total: subtotal,
       currency: 'BDT',
     };
   }

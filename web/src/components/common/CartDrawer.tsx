@@ -82,6 +82,10 @@ export const CartDrawer: React.FC = () => {
     freeShippingThreshold > 0
       ? Math.min(100, (subtotal / freeShippingThreshold) * 100)
       : 100;
+  const isFreeDelivery =
+    Boolean(settings?.freeShippingEnabled) &&
+    freeShippingThreshold > 0 &&
+    subtotal >= freeShippingThreshold;
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -318,29 +322,33 @@ export const CartDrawer: React.FC = () => {
                   <span className="font-semibold tabular-nums">-৳{discount.toLocaleString()}</span>
                 </div>
               )}
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <span>Estimated Delivery</span>
-                <span className="font-semibold tabular-nums text-[#1b1c18]">
-                  {shippingFee === 0 ? (
-                    <span className="text-[#073a2d] uppercase text-[10px] tracking-wider">Free</span>
+                <span className="font-semibold text-[#1b1c18]">
+                  {isFreeDelivery ? (
+                    <span className="text-[#073a2d] font-bold uppercase text-[10px] tracking-wider">
+                      Free (Order ≥ ৳{freeShippingThreshold.toLocaleString()})
+                    </span>
                   ) : (
-                    `৳${shippingFee}`
+                    <span className="text-[#404945] text-[11px] font-medium">
+                      Calculated at checkout
+                    </span>
                   )}
                 </span>
               </div>
-              {shippingFee > 0 && (
+              {!isFreeDelivery && (
                 <div className="text-[10px] text-[#717975] flex justify-between">
                   <span>(৳{settings?.dhakaDeliveryCharge ?? 80} Dhaka / ৳{settings?.outsideDhakaDeliveryCharge ?? 150} outside)</span>
-                  <span>Set at checkout</span>
+                  <span>Set with address</span>
                 </div>
               )}
               <Separator className="my-1.5 sm:my-2 bg-[#deddd3]" />
               <div className="flex justify-between text-base font-bold text-[#073a2d]">
                 <span className="font-serif">Estimated Total</span>
-                <span className="tabular-nums">৳{total.toLocaleString()}</span>
+                <span className="tabular-nums">৳{Math.max(0, subtotal - discount).toLocaleString()}</span>
               </div>
               <p className="text-[10px] text-[#717975] text-right">
-                All prices inclusive of VAT & local crafting taxes
+                All prices inclusive of VAT &amp; local crafting taxes
               </p>
             </div>
 
