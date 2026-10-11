@@ -31,7 +31,41 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-export const ShopContent: React.FC = () => {
+export interface CollectionConfig {
+  slug: string;
+  title: string;
+  tagline: string;
+  description: string;
+  switcher?: { slug: string; title: string; isCurrent: boolean }[];
+}
+
+export interface CategoryConfig {
+  slug: string;
+  name: string;
+  description?: string;
+  siblingCategories?: { id: string; slug: string; name: string }[];
+}
+
+export interface ForceFilter {
+  newArrival?: boolean;
+  bestSeller?: boolean;
+  featured?: boolean;
+  category?: string;
+}
+
+export interface ShopContentProps {
+  basePath?: string;
+  collectionConfig?: CollectionConfig;
+  categoryConfig?: CategoryConfig;
+  forceFilter?: ForceFilter;
+}
+
+export const ShopContent: React.FC<ShopContentProps> = ({
+  basePath = '/shop',
+  collectionConfig,
+  categoryConfig,
+  forceFilter,
+}) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { settings } = useStorefront();
@@ -108,7 +142,7 @@ export const ShopContent: React.FC = () => {
     }
     if (!('page' in updates)) params.delete('page');
     const nextQuery = params.toString();
-    router.push(`/shop${nextQuery ? `?${nextQuery}` : ''}`, { scroll: false });
+    router.push(`${basePath}${nextQuery ? `?${nextQuery}` : ''}`, { scroll: false });
   };
 
   const productQuery = useMemo<ProductListQuery>(() => {
@@ -117,7 +151,7 @@ export const ShopContent: React.FC = () => {
       limit: 12,
       sort: sortBy,
       gender: selectedGender,
-      category: selectedCategory !== 'all' ? selectedCategory : undefined,
+      category: forceFilter?.category || (selectedCategory !== 'all' ? selectedCategory : undefined),
       size: selectedSizes.length ? selectedSizes : undefined,
       color: selectedColors.length ? selectedColors : undefined,
       fabric: selectedFabrics.length ? selectedFabrics : undefined,
@@ -128,8 +162,9 @@ export const ShopContent: React.FC = () => {
     };
     if (urlParams.has('minPrice')) query.minPrice = Number(urlParams.get('minPrice'));
     if (urlParams.has('maxPrice')) query.maxPrice = Number(urlParams.get('maxPrice'));
-    if (newArrivalSelected) query.newArrival = true;
-    if (bestSellerSelected) query.bestSeller = true;
+    if (forceFilter?.newArrival || newArrivalSelected) query.newArrival = true;
+    if (forceFilter?.bestSeller || bestSellerSelected) query.bestSeller = true;
+    if (forceFilter?.featured) query.featured = true;
     if (offersSelected) query.onSale = true;
     return query;
   }, [
@@ -137,37 +172,26 @@ export const ShopContent: React.FC = () => {
     selectedFabrics, selectedFabricOrigins, selectedFits,
     initialQueryFromUrl, inStockOnly, urlParams,
     newArrivalSelected, bestSellerSelected, offersSelected,
+    forceFilter,
   ]);
   const requestKey = JSON.stringify(productQuery);
 
   const filterQuery = useMemo<ProductListQuery>(
     () => ({
-      category: selectedCategory !== 'all' ? selectedCategory : undefined,
+      category: forceFilter?.category || (selectedCategory !== 'all' ? selectedCategory : undefined),
       size: selectedSizes.length ? selectedSizes : undefined,
       color: selectedColors.length ? selectedColors : undefined,
       fabric: selectedFabrics.length ? selectedFabrics : undefined,
       fabricOrigin: selectedFabricOrigins.length ? selectedFabricOrigins : undefined,
       fit: selectedFits.length ? selectedFits : undefined,
-      gender: selectedGender,
-      search: initialQueryFromUrl || undefined,
-      inStock: inStockOnly ? true : undefined,
-      newArrival: newArrivalSelected ? true : undefined,
-      bestSeller: bestSellerSelected ? true : undefined,
-      onSale: offersSelected ? true : undefined,
+      newArrival: forceFilter?.newArrival || newArrivalSelected || undefined,
+      bestSeller: forceFilter?.bestSeller || bestSellerSelected || undefined,
+      featured: forceFilter?.featured || undefined,
     }),
     [
-      selectedCategory,
-      selectedSizes,
-      selectedColors,
-      selectedFabrics,
-      selectedFabricOrigins,
-      selectedFits,
-      selectedGender,
-      initialQueryFromUrl,
-      inStockOnly,
-      newArrivalSelected,
-      bestSellerSelected,
-      offersSelected,
+      selectedCategory, selectedSizes, selectedColors,
+      selectedFabrics, selectedFabricOrigins, selectedFits,
+      forceFilter, newArrivalSelected, bestSellerSelected,
     ],
   );
 
@@ -224,7 +248,7 @@ export const ShopContent: React.FC = () => {
       : [...current, value] });
   };
 
-  const clearAllFilters = () => router.push('/shop', { scroll: false });
+  const clearAllFilters = () => router.push(basePath, { scroll: false });
 
   const activeFiltersCount =
     (selectedCategory !== 'all' ? 1 : 0) +
@@ -494,56 +518,148 @@ export const ShopContent: React.FC = () => {
   return (
     <div className="w-full pb-24 bg-[#fbf9f2]">
       {/* Editorial Top Orientation */}
-      <div className="w-full bg-[#f0eee7] border-b border-[#deddd3] py-12">
+      <div className="w-full bg-[#f0eee7] border-b border-[#deddd3] py-10 sm:py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Breadcrumb */}
-          <nav className="flex items-center gap-2 text-[11px] font-sans uppercase tracking-widest text-[#717975] mb-3">
-            <Link href="/" className="hover:text-[#073a2d]">
-              Home
-            </Link>
-            <span>/</span>
-            <Link
-              href={`/shop?gender=${selectedGender || 'MEN'}`}
-              className="hover:text-[#073a2d]"
-            >
-              {selectedGender === 'WOMEN' ? 'Women' : selectedGender === 'UNISEX' ? 'Unisex' : 'Men'}
-            </Link>
-            <span>/</span>
-            <span className="text-[#073a2d] font-semibold">
-              {newArrivalSelected
-                ? 'New Arrivals'
-                : bestSellerSelected
-                ? 'Best Sellers'
-                : offersSelected
-                ? 'Offers & Archive'
-                : selectedCategory !== 'all'
-                ? categories.find((c) => c.slug === selectedCategory)?.name
-                : selectedGender === 'WOMEN'
-                ? 'Women’s Collection'
-                : selectedGender === 'UNISEX'
-                ? 'Unisex Collection'
-                : 'All Sartorial Weaves'}
-            </span>
-          </nav>
+          {collectionConfig ? (
+            <nav className="flex items-center gap-2 text-[11px] font-sans uppercase tracking-widest text-[#717975] mb-3">
+              <Link href="/" className="hover:text-[#073a2d]">
+                Home
+              </Link>
+              <span>/</span>
+              <Link href="/shop" className="hover:text-[#073a2d]">
+                Collections
+              </Link>
+              <span>/</span>
+              <span className="text-[#073a2d] font-semibold">{collectionConfig.title}</span>
+            </nav>
+          ) : categoryConfig ? (
+            <nav className="flex items-center gap-2 text-[11px] font-sans uppercase tracking-widest text-[#717975] mb-3">
+              <Link href="/" className="hover:text-[#073a2d]">
+                Home
+              </Link>
+              <span>/</span>
+              <Link href="/shop" className="hover:text-[#073a2d]">
+                Categories
+              </Link>
+              <span>/</span>
+              <span className="text-[#073a2d] font-semibold">{categoryConfig.name}</span>
+            </nav>
+          ) : (
+            <nav className="flex items-center gap-2 text-[11px] font-sans uppercase tracking-widest text-[#717975] mb-3">
+              <Link href="/" className="hover:text-[#073a2d]">
+                Home
+              </Link>
+              <span>/</span>
+              <Link
+                href={`/shop?gender=${selectedGender || 'MEN'}`}
+                className="hover:text-[#073a2d]"
+              >
+                {selectedGender === 'WOMEN' ? 'Women' : selectedGender === 'UNISEX' ? 'Unisex' : 'Men'}
+              </Link>
+              <span>/</span>
+              <span className="text-[#073a2d] font-semibold">
+                {newArrivalSelected
+                  ? 'New Arrivals'
+                  : bestSellerSelected
+                  ? 'Best Sellers'
+                  : offersSelected
+                  ? 'Offers & Archive'
+                  : selectedCategory !== 'all'
+                  ? categories.find((c) => c.slug === selectedCategory)?.name
+                  : selectedGender === 'WOMEN'
+                  ? 'Women’s Collection'
+                  : selectedGender === 'UNISEX'
+                  ? 'Unisex Collection'
+                  : 'All Sartorial Weaves'}
+              </span>
+            </nav>
+          )}
 
-          <h1 className="font-serif text-3xl sm:text-5xl font-normal text-[#073a2d] mb-3">
-            {newArrivalSelected
-              ? 'NEW ARRIVALS'
-              : bestSellerSelected
-              ? 'BEST SELLERS'
-              : offersSelected
-              ? 'EXCLUSIVE OFFERS'
-              : selectedCategory !== 'all'
-              ? categories.find((c) => c.slug === selectedCategory)?.name.toUpperCase() ?? 'MEN’S COLLECTION'
-              : selectedGender === 'WOMEN'
-              ? 'WOMEN’S COLLECTION'
-              : selectedGender === 'UNISEX'
-              ? 'UNISEX COLLECTION'
-              : 'MEN’S COLLECTION'}
-          </h1>
-          <p className="font-sans text-xs sm:text-sm text-[#69726d] max-w-2xl font-light">
-            Handcrafted Bengal panjabis, Egyptian long-staple cotton shirts, and modern architectural bottom wear designed for tropical ease and aristocratic presence.
-          </p>
+          {collectionConfig ? (
+            <>
+              {collectionConfig.tagline && (
+                <span className="font-sans text-[11px] uppercase tracking-[0.2em] text-[#c79a45] font-semibold block mb-2">
+                  {collectionConfig.tagline}
+                </span>
+              )}
+              <h1 className="font-serif text-3xl sm:text-5xl font-bold text-[#073a2d] tracking-tight mb-3">
+                {collectionConfig.title}
+              </h1>
+              <p className="font-sans text-xs sm:text-sm text-[#69726d] max-w-2xl font-light">
+                {collectionConfig.description}
+              </p>
+              {collectionConfig.switcher && collectionConfig.switcher.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 mt-6">
+                  {collectionConfig.switcher.map((item) => (
+                    <Link
+                      key={item.slug}
+                      href={`/collections/${item.slug}`}
+                      className={`text-xs font-sans uppercase tracking-wider px-3.5 py-1.5 transition-all ${
+                        item.isCurrent
+                          ? 'bg-[#073a2d] text-white font-semibold'
+                          : 'bg-white border border-[#deddd3] text-[#404945] hover:border-[#073a2d] hover:text-[#073a2d]'
+                      }`}
+                    >
+                      {item.title}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : categoryConfig ? (
+            <>
+              <span className="font-sans text-[11px] uppercase tracking-[0.2em] text-[#c79a45] font-semibold block mb-2">
+                ATELIER CAPSULE
+              </span>
+              <h1 className="font-serif text-3xl sm:text-5xl font-bold text-[#073a2d] tracking-tight mb-3">
+                {categoryConfig.name}
+              </h1>
+              {categoryConfig.description && (
+                <p className="font-sans text-xs sm:text-sm text-[#69726d] max-w-2xl font-light">
+                  {categoryConfig.description}
+                </p>
+              )}
+              {categoryConfig.siblingCategories && categoryConfig.siblingCategories.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 mt-6">
+                  {categoryConfig.siblingCategories.map((c) => (
+                    <Link
+                      key={c.id}
+                      href={`/categories/${c.slug}`}
+                      className={`text-xs font-sans uppercase tracking-wider px-3.5 py-1.5 transition-all ${
+                        c.slug === categoryConfig.slug
+                          ? 'bg-[#073a2d] text-white font-semibold'
+                          : 'bg-white border border-[#deddd3] text-[#404945] hover:border-[#073a2d] hover:text-[#073a2d]'
+                      }`}
+                    >
+                      {c.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <h1 className="font-serif text-3xl sm:text-5xl font-normal text-[#073a2d] mb-3">
+                {newArrivalSelected
+                  ? 'NEW ARRIVALS'
+                  : bestSellerSelected
+                  ? 'BEST SELLERS'
+                  : offersSelected
+                  ? 'EXCLUSIVE OFFERS'
+                  : selectedCategory !== 'all'
+                  ? categories.find((c) => c.slug === selectedCategory)?.name.toUpperCase() ?? 'MEN’S COLLECTION'
+                  : selectedGender === 'WOMEN'
+                  ? 'WOMEN’S COLLECTION'
+                  : selectedGender === 'UNISEX'
+                  ? 'UNISEX COLLECTION'
+                  : 'MEN’S COLLECTION'}
+              </h1>
+              <p className="font-sans text-xs sm:text-sm text-[#69726d] max-w-2xl font-light">
+                Handcrafted Bengal panjabis, Egyptian long-staple cotton shirts, and modern architectural bottom wear designed for tropical ease and aristocratic presence.
+              </p>
+            </>
+          )}
         </div>
       </div>
 
