@@ -20,7 +20,9 @@ async function bootstrap() {
 
   // Global API Prefix
   const apiPrefix = configService.get<string>('app.apiPrefix') || '/api/v1';
-  app.setGlobalPrefix(apiPrefix.replace(/^\//, ''));
+  app.setGlobalPrefix(apiPrefix.replace(/^\//, ''), {
+    exclude: ['/'],
+  });
 
   // Global Input Validation
   app.useGlobalPipes(
