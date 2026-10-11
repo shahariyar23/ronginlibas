@@ -10,6 +10,8 @@ import { CustomerAuthGuard } from './guards/customer-auth.guard.js';
 import { OptionalCustomerAuthGuard } from './guards/optional-customer-auth.guard.js';
 import { MailModule } from '../mail/mail.module.js';
 
+import { FirebaseAdminService } from './services/firebase-admin.service.js';
+
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
@@ -28,9 +30,17 @@ import { MailModule } from '../mail/mail.module.js';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard, CustomerAuthGuard, OptionalCustomerAuthGuard],
+  providers: [
+    AuthService,
+    FirebaseAdminService,
+    JwtStrategy,
+    JwtAuthGuard,
+    CustomerAuthGuard,
+    OptionalCustomerAuthGuard,
+  ],
   exports: [
     AuthService,
+    FirebaseAdminService,
     JwtAuthGuard,
     CustomerAuthGuard,
     OptionalCustomerAuthGuard,

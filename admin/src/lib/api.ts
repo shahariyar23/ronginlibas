@@ -158,6 +158,202 @@ export interface CreateCouponPayload {
   isActive: boolean;
 }
 
+export type OfferType = 'PRODUCT_DISCOUNT' | 'CATEGORY_DISCOUNT' | 'STOREWIDE' | 'BUNDLE';
+export type OfferDiscountType = 'PERCENTAGE' | 'FIXED';
+export type OfferStatus = 'SCHEDULED' | 'ACTIVE' | 'EXPIRED' | 'INACTIVE';
+
+export interface AdminOffer {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  bannerTitle?: string | null;
+  bannerSubtitle?: string | null;
+  bannerMessage?: string | null;
+  offerType: OfferType;
+  discountType: OfferDiscountType;
+  discountValue: number;
+  startDate: string;
+  expiryDate: string;
+  isActive: boolean;
+  status: OfferStatus;
+  badgeText?: string | null;
+  couponCode?: string | null;
+  priority: number;
+  productCount: number;
+  categoryCount: number;
+  products?: Array<{ id: string; name: string; sku: string; price: number; slug: string }>;
+  categories?: Array<{ id: string; name: string; slug: string }>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateOfferPayload {
+  name: string;
+  slug?: string;
+  description?: string;
+  bannerTitle?: string;
+  bannerSubtitle?: string;
+  bannerMessage?: string;
+  offerType?: OfferType;
+  discountType: OfferDiscountType;
+  discountValue: number;
+  startDate: string;
+  expiryDate: string;
+  isActive?: boolean;
+  badgeText?: string;
+  couponCode?: string;
+  priority?: number;
+  productIds?: string[];
+  categoryIds?: string[];
+  collectionIds?: string[];
+}
+
+export interface AdminCollection {
+  id: string;
+  name: string;
+  slug: string;
+  tagline?: string | null;
+  description?: string | null;
+  image?: string | null;
+  isActive: boolean;
+  sortOrder: number;
+  seoTitle?: string | null;
+  metaDescription?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  products?: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    sku: string;
+    price: number;
+    compareAtPrice?: number | null;
+    isActive: boolean;
+    images?: Array<{ url: string; altText?: string | null }>;
+  }>;
+  _count?: {
+    products: number;
+  };
+}
+
+export interface CreateCollectionPayload {
+  name: string;
+  slug?: string;
+  tagline?: string;
+  description?: string;
+  image?: string;
+  isActive?: boolean;
+  sortOrder?: number;
+  seoTitle?: string;
+  metaDescription?: string;
+  productIds?: string[];
+}
+
+export interface AdminReportsResponse {
+  period: '7d' | '30d' | '90d' | '1y' | 'all';
+  generatedAt: string;
+  sales: {
+    totalGrossSales: number;
+    totalNetSales: number;
+    totalDiscounts: number;
+    totalShipping: number;
+    averageOrderValue: number;
+    completedOrdersTotal: number;
+    completedOrdersCount: number;
+    cancelledOrdersTotal: number;
+    cancelledOrdersCount: number;
+    refundedOrdersTotal: number;
+    refundedOrdersCount: number;
+    revenueByDate: Array<{
+      date: string;
+      revenue: number;
+      orderCount: number;
+      gross: number;
+    }>;
+  };
+  orders: {
+    totalOrders: number;
+    statusBreakdown: Record<string, number>;
+    paymentStatusBreakdown: Record<string, number>;
+    paymentMethodBreakdown: Record<string, number>;
+  };
+  products: {
+    topSellingProducts: Array<{
+      id: string;
+      name: string;
+      sku: string;
+      categoryName: string;
+      unitsSold: number;
+      revenue: number;
+    }>;
+    lowestSellingProducts: Array<{
+      id: string;
+      name: string;
+      sku: string;
+      categoryName: string;
+      unitsSold: number;
+      revenue: number;
+    }>;
+    categoryPerformance: Array<{
+      categoryName: string;
+      unitsSold: number;
+      revenue: number;
+    }>;
+    bestSellingSizes: Array<{ size: string; units: number }>;
+    bestSellingColors: Array<{ color: string; units: number }>;
+    outOfStockCount: number;
+    lowStockCount: number;
+    totalActiveVariants: number;
+  };
+  customers: {
+    totalCustomers: number;
+    newCustomersInPeriod: number;
+    activePatronsInPeriod: number;
+    returningPatronsInPeriod: number;
+    orderFrequencyBuckets: {
+      singleOrder: number;
+      twoToThreeOrders: number;
+      fourOrMoreOrders: number;
+    };
+  };
+  coupons: {
+    activeCouponsCount: number;
+    ordersWithDiscounts: number;
+    totalDiscountDelivered: number;
+    topCoupons: Array<{
+      id: string;
+      code: string;
+      discountType: string;
+      discountValue: number;
+      usedCount: number;
+      usageLimit?: number | null;
+    }>;
+  };
+  offers: {
+    totalOffers: number;
+    activeOffersCount: number;
+    scheduledOffersCount: number;
+    expiredOffersCount: number;
+    activeCampaigns: Array<{
+      id: string;
+      name: string;
+      slug: string;
+      offerType: string;
+      discountType: string;
+      discountValue: number;
+      startDate: string;
+      expiryDate: string;
+      isActive: boolean;
+      badgeText?: string | null;
+      productsAttached: number;
+      categoriesAttached: number;
+      collectionsAttached: number;
+    }>;
+    trackingNote: string;
+  };
+}
+
 export interface AdminReview {
   id: string;
   rating: number;
@@ -671,6 +867,58 @@ export const adminApi = {
       request<AdminCoupon>(`/admin/coupons/${id}`, {
         method: 'DELETE',
       }),
+  },
+
+  // Offers
+  offers: {
+    getAll: (params?: { search?: string; status?: string }) => {
+      const query = new URLSearchParams();
+      if (params?.search) query.set('search', params.search);
+      if (params?.status && params.status !== 'ALL') query.set('status', params.status);
+      const qs = query.toString();
+      return request<AdminOffer[]>(`/admin/offers${qs ? `?${qs}` : ''}`);
+    },
+    getById: (id: string) => request<AdminOffer>(`/admin/offers/${encodeURIComponent(id)}`),
+    create: (payload: CreateOfferPayload) =>
+      request<AdminOffer>('/admin/offers', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    update: (id: string, payload: Partial<CreateOfferPayload>) =>
+      request<AdminOffer>(`/admin/offers/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      }),
+    delete: (id: string) =>
+      request<{ message: string }>(`/admin/offers/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      }),
+  },
+
+  // Collections
+  collections: {
+    getAll: () => request<AdminCollection[]>('/admin/collections'),
+    getById: (id: string) => request<AdminCollection>(`/admin/collections/${encodeURIComponent(id)}`),
+    create: (payload: CreateCollectionPayload) =>
+      request<AdminCollection>('/admin/collections', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    update: (id: string, payload: Partial<CreateCollectionPayload>) =>
+      request<AdminCollection>(`/admin/collections/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      }),
+    delete: (id: string) =>
+      request<{ message: string }>(`/admin/collections/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      }),
+  },
+
+  // Reports & Analytics
+  reports: {
+    get: (period: '7d' | '30d' | '90d' | '1y' | 'all' = '30d') =>
+      request<AdminReportsResponse>(`/admin/reports?period=${period}`),
   },
 
   // Store Settings

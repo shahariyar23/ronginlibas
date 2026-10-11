@@ -74,8 +74,8 @@ function NavigationLinks({
   const isMenActive = isShop && gender === 'MEN';
   const isWomanActive = isShop && gender === 'WOMEN';
   const isNewArrivalActive = isShop && isNewArrival;
-  const isBestSellerActive = isShop && isBestSeller;
-  const isOffersActive = isShop && isOffers;
+  const isBestSellerActive = pathname === '/collections/bestsellers' || (isShop && isBestSeller);
+  const isOffersActive = pathname === '/offers' || (isShop && isOffers);
   const isCollectionsActive =
     isShop &&
     !isMenActive &&
@@ -163,7 +163,7 @@ function NavigationLinks({
 
       {/* OFFERS */}
       <Link
-        href="/shop?offers=true"
+        href="/offers"
         className={`transition-colors py-2 relative group font-semibold ${
           isOffersActive ? 'text-[#c79a45] font-bold' : 'text-[#404945] hover:text-[#c79a45]'
         }`}
@@ -280,8 +280,8 @@ function MobileNavLinks({
   const isMenActive = isShop && gender === 'MEN';
   const isWomanActive = isShop && gender === 'WOMEN';
   const isNewArrivalActive = isShop && isNewArrival;
-  const isBestSellerActive = isShop && isBestSeller;
-  const isOffersActive = isShop && isOffers;
+  const isBestSellerActive = pathname === '/collections/bestsellers' || (isShop && isBestSeller);
+  const isOffersActive = pathname === '/offers' || (isShop && isOffers);
   const isCollectionsActive =
     isShop &&
     !isMenActive &&
@@ -344,7 +344,7 @@ function MobileNavLinks({
         <ArrowRight className={`w-4 h-4 ${isBestSellerActive ? 'text-[#073a2d]' : 'text-[#c79a45]'}`} />
       </Link>
       <Link
-        href="/shop?offers=true"
+        href="/offers"
         onClick={onClose}
         className={`flex items-center justify-between py-2 border-b border-[#f0eee7] font-semibold transition-colors ${
           isOffersActive ? 'text-[#c79a45] font-bold pl-2 border-l-2 border-l-[#c79a45] bg-[#eae8e1]/40' : 'text-[#404945] hover:text-[#c79a45]'
@@ -1071,7 +1071,7 @@ export const Header: React.FC = () => {
                         <ArrowRight className="w-4 h-4 text-[#c79a45]" />
                       </Link>
                       <Link
-                        href="/shop?offers=true"
+                        href="/offers"
                         onClick={() => setMobileMenuOpen(false)}
                         className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-semibold"
                       >

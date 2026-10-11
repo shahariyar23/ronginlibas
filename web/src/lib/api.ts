@@ -334,6 +334,12 @@ export function mapProduct(source: ApiProduct): Product {
 
   const images = imageDetails.map((image) => image.url);
 
+  const totalSold =
+    source.totalSold !== undefined
+      ? source.totalSold
+      : (source.orderItems ?? []).reduce((sum, oi) => sum + (oi.quantity || 1), 0) || (source._count?.orderItems ?? 0);
+  const isBestSeller = Boolean(source.isBestSeller || totalSold > 0);
+
   return {
     id: source.id,
     slug: source.slug,
@@ -345,7 +351,7 @@ export function mapProduct(source: ApiProduct): Product {
     originalPrice: source.compareAtPrice ? Number(source.compareAtPrice) : undefined,
     badge: source.isFeatured
       ? 'Atelier Featured'
-      : source.isBestSeller
+      : isBestSeller
         ? 'Best Seller'
         : source.isNewArrival
           ? 'New Arrival'
@@ -384,12 +390,9 @@ export function mapProduct(source: ApiProduct): Product {
         : source._count?.reviews !== undefined
           ? source._count.reviews
           : (source.reviews?.length ?? 0),
-    totalSold:
-      source.totalSold !== undefined
-        ? source.totalSold
-        : (source.orderItems ?? []).reduce((sum, oi) => sum + (oi.quantity || 1), 0) || (source._count?.orderItems ?? 0),
+    totalSold,
     isNewArrival: source.isNewArrival,
-    isBestSeller: source.isBestSeller,
+    isBestSeller,
     featured: source.isFeatured,
     variants,
   };
@@ -401,6 +404,7 @@ export interface ProductListQuery {
   search?: string;
   gender?: 'MEN' | 'WOMEN' | 'UNISEX';
   category?: string;
+  collection?: string;
   size?: string[];
   color?: string[];
   fabric?: string[];
@@ -554,6 +558,40 @@ export async function getProduct(slug: string) {
 export async function getRelatedProducts(slug: string) {
   const products = await apiRequest<ApiProduct[]>(`/products/${encodeURIComponent(slug)}/related`);
   return products.map(mapProduct);
+}
+
+export interface StorefrontCollection {
+  id: string;
+  name: string;
+  slug: string;
+  tagline?: string | null;
+  description?: string | null;
+  image?: string | null;
+  isActive: boolean;
+  sortOrder: number;
+  seoTitle?: string | null;
+  metaDescription?: string | null;
+  products?: Product[];
+}
+
+export async function getCollection(slug: string): Promise<StorefrontCollection | null> {
+  try {
+    const raw = await apiRequest<any>(`/collections/${encodeURIComponent(slug)}`);
+    return {
+      ...raw,
+      products: (raw.products || []).map(mapProduct),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function getCollections(): Promise<StorefrontCollection[]> {
+  try {
+    return await apiRequest<StorefrontCollection[]>('/collections');
+  } catch {
+    return [];
+  }
 }
 
 export async function downloadOrderInvoice(orderNumber: string) {
@@ -775,4 +813,181 @@ export async function deleteCustomerAddress(id: string): Promise<void> {
     method: 'DELETE',
   });
 }
+
+export interface StorefrontOffersResponse {
+  hero: {
+    title: string;
+    subtitle: string;
+    bannerMessage: string;
+    maxDiscountPercent: number;
+    hasActivePromotion: boolean;
+  };
+  countdown: {
+    offerName: string;
+    startDate: string;
+    expiryDate: string;
+    isActive: boolean;
+  } | null;
+  freeDelivery: {
+    enabled: boolean;
+    threshold: number;
+    message: string;
+  };
+  coupons: Array<{
+    id: string;
+    code: string;
+    description: string | null;
+    type: 'PERCENTAGE' | 'FIXED';
+    value: number;
+    minimumOrderAmount: number;
+    maximumDiscount: number | null;
+    expiryDate: string;
+  }>;
+  offers: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    description: string | null;
+    offerType: string;
+    discountType: string;
+    discountValue: number;
+    startDate: string;
+    expiryDate: string;
+    badgeText?: string;
+    couponCode?: string;
+    productCount: number;
+  }>;
+  products: Product[];
+  facets: {
+    categories: Array<{ id: string; name: string; slug: string; count: number }>;
+    discountBands: Array<{ label: string; min: number; count: number }>;
+    colors: string[];
+    sizes: string[];
+    priceRange: { min: number; max: number };
+  };
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface OffersQuery {
+  category?: string;
+  discountBand?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  size?: string[];
+  color?: string[];
+  tab?: 'all' | 'best-discounts' | 'bundle';
+  sort?: 'featured' | 'discount-high' | 'price-low' | 'price-high' | 'newest';
+  page?: number;
+  limit?: number;
+}
+
+export async function getOffersPageData(query: OffersQuery = {}): Promise<StorefrontOffersResponse> {
+  const params = new URLSearchParams();
+  if (query.category) params.set('category', query.category);
+  if (query.discountBand) params.set('discountBand', query.discountBand);
+  if (query.minPrice !== undefined) params.set('minPrice', String(query.minPrice));
+  if (query.maxPrice !== undefined) params.set('maxPrice', String(query.maxPrice));
+  if (query.size?.length) query.size.forEach((s) => params.append('size', s));
+  if (query.color?.length) query.color.forEach((c) => params.append('color', c));
+  if (query.tab) params.set('tab', query.tab);
+  if (query.sort) params.set('sort', query.sort);
+  if (query.page) params.set('page', String(query.page));
+  if (query.limit) params.set('limit', String(query.limit));
+
+  const qs = params.toString();
+  const raw = await apiRequest<StorefrontOffersResponse>(`/offers${qs ? `?${qs}` : ''}`);
+
+  return {
+    ...raw,
+    products: (raw.products ?? []).map((p: any) => ({
+      ...mapProduct(p),
+      originalPrice: p.originalPrice ?? (p.compareAtPrice ? Number(p.compareAtPrice) : undefined),
+      badge: p.badge || (p.discountPercentage ? `${p.discountPercentage}% OFF` : undefined),
+    })),
+  };
+}
+
+export interface SocialIdentity {
+  id: string;
+  provider: 'GOOGLE';
+  providerEmail: string | null;
+  createdAt: string;
+}
+
+export interface SocialAuthResponse {
+  accessToken: string;
+  user: {
+    id: string;
+    email: string | null;
+    firstName: string;
+    lastName: string | null;
+    role: string;
+    type: 'customer';
+  };
+}
+
+export async function loginWithSocialToken(
+  idToken: string,
+  fullName?: string | null,
+): Promise<SocialAuthResponse> {
+  return apiRequest<SocialAuthResponse>('/auth/social', {
+    method: 'POST',
+    body: JSON.stringify({ idToken, fullName: fullName || undefined }),
+  });
+}
+
+export async function linkSocialAccountApi(
+  idToken: string,
+  fullName?: string | null,
+): Promise<SocialIdentity> {
+  return apiRequest<SocialIdentity>('/auth/social/link', {
+    method: 'POST',
+    body: JSON.stringify({ idToken, fullName: fullName || undefined }),
+  });
+}
+
+export async function unlinkSocialAccountApi(
+  provider: 'GOOGLE',
+): Promise<{ unlinked: boolean }> {
+  return apiRequest<{ unlinked: boolean }>(`/auth/social/unlink/${provider}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getSocialIdentitiesApi(): Promise<SocialIdentity[]> {
+  return apiRequest<SocialIdentity[]>('/auth/social/identities', {
+    method: 'GET',
+  });
+}
+
+export interface DataDeletionResponse {
+  status: string;
+  confirmationCode: string;
+  email: string;
+  message: string;
+}
+
+export async function deleteMyAccountApi(reason?: string): Promise<{ deleted: boolean }> {
+  return apiRequest<{ deleted: boolean }>('/customers/me', {
+    method: 'DELETE',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function submitDataDeletionRequestApi(data: {
+  email: string;
+  phone?: string;
+  reason?: string;
+}): Promise<DataDeletionResponse> {
+  return apiRequest<DataDeletionResponse>('/customers/data-deletion-request', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 

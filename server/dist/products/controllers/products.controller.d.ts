@@ -108,6 +108,9 @@ export declare class ProductsController {
                 publicId: string | null;
                 altText: string | null;
             }[];
+            orderItems: {
+                quantity: number;
+            }[];
         } & {
             description: string | null;
             name: string;
@@ -142,6 +145,7 @@ export declare class ProductsController {
             reviewsCount: number;
             averageRating: number;
             totalSold: number;
+            isBestSeller: boolean;
         }) | {
             isRedirect: boolean;
             redirectTargetSlug: string;
@@ -202,6 +206,9 @@ export declare class ProductsController {
                 productId: string;
                 publicId: string | null;
                 altText: string | null;
+            }[];
+            orderItems: {
+                quantity: number;
             }[];
             description: string | null;
             name: string;
@@ -313,6 +320,7 @@ export declare class ProductsController {
             reviewsCount: number;
             averageRating: number;
             totalSold: number;
+            isBestSeller: boolean;
         })[];
     }>;
 }

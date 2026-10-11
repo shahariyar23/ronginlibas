@@ -9,7 +9,7 @@ export declare class CustomersController {
         message: string;
         data: {
             email: string | null;
-            phone: string;
+            phone: string | null;
             firstName: string;
             lastName: string | null;
             preferredSize: string | null;
@@ -50,7 +50,7 @@ export declare class CustomersController {
         message: string;
         data: {
             email: string | null;
-            phone: string;
+            phone: string | null;
             firstName: string;
             lastName: string | null;
             preferredSize: string | null;
@@ -191,6 +191,7 @@ export declare class CustomersController {
         data: {
             id: string;
             updatedAt: Date;
+            customerId: string;
             chest: import("@prisma/client/runtime/library").Decimal | null;
             shoulder: import("@prisma/client/runtime/library").Decimal | null;
             sleeveLength: import("@prisma/client/runtime/library").Decimal | null;
@@ -199,7 +200,6 @@ export declare class CustomersController {
             trouserLength: import("@prisma/client/runtime/library").Decimal | null;
             garmentLength: import("@prisma/client/runtime/library").Decimal | null;
             tailoringNotes: string | null;
-            customerId: string;
         } | {
             chest: null;
             shoulder: null;
@@ -218,6 +218,7 @@ export declare class CustomersController {
         data: {
             id: string;
             updatedAt: Date;
+            customerId: string;
             chest: import("@prisma/client/runtime/library").Decimal | null;
             shoulder: import("@prisma/client/runtime/library").Decimal | null;
             sleeveLength: import("@prisma/client/runtime/library").Decimal | null;
@@ -226,7 +227,27 @@ export declare class CustomersController {
             trouserLength: import("@prisma/client/runtime/library").Decimal | null;
             garmentLength: import("@prisma/client/runtime/library").Decimal | null;
             tailoringNotes: string | null;
-            customerId: string;
+        };
+    }>;
+    deleteMyAccount(customerId: string, reason?: string): Promise<{
+        message: string;
+        data: {
+            deleted: boolean;
+            archiveId: string;
+            deletedAt: Date;
+        };
+    }>;
+    submitDataDeletionRequest(dto: {
+        email: string;
+        phone?: string;
+        reason?: string;
+    }): Promise<{
+        message: string;
+        data: {
+            status: string;
+            confirmationCode: string;
+            email: string;
+            message: string;
         };
     }>;
 }

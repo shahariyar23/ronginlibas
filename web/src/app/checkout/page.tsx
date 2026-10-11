@@ -1089,6 +1089,17 @@ export default function CheckoutPage() {
                 >
                   {`Place Order - ৳${effectiveGrandTotal.toLocaleString()}`}
                 </Button>
+                <p className="mt-2.5 text-center font-sans text-[11px] text-[#717975] leading-relaxed">
+                  By placing an order, you agree to Rongin Libas&apos;s{' '}
+                  <Link href="/terms" target="_blank" className="underline hover:text-[#073a2d]">
+                    Terms of Service
+                  </Link>{' '}
+                  and{' '}
+                  <Link href="/privacy" target="_blank" className="underline hover:text-[#073a2d]">
+                    Privacy Policy
+                  </Link>.
+                  All shipments include doorstep open-box inspection.
+                </p>
               </div>
 
               {/* Mobile Concierge Card */}

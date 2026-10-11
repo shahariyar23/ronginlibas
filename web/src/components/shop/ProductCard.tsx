@@ -80,7 +80,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
         {/* Badges */}
         <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex flex-col gap-1 z-10">
-          {product.badge && (
+          {product.originalPrice && product.originalPrice > product.price && (
+            <span className="bg-[#ba1a1a] text-white font-sans text-[8.5px] sm:text-[10px] font-bold px-1.5 sm:px-2.5 py-0.5 sm:py-1 uppercase tracking-wider shadow-xs">
+              {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+            </span>
+          )}
+          {product.badge && (!product.originalPrice || !product.badge.includes('OFF')) && (
             <span className="bg-[#073a2d] text-[#fbf9f2] font-sans text-[8.5px] sm:text-[10px] font-bold px-1.5 sm:px-2.5 py-0.5 sm:py-1 uppercase tracking-wider sm:tracking-widest border border-[#c79a45]/40 shadow-xs">
               {product.badge}
             </span>

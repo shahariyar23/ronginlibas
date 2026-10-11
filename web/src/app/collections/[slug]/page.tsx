@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getProducts } from '@/lib/api';
+import { getProducts, getCollection, getCollections } from '@/lib/api';
 import { ShopContent, ForceFilter } from '@/app/shop/ShopContent';
 import { LogoLoader } from '@/components/common/LogoLoader';
 import { SITE_CONFIG, generateBreadcrumbJsonLd } from '@/lib/seo';
@@ -12,7 +12,7 @@ interface CollectionPageProps {
 
 export const dynamic = 'force-dynamic';
 
-const COLLECTION_DEFINITIONS: Record<
+const FALLBACK_DEFINITIONS: Record<
   string,
   {
     title: string;
@@ -53,21 +53,31 @@ const COLLECTION_DEFINITIONS: Record<
 
 export async function generateMetadata({ params }: CollectionPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const config = COLLECTION_DEFINITIONS[slug];
+  const dbCollection = await getCollection(slug).catch(() => null);
+  const fallback = FALLBACK_DEFINITIONS[slug];
 
-  if (!config) {
+  if (!dbCollection && !fallback) {
     return {
       title: 'Collection Not Found | Rongin Libas',
       robots: { index: false, follow: false },
     };
   }
 
-  const title = `${config.title} | Rongin Libas — ${config.tagline}`;
+  const titleText = dbCollection?.seoTitle || dbCollection?.name || fallback?.title || 'Collection';
+  const taglineText = dbCollection?.tagline || fallback?.tagline || 'ATELIER COLLECTION';
+  const descriptionText =
+    dbCollection?.metaDescription ||
+    dbCollection?.description ||
+    fallback?.description ||
+    'Curated artisanal apparel collection.';
+
+  const title = `${titleText} | Rongin Libas — ${taglineText}`;
   const canonical = `${SITE_CONFIG.url}/collections/${slug}`;
+  const imageUrl = dbCollection?.image || `${SITE_CONFIG.url}/hero-model.jpg`;
 
   return {
     title,
-    description: config.description,
+    description: descriptionText,
     alternates: {
       canonical,
     },
@@ -82,66 +92,71 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
     },
     openGraph: {
       title,
-      description: config.description,
+      description: descriptionText,
       url: canonical,
       siteName: SITE_CONFIG.name,
-      images: [{ url: `${SITE_CONFIG.url}/hero-model.jpg`, width: 1200, height: 1200, alt: config.title }],
+      images: [{ url: imageUrl, width: 1200, height: 1200, alt: titleText }],
       type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
       title,
-      description: config.description,
-      images: [`${SITE_CONFIG.url}/hero-model.jpg`],
+      description: descriptionText,
+      images: [imageUrl],
     },
   };
 }
 
 export default async function CollectionPage({ params }: CollectionPageProps) {
   const { slug } = await params;
-  const config = COLLECTION_DEFINITIONS[slug];
+  const [dbCollection, allCollections] = await Promise.all([
+    getCollection(slug).catch(() => null),
+    getCollections().catch(() => []),
+  ]);
 
-  if (!config) {
+  const fallback = FALLBACK_DEFINITIONS[slug];
+
+  if (!dbCollection && !fallback) {
     notFound();
   }
 
-  const allProducts = await getProducts({ limit: 100 }).catch(() => []);
-  const matchingProducts = allProducts.filter(config.filter);
-  const products = matchingProducts.length > 0 ? matchingProducts : allProducts.slice(0, 12);
+  const title = dbCollection?.name || fallback?.title || 'Collection';
+  const tagline = dbCollection?.tagline || fallback?.tagline || 'ATELIER COLLECTION';
+  const description = dbCollection?.description || fallback?.description || 'Curated luxury apparel collection.';
 
-  const collectionJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'CollectionPage',
-    name: config.title,
-    description: config.description,
-    url: `${SITE_CONFIG.url}/collections/${slug}`,
-    mainEntity: {
-      '@type': 'ItemList',
-      itemListElement: products.map((product, index) => ({
-        '@type': 'ListItem',
-        position: index + 1,
-        url: `${SITE_CONFIG.url}/products/${product.slug}`,
-        name: product.name,
-      })),
-    },
-  };
+  // Build dynamic switcher from DB collections if available, else fallback
+  const switcher =
+    allCollections.length > 0
+      ? allCollections.map((col) => ({
+          slug: col.slug,
+          title: col.name,
+          isCurrent: col.slug === slug,
+        }))
+      : Object.entries(FALLBACK_DEFINITIONS).map(([colSlug, def]) => ({
+          slug: colSlug,
+          title: def.title,
+          isCurrent: colSlug === slug,
+        }));
 
-  const breadcrumbJsonLd = generateBreadcrumbJsonLd([
-    { name: 'Collections', url: '/shop' },
-    { name: config.title, url: `/collections/${slug}` },
-  ]);
-
-  const switcher = Object.entries(COLLECTION_DEFINITIONS).map(([colSlug, def]) => ({
-    slug: colSlug,
-    title: def.title,
-    isCurrent: colSlug === slug,
-  }));
-
+  // Force filter for legacy flags if standard slug, or collection filter
   const forceFilter: ForceFilter = {
     newArrival: slug === 'new-arrivals',
     bestSeller: slug === 'bestsellers',
     featured: slug === 'featured',
   };
+
+  const collectionJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: title,
+    description,
+    url: `${SITE_CONFIG.url}/collections/${slug}`,
+  };
+
+  const breadcrumbJsonLd = generateBreadcrumbJsonLd([
+    { name: 'Collections', url: '/shop' },
+    { name: title, url: `/collections/${slug}` },
+  ]);
 
   return (
     <div className="w-full bg-[#fbf9f2] min-h-screen">
@@ -160,9 +175,9 @@ export default async function CollectionPage({ params }: CollectionPageProps) {
           basePath={`/collections/${slug}`}
           collectionConfig={{
             slug,
-            title: config.title,
-            tagline: config.tagline,
-            description: config.description,
+            title,
+            tagline,
+            description,
             switcher,
           }}
           forceFilter={forceFilter}

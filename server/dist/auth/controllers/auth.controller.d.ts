@@ -1,9 +1,11 @@
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
+import { AuthProvider } from '@prisma/client';
 import { AuthService } from '../services/auth.service.js';
 import { LoginDto } from '../dto/login.dto.js';
 import { RegisterCustomerDto } from '../dto/register.dto.js';
 import { RefreshTokenDto } from '../dto/refresh-token.dto.js';
+import { SocialLoginDto } from '../dto/social-login.dto.js';
 import { ChangePasswordDto, ForgotPasswordDto, ResetPasswordDto } from '../dto/password-reset.dto.js';
 export declare class AuthController {
     private readonly authService;
@@ -124,6 +126,47 @@ export declare class AuthController {
     getMe(user: unknown): Promise<{
         message: string;
         data: unknown;
+    }>;
+    socialLogin(dto: SocialLoginDto, response: Response): Promise<{
+        message: string;
+        data: {
+            isNewCustomer: boolean;
+            isProfileComplete: boolean;
+            accessToken: string;
+            tokenType: string;
+            expiresIn: string;
+            user: {
+                id: string;
+                email: string | undefined;
+                role: string;
+                type: "customer" | "admin";
+            };
+        };
+    }>;
+    linkSocial(customerId: string, dto: SocialLoginDto): Promise<{
+        message: string;
+        data: {
+            linked: boolean;
+            provider: "GOOGLE";
+            message: string;
+        };
+    }>;
+    unlinkSocial(customerId: string, provider: AuthProvider): Promise<{
+        message: string;
+        data: {
+            unlinked: boolean;
+            provider: "GOOGLE";
+            message: string;
+        };
+    }>;
+    getIdentities(customerId: string): Promise<{
+        message: string;
+        data: {
+            id: string;
+            createdAt: Date;
+            provider: "GOOGLE";
+            providerEmail: string | null;
+        }[];
     }>;
     private loginCustomer;
     private setRefreshCookie;

@@ -2,7 +2,21 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { apiRequest, getAccessToken, setAccessToken } from '@/lib/api';
+import {
+  apiRequest,
+  getAccessToken,
+  setAccessToken,
+  loginWithSocialToken,
+  linkSocialAccountApi,
+  unlinkSocialAccountApi,
+  getSocialIdentitiesApi,
+  deleteMyAccountApi,
+  type SocialIdentity,
+} from '@/lib/api';
+import {
+  authenticateWithFirebaseProvider,
+  linkFirebaseProvider,
+} from '@/lib/firebase';
 
 export interface PatronUser {
   id: string;
@@ -10,6 +24,8 @@ export interface PatronUser {
   name: string;
   email: string;
   phone: string;
+  photoUrl?: string;
+  hasPhone: boolean;
   tier: 'Heritage Atelier Tier' | 'Royal Bespoke Patron' | 'Member';
   memberSince: string;
   address: {
@@ -34,7 +50,8 @@ interface CustomerProfile {
   firstName: string;
   lastName?: string | null;
   email: string;
-  phone: string;
+  phone?: string | null;
+  photoUrl?: string | null;
   preferredSize?: string | null;
   preferredFit?: string | null;
   createdAt: string;
@@ -69,11 +86,17 @@ interface AuthContextType {
   user: PatronUser | null;
   isLoggedIn: boolean;
   isLoading: boolean;
+  socialIdentities: SocialIdentity[];
   login: (email: string, password?: string) => Promise<boolean>;
   register: (data: Partial<PatronUser>, password?: string, termsAccepted?: boolean) => Promise<boolean>;
+  loginWithSocial: (provider?: 'google') => Promise<boolean>;
+  linkSocial: (provider?: 'google') => Promise<boolean>;
+  unlinkSocial: (provider?: 'GOOGLE') => Promise<boolean>;
+  refreshSocialIdentities: () => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<PatronUser>) => Promise<boolean>;
   changePassword: (oldPw: string, newPw: string) => Promise<boolean>;
+  deleteAccount: (reason?: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -88,12 +111,15 @@ function mapCustomer(customer: CustomerProfile): PatronUser {
     ? customer.measurements[0]
     : customer.measurements;
   const createdAt = new Date(customer.createdAt);
+  const phone = customer.phone ?? '';
   return {
     id: customer.id,
     membershipId: `RL-${customer.id.slice(0, 8).toUpperCase()}`,
     name: [customer.firstName, customer.lastName].filter(Boolean).join(' '),
     email: customer.email,
-    phone: customer.phone,
+    phone,
+    photoUrl: customer.photoUrl ?? undefined,
+    hasPhone: Boolean(phone && phone.trim().length > 0),
     tier: 'Member',
     memberSince: Number.isNaN(createdAt.valueOf())
       ? ''
@@ -124,6 +150,20 @@ async function loadCustomerProfile() {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<PatronUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [socialIdentities, setSocialIdentities] = useState<SocialIdentity[]>([]);
+
+  const refreshSocialIdentities = async () => {
+    try {
+      if (getAccessToken()) {
+        const identities = await getSocialIdentitiesApi();
+        setSocialIdentities(identities);
+      } else {
+        setSocialIdentities([]);
+      }
+    } catch {
+      // Non-blocking
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -135,7 +175,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         setAccessToken(session.accessToken);
         const profile = await loadCustomerProfile();
-        if (active) setUser(profile);
+        if (active) {
+          setUser(profile);
+          void refreshSocialIdentities();
+        }
       } catch (error) {
         setAccessToken(null);
         if (active && error instanceof Error && 'status' in error && error.status === 0) {
@@ -155,10 +198,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const session = await apiRequest<{ accessToken: string }>('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
       setAccessToken(session.accessToken);
       setUser(await loadCustomerProfile());
+      void refreshSocialIdentities();
       toast.success('Welcome back to the Patron Sanctuary');
       return true;
     } catch (error) {
@@ -191,10 +235,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       setAccessToken(session.accessToken);
       setUser(await loadCustomerProfile());
+      void refreshSocialIdentities();
       toast.success('Your Rongin Libas account is ready.');
       return true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Account registration failed.');
+      return false;
+    }
+  };
+
+  const loginWithSocial = async (provider: 'google' = 'google') => {
+    try {
+      const socialResult = await authenticateWithFirebaseProvider(provider);
+      const session = await loginWithSocialToken(socialResult.idToken, socialResult.fullName);
+      setAccessToken(session.accessToken);
+      const profile = await loadCustomerProfile();
+      setUser(profile);
+      void refreshSocialIdentities();
+      toast.success('Welcome to Rongin Libas via Google');
+      return true;
+    } catch (error: any) {
+      toast.error(error instanceof Error ? error.message : 'Social authentication failed.');
+      return false;
+    }
+  };
+
+  const linkSocial = async (provider: 'google' = 'google') => {
+    try {
+      const socialResult = await linkFirebaseProvider(provider);
+      await linkSocialAccountApi(socialResult.idToken, socialResult.fullName);
+      await refreshSocialIdentities();
+      toast.success('Google account linked successfully.');
+      return true;
+    } catch (error: any) {
+      toast.error(error instanceof Error ? error.message : 'Could not link social account.');
+      return false;
+    }
+  };
+
+  const unlinkSocial = async (provider: 'GOOGLE' = 'GOOGLE') => {
+    try {
+      await unlinkSocialAccountApi(provider);
+      await refreshSocialIdentities();
+      toast.success('Google account unlinked successfully.');
+      return true;
+    } catch (error: any) {
+      toast.error(error instanceof Error ? error.message : 'Could not unlink account.');
       return false;
     }
   };
@@ -209,6 +295,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setAccessToken(null);
       setUser(null);
+      setSocialIdentities([]);
     }
   };
 
@@ -327,17 +414,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const deleteAccount = async (reason?: string) => {
+    try {
+      await deleteMyAccountApi(reason);
+      setAccessToken(null);
+      setUser(null);
+      setSocialIdentities([]);
+      toast.success('Your customer account and personal data have been permanently deleted.');
+      return true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not delete your account.');
+      return false;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
         user,
         isLoggedIn: Boolean(user),
         isLoading,
+        socialIdentities,
         login,
         register,
+        loginWithSocial,
+        linkSocial,
+        unlinkSocial,
+        refreshSocialIdentities,
         logout,
         updateProfile,
         changePassword,
+        deleteAccount,
       }}
     >
       {children}

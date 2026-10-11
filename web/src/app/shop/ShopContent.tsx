@@ -119,7 +119,9 @@ export const ShopContent: React.FC<ShopContentProps> = ({
       : priceRange;
   const searchDraft =
     searchEdit?.query === initialQueryFromUrl ? searchEdit.value : initialQueryFromUrl;
-  const rawSort = urlParams.get('sort') || 'featured';
+  const rawSort =
+    urlParams.get('sort') ||
+    (forceFilter?.bestSeller || bestSellerSelected ? 'best-selling' : 'featured');
   const sortBy =
     rawSort === 'price-asc'
       ? 'price-low'
@@ -295,6 +297,76 @@ export const ShopContent: React.FC<ShopContentProps> = ({
 
   const renderFilterPanel = () => (
     <div className="space-y-8 text-xs font-sans">
+      {/* Curated Highlights */}
+      <div>
+        <h4 className="font-serif text-sm font-semibold uppercase tracking-wider text-[#073a2d] mb-3">
+          Highlights
+        </h4>
+        <div className="space-y-2">
+          <label className="flex items-center justify-between text-xs text-[#404945] cursor-pointer hover:text-[#073a2d]">
+            <div className="flex items-center gap-2.5">
+              <Checkbox
+                checked={bestSellerSelected}
+                onCheckedChange={(checked) =>
+                  updateQuery({
+                    bestSeller: checked ? 'true' : null,
+                    sort: checked ? 'best-selling' : null,
+                    filter: null,
+                  })
+                }
+                className="rounded-none border-[#deddd3] data-[state=checked]:bg-[#073a2d]"
+              />
+              <span className={bestSellerSelected ? 'font-semibold text-[#073a2d]' : ''}>
+                Best Sellers
+              </span>
+            </div>
+            <span className="text-[10px] uppercase font-semibold text-[#c79a45] bg-[#c79a45]/10 px-1.5 py-0.5 rounded-xs">
+              Top Sold
+            </span>
+          </label>
+          <label className="flex items-center justify-between text-xs text-[#404945] cursor-pointer hover:text-[#073a2d]">
+            <div className="flex items-center gap-2.5">
+              <Checkbox
+                checked={newArrivalSelected}
+                onCheckedChange={(checked) =>
+                  updateQuery({
+                    newArrival: checked ? 'true' : null,
+                    filter: null,
+                  })
+                }
+                className="rounded-none border-[#deddd3] data-[state=checked]:bg-[#073a2d]"
+              />
+              <span className={newArrivalSelected ? 'font-semibold text-[#073a2d]' : ''}>
+                New Arrivals
+              </span>
+            </div>
+            <span className="text-[10px] uppercase font-semibold text-[#073a2d] bg-[#073a2d]/10 px-1.5 py-0.5 rounded-xs">
+              Fresh
+            </span>
+          </label>
+          <label className="flex items-center justify-between text-xs text-[#404945] cursor-pointer hover:text-[#073a2d]">
+            <div className="flex items-center gap-2.5">
+              <Checkbox
+                checked={offersSelected}
+                onCheckedChange={(checked) =>
+                  updateQuery({
+                    offers: checked ? 'true' : null,
+                    filter: null,
+                  })
+                }
+                className="rounded-none border-[#deddd3] data-[state=checked]:bg-[#073a2d]"
+              />
+              <span className={offersSelected ? 'font-semibold text-[#073a2d]' : ''}>
+                Offers & Archive
+              </span>
+            </div>
+            <span className="text-[10px] uppercase font-semibold text-[#ba1a1a] bg-[#ba1a1a]/10 px-1.5 py-0.5 rounded-xs">
+              Sale
+            </span>
+          </label>
+        </div>
+      </div>
+
       {/* Category List */}
       <div>
         <h4 className="font-serif text-sm font-semibold uppercase tracking-wider text-[#073a2d] mb-3">
@@ -793,6 +865,30 @@ export const ShopContent: React.FC<ShopContentProps> = ({
             {/* Active Filter Pills */}
             {activeFiltersCount > 0 && (
               <div className="hidden sm:flex items-center gap-2 flex-wrap">
+                {bestSellerSelected && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#deddd3] text-[11px] text-[#073a2d]">
+                    Best Sellers
+                    <button onClick={() => updateQuery({ bestSeller: null, filter: null, sort: null })}>
+                      <X className="w-3 h-3 text-[#717975] hover:text-black" />
+                    </button>
+                  </span>
+                )}
+                {newArrivalSelected && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#deddd3] text-[11px] text-[#073a2d]">
+                    New Arrivals
+                    <button onClick={() => updateQuery({ newArrival: null, filter: null })}>
+                      <X className="w-3 h-3 text-[#717975] hover:text-black" />
+                    </button>
+                  </span>
+                )}
+                {offersSelected && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#deddd3] text-[11px] text-[#073a2d]">
+                    Special Offers
+                    <button onClick={() => updateQuery({ offers: null, filter: null })}>
+                      <X className="w-3 h-3 text-[#717975] hover:text-black" />
+                    </button>
+                  </span>
+                )}
                 {selectedCategory !== 'all' && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#deddd3] text-[11px] text-[#073a2d]">
                     {categories.find((c) => c.slug === selectedCategory)?.name}

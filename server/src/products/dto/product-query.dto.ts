@@ -34,6 +34,11 @@ export class ProductQueryDto extends PaginationQueryDto {
   @IsOptional()
   category?: string;
 
+  @ApiPropertyOptional({ description: 'Collection slug or name' })
+  @IsString()
+  @IsOptional()
+  collection?: string;
+
   @ApiPropertyOptional({ enum: ['Active', 'Low Stock', 'Out of Stock', 'Archived', 'All'] })
   @IsString()
   @IsOptional()

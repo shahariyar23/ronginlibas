@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  Param,
   Post,
   Req,
   Res,
@@ -12,10 +14,12 @@ import { ConfigService } from '@nestjs/config';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
+import { AuthProvider } from '@prisma/client';
 import { AuthService } from '../services/auth.service.js';
 import { LoginDto } from '../dto/login.dto.js';
 import { RegisterCustomerDto } from '../dto/register.dto.js';
 import { RefreshTokenDto } from '../dto/refresh-token.dto.js';
+import { SocialLoginDto } from '../dto/social-login.dto.js';
 import {
   ChangePasswordDto,
   ForgotPasswordDto,
@@ -172,6 +176,53 @@ export class AuthController {
   @ApiOperation({ summary: 'Retrieve the current authenticated session identity' })
   async getMe(@CurrentUser() user: unknown) {
     return { message: 'Session retrieved successfully', data: user };
+  }
+
+  @Public()
+  @Post('social')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Authenticate customer using verified Firebase ID token (Google)' })
+  async socialLogin(
+    @Body() dto: SocialLoginDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const tokens = await this.authService.socialLogin(dto);
+    this.setRefreshCookie(response, tokens.refreshToken);
+    const { refreshToken: _refreshToken, ...data } = tokens;
+    return { message: 'Customer authenticated successfully via social login', data };
+  }
+
+  @Post('social/link')
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Link an additional social identity to the authenticated customer account' })
+  async linkSocial(
+    @CurrentUser('id') customerId: string,
+    @Body() dto: SocialLoginDto,
+  ) {
+    const identity = await this.authService.linkSocialAccount(customerId, dto);
+    return { message: 'Social account linked successfully', data: identity };
+  }
+
+  @Delete('social/unlink/:provider')
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Unlink a social identity from the authenticated customer account' })
+  async unlinkSocial(
+    @CurrentUser('id') customerId: string,
+    @Param('provider') provider: AuthProvider,
+  ) {
+    const result = await this.authService.unlinkSocialAccount(customerId, provider);
+    return { message: 'Social account unlinked successfully', data: result };
+  }
+
+  @Get('social/identities')
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List all connected authentication identities for the authenticated customer' })
+  async getIdentities(@CurrentUser('id') customerId: string) {
+    const identities = await this.authService.getCustomerIdentities(customerId);
+    return { message: 'Identities retrieved successfully', data: identities };
   }
 
   private async loginCustomer(dto: LoginDto, response: Response) {

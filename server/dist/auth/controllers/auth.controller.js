@@ -10,14 +10,16 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-import { Body, Controller, Get, Post, Req, Res, UnauthorizedException, UseGuards, } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Req, Res, UnauthorizedException, UseGuards, } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { AuthProvider } from '@prisma/client';
 import { AuthService } from '../services/auth.service.js';
 import { LoginDto } from '../dto/login.dto.js';
 import { RegisterCustomerDto } from '../dto/register.dto.js';
 import { RefreshTokenDto } from '../dto/refresh-token.dto.js';
+import { SocialLoginDto } from '../dto/social-login.dto.js';
 import { ChangePasswordDto, ForgotPasswordDto, ResetPasswordDto, } from '../dto/password-reset.dto.js';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
@@ -92,6 +94,24 @@ let AuthController = class AuthController {
     }
     async getMe(user) {
         return { message: 'Session retrieved successfully', data: user };
+    }
+    async socialLogin(dto, response) {
+        const tokens = await this.authService.socialLogin(dto);
+        this.setRefreshCookie(response, tokens.refreshToken);
+        const { refreshToken: _refreshToken, ...data } = tokens;
+        return { message: 'Customer authenticated successfully via social login', data };
+    }
+    async linkSocial(customerId, dto) {
+        const identity = await this.authService.linkSocialAccount(customerId, dto);
+        return { message: 'Social account linked successfully', data: identity };
+    }
+    async unlinkSocial(customerId, provider) {
+        const result = await this.authService.unlinkSocialAccount(customerId, provider);
+        return { message: 'Social account unlinked successfully', data: result };
+    }
+    async getIdentities(customerId) {
+        const identities = await this.authService.getCustomerIdentities(customerId);
+        return { message: 'Identities retrieved successfully', data: identities };
     }
     async loginCustomer(dto, response) {
         const tokens = await this.authService.customerLogin(dto);
@@ -237,6 +257,49 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "getMe", null);
+__decorate([
+    Public(),
+    Post('social'),
+    Throttle({ default: { limit: 10, ttl: 60_000 } }),
+    ApiOperation({ summary: 'Authenticate customer using verified Firebase ID token (Google)' }),
+    __param(0, Body()),
+    __param(1, Res({ passthrough: true })),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [SocialLoginDto, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "socialLogin", null);
+__decorate([
+    Post('social/link'),
+    UseGuards(CustomerAuthGuard),
+    ApiBearerAuth(),
+    ApiOperation({ summary: 'Link an additional social identity to the authenticated customer account' }),
+    __param(0, CurrentUser('id')),
+    __param(1, Body()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, SocialLoginDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "linkSocial", null);
+__decorate([
+    Delete('social/unlink/:provider'),
+    UseGuards(CustomerAuthGuard),
+    ApiBearerAuth(),
+    ApiOperation({ summary: 'Unlink a social identity from the authenticated customer account' }),
+    __param(0, CurrentUser('id')),
+    __param(1, Param('provider')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "unlinkSocial", null);
+__decorate([
+    Get('social/identities'),
+    UseGuards(CustomerAuthGuard),
+    ApiBearerAuth(),
+    ApiOperation({ summary: 'List all connected authentication identities for the authenticated customer' }),
+    __param(0, CurrentUser('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "getIdentities", null);
 AuthController = __decorate([
     ApiTags('Auth'),
     Controller('auth'),

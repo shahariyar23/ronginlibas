@@ -33,6 +33,10 @@ export class ProductsService {
 
     const where = buildProductWhere(query, isAdmin);
 
+    const isBestSellingSort =
+      query.sort === 'best-selling' ||
+      (query.bestSeller === true && (!query.sort || query.sort === 'featured' || query.sort === 'newest'));
+
     const orderBy:
       | Prisma.ProductOrderByWithRelationInput
       | Prisma.ProductOrderByWithRelationInput[] =
@@ -40,8 +44,8 @@ export class ProductsService {
         ? { price: 'asc' }
         : query.sort === 'price-desc' || query.sort === 'price-high'
           ? { price: 'desc' }
-          : query.sort === 'best-selling'
-            ? [{ orderItems: { _count: 'desc' } }, { createdAt: 'desc' }]
+          : isBestSellingSort
+            ? [{ orderItems: { _count: 'desc' } }, { isBestSeller: 'desc' }, { createdAt: 'desc' }]
             : query.sort === 'featured'
               ? [{ isFeatured: 'desc' }, { createdAt: 'desc' }]
               : { createdAt: 'desc' };
@@ -73,6 +77,7 @@ export class ProductsService {
             select: { rating: true },
           },
           orderItems: {
+            where: { order: { status: { not: 'CANCELLED' } } },
             select: { quantity: true },
           },
         },
@@ -80,8 +85,31 @@ export class ProductsService {
       }),
       this.prisma.product.count({ where }),
     ]);
+
+    const mappedItems = isAdmin ? items : items.map(normalizeStorefrontSizeLabels);
+
+    if (isBestSellingSort) {
+      mappedItems.sort((a: any, b: any) => {
+        const soldA =
+          a.totalSold !== undefined
+            ? a.totalSold
+            : (a.orderItems ?? []).reduce((sum: number, oi: any) => sum + (oi.quantity || 1), 0);
+        const soldB =
+          b.totalSold !== undefined
+            ? b.totalSold
+            : (b.orderItems ?? []).reduce((sum: number, oi: any) => sum + (oi.quantity || 1), 0);
+        if (soldB !== soldA) return soldB - soldA;
+        const flagA = a.isBestSeller ? 1 : 0;
+        const flagB = b.isBestSeller ? 1 : 0;
+        if (flagB !== flagA) return flagB - flagA;
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return timeB - timeA;
+      });
+    }
+
     return {
-      items: isAdmin ? items : items.map(normalizeStorefrontSizeLabels),
+      items: mappedItems,
       page,
       limit,
       total,
@@ -234,13 +262,17 @@ export class ProductsService {
           take: 10,
           orderBy: { createdAt: 'desc' },
         },
+        orderItems: {
+          where: { order: { status: { not: 'CANCELLED' } } },
+          select: { quantity: true },
+        },
       },
     });
     if (product) {
       return normalizeStorefrontSizeLabels(product);
     }
 
-    const redirect = await this.prisma.productSlugRedirect.findUnique({
+    const redirect = await this.prisma.productSlugRedirect?.findUnique({
       where: { sourceSlug: slug },
     });
     if (redirect) {
@@ -257,6 +289,10 @@ export class ProductsService {
             },
             take: 10,
             orderBy: { createdAt: 'desc' },
+          },
+          orderItems: {
+            where: { order: { status: { not: 'CANCELLED' } } },
+            select: { quantity: true },
           },
         },
       });
@@ -313,6 +349,7 @@ export class ProductsService {
               select: { rating: true },
             },
             orderItems: {
+              where: { order: { status: { not: 'CANCELLED' } } },
               select: { quantity: true },
             },
           },
@@ -342,6 +379,7 @@ export class ProductsService {
           select: { rating: true },
         },
         orderItems: {
+          where: { order: { status: { not: 'CANCELLED' } } },
           select: { quantity: true },
         },
       },
@@ -370,7 +408,7 @@ export class ProductsService {
         },
         select: { id: true },
       });
-      const existingRedirect = await this.prisma.productSlugRedirect.findFirst({
+      const existingRedirect = await this.prisma.productSlugRedirect?.findFirst({
         where: {
           sourceSlug: candidate,
           ...(excludeId ? { productId: { not: excludeId } } : {}),
@@ -932,10 +970,69 @@ function buildProductWhere(
       },
     };
   }
+  if (query.collection) {
+    if (query.collection.toLowerCase() === 'bestsellers') {
+      andConditions.push({
+        OR: [
+          { isBestSeller: true },
+          {
+            orderItems: {
+              some: {
+                order: { status: { not: 'CANCELLED' } },
+              },
+            },
+          },
+          {
+            collections: {
+              some: {
+                ...(isAdmin ? {} : { isActive: true }),
+                OR: [
+                  { slug: { equals: query.collection, mode: 'insensitive' } },
+                  { name: { equals: query.collection, mode: 'insensitive' } },
+                ],
+              },
+            },
+          },
+        ],
+      });
+    } else {
+      where.collections = {
+        some: {
+          ...(isAdmin ? {} : { isActive: true }),
+          OR: [
+            { slug: { equals: query.collection, mode: 'insensitive' } },
+            { name: { equals: query.collection, mode: 'insensitive' } },
+          ],
+        },
+      };
+    }
+  }
   if (query.gender) where.gender = query.gender;
   if (query.featured !== undefined) where.isFeatured = query.featured;
   if (query.newArrival !== undefined) where.isNewArrival = query.newArrival;
-  if (query.bestSeller !== undefined) where.isBestSeller = query.bestSeller;
+  if (query.bestSeller !== undefined) {
+    if (query.bestSeller) {
+      andConditions.push({
+        OR: [
+          { isBestSeller: true },
+          {
+            orderItems: {
+              some: {
+                order: { status: { not: 'CANCELLED' } },
+              },
+            },
+          },
+        ],
+      });
+    } else {
+      where.isBestSeller = false;
+      where.orderItems = {
+        none: {
+          order: { status: { not: 'CANCELLED' } },
+        },
+      };
+    }
+  }
   if (query.onSale) where.compareAtPrice = { not: null };
   if (query.expressAvailable !== undefined) where.isExpressAvailable = query.expressAvailable;
   if (query.minPrice !== undefined || query.maxPrice !== undefined) {
@@ -1091,6 +1188,7 @@ function normalizeStorefrontSizeLabels<
     }>;
     reviews?: Array<{ rating: number }>;
     orderItems?: Array<{ quantity: number }>;
+    isBestSeller?: boolean;
   },
 >(product: T) {
   const reviews = product.reviews ?? [];
@@ -1107,12 +1205,14 @@ function normalizeStorefrontSizeLabels<
     (sum, oi) => sum + (oi.quantity || 1),
     0,
   );
+  const isBestSeller = Boolean(product.isBestSeller || totalSold > 0);
 
   const base = {
     ...product,
     reviewsCount,
     averageRating,
     totalSold,
+    isBestSeller,
   };
   if (!product.category || !product.variants) return base;
   const category = { slug: product.category.slug };

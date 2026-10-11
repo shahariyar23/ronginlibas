@@ -31,6 +31,9 @@ import { WishlistModule } from '../wishlist/wishlist.module.js';
 import { NewsletterModule } from '../newsletter/newsletter.module.js';
 import { AuditModule } from '../audit/audit.module.js';
 import { MailModule } from '../mail/mail.module.js';
+import { OffersModule } from '../offers/offers.module.js';
+import { CollectionsModule } from '../collections/collections.module.js';
+import { ReportsModule } from '../reports/reports.module.js';
 import { HealthController } from './health.controller.js';
 import { TransformInterceptor } from '../common/interceptors/transform.interceptor.js';
 import { AllExceptionsFilter } from '../common/filters/all-exceptions.filter.js';
@@ -54,8 +57,11 @@ AppModule = __decorate([
             InventoryModule,
             OrdersModule,
             CouponsModule,
+            OffersModule,
+            CollectionsModule,
             ReviewsModule,
             DashboardModule,
+            ReportsModule,
             SettingsModule,
             PaymentsModule,
             ShippingModule,

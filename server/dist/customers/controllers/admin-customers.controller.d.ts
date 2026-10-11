@@ -17,7 +17,7 @@ export declare class AdminCustomersController {
         message: string;
         data: {
             email: string | null;
-            phone: string;
+            phone: string | null;
             firstName: string;
             lastName: string | null;
             id: string;
@@ -50,8 +50,8 @@ export declare class AdminCustomersController {
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                isDefault: boolean;
                 customerId: string;
+                isDefault: boolean;
                 country: string;
             } | {
                 id: string;
@@ -170,6 +170,7 @@ export declare class AdminCustomersController {
             measurements: {
                 id: string;
                 updatedAt: Date;
+                customerId: string;
                 chest: import("@prisma/client/runtime/library").Decimal | null;
                 shoulder: import("@prisma/client/runtime/library").Decimal | null;
                 sleeveLength: import("@prisma/client/runtime/library").Decimal | null;
@@ -178,14 +179,13 @@ export declare class AdminCustomersController {
                 trouserLength: import("@prisma/client/runtime/library").Decimal | null;
                 garmentLength: import("@prisma/client/runtime/library").Decimal | null;
                 tailoringNotes: string | null;
-                customerId: string;
             } | null;
             _count: {
                 orders: number;
                 reviews: number;
             };
             email: string | null;
-            phone: string;
+            phone: string | null;
             firstName: string;
             lastName: string | null;
             preferredSize: string | null;
@@ -197,6 +197,7 @@ export declare class AdminCustomersController {
             createdAt: Date;
             updatedAt: Date;
             refreshTokenHash: string | null;
+            photoUrl: string | null;
             banReason: string | null;
             bannedAt: Date | null;
             deletedAt: Date | null;
@@ -217,7 +218,7 @@ export declare class AdminCustomersController {
         message: string;
         data: {
             email: string | null;
-            phone: string;
+            phone: string | null;
             firstName: string;
             lastName: string | null;
             preferredSize: string | null;
@@ -229,6 +230,7 @@ export declare class AdminCustomersController {
             createdAt: Date;
             updatedAt: Date;
             refreshTokenHash: string | null;
+            photoUrl: string | null;
             banReason: string | null;
             bannedAt: Date | null;
             deletedAt: Date | null;
@@ -242,7 +244,7 @@ export declare class AdminCustomersController {
         message: string;
         data: {
             email: string | null;
-            phone: string;
+            phone: string | null;
             firstName: string;
             lastName: string | null;
             preferredSize: string | null;
@@ -254,6 +256,7 @@ export declare class AdminCustomersController {
             createdAt: Date;
             updatedAt: Date;
             refreshTokenHash: string | null;
+            photoUrl: string | null;
             banReason: string | null;
             bannedAt: Date | null;
             deletedAt: Date | null;
@@ -267,7 +270,7 @@ export declare class AdminCustomersController {
         message: string;
         data: {
             email: string | null;
-            phone: string;
+            phone: string | null;
             firstName: string;
             lastName: string | null;
             preferredSize: string | null;
@@ -279,6 +282,7 @@ export declare class AdminCustomersController {
             createdAt: Date;
             updatedAt: Date;
             refreshTokenHash: string | null;
+            photoUrl: string | null;
             banReason: string | null;
             bannedAt: Date | null;
             deletedAt: Date | null;
@@ -292,7 +296,7 @@ export declare class AdminCustomersController {
         message: string;
         data: {
             email: string | null;
-            phone: string;
+            phone: string | null;
             firstName: string;
             lastName: string | null;
             id: string;

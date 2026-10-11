@@ -2,6 +2,7 @@ import { Gender } from '@prisma/client';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto.js';
 export declare class ProductQueryDto extends PaginationQueryDto {
     category?: string;
+    collection?: string;
     status?: string;
     gender?: Gender;
     size?: string[];

@@ -27,6 +27,7 @@ import {
   User,
   Phone,
 } from 'lucide-react';
+import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons';
 
 export const LoginClient: React.FC = () => {
   const router = useRouter();
@@ -97,7 +98,7 @@ export const LoginClient: React.FC = () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      if (await login(signInEmail, signInPassword)) {
+      if (await login(signInEmail.trim(), signInPassword)) {
         const nextParam = searchParams.get('next');
         const target =
           nextParam &&
@@ -387,18 +388,25 @@ export const LoginClient: React.FC = () => {
                 <form onSubmit={handleSignIn} className="space-y-5">
                   <div className="space-y-1.5">
                     <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">
-                      Email Address
+                      Email Address or Phone Number
                     </Label>
                     <div className="relative">
                       <Input
-                        type="email"
+                        type="text"
+                        autoComplete="username"
                         value={signInEmail}
                         onChange={(e) => setSignInEmail(e.target.value)}
-                        placeholder="name@domain.com"
+                        placeholder="Enter your email or phone number"
                         required
                         className="bg-[#fbf9f2] border-[#deddd3] h-12 pl-10 focus:border-[#073a2d]"
                       />
-                      <Mail className="w-4 h-4 text-[#717975] absolute left-3.5 top-4 pointer-events-none" />
+                      {signInEmail.includes('@') ? (
+                        <Mail className="w-4 h-4 text-[#717975] absolute left-3.5 top-4 pointer-events-none" />
+                      ) : /^[0-9+]/.test(signInEmail.trim()) ? (
+                        <Phone className="w-4 h-4 text-[#717975] absolute left-3.5 top-4 pointer-events-none" />
+                      ) : (
+                        <Mail className="w-4 h-4 text-[#717975] absolute left-3.5 top-4 pointer-events-none" />
+                      )}
                     </div>
                   </div>
 
@@ -456,6 +464,31 @@ export const LoginClient: React.FC = () => {
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 </form>
+
+                {/* Social Login Divider & Buttons */}
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-[#deddd3]" />
+                  </div>
+                  <div className="relative flex justify-center text-[10px] uppercase tracking-[0.2em]">
+                    <span className="bg-[#fbf9f2] px-3 font-semibold text-[#717975]">
+                      Or continue with
+                    </span>
+                  </div>
+                </div>
+
+                <SocialAuthButtons disabled={isSubmitting} />
+
+                <p className="mt-4 text-center font-sans text-[11px] text-[#717975] leading-relaxed">
+                  By continuing, you acknowledge Rongin Libas&apos;s{' '}
+                  <Link href="/terms" className="underline hover:text-[#073a2d]">
+                    Terms of Service
+                  </Link>{' '}
+                  and{' '}
+                  <Link href="/privacy" className="underline hover:text-[#073a2d]">
+                    Privacy Policy
+                  </Link>.
+                </p>
 
                 {/* Quick Demo Pre-fill for reviewer */}
                 {/* <div className="pt-4 border-t border-[#f0eee7] text-center">
@@ -620,7 +653,17 @@ export const LoginClient: React.FC = () => {
                       onChange={(event) => setTermsAccepted(event.target.checked)}
                       className="mt-0.5 accent-[#073a2d] w-4 h-4 cursor-pointer"
                     />
-                    <span>I accept the terms and privacy policy for creating a customer account.</span>
+                    <span>
+                      I accept the{' '}
+                      <Link href="/terms" target="_blank" className="text-[#073a2d] font-semibold underline hover:text-[#c79a45]">
+                        Terms of Service
+                      </Link>{' '}
+                      and{' '}
+                      <Link href="/privacy" target="_blank" className="text-[#073a2d] font-semibold underline hover:text-[#c79a45]">
+                        Privacy Policy
+                      </Link>{' '}
+                      for creating a customer account.
+                    </span>
                   </label>
 
                   <div className="pt-2">
@@ -636,6 +679,35 @@ export const LoginClient: React.FC = () => {
                     </Button>
                   </div>
                 </form>
+
+                {/* Social Registration Divider & Buttons */}
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-[#deddd3]" />
+                  </div>
+                  <div className="relative flex justify-center text-[10px] uppercase tracking-[0.2em]">
+                    <span className="bg-[#fbf9f2] px-3 font-semibold text-[#717975]">
+                      Or continue with
+                    </span>
+                  </div>
+                </div>
+
+                <SocialAuthButtons disabled={isSubmitting} />
+
+                <p className="mt-4 text-center font-sans text-[11px] text-[#717975] leading-relaxed">
+                  By joining via Google, you acknowledge our{' '}
+                  <Link href="/terms" className="underline hover:text-[#073a2d]">
+                    Terms
+                  </Link>{' '}
+                  and{' '}
+                  <Link href="/privacy" className="underline hover:text-[#073a2d]">
+                    Privacy Policy
+                  </Link>.
+                  Manage your data anytime at{' '}
+                  <Link href="/data-deletion" className="underline hover:text-[#073a2d]">
+                    Data Deletion
+                  </Link>.
+                </p>
               </div>
             )}
           </div>

@@ -48,6 +48,10 @@ describe('Product Archive and Permanent Delete System', () => {
       review: {
         deleteMany: vi.fn(),
       },
+      productSlugRedirect: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
       reviewVote: {
         deleteMany: vi.fn(),
       },
