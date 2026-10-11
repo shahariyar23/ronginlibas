@@ -39,31 +39,31 @@ export declare class AdminOffersController {
             expiryDate: string;
             status: "ACTIVE" | "SCHEDULED" | "EXPIRED" | "INACTIVE";
             products: {
-                id: string;
                 name: string;
+                id: string;
                 slug: string;
                 price: import("@prisma/client/runtime/library").Decimal;
                 sku: string;
             }[];
             categories: {
-                id: string;
                 name: string;
+                id: string;
                 slug: string;
             }[];
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             slug: string;
+            couponCode: string | null;
             bannerTitle: string | null;
             bannerSubtitle: string | null;
             bannerMessage: string | null;
             offerType: import("@prisma/client").$Enums.OfferType;
             discountType: import("@prisma/client").$Enums.OfferDiscountType;
             badgeText: string | null;
-            couponCode: string | null;
             priority: number;
         };
     }>;
@@ -71,25 +71,26 @@ export declare class AdminOffersController {
         message: string;
         data: {
             products: {
-                id: string;
                 name: string;
+                id: string;
             }[];
             collections: {
-                id: string;
                 name: string;
+                id: string;
             }[];
             categories: {
-                id: string;
                 name: string;
+                id: string;
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             slug: string;
+            couponCode: string | null;
             startDate: Date;
             expiryDate: Date;
             bannerTitle: string | null;
@@ -99,7 +100,6 @@ export declare class AdminOffersController {
             discountType: import("@prisma/client").$Enums.OfferDiscountType;
             discountValue: import("@prisma/client/runtime/library").Decimal;
             badgeText: string | null;
-            couponCode: string | null;
             priority: number;
         };
     }>;
@@ -107,25 +107,26 @@ export declare class AdminOffersController {
         message: string;
         data: {
             products: {
-                id: string;
                 name: string;
+                id: string;
             }[];
             collections: {
-                id: string;
                 name: string;
+                id: string;
             }[];
             categories: {
-                id: string;
                 name: string;
+                id: string;
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             slug: string;
+            couponCode: string | null;
             startDate: Date;
             expiryDate: Date;
             bannerTitle: string | null;
@@ -135,7 +136,6 @@ export declare class AdminOffersController {
             discountType: import("@prisma/client").$Enums.OfferDiscountType;
             discountValue: import("@prisma/client/runtime/library").Decimal;
             badgeText: string | null;
-            couponCode: string | null;
             priority: number;
         };
     }>;

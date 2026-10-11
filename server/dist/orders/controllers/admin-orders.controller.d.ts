@@ -13,28 +13,20 @@ export declare class AdminOrdersController {
     findById(id: string): Promise<{
         message: string;
         data: {
+            customer: {
+                email: string | null;
+                phone: string | null;
+                firstName: string;
+                lastName: string | null;
+                id: string;
+            } | null;
             items: ({
-                variant: {
-                    id: string;
-                    isActive: boolean;
-                    createdAt: Date;
-                    updatedAt: Date;
-                    measurements: import("@prisma/client/runtime/library").JsonValue | null;
-                    sku: string;
-                    productId: string;
-                    size: string;
-                    color: string;
-                    sizeLabel: string | null;
-                    sizeType: string | null;
-                    stock: number;
-                    priceOverride: import("@prisma/client/runtime/library").Decimal | null;
-                } | null;
                 product: ({
                     images: {
+                        url: string;
                         id: string;
                         createdAt: Date;
                         updatedAt: Date;
-                        url: string;
                         sortOrder: number;
                         isPrimary: boolean;
                         productId: string;
@@ -43,12 +35,12 @@ export declare class AdminOrdersController {
                     }[];
                 } & {
                     description: string | null;
+                    name: string;
                     id: string;
                     isActive: boolean;
-                    deletedAt: Date | null;
                     createdAt: Date;
                     updatedAt: Date;
-                    name: string;
+                    deletedAt: Date | null;
                     tags: string[];
                     slug: string;
                     price: import("@prisma/client/runtime/library").Decimal;
@@ -72,14 +64,29 @@ export declare class AdminOrdersController {
                     canonicalUrl: string | null;
                     categoryId: string;
                 }) | null;
+                variant: {
+                    id: string;
+                    isActive: boolean;
+                    createdAt: Date;
+                    updatedAt: Date;
+                    measurements: import("@prisma/client/runtime/library").JsonValue | null;
+                    sku: string;
+                    productId: string;
+                    size: string;
+                    color: string;
+                    sizeLabel: string | null;
+                    sizeType: string | null;
+                    stock: number;
+                    priceOverride: import("@prisma/client/runtime/library").Decimal | null;
+                } | null;
             } & {
-                id: string;
-                createdAt: Date;
+                productImage: string | null;
                 subtotal: import("@prisma/client/runtime/library").Decimal;
                 discountAmount: import("@prisma/client/runtime/library").Decimal;
+                id: string;
+                createdAt: Date;
                 variantId: string | null;
                 sku: string;
-                productImage: string | null;
                 productId: string | null;
                 orderId: string;
                 productName: string;
@@ -89,24 +96,14 @@ export declare class AdminOrdersController {
                 size: string | null;
                 color: string | null;
             })[];
-            customer: {
-                email: string | null;
-                phone: string | null;
-                firstName: string;
-                lastName: string | null;
-                id: string;
-            } | null;
             trackingEvents: {
                 description: string | null;
+                status: import("@prisma/client").$Enums.OrderStatus;
                 id: string;
                 createdAt: Date;
-                status: import("@prisma/client").$Enums.OrderStatus;
                 orderId: string;
                 customerVisible: boolean;
             }[];
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
             orderNumber: string;
             subtotal: import("@prisma/client/runtime/library").Decimal;
             deliveryCharge: import("@prisma/client/runtime/library").Decimal;
@@ -122,6 +119,9 @@ export declare class AdminOrdersController {
             estimatedDelivery: Date | null;
             adminNotes: string | null;
             status: import("@prisma/client").$Enums.OrderStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
             customerId: string | null;
             guestName: string | null;
             guestEmail: string | null;
@@ -131,14 +131,21 @@ export declare class AdminOrdersController {
     updateOrder(id: string, dto: UpdateOrderStatusDto, actor: AdminAuditActor): Promise<{
         message: string;
         data: {
-            items: {
+            customer: {
+                email: string | null;
+                phone: string | null;
+                firstName: string;
+                lastName: string | null;
                 id: string;
-                createdAt: Date;
+            } | null;
+            items: {
+                productImage: string | null;
                 subtotal: import("@prisma/client/runtime/library").Decimal;
                 discountAmount: import("@prisma/client/runtime/library").Decimal;
+                id: string;
+                createdAt: Date;
                 variantId: string | null;
                 sku: string;
-                productImage: string | null;
                 productId: string | null;
                 orderId: string;
                 productName: string;
@@ -148,17 +155,7 @@ export declare class AdminOrdersController {
                 size: string | null;
                 color: string | null;
             }[];
-            customer: {
-                email: string | null;
-                phone: string | null;
-                firstName: string;
-                lastName: string | null;
-                id: string;
-            } | null;
         } & {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
             orderNumber: string;
             subtotal: import("@prisma/client/runtime/library").Decimal;
             deliveryCharge: import("@prisma/client/runtime/library").Decimal;
@@ -174,6 +171,9 @@ export declare class AdminOrdersController {
             estimatedDelivery: Date | null;
             adminNotes: string | null;
             status: import("@prisma/client").$Enums.OrderStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
             customerId: string | null;
             guestName: string | null;
             guestEmail: string | null;
@@ -184,14 +184,21 @@ export declare class AdminOrdersController {
     updateStatus(id: string, dto: UpdateOrderStatusDto, actor: AdminAuditActor): Promise<{
         message: string;
         data: {
-            items: {
+            customer: {
+                email: string | null;
+                phone: string | null;
+                firstName: string;
+                lastName: string | null;
                 id: string;
-                createdAt: Date;
+            } | null;
+            items: {
+                productImage: string | null;
                 subtotal: import("@prisma/client/runtime/library").Decimal;
                 discountAmount: import("@prisma/client/runtime/library").Decimal;
+                id: string;
+                createdAt: Date;
                 variantId: string | null;
                 sku: string;
-                productImage: string | null;
                 productId: string | null;
                 orderId: string;
                 productName: string;
@@ -201,17 +208,7 @@ export declare class AdminOrdersController {
                 size: string | null;
                 color: string | null;
             }[];
-            customer: {
-                email: string | null;
-                phone: string | null;
-                firstName: string;
-                lastName: string | null;
-                id: string;
-            } | null;
         } & {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
             orderNumber: string;
             subtotal: import("@prisma/client/runtime/library").Decimal;
             deliveryCharge: import("@prisma/client/runtime/library").Decimal;
@@ -227,6 +224,9 @@ export declare class AdminOrdersController {
             estimatedDelivery: Date | null;
             adminNotes: string | null;
             status: import("@prisma/client").$Enums.OrderStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
             customerId: string | null;
             guestName: string | null;
             guestEmail: string | null;

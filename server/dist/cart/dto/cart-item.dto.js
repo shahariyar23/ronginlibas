@@ -56,4 +56,65 @@ __decorate([
     IsOptional(),
     __metadata("design:type", String)
 ], CartIdentityDto.prototype, "cartId", void 0);
+export class CartContactDto {
+    cartId;
+    email;
+    phone;
+    name;
+}
+__decorate([
+    ApiPropertyOptional(),
+    IsUUID(),
+    IsOptional(),
+    __metadata("design:type", String)
+], CartContactDto.prototype, "cartId", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    IsOptional(),
+    __metadata("design:type", String)
+], CartContactDto.prototype, "email", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    IsOptional(),
+    __metadata("design:type", String)
+], CartContactDto.prototype, "phone", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    IsOptional(),
+    __metadata("design:type", String)
+], CartContactDto.prototype, "name", void 0);
+export class AdminCartQueryDto {
+    page;
+    limit;
+    filter;
+    search;
+}
+__decorate([
+    ApiPropertyOptional(),
+    IsOptional(),
+    __metadata("design:type", String)
+], AdminCartQueryDto.prototype, "page", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    IsOptional(),
+    __metadata("design:type", String)
+], AdminCartQueryDto.prototype, "limit", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    IsOptional(),
+    __metadata("design:type", String)
+], AdminCartQueryDto.prototype, "filter", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    IsOptional(),
+    __metadata("design:type", String)
+], AdminCartQueryDto.prototype, "search", void 0);
+export class SendCartReminderDto {
+    customMessage;
+}
+__decorate([
+    ApiPropertyOptional(),
+    IsOptional(),
+    __metadata("design:type", String)
+], SendCartReminderDto.prototype, "customMessage", void 0);
 //# sourceMappingURL=cart-item.dto.js.map

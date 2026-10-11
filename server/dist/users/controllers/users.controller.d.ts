@@ -13,13 +13,13 @@ export declare class UsersController {
             email: string;
             firstName: string;
             lastName: string;
+            role: import("@prisma/client").$Enums.Role;
+            mustChangePassword: boolean;
             id: string;
+            permissions: string[];
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            role: import("@prisma/client").$Enums.Role;
-            permissions: string[];
-            mustChangePassword: boolean;
         };
     }>;
     changePassword(userId: string, dto: ChangeUserPasswordDto, actor: AdminAuditActor): Promise<{
@@ -35,13 +35,13 @@ export declare class UsersController {
             email: string;
             firstName: string;
             lastName: string;
+            role: import("@prisma/client").$Enums.Role;
+            mustChangePassword: boolean;
             id: string;
+            permissions: string[];
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            role: import("@prisma/client").$Enums.Role;
-            permissions: string[];
-            mustChangePassword: boolean;
         };
     }>;
     findAll(): Promise<{
@@ -50,13 +50,13 @@ export declare class UsersController {
             email: string;
             firstName: string;
             lastName: string;
+            role: import("@prisma/client").$Enums.Role;
+            mustChangePassword: boolean;
             id: string;
+            permissions: string[];
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            role: import("@prisma/client").$Enums.Role;
-            permissions: string[];
-            mustChangePassword: boolean;
         }[];
     }>;
     findById(id: string): Promise<{
@@ -65,13 +65,13 @@ export declare class UsersController {
             email: string;
             firstName: string;
             lastName: string;
+            role: import("@prisma/client").$Enums.Role;
+            mustChangePassword: boolean;
             id: string;
+            permissions: string[];
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            role: import("@prisma/client").$Enums.Role;
-            permissions: string[];
-            mustChangePassword: boolean;
         };
     }>;
     update(id: string, dto: UpdateUserDto, currentUserId: string, actor: AdminAuditActor): Promise<{
@@ -80,13 +80,13 @@ export declare class UsersController {
             email: string;
             firstName: string;
             lastName: string;
+            role: import("@prisma/client").$Enums.Role;
+            mustChangePassword: boolean;
             id: string;
+            permissions: string[];
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            role: import("@prisma/client").$Enums.Role;
-            permissions: string[];
-            mustChangePassword: boolean;
         };
     }>;
     delete(id: string, currentUserId: string, actor: AdminAuditActor): Promise<{

@@ -16,11 +16,11 @@ export declare class AdminProductsController {
         data: {
             category: {
                 description: string | null;
+                name: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 slug: string;
                 seoTitle: string | null;
                 metaDescription: string | null;
@@ -44,10 +44,10 @@ export declare class AdminProductsController {
                 priceOverride: import("@prisma/client/runtime/library").Decimal | null;
             }[];
             images: {
+                url: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                url: string;
                 sortOrder: number;
                 isPrimary: boolean;
                 productId: string;
@@ -56,12 +56,12 @@ export declare class AdminProductsController {
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
-            deletedAt: Date | null;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -105,10 +105,10 @@ export declare class AdminProductsController {
                 priceOverride: import("@prisma/client/runtime/library").Decimal | null;
             }[];
             images: {
+                url: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                url: string;
                 sortOrder: number;
                 isPrimary: boolean;
                 productId: string;
@@ -117,12 +117,12 @@ export declare class AdminProductsController {
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
-            deletedAt: Date | null;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -152,11 +152,11 @@ export declare class AdminProductsController {
         data: ({
             category: {
                 description: string | null;
+                name: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 slug: string;
                 seoTitle: string | null;
                 metaDescription: string | null;
@@ -180,10 +180,10 @@ export declare class AdminProductsController {
                 priceOverride: import("@prisma/client/runtime/library").Decimal | null;
             }[];
             images: {
+                url: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                url: string;
                 sortOrder: number;
                 isPrimary: boolean;
                 productId: string;
@@ -192,12 +192,12 @@ export declare class AdminProductsController {
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
-            deletedAt: Date | null;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -224,11 +224,11 @@ export declare class AdminProductsController {
             imageCleanupWarning: string;
             category: {
                 description: string | null;
+                name: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 slug: string;
                 seoTitle: string | null;
                 metaDescription: string | null;
@@ -252,10 +252,10 @@ export declare class AdminProductsController {
                 priceOverride: import("@prisma/client/runtime/library").Decimal | null;
             }[];
             images: {
+                url: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                url: string;
                 sortOrder: number;
                 isPrimary: boolean;
                 productId: string;
@@ -263,12 +263,12 @@ export declare class AdminProductsController {
                 altText: string | null;
             }[];
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
-            deletedAt: Date | null;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -298,11 +298,11 @@ export declare class AdminProductsController {
         data: {
             category: {
                 description: string | null;
+                name: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 slug: string;
                 seoTitle: string | null;
                 metaDescription: string | null;
@@ -326,10 +326,10 @@ export declare class AdminProductsController {
                 priceOverride: import("@prisma/client/runtime/library").Decimal | null;
             }[];
             images: {
+                url: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                url: string;
                 sortOrder: number;
                 isPrimary: boolean;
                 productId: string;
@@ -338,12 +338,12 @@ export declare class AdminProductsController {
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
-            deletedAt: Date | null;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -373,11 +373,11 @@ export declare class AdminProductsController {
         data: {
             category: {
                 description: string | null;
+                name: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 slug: string;
                 seoTitle: string | null;
                 metaDescription: string | null;
@@ -401,10 +401,10 @@ export declare class AdminProductsController {
                 priceOverride: import("@prisma/client/runtime/library").Decimal | null;
             }[];
             images: {
+                url: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                url: string;
                 sortOrder: number;
                 isPrimary: boolean;
                 productId: string;
@@ -413,12 +413,12 @@ export declare class AdminProductsController {
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
-            deletedAt: Date | null;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;

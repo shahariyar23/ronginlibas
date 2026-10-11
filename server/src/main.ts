@@ -92,8 +92,8 @@ async function bootstrap() {
   });
 
   // Application Port
-  const port = Number(process.env.PORT) || configService.get<number>('app.port') || 4000;
-  await app.listen(port, '0.0.0.0');
+  const port = process.env.PORT || configService.get<number>('app.port') || 4000;
+  await app.listen(port);
 
   logger.log(`=======================================================`);
   logger.log(`  Rongin Libas Backend Server Initialized Successfully `);

@@ -17,11 +17,16 @@ import { CreateCategoryDto } from '../dto/create-category.dto.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
+import { Permissions } from '../../common/decorators/permissions.decorator.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
+import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import { AuditService } from '../../audit/audit.service.js';
 let AdminCategoriesController = class AdminCategoriesController {
     categoriesService;
-    constructor(categoriesService) {
+    auditService;
+    constructor(categoriesService, auditService) {
         this.categoriesService = categoriesService;
+        this.auditService = auditService;
     }
     async findAll() {
         const data = await this.categoriesService.findAll(true);
@@ -30,8 +35,18 @@ let AdminCategoriesController = class AdminCategoriesController {
             data,
         };
     }
-    async create(dto) {
+    async create(dto, actor) {
         const data = await this.categoriesService.create(dto);
+        await this.auditService.record({
+            actor,
+            module: 'categories',
+            action: 'CATEGORY_CREATED',
+            entityType: 'category',
+            entityId: data.id,
+            entityLabel: data.name,
+            summary: `Created category ${data.name}`,
+            after: data,
+        });
         return {
             message: 'Category created successfully',
             data,
@@ -49,8 +64,9 @@ __decorate([
     Post(),
     ApiOperation({ summary: 'Create new apparel category' }),
     __param(0, Body()),
+    __param(1, CurrentUser()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [CreateCategoryDto]),
+    __metadata("design:paramtypes", [CreateCategoryDto, Object]),
     __metadata("design:returntype", Promise)
 ], AdminCategoriesController.prototype, "create", null);
 AdminCategoriesController = __decorate([
@@ -58,8 +74,10 @@ AdminCategoriesController = __decorate([
     ApiBearerAuth(),
     UseGuards(JwtAuthGuard, RolesGuard),
     Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER),
+    Permissions('categories'),
     Controller('admin/categories'),
-    __metadata("design:paramtypes", [CategoriesService])
+    __metadata("design:paramtypes", [CategoriesService,
+        AuditService])
 ], AdminCategoriesController);
 export { AdminCategoriesController };
 //# sourceMappingURL=admin-categories.controller.js.map

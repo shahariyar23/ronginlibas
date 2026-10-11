@@ -50,31 +50,13 @@ export declare class ProductsService {
     }>;
     private validatePriceRange;
     findBySlug(slug: string): Promise<({
-        reviews: ({
-            customer: {
-                firstName: string;
-                lastName: string | null;
-            };
-        } & {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            status: import("@prisma/client").$Enums.ReviewStatus;
-            images: string[];
-            productId: string;
-            customerId: string;
-            rating: number;
-            comment: string;
-            adminFeedback: string | null;
-            adminFeedbackAt: Date | null;
-        })[];
         category: {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             slug: string;
             seoTitle: string | null;
             metaDescription: string | null;
@@ -82,6 +64,24 @@ export declare class ProductsService {
             image: string | null;
             parentId: string | null;
         };
+        reviews: ({
+            customer: {
+                firstName: string;
+                lastName: string | null;
+            };
+        } & {
+            status: import("@prisma/client").$Enums.ReviewStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            customerId: string;
+            images: string[];
+            productId: string;
+            rating: number;
+            comment: string;
+            adminFeedback: string | null;
+            adminFeedbackAt: Date | null;
+        })[];
         variants: {
             id: string;
             isActive: boolean;
@@ -98,10 +98,10 @@ export declare class ProductsService {
             priceOverride: Prisma.Decimal | null;
         }[];
         images: {
+            url: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            url: string;
             sortOrder: number;
             isPrimary: boolean;
             productId: string;
@@ -113,12 +113,12 @@ export declare class ProductsService {
         }[];
     } & {
         description: string | null;
+        name: string;
         id: string;
         isActive: boolean;
-        deletedAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
+        deletedAt: Date | null;
         tags: string[];
         slug: string;
         price: Prisma.Decimal;
@@ -149,31 +149,13 @@ export declare class ProductsService {
     }) | {
         isRedirect: boolean;
         redirectTargetSlug: string;
-        reviews: ({
-            customer: {
-                firstName: string;
-                lastName: string | null;
-            };
-        } & {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            status: import("@prisma/client").$Enums.ReviewStatus;
-            images: string[];
-            productId: string;
-            customerId: string;
-            rating: number;
-            comment: string;
-            adminFeedback: string | null;
-            adminFeedbackAt: Date | null;
-        })[];
         category: {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             slug: string;
             seoTitle: string | null;
             metaDescription: string | null;
@@ -181,6 +163,24 @@ export declare class ProductsService {
             image: string | null;
             parentId: string | null;
         };
+        reviews: ({
+            customer: {
+                firstName: string;
+                lastName: string | null;
+            };
+        } & {
+            status: import("@prisma/client").$Enums.ReviewStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            customerId: string;
+            images: string[];
+            productId: string;
+            rating: number;
+            comment: string;
+            adminFeedback: string | null;
+            adminFeedbackAt: Date | null;
+        })[];
         variants: {
             id: string;
             isActive: boolean;
@@ -197,10 +197,10 @@ export declare class ProductsService {
             priceOverride: Prisma.Decimal | null;
         }[];
         images: {
+            url: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            url: string;
             sortOrder: number;
             isPrimary: boolean;
             productId: string;
@@ -211,12 +211,12 @@ export declare class ProductsService {
             quantity: number;
         }[];
         description: string | null;
+        name: string;
         id: string;
         isActive: boolean;
-        deletedAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
+        deletedAt: Date | null;
         tags: string[];
         slug: string;
         price: Prisma.Decimal;
@@ -246,11 +246,11 @@ export declare class ProductsService {
     findById(id: string): Promise<{
         category: {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             slug: string;
             seoTitle: string | null;
             metaDescription: string | null;
@@ -274,10 +274,10 @@ export declare class ProductsService {
             priceOverride: Prisma.Decimal | null;
         }[];
         images: {
+            url: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            url: string;
             sortOrder: number;
             isPrimary: boolean;
             productId: string;
@@ -286,12 +286,12 @@ export declare class ProductsService {
         }[];
     } & {
         description: string | null;
+        name: string;
         id: string;
         isActive: boolean;
-        deletedAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
+        deletedAt: Date | null;
         tags: string[];
         slug: string;
         price: Prisma.Decimal;
@@ -316,14 +316,14 @@ export declare class ProductsService {
         categoryId: string;
     }>;
     findRelated(slug: string, relationType: 'RELATED' | 'COMPLEMENTARY'): Promise<({
+        category: {
+            name: string;
+            id: string;
+            slug: string;
+        };
         reviews: {
             rating: number;
         }[];
-        category: {
-            id: string;
-            name: string;
-            slug: string;
-        };
         variants: {
             id: string;
             isActive: boolean;
@@ -340,10 +340,10 @@ export declare class ProductsService {
             priceOverride: Prisma.Decimal | null;
         }[];
         images: {
+            url: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            url: string;
             sortOrder: number;
             isPrimary: boolean;
             productId: string;
@@ -355,12 +355,12 @@ export declare class ProductsService {
         }[];
     } & {
         description: string | null;
+        name: string;
         id: string;
         isActive: boolean;
-        deletedAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
+        deletedAt: Date | null;
         tags: string[];
         slug: string;
         price: Prisma.Decimal;
@@ -407,10 +407,10 @@ export declare class ProductsService {
             priceOverride: Prisma.Decimal | null;
         }[];
         images: {
+            url: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            url: string;
             sortOrder: number;
             isPrimary: boolean;
             productId: string;
@@ -419,12 +419,12 @@ export declare class ProductsService {
         }[];
     } & {
         description: string | null;
+        name: string;
         id: string;
         isActive: boolean;
-        deletedAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
+        deletedAt: Date | null;
         tags: string[];
         slug: string;
         price: Prisma.Decimal;
@@ -451,11 +451,11 @@ export declare class ProductsService {
     update(id: string, dto: UpdateProductDto): Promise<({
         category: {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             slug: string;
             seoTitle: string | null;
             metaDescription: string | null;
@@ -479,10 +479,10 @@ export declare class ProductsService {
             priceOverride: Prisma.Decimal | null;
         }[];
         images: {
+            url: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            url: string;
             sortOrder: number;
             isPrimary: boolean;
             productId: string;
@@ -491,12 +491,12 @@ export declare class ProductsService {
         }[];
     } & {
         description: string | null;
+        name: string;
         id: string;
         isActive: boolean;
-        deletedAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
+        deletedAt: Date | null;
         tags: string[];
         slug: string;
         price: Prisma.Decimal;
@@ -523,11 +523,11 @@ export declare class ProductsService {
         imageCleanupWarning: string;
         category: {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             slug: string;
             seoTitle: string | null;
             metaDescription: string | null;
@@ -551,10 +551,10 @@ export declare class ProductsService {
             priceOverride: Prisma.Decimal | null;
         }[];
         images: {
+            url: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            url: string;
             sortOrder: number;
             isPrimary: boolean;
             productId: string;
@@ -562,12 +562,12 @@ export declare class ProductsService {
             altText: string | null;
         }[];
         description: string | null;
+        name: string;
         id: string;
         isActive: boolean;
-        deletedAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
+        deletedAt: Date | null;
         tags: string[];
         slug: string;
         price: Prisma.Decimal;
@@ -596,11 +596,11 @@ export declare class ProductsService {
         data: {
             category: {
                 description: string | null;
+                name: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 slug: string;
                 seoTitle: string | null;
                 metaDescription: string | null;
@@ -624,10 +624,10 @@ export declare class ProductsService {
                 priceOverride: Prisma.Decimal | null;
             }[];
             images: {
+                url: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                url: string;
                 sortOrder: number;
                 isPrimary: boolean;
                 productId: string;
@@ -636,12 +636,12 @@ export declare class ProductsService {
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
-            deletedAt: Date | null;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: Prisma.Decimal;
@@ -671,11 +671,11 @@ export declare class ProductsService {
         data: {
             category: {
                 description: string | null;
+                name: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 slug: string;
                 seoTitle: string | null;
                 metaDescription: string | null;
@@ -699,10 +699,10 @@ export declare class ProductsService {
                 priceOverride: Prisma.Decimal | null;
             }[];
             images: {
+                url: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                url: string;
                 sortOrder: number;
                 isPrimary: boolean;
                 productId: string;
@@ -711,12 +711,12 @@ export declare class ProductsService {
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
-            deletedAt: Date | null;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: Prisma.Decimal;

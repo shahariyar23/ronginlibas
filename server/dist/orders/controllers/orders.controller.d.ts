@@ -28,18 +28,18 @@ export declare class OrdersController {
             createdAt: Date;
             updatedAt: Date;
             items: {
-                id: string;
-                createdAt: Date;
-                subtotal: import("@prisma/client/runtime/library").Decimal;
-                discountAmount: import("@prisma/client/runtime/library").Decimal;
-                variantId: string | null;
                 product: {
                     images: {
                         url: string;
                     }[];
                 } | null;
-                sku: string;
                 productImage: string | null;
+                subtotal: import("@prisma/client/runtime/library").Decimal;
+                discountAmount: import("@prisma/client/runtime/library").Decimal;
+                id: string;
+                createdAt: Date;
+                variantId: string | null;
+                sku: string;
                 productId: string | null;
                 productName: string;
                 variantName: string;
@@ -50,8 +50,8 @@ export declare class OrdersController {
             }[];
             trackingEvents: {
                 description: string | null;
-                createdAt: Date;
                 status: import("@prisma/client").$Enums.OrderStatus;
+                createdAt: Date;
             }[];
         };
     }>;
@@ -60,18 +60,18 @@ export declare class OrdersController {
         data: {
             items: {
                 items: {
-                    id: string;
-                    createdAt: Date;
-                    subtotal: import("@prisma/client/runtime/library").Decimal;
-                    discountAmount: import("@prisma/client/runtime/library").Decimal;
-                    variantId: string | null;
                     product: {
                         images: {
                             url: string;
                         }[];
                     } | null;
-                    sku: string;
                     productImage: string | null;
+                    subtotal: import("@prisma/client/runtime/library").Decimal;
+                    discountAmount: import("@prisma/client/runtime/library").Decimal;
+                    id: string;
+                    createdAt: Date;
+                    variantId: string | null;
+                    sku: string;
                     productId: string | null;
                     productName: string;
                     variantName: string;
@@ -80,9 +80,6 @@ export declare class OrdersController {
                     size: string | null;
                     color: string | null;
                 }[];
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
                 orderNumber: string;
                 subtotal: import("@prisma/client/runtime/library").Decimal;
                 deliveryCharge: import("@prisma/client/runtime/library").Decimal;
@@ -97,6 +94,9 @@ export declare class OrdersController {
                 trackingUrl: string | null;
                 estimatedDelivery: Date | null;
                 status: import("@prisma/client").$Enums.OrderStatus;
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
             }[];
             page: number;
             limit: number;
@@ -108,18 +108,18 @@ export declare class OrdersController {
         message: string;
         data: {
             items: {
-                id: string;
-                createdAt: Date;
-                subtotal: import("@prisma/client/runtime/library").Decimal;
-                discountAmount: import("@prisma/client/runtime/library").Decimal;
-                variantId: string | null;
                 product: {
                     images: {
                         url: string;
                     }[];
                 } | null;
-                sku: string;
                 productImage: string | null;
+                subtotal: import("@prisma/client/runtime/library").Decimal;
+                discountAmount: import("@prisma/client/runtime/library").Decimal;
+                id: string;
+                createdAt: Date;
+                variantId: string | null;
+                sku: string;
                 productId: string | null;
                 productName: string;
                 variantName: string;
@@ -128,9 +128,6 @@ export declare class OrdersController {
                 size: string | null;
                 color: string | null;
             }[];
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
             orderNumber: string;
             subtotal: import("@prisma/client/runtime/library").Decimal;
             deliveryCharge: import("@prisma/client/runtime/library").Decimal;
@@ -145,10 +142,13 @@ export declare class OrdersController {
             trackingUrl: string | null;
             estimatedDelivery: Date | null;
             status: import("@prisma/client").$Enums.OrderStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
             trackingEvents: {
                 description: string | null;
-                createdAt: Date;
                 status: import("@prisma/client").$Enums.OrderStatus;
+                createdAt: Date;
             }[];
         };
     }>;
@@ -163,8 +163,8 @@ export declare class OrdersController {
             estimatedDelivery: Date | null;
             trackingEvents: {
                 description: string | null;
-                createdAt: Date;
                 status: import("@prisma/client").$Enums.OrderStatus;
+                createdAt: Date;
             }[];
         };
     }>;
@@ -190,18 +190,18 @@ export declare class OrdersController {
             createdAt: Date;
             updatedAt: Date;
             items: {
-                id: string;
-                createdAt: Date;
-                subtotal: import("@prisma/client/runtime/library").Decimal;
-                discountAmount: import("@prisma/client/runtime/library").Decimal;
-                variantId: string | null;
                 product: {
                     images: {
                         url: string;
                     }[];
                 } | null;
-                sku: string;
                 productImage: string | null;
+                subtotal: import("@prisma/client/runtime/library").Decimal;
+                discountAmount: import("@prisma/client/runtime/library").Decimal;
+                id: string;
+                createdAt: Date;
+                variantId: string | null;
+                sku: string;
                 productId: string | null;
                 productName: string;
                 variantName: string;
@@ -212,8 +212,8 @@ export declare class OrdersController {
             }[];
             trackingEvents: {
                 description: string | null;
-                createdAt: Date;
                 status: import("@prisma/client").$Enums.OrderStatus;
+                createdAt: Date;
             }[];
         };
     }>;

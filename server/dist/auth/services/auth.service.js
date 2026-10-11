@@ -13,18 +13,23 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { createHash, randomBytes } from 'node:crypto';
 import bcrypt from 'bcrypt';
-import nodemailer from 'nodemailer';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { UserRole } from '../../common/constants/roles.constant.js';
+import { MailService } from '../../mail/mail.service.js';
+import { FirebaseAdminService } from './firebase-admin.service.js';
 let AuthService = AuthService_1 = class AuthService {
     prisma;
     jwtService;
     configService;
+    mailService;
+    firebaseAdminService;
     logger = new Logger(AuthService_1.name);
-    constructor(prisma, jwtService, configService) {
+    constructor(prisma, jwtService, configService, mailService, firebaseAdminService) {
         this.prisma = prisma;
         this.jwtService = jwtService;
         this.configService = configService;
+        this.mailService = mailService;
+        this.firebaseAdminService = firebaseAdminService;
     }
     async adminLogin(dto) {
         const user = await this.prisma.user.findUnique({
@@ -45,19 +50,243 @@ let AuthService = AuthService_1 = class AuthService {
             where: { id: user.id },
             data: { refreshTokenHash: await bcrypt.hash(tokens.refreshToken, 10) },
         });
-        return tokens;
+        return {
+            ...tokens,
+            user: {
+                id: user.id,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                role: user.role,
+                permissions: user.permissions ?? [],
+                mustChangePassword: user.mustChangePassword ?? false,
+            },
+        };
     }
     async customerLogin(dto) {
-        const customer = await this.prisma.customer.findUnique({
-            where: { email: dto.email.toLowerCase() },
-        });
+        const rawIdentifier = (dto.email || '').trim();
+        if (!rawIdentifier) {
+            throw new UnauthorizedException('Invalid customer credentials');
+        }
+        const isEmail = rawIdentifier.includes('@');
+        let customer;
+        if (isEmail) {
+            customer = await this.prisma.customer.findFirst({
+                where: { email: rawIdentifier.toLowerCase() },
+            });
+        }
+        else {
+            const normalizedPhone = normalizeBangladeshPhone(rawIdentifier);
+            const localPhone = normalizedPhone.startsWith('+880')
+                ? `0${normalizedPhone.slice(4)}`
+                : normalizedPhone;
+            const stripped = rawIdentifier.replace(/[\s()\-]/g, '');
+            const phoneCandidates = Array.from(new Set([normalizedPhone, localPhone, rawIdentifier, stripped])).filter(Boolean);
+            customer = await this.prisma.customer.findFirst({
+                where: {
+                    OR: [
+                        { phone: { in: phoneCandidates } },
+                        { secondaryPhone: { in: phoneCandidates } },
+                        { email: rawIdentifier.toLowerCase() },
+                    ],
+                },
+            });
+        }
+        if (customer && !customer.isActive) {
+            if (customer.banReason) {
+                throw new UnauthorizedException(`Your account has been suspended by the shop administration. Reason: ${customer.banReason}`);
+            }
+            throw new UnauthorizedException('Your account is currently inactive. Please contact support.');
+        }
         if (!customer ||
-            !customer.isActive ||
             !customer.passwordHash ||
             !(await bcrypt.compare(dto.password, customer.passwordHash))) {
             throw new UnauthorizedException('Invalid customer credentials');
         }
         return this.issueCustomerSession(customer.id, customer.email ?? undefined);
+    }
+    async socialLogin(dto) {
+        const profile = await this.firebaseAdminService.verifyIdToken(dto.idToken);
+        if (dto.fullName && dto.fullName.trim()) {
+            const parts = dto.fullName.trim().split(/\s+/);
+            profile.firstName = parts[0] || profile.firstName;
+            profile.lastName = parts.slice(1).join(' ') || profile.lastName;
+        }
+        const existingIdentity = await this.prisma.authIdentity.findUnique({
+            where: {
+                provider_providerUserId: {
+                    provider: profile.provider,
+                    providerUserId: profile.providerUserId,
+                },
+            },
+            include: {
+                customer: true,
+            },
+        });
+        if (existingIdentity) {
+            const customer = existingIdentity.customer;
+            if (!customer || !customer.isActive) {
+                if (customer?.banReason) {
+                    throw new UnauthorizedException(`Your account has been suspended by the shop administration. Reason: ${customer.banReason}`);
+                }
+                throw new UnauthorizedException('Your account is currently inactive. Please contact support.');
+            }
+            if (profile.photoUrl && !customer.photoUrl) {
+                await this.prisma.customer.update({
+                    where: { id: customer.id },
+                    data: { photoUrl: profile.photoUrl },
+                });
+            }
+            const session = await this.issueCustomerSession(customer.id, customer.email ?? undefined);
+            return {
+                ...session,
+                isNewCustomer: false,
+                isProfileComplete: Boolean(customer.phone),
+            };
+        }
+        if (profile.email && profile.emailVerified) {
+            const existingCustomer = await this.prisma.customer.findUnique({
+                where: { email: profile.email },
+            });
+            if (existingCustomer) {
+                if (!existingCustomer.isActive) {
+                    if (existingCustomer.banReason) {
+                        throw new UnauthorizedException(`Your account has been suspended by the shop administration. Reason: ${existingCustomer.banReason}`);
+                    }
+                    throw new UnauthorizedException('Your account is currently inactive. Please contact support.');
+                }
+                await this.prisma.authIdentity.create({
+                    data: {
+                        customerId: existingCustomer.id,
+                        provider: profile.provider,
+                        providerUserId: profile.providerUserId,
+                        providerEmail: profile.email,
+                    },
+                });
+                if (profile.photoUrl && !existingCustomer.photoUrl) {
+                    await this.prisma.customer.update({
+                        where: { id: existingCustomer.id },
+                        data: { photoUrl: profile.photoUrl },
+                    });
+                }
+                const session = await this.issueCustomerSession(existingCustomer.id, existingCustomer.email ?? undefined);
+                return {
+                    ...session,
+                    isNewCustomer: false,
+                    isProfileComplete: Boolean(existingCustomer.phone),
+                };
+            }
+        }
+        const newCustomer = await this.prisma.customer.create({
+            data: {
+                firstName: profile.firstName,
+                lastName: profile.lastName,
+                email: profile.email ? profile.email.toLowerCase() : null,
+                photoUrl: profile.photoUrl,
+                phone: null,
+                isActive: true,
+                identities: {
+                    create: {
+                        provider: profile.provider,
+                        providerUserId: profile.providerUserId,
+                        providerEmail: profile.email,
+                    },
+                },
+            },
+        });
+        if (newCustomer.email) {
+            this.mailService
+                .sendWelcomeEmail(newCustomer.email, newCustomer.firstName)
+                .catch((err) => {
+                this.logger.warn(`Failed to dispatch social welcome email: ${err.message}`);
+            });
+        }
+        const session = await this.issueCustomerSession(newCustomer.id, newCustomer.email ?? undefined);
+        return {
+            ...session,
+            isNewCustomer: true,
+            isProfileComplete: false,
+        };
+    }
+    async linkSocialAccount(customerId, dto) {
+        const profile = await this.firebaseAdminService.verifyIdToken(dto.idToken);
+        const existingIdentity = await this.prisma.authIdentity.findUnique({
+            where: {
+                provider_providerUserId: {
+                    provider: profile.provider,
+                    providerUserId: profile.providerUserId,
+                },
+            },
+        });
+        if (existingIdentity) {
+            if (existingIdentity.customerId === customerId) {
+                return {
+                    linked: true,
+                    provider: profile.provider,
+                    message: `${profile.provider} is already linked to your patron profile.`,
+                };
+            }
+            throw new ConflictException(`This ${profile.provider} account is already connected to another patron account.`);
+        }
+        await this.prisma.authIdentity.create({
+            data: {
+                customerId,
+                provider: profile.provider,
+                providerUserId: profile.providerUserId,
+                providerEmail: profile.email,
+            },
+        });
+        if (profile.photoUrl) {
+            const current = await this.prisma.customer.findUnique({
+                where: { id: customerId },
+                select: { photoUrl: true },
+            });
+            if (!current?.photoUrl) {
+                await this.prisma.customer.update({
+                    where: { id: customerId },
+                    data: { photoUrl: profile.photoUrl },
+                });
+            }
+        }
+        return {
+            linked: true,
+            provider: profile.provider,
+            message: `${profile.provider} successfully linked to your account.`,
+        };
+    }
+    async unlinkSocialAccount(customerId, provider) {
+        const customer = await this.prisma.customer.findUnique({
+            where: { id: customerId },
+            include: { identities: true },
+        });
+        if (!customer) {
+            throw new UnauthorizedException('Customer not found');
+        }
+        const hasPassword = Boolean(customer.passwordHash);
+        const hasOtherIdentities = customer.identities.filter((i) => i.provider !== provider).length > 0;
+        if (!hasPassword && !hasOtherIdentities) {
+            throw new BadRequestException('You cannot disconnect this social provider. Please set a password or connect another login method first so you do not lose access to your account.');
+        }
+        await this.prisma.authIdentity.deleteMany({
+            where: { customerId, provider },
+        });
+        return {
+            unlinked: true,
+            provider,
+            message: `${provider} has been disconnected.`,
+        };
+    }
+    async getCustomerIdentities(customerId) {
+        return this.prisma.authIdentity.findMany({
+            where: { customerId },
+            select: {
+                id: true,
+                provider: true,
+                providerEmail: true,
+                createdAt: true,
+            },
+            orderBy: { createdAt: 'asc' },
+        });
     }
     async registerCustomer(dto) {
         if (dto.password !== dto.confirmPassword) {
@@ -90,7 +319,7 @@ let AuthService = AuthService_1 = class AuthService {
                     preferredFit: dto.preferredFit,
                     marketingConsent: dto.marketingConsent ?? false,
                 },
-                select: { id: true, email: true },
+                select: { id: true, email: true, firstName: true },
             });
         }
         catch (error) {
@@ -98,6 +327,11 @@ let AuthService = AuthService_1 = class AuthService {
                 throw new ConflictException('A customer with this phone number or email is already registered');
             }
             throw error;
+        }
+        if (customer.email) {
+            this.mailService.sendWelcomeEmail(customer.email, customer.firstName).catch((err) => {
+                this.logger.warn(`Failed to dispatch welcome email to ${customer.email}: ${err.message}`);
+            });
         }
         return this.issueCustomerSession(customer.id, customer.email ?? undefined);
     }
@@ -174,17 +408,9 @@ let AuthService = AuthService_1 = class AuthService {
         return { passwordChanged: true };
     }
     async requestPasswordReset(email) {
-        const host = this.configService.get('SMTP_HOST');
-        const user = this.configService.get('SMTP_USER');
-        const password = this.configService.get('SMTP_PASS');
-        const from = this.configService.get('SMTP_FROM');
-        const webUrl = this.configService.get('app.webFrontendUrl');
-        if (!host || !user || !password || !from || !webUrl) {
-            throw new ServiceUnavailableException('Password reset email service is not configured');
-        }
         const customer = await this.prisma.customer.findUnique({
             where: { email: email.toLowerCase() },
-            select: { id: true, email: true, isActive: true },
+            select: { id: true, email: true, firstName: true, isActive: true },
         });
         if (!customer?.isActive || !customer.email) {
             return { message: 'If an account exists for that address, a reset link will be sent.' };
@@ -196,30 +422,16 @@ let AuthService = AuthService_1 = class AuthService {
             where: { id: customer.id },
             data: { resetTokenHash, resetTokenExpiresAt: expiresAt },
         });
-        const transport = nodemailer.createTransport({
-            host,
-            port: Number(this.configService.get('SMTP_PORT') || 587),
-            secure: this.configService.get('SMTP_SECURE') === 'true',
-            auth: { user, pass: password },
-        });
         try {
-            await transport.sendMail({
-                from,
-                to: customer.email,
-                subject: 'Reset your Rongin Libas password',
-                text: `Reset your password: ${webUrl.replace(/\/$/, '')}/reset-password?token=${encodeURIComponent(resetToken)}`,
-            });
+            await this.mailService.sendPasswordResetEmail(customer.email, resetToken, customer.firstName || undefined);
         }
-        catch {
+        catch (err) {
             await this.prisma.customer.update({
                 where: { id: customer.id },
                 data: { resetTokenHash: null, resetTokenExpiresAt: null },
             });
-            this.logger.error('Password reset email delivery failed');
+            this.logger.error(`Password reset email delivery failed: ${err.message}`);
             throw new ServiceUnavailableException('Password reset email could not be sent');
-        }
-        finally {
-            transport.close();
         }
         return { message: 'If an account exists for that address, a reset link will be sent.' };
     }
@@ -230,7 +442,7 @@ let AuthService = AuthService_1 = class AuthService {
                 resetTokenExpiresAt: { gt: new Date() },
                 isActive: true,
             },
-            select: { id: true },
+            select: { id: true, email: true, firstName: true },
         });
         if (!customer)
             throw new UnauthorizedException('Password reset token is invalid or expired');
@@ -243,6 +455,13 @@ let AuthService = AuthService_1 = class AuthService {
                 refreshTokenHash: null,
             },
         });
+        if (customer.email) {
+            this.mailService
+                .sendPasswordResetSuccessEmail(customer.email, customer.firstName || undefined)
+                .catch((err) => {
+                this.logger.warn(`Failed to dispatch password reset success notification: ${err.message}`);
+            });
+        }
         return { passwordReset: true };
     }
     async issueCustomerSession(customerId, email) {
@@ -292,12 +511,25 @@ AuthService = AuthService_1 = __decorate([
     Injectable(),
     __metadata("design:paramtypes", [PrismaService,
         JwtService,
-        ConfigService])
+        ConfigService,
+        MailService,
+        FirebaseAdminService])
 ], AuthService);
 export { AuthService };
 function normalizeBangladeshPhone(phone) {
-    const digits = phone.replace(/[\s()-]/g, '');
-    return digits.startsWith('+880') ? digits : `+880${digits.slice(1)}`;
+    if (!phone)
+        return phone;
+    let digits = phone.replace(/[\s()\-]/g, '');
+    if (digits.startsWith('+')) {
+        digits = digits.slice(1);
+    }
+    if (digits.startsWith('880')) {
+        digits = digits.slice(3);
+    }
+    if (digits.startsWith('0')) {
+        digits = digits.slice(1);
+    }
+    return `+880${digits}`;
 }
 function hashToken(token) {
     return createHash('sha256').update(token).digest('hex');

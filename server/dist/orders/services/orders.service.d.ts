@@ -14,28 +14,20 @@ export declare class OrdersService {
     constructor(prisma: PrismaService, settingsService: SettingsService, mailService?: MailService | undefined);
     findAll(query: OrderQueryDto): Promise<PaginatedResult<any>>;
     findById(id: string): Promise<{
+        customer: {
+            email: string | null;
+            phone: string | null;
+            firstName: string;
+            lastName: string | null;
+            id: string;
+        } | null;
         items: ({
-            variant: {
-                id: string;
-                isActive: boolean;
-                createdAt: Date;
-                updatedAt: Date;
-                measurements: Prisma.JsonValue | null;
-                sku: string;
-                productId: string;
-                size: string;
-                color: string;
-                sizeLabel: string | null;
-                sizeType: string | null;
-                stock: number;
-                priceOverride: Prisma.Decimal | null;
-            } | null;
             product: ({
                 images: {
+                    url: string;
                     id: string;
                     createdAt: Date;
                     updatedAt: Date;
-                    url: string;
                     sortOrder: number;
                     isPrimary: boolean;
                     productId: string;
@@ -44,12 +36,12 @@ export declare class OrdersService {
                 }[];
             } & {
                 description: string | null;
+                name: string;
                 id: string;
                 isActive: boolean;
-                deletedAt: Date | null;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
+                deletedAt: Date | null;
                 tags: string[];
                 slug: string;
                 price: Prisma.Decimal;
@@ -73,14 +65,29 @@ export declare class OrdersService {
                 canonicalUrl: string | null;
                 categoryId: string;
             }) | null;
+            variant: {
+                id: string;
+                isActive: boolean;
+                createdAt: Date;
+                updatedAt: Date;
+                measurements: Prisma.JsonValue | null;
+                sku: string;
+                productId: string;
+                size: string;
+                color: string;
+                sizeLabel: string | null;
+                sizeType: string | null;
+                stock: number;
+                priceOverride: Prisma.Decimal | null;
+            } | null;
         } & {
-            id: string;
-            createdAt: Date;
+            productImage: string | null;
             subtotal: Prisma.Decimal;
             discountAmount: Prisma.Decimal;
+            id: string;
+            createdAt: Date;
             variantId: string | null;
             sku: string;
-            productImage: string | null;
             productId: string | null;
             orderId: string;
             productName: string;
@@ -90,24 +97,14 @@ export declare class OrdersService {
             size: string | null;
             color: string | null;
         })[];
-        customer: {
-            email: string | null;
-            phone: string | null;
-            firstName: string;
-            lastName: string | null;
-            id: string;
-        } | null;
         trackingEvents: {
             description: string | null;
+            status: import("@prisma/client").$Enums.OrderStatus;
             id: string;
             createdAt: Date;
-            status: import("@prisma/client").$Enums.OrderStatus;
             orderId: string;
             customerVisible: boolean;
         }[];
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
         orderNumber: string;
         subtotal: Prisma.Decimal;
         deliveryCharge: Prisma.Decimal;
@@ -123,6 +120,9 @@ export declare class OrdersService {
         estimatedDelivery: Date | null;
         adminNotes: string | null;
         status: import("@prisma/client").$Enums.OrderStatus;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
         customerId: string | null;
         guestName: string | null;
         guestEmail: string | null;
@@ -131,18 +131,18 @@ export declare class OrdersService {
     findCustomerOrders(customerId: string, query: OrderQueryDto): Promise<{
         items: {
             items: {
-                id: string;
-                createdAt: Date;
-                subtotal: Prisma.Decimal;
-                discountAmount: Prisma.Decimal;
-                variantId: string | null;
                 product: {
                     images: {
                         url: string;
                     }[];
                 } | null;
-                sku: string;
                 productImage: string | null;
+                subtotal: Prisma.Decimal;
+                discountAmount: Prisma.Decimal;
+                id: string;
+                createdAt: Date;
+                variantId: string | null;
+                sku: string;
                 productId: string | null;
                 productName: string;
                 variantName: string;
@@ -151,9 +151,6 @@ export declare class OrdersService {
                 size: string | null;
                 color: string | null;
             }[];
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
             orderNumber: string;
             subtotal: Prisma.Decimal;
             deliveryCharge: Prisma.Decimal;
@@ -168,6 +165,9 @@ export declare class OrdersService {
             trackingUrl: string | null;
             estimatedDelivery: Date | null;
             status: import("@prisma/client").$Enums.OrderStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
         }[];
         page: number;
         limit: number;
@@ -176,18 +176,18 @@ export declare class OrdersService {
     }>;
     findCustomerOrder(customerId: string, orderNumber: string): Promise<{
         items: {
-            id: string;
-            createdAt: Date;
-            subtotal: Prisma.Decimal;
-            discountAmount: Prisma.Decimal;
-            variantId: string | null;
             product: {
                 images: {
                     url: string;
                 }[];
             } | null;
-            sku: string;
             productImage: string | null;
+            subtotal: Prisma.Decimal;
+            discountAmount: Prisma.Decimal;
+            id: string;
+            createdAt: Date;
+            variantId: string | null;
+            sku: string;
             productId: string | null;
             productName: string;
             variantName: string;
@@ -196,9 +196,6 @@ export declare class OrdersService {
             size: string | null;
             color: string | null;
         }[];
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
         orderNumber: string;
         subtotal: Prisma.Decimal;
         deliveryCharge: Prisma.Decimal;
@@ -213,21 +210,31 @@ export declare class OrdersService {
         trackingUrl: string | null;
         estimatedDelivery: Date | null;
         status: import("@prisma/client").$Enums.OrderStatus;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
         trackingEvents: {
             description: string | null;
-            createdAt: Date;
             status: import("@prisma/client").$Enums.OrderStatus;
+            createdAt: Date;
         }[];
     }>;
     updateStatus(id: string, dto: UpdateOrderStatusDto): Promise<{
-        items: {
+        customer: {
+            email: string | null;
+            phone: string | null;
+            firstName: string;
+            lastName: string | null;
             id: string;
-            createdAt: Date;
+        } | null;
+        items: {
+            productImage: string | null;
             subtotal: Prisma.Decimal;
             discountAmount: Prisma.Decimal;
+            id: string;
+            createdAt: Date;
             variantId: string | null;
             sku: string;
-            productImage: string | null;
             productId: string | null;
             orderId: string;
             productName: string;
@@ -237,17 +244,7 @@ export declare class OrdersService {
             size: string | null;
             color: string | null;
         }[];
-        customer: {
-            email: string | null;
-            phone: string | null;
-            firstName: string;
-            lastName: string | null;
-            id: string;
-        } | null;
     } & {
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
         orderNumber: string;
         subtotal: Prisma.Decimal;
         deliveryCharge: Prisma.Decimal;
@@ -263,6 +260,9 @@ export declare class OrdersService {
         estimatedDelivery: Date | null;
         adminNotes: string | null;
         status: import("@prisma/client").$Enums.OrderStatus;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
         customerId: string | null;
         guestName: string | null;
         guestEmail: string | null;
@@ -289,18 +289,18 @@ export declare class OrdersService {
         createdAt: Date;
         updatedAt: Date;
         items: {
-            id: string;
-            createdAt: Date;
-            subtotal: Prisma.Decimal;
-            discountAmount: Prisma.Decimal;
-            variantId: string | null;
             product: {
                 images: {
                     url: string;
                 }[];
             } | null;
-            sku: string;
             productImage: string | null;
+            subtotal: Prisma.Decimal;
+            discountAmount: Prisma.Decimal;
+            id: string;
+            createdAt: Date;
+            variantId: string | null;
+            sku: string;
             productId: string | null;
             productName: string;
             variantName: string;
@@ -311,27 +311,33 @@ export declare class OrdersService {
         }[];
         trackingEvents: {
             description: string | null;
-            createdAt: Date;
             status: import("@prisma/client").$Enums.OrderStatus;
+            createdAt: Date;
         }[];
     }>;
     private dispatchOrderConfirmationNotification;
     private saveAddressForCustomerIfEligible;
     private dispatchOrderStatusOrEditNotification;
     findOrderForAccess(orderNumber: string, customerId?: string, phone?: string, trackingToken?: string): Promise<{
+        customer: {
+            email: string | null;
+            phone: string | null;
+            firstName: string;
+            lastName: string | null;
+        } | null;
         items: {
-            id: string;
-            createdAt: Date;
-            subtotal: Prisma.Decimal;
-            discountAmount: Prisma.Decimal;
-            variantId: string | null;
             product: {
                 images: {
                     url: string;
                 }[];
             } | null;
-            sku: string;
             productImage: string | null;
+            subtotal: Prisma.Decimal;
+            discountAmount: Prisma.Decimal;
+            id: string;
+            createdAt: Date;
+            variantId: string | null;
+            sku: string;
             productId: string | null;
             productName: string;
             variantName: string;
@@ -340,15 +346,6 @@ export declare class OrdersService {
             size: string | null;
             color: string | null;
         }[];
-        customer: {
-            email: string | null;
-            phone: string | null;
-            firstName: string;
-            lastName: string | null;
-        } | null;
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
         orderNumber: string;
         subtotal: Prisma.Decimal;
         deliveryCharge: Prisma.Decimal;
@@ -363,6 +360,9 @@ export declare class OrdersService {
         trackingUrl: string | null;
         estimatedDelivery: Date | null;
         status: import("@prisma/client").$Enums.OrderStatus;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
         customerId: string | null;
         guestName: string | null;
         guestEmail: string | null;
@@ -370,8 +370,8 @@ export declare class OrdersService {
         trackingTokenHash: string | null;
         trackingEvents: {
             description: string | null;
-            createdAt: Date;
             status: import("@prisma/client").$Enums.OrderStatus;
+            createdAt: Date;
         }[];
     }>;
     getOrderForCustomerAccess(orderNumber: string, customerId?: string, phone?: string, trackingToken?: string): Promise<{
@@ -393,18 +393,18 @@ export declare class OrdersService {
         createdAt: Date;
         updatedAt: Date;
         items: {
-            id: string;
-            createdAt: Date;
-            subtotal: Prisma.Decimal;
-            discountAmount: Prisma.Decimal;
-            variantId: string | null;
             product: {
                 images: {
                     url: string;
                 }[];
             } | null;
-            sku: string;
             productImage: string | null;
+            subtotal: Prisma.Decimal;
+            discountAmount: Prisma.Decimal;
+            id: string;
+            createdAt: Date;
+            variantId: string | null;
+            sku: string;
             productId: string | null;
             productName: string;
             variantName: string;
@@ -415,8 +415,8 @@ export declare class OrdersService {
         }[];
         trackingEvents: {
             description: string | null;
-            createdAt: Date;
             status: import("@prisma/client").$Enums.OrderStatus;
+            createdAt: Date;
         }[];
     }>;
     getTracking(orderNumber: string, customerId?: string, phone?: string, trackingToken?: string): Promise<{
@@ -428,8 +428,8 @@ export declare class OrdersService {
         estimatedDelivery: Date | null;
         trackingEvents: {
             description: string | null;
-            createdAt: Date;
             status: import("@prisma/client").$Enums.OrderStatus;
+            createdAt: Date;
         }[];
     }>;
     generateInvoice(orderNumber: string, customerId?: string, phone?: string, trackingToken?: string): Promise<Buffer>;

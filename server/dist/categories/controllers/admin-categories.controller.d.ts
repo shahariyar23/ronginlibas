@@ -1,14 +1,16 @@
 import { CategoriesService } from '../services/categories.service.js';
 import { CreateCategoryDto } from '../dto/create-category.dto.js';
+import { AuditService, type AdminAuditActor } from '../../audit/audit.service.js';
 export declare class AdminCategoriesController {
     private readonly categoriesService;
-    constructor(categoriesService: CategoriesService);
+    private readonly auditService;
+    constructor(categoriesService: CategoriesService, auditService: AuditService);
     findAll(): Promise<{
         message: string;
         data: {
             description: string | null;
-            id: string;
             name: string;
+            id: string;
             _count: {
                 products: number;
             };
@@ -18,23 +20,23 @@ export declare class AdminCategoriesController {
             parentId: string | null;
             children: {
                 description: string | null;
-                id: string;
                 name: string;
+                id: string;
                 slug: string;
                 sortOrder: number;
                 image: string | null;
             }[];
         }[];
     }>;
-    create(dto: CreateCategoryDto): Promise<{
+    create(dto: CreateCategoryDto, actor: AdminAuditActor): Promise<{
         message: string;
         data: {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             slug: string;
             seoTitle: string | null;
             metaDescription: string | null;
