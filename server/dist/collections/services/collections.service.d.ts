@@ -14,11 +14,11 @@ export declare class CollectionsService implements OnModuleInit {
         };
     } & {
         description: string | null;
-        name: string;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
         slug: string;
         seoTitle: string | null;
         metaDescription: string | null;
@@ -31,9 +31,9 @@ export declare class CollectionsService implements OnModuleInit {
             products: number;
         };
         products: {
-            name: string;
             id: string;
             isActive: boolean;
+            name: string;
             slug: string;
             price: Prisma.Decimal;
             compareAtPrice: Prisma.Decimal | null;
@@ -45,11 +45,11 @@ export declare class CollectionsService implements OnModuleInit {
         }[];
     } & {
         description: string | null;
-        name: string;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
         slug: string;
         seoTitle: string | null;
         metaDescription: string | null;
@@ -62,12 +62,8 @@ export declare class CollectionsService implements OnModuleInit {
             products: number;
         };
         products: {
-            category: {
-                name: string;
-                slug: string;
-            };
-            name: string;
             id: string;
+            name: string;
             slug: string;
             price: Prisma.Decimal;
             compareAtPrice: Prisma.Decimal | null;
@@ -76,6 +72,10 @@ export declare class CollectionsService implements OnModuleInit {
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
+            category: {
+                name: string;
+                slug: string;
+            };
             variants: {
                 id: string;
                 size: string;
@@ -83,19 +83,19 @@ export declare class CollectionsService implements OnModuleInit {
                 stock: number;
             }[];
             images: {
-                url: string;
                 id: string;
+                url: string;
                 isPrimary: boolean;
                 altText: string | null;
             }[];
         }[];
     } & {
         description: string | null;
-        name: string;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
         slug: string;
         seoTitle: string | null;
         metaDescription: string | null;
@@ -109,11 +109,11 @@ export declare class CollectionsService implements OnModuleInit {
         };
     } & {
         description: string | null;
-        name: string;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
         slug: string;
         seoTitle: string | null;
         metaDescription: string | null;
@@ -127,11 +127,11 @@ export declare class CollectionsService implements OnModuleInit {
         };
     } & {
         description: string | null;
-        name: string;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
         slug: string;
         seoTitle: string | null;
         metaDescription: string | null;
@@ -141,11 +141,11 @@ export declare class CollectionsService implements OnModuleInit {
     }>;
     delete(id: string): Promise<{
         description: string | null;
-        name: string;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
         slug: string;
         seoTitle: string | null;
         metaDescription: string | null;

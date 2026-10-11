@@ -143,55 +143,54 @@ export declare class OffersService {
         expiryDate: string;
         status: "ACTIVE" | "SCHEDULED" | "EXPIRED" | "INACTIVE";
         products: {
-            name: string;
             id: string;
+            name: string;
             slug: string;
             price: Prisma.Decimal;
             sku: string;
         }[];
         categories: {
-            name: string;
             id: string;
+            name: string;
             slug: string;
         }[];
         description: string | null;
-        name: string;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
         slug: string;
-        couponCode: string | null;
         bannerTitle: string | null;
         bannerSubtitle: string | null;
         bannerMessage: string | null;
         offerType: import("@prisma/client").$Enums.OfferType;
         discountType: import("@prisma/client").$Enums.OfferDiscountType;
         badgeText: string | null;
+        couponCode: string | null;
         priority: number;
     }>;
     createOffer(dto: CreateOfferDto, actor: AdminAuditActor): Promise<{
         products: {
-            name: string;
             id: string;
+            name: string;
         }[];
         collections: {
-            name: string;
             id: string;
+            name: string;
         }[];
         categories: {
-            name: string;
             id: string;
+            name: string;
         }[];
     } & {
         description: string | null;
-        name: string;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
         slug: string;
-        couponCode: string | null;
         startDate: Date;
         expiryDate: Date;
         bannerTitle: string | null;
@@ -201,30 +200,30 @@ export declare class OffersService {
         discountType: import("@prisma/client").$Enums.OfferDiscountType;
         discountValue: Prisma.Decimal;
         badgeText: string | null;
+        couponCode: string | null;
         priority: number;
     }>;
     updateOffer(id: string, dto: Partial<CreateOfferDto>, actor: AdminAuditActor): Promise<{
         products: {
-            name: string;
             id: string;
+            name: string;
         }[];
         collections: {
-            name: string;
             id: string;
+            name: string;
         }[];
         categories: {
-            name: string;
             id: string;
+            name: string;
         }[];
     } & {
         description: string | null;
-        name: string;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
         slug: string;
-        couponCode: string | null;
         startDate: Date;
         expiryDate: Date;
         bannerTitle: string | null;
@@ -234,6 +233,7 @@ export declare class OffersService {
         discountType: import("@prisma/client").$Enums.OfferDiscountType;
         discountValue: Prisma.Decimal;
         badgeText: string | null;
+        couponCode: string | null;
         priority: number;
     }>;
     deleteOffer(id: string, actor: AdminAuditActor): Promise<{

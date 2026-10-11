@@ -40,6 +40,9 @@ export declare class AdminCustomersController {
                 email: string | null;
                 phone: string;
                 fullName: string | null;
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
                 addressLine1: string;
                 addressLine2: string | null;
                 city: string;
@@ -47,11 +50,8 @@ export declare class AdminCustomersController {
                 area: string | null;
                 postalCode: string | null;
                 deliveryInstructions: string | null;
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
-                customerId: string;
                 isDefault: boolean;
+                customerId: string;
                 country: string;
             } | {
                 id: string;
@@ -92,8 +92,8 @@ export declare class AdminCustomersController {
             orders: ({
                 items: ({
                     product: {
-                        name: string;
                         id: string;
+                        name: string;
                         slug: string;
                         price: import("@prisma/client/runtime/library").Decimal;
                         images: {
@@ -102,13 +102,13 @@ export declare class AdminCustomersController {
                         }[];
                     } | null;
                 } & {
-                    productImage: string | null;
-                    subtotal: import("@prisma/client/runtime/library").Decimal;
-                    discountAmount: import("@prisma/client/runtime/library").Decimal;
                     id: string;
                     createdAt: Date;
+                    subtotal: import("@prisma/client/runtime/library").Decimal;
+                    discountAmount: import("@prisma/client/runtime/library").Decimal;
                     variantId: string | null;
                     sku: string;
+                    productImage: string | null;
                     productId: string | null;
                     orderId: string;
                     productName: string;
@@ -119,6 +119,9 @@ export declare class AdminCustomersController {
                     color: string | null;
                 })[];
             } & {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
                 orderNumber: string;
                 subtotal: import("@prisma/client/runtime/library").Decimal;
                 deliveryCharge: import("@prisma/client/runtime/library").Decimal;
@@ -134,9 +137,6 @@ export declare class AdminCustomersController {
                 estimatedDelivery: Date | null;
                 adminNotes: string | null;
                 status: import("@prisma/client").$Enums.OrderStatus;
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
                 customerId: string | null;
                 guestName: string | null;
                 guestEmail: string | null;
@@ -145,8 +145,8 @@ export declare class AdminCustomersController {
             })[];
             reviews: ({
                 product: {
-                    name: string;
                     id: string;
+                    name: string;
                     slug: string;
                     price: import("@prisma/client/runtime/library").Decimal;
                     images: {
@@ -155,13 +155,13 @@ export declare class AdminCustomersController {
                     }[];
                 };
             } & {
-                status: import("@prisma/client").$Enums.ReviewStatus;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                customerId: string;
+                status: import("@prisma/client").$Enums.ReviewStatus;
                 images: string[];
                 productId: string;
+                customerId: string;
                 rating: number;
                 comment: string;
                 adminFeedback: string | null;
@@ -193,14 +193,14 @@ export declare class AdminCustomersController {
             marketingConsent: boolean;
             id: string;
             passwordHash: string | null;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            refreshTokenHash: string | null;
             photoUrl: string | null;
+            isActive: boolean;
             banReason: string | null;
             bannedAt: Date | null;
             deletedAt: Date | null;
+            createdAt: Date;
+            updatedAt: Date;
+            refreshTokenHash: string | null;
             resetTokenHash: string | null;
             resetTokenExpiresAt: Date | null;
             secondaryPhone: string | null;
@@ -226,14 +226,14 @@ export declare class AdminCustomersController {
             marketingConsent: boolean;
             id: string;
             passwordHash: string | null;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            refreshTokenHash: string | null;
             photoUrl: string | null;
+            isActive: boolean;
             banReason: string | null;
             bannedAt: Date | null;
             deletedAt: Date | null;
+            createdAt: Date;
+            updatedAt: Date;
+            refreshTokenHash: string | null;
             resetTokenHash: string | null;
             resetTokenExpiresAt: Date | null;
             secondaryPhone: string | null;
@@ -252,14 +252,14 @@ export declare class AdminCustomersController {
             marketingConsent: boolean;
             id: string;
             passwordHash: string | null;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            refreshTokenHash: string | null;
             photoUrl: string | null;
+            isActive: boolean;
             banReason: string | null;
             bannedAt: Date | null;
             deletedAt: Date | null;
+            createdAt: Date;
+            updatedAt: Date;
+            refreshTokenHash: string | null;
             resetTokenHash: string | null;
             resetTokenExpiresAt: Date | null;
             secondaryPhone: string | null;
@@ -278,14 +278,14 @@ export declare class AdminCustomersController {
             marketingConsent: boolean;
             id: string;
             passwordHash: string | null;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            refreshTokenHash: string | null;
             photoUrl: string | null;
+            isActive: boolean;
             banReason: string | null;
             bannedAt: Date | null;
             deletedAt: Date | null;
+            createdAt: Date;
+            updatedAt: Date;
+            refreshTokenHash: string | null;
             resetTokenHash: string | null;
             resetTokenExpiresAt: Date | null;
             secondaryPhone: string | null;

@@ -1,16 +1,14 @@
 import { CouponsService } from '../services/coupons.service.js';
 import { CreateCouponDto } from '../dto/create-coupon.dto.js';
-import { AuditService, type AdminAuditActor } from '../../audit/audit.service.js';
 export declare class AdminCouponsController {
     private readonly couponsService;
-    private readonly auditService;
-    constructor(couponsService: CouponsService, auditService: AuditService);
+    constructor(couponsService: CouponsService);
     findAll(): Promise<{
         message: string;
         data: {
-            value: import("@prisma/client/runtime/library").Decimal;
             type: import("@prisma/client").$Enums.CouponType;
             description: string | null;
+            value: import("@prisma/client/runtime/library").Decimal;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -24,12 +22,12 @@ export declare class AdminCouponsController {
             usageCount: number;
         }[];
     }>;
-    create(dto: CreateCouponDto, actor: AdminAuditActor): Promise<{
+    create(dto: CreateCouponDto): Promise<{
         message: string;
         data: {
-            value: import("@prisma/client/runtime/library").Decimal;
             type: import("@prisma/client").$Enums.CouponType;
             description: string | null;
+            value: import("@prisma/client/runtime/library").Decimal;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -43,12 +41,12 @@ export declare class AdminCouponsController {
             usageCount: number;
         };
     }>;
-    update(id: string, body: Partial<CreateCouponDto>, actor: AdminAuditActor): Promise<{
+    update(id: string, body: Partial<CreateCouponDto>): Promise<{
         message: string;
         data: {
-            value: import("@prisma/client/runtime/library").Decimal;
             type: import("@prisma/client").$Enums.CouponType;
             description: string | null;
+            value: import("@prisma/client/runtime/library").Decimal;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -62,12 +60,12 @@ export declare class AdminCouponsController {
             usageCount: number;
         };
     }>;
-    remove(id: string, actor: AdminAuditActor): Promise<{
+    remove(id: string): Promise<{
         message: string;
         data: {
-            value: import("@prisma/client/runtime/library").Decimal;
             type: import("@prisma/client").$Enums.CouponType;
             description: string | null;
+            value: import("@prisma/client/runtime/library").Decimal;
             id: string;
             isActive: boolean;
             createdAt: Date;

@@ -14,19 +14,16 @@ export declare class AuthController {
     adminLogin(dto: LoginDto): Promise<{
         message: string;
         data: {
-            user: {
-                id: string;
-                email: string;
-                firstName: string;
-                lastName: string;
-                role: import("@prisma/client").$Enums.Role;
-                permissions: string[];
-                mustChangePassword: boolean;
-            };
             accessToken: string;
             refreshToken: string;
             tokenType: string;
             expiresIn: string;
+            user: {
+                id: string;
+                email: string | undefined;
+                role: string;
+                type: "admin" | "customer";
+            };
         };
     }>;
     customerLogin(dto: LoginDto, response: Response): Promise<{
@@ -39,7 +36,7 @@ export declare class AuthController {
                 id: string;
                 email: string | undefined;
                 role: string;
-                type: "customer" | "admin";
+                type: "admin" | "customer";
             };
         };
     }>;
@@ -53,7 +50,7 @@ export declare class AuthController {
                 id: string;
                 email: string | undefined;
                 role: string;
-                type: "customer" | "admin";
+                type: "admin" | "customer";
             };
         };
     }>;
@@ -67,7 +64,7 @@ export declare class AuthController {
                 id: string;
                 email: string | undefined;
                 role: string;
-                type: "customer" | "admin";
+                type: "admin" | "customer";
             };
         };
     }>;
@@ -81,7 +78,7 @@ export declare class AuthController {
                 id: string;
                 email: string | undefined;
                 role: string;
-                type: "customer" | "admin";
+                type: "admin" | "customer";
             };
         };
     }>;
@@ -95,7 +92,7 @@ export declare class AuthController {
                 id: string;
                 email: string | undefined;
                 role: string;
-                type: "customer" | "admin";
+                type: "admin" | "customer";
             };
         };
     }>;
@@ -129,44 +126,19 @@ export declare class AuthController {
     }>;
     socialLogin(dto: SocialLoginDto, response: Response): Promise<{
         message: string;
-        data: {
-            isNewCustomer: boolean;
-            isProfileComplete: boolean;
-            accessToken: string;
-            tokenType: string;
-            expiresIn: string;
-            user: {
-                id: string;
-                email: string | undefined;
-                role: string;
-                type: "customer" | "admin";
-            };
-        };
+        data: any;
     }>;
     linkSocial(customerId: string, dto: SocialLoginDto): Promise<{
         message: string;
-        data: {
-            linked: boolean;
-            provider: "GOOGLE";
-            message: string;
-        };
+        data: any;
     }>;
     unlinkSocial(customerId: string, provider: AuthProvider): Promise<{
         message: string;
-        data: {
-            unlinked: boolean;
-            provider: "GOOGLE";
-            message: string;
-        };
+        data: any;
     }>;
     getIdentities(customerId: string): Promise<{
         message: string;
-        data: {
-            id: string;
-            createdAt: Date;
-            provider: "GOOGLE";
-            providerEmail: string | null;
-        }[];
+        data: any;
     }>;
     private loginCustomer;
     private setRefreshCookie;

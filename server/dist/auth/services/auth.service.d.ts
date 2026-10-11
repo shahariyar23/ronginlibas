@@ -4,32 +4,23 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { ChangePasswordDto, ResetPasswordDto } from '../dto/password-reset.dto.js';
 import { LoginDto } from '../dto/login.dto.js';
 import { RegisterCustomerDto } from '../dto/register.dto.js';
-import { AuthProvider } from '@prisma/client';
-import { MailService } from '../../mail/mail.service.js';
-import { FirebaseAdminService } from './firebase-admin.service.js';
-import { SocialLoginDto } from '../dto/social-login.dto.js';
 export declare class AuthService {
     private readonly prisma;
     private readonly jwtService;
     private readonly configService;
-    private readonly mailService;
-    private readonly firebaseAdminService;
     private readonly logger;
-    constructor(prisma: PrismaService, jwtService: JwtService, configService: ConfigService, mailService: MailService, firebaseAdminService: FirebaseAdminService);
+    constructor(prisma: PrismaService, jwtService: JwtService, configService: ConfigService);
     adminLogin(dto: LoginDto): Promise<{
-        user: {
-            id: string;
-            email: string;
-            firstName: string;
-            lastName: string;
-            role: import("@prisma/client").$Enums.Role;
-            permissions: string[];
-            mustChangePassword: boolean;
-        };
         accessToken: string;
         refreshToken: string;
         tokenType: string;
         expiresIn: string;
+        user: {
+            id: string;
+            email: string | undefined;
+            role: string;
+            type: "admin" | "customer";
+        };
     }>;
     customerLogin(dto: LoginDto): Promise<{
         accessToken: string;
@@ -40,39 +31,9 @@ export declare class AuthService {
             id: string;
             email: string | undefined;
             role: string;
-            type: "customer" | "admin";
+            type: "admin" | "customer";
         };
     }>;
-    socialLogin(dto: SocialLoginDto): Promise<{
-        isNewCustomer: boolean;
-        isProfileComplete: boolean;
-        accessToken: string;
-        refreshToken: string;
-        tokenType: string;
-        expiresIn: string;
-        user: {
-            id: string;
-            email: string | undefined;
-            role: string;
-            type: "customer" | "admin";
-        };
-    }>;
-    linkSocialAccount(customerId: string, dto: SocialLoginDto): Promise<{
-        linked: boolean;
-        provider: "GOOGLE";
-        message: string;
-    }>;
-    unlinkSocialAccount(customerId: string, provider: AuthProvider): Promise<{
-        unlinked: boolean;
-        provider: "GOOGLE";
-        message: string;
-    }>;
-    getCustomerIdentities(customerId: string): Promise<{
-        id: string;
-        createdAt: Date;
-        provider: "GOOGLE";
-        providerEmail: string | null;
-    }[]>;
     registerCustomer(dto: RegisterCustomerDto): Promise<{
         accessToken: string;
         refreshToken: string;
@@ -82,7 +43,7 @@ export declare class AuthService {
             id: string;
             email: string | undefined;
             role: string;
-            type: "customer" | "admin";
+            type: "admin" | "customer";
         };
     }>;
     refreshTokens(refreshToken: string): Promise<{
@@ -94,7 +55,7 @@ export declare class AuthService {
             id: string;
             email: string | undefined;
             role: string;
-            type: "customer" | "admin";
+            type: "admin" | "customer";
         };
     }>;
     logoutCustomer(customerId: string): Promise<{

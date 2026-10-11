@@ -16,6 +16,23 @@ export declare class CustomersService {
     findAll(query: CustomerQueryDto): Promise<PaginatedResult<any>>;
     findById(id: string): Promise<{
         addresses: ({
+            email: string | null;
+            phone: string;
+            fullName: string | null;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            addressLine1: string;
+            addressLine2: string | null;
+            city: string;
+            division: string;
+            area: string | null;
+            postalCode: string | null;
+            deliveryInstructions: string | null;
+            isDefault: boolean;
+            customerId: string;
+            country: string;
+        } | {
             id: string;
             source: string;
             orderNumber: string;
@@ -30,23 +47,6 @@ export declare class CustomersService {
             deliveryInstructions: any;
             isDefault: boolean;
             createdAt: Date;
-        } | {
-            email: string | null;
-            phone: string;
-            fullName: string | null;
-            addressLine1: string;
-            addressLine2: string | null;
-            city: string;
-            division: string;
-            area: string | null;
-            postalCode: string | null;
-            deliveryInstructions: string | null;
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            customerId: string;
-            isDefault: boolean;
-            country: string;
         })[];
         orderAddresses: {
             id: string;
@@ -71,8 +71,8 @@ export declare class CustomersService {
         orders: ({
             items: ({
                 product: {
-                    name: string;
                     id: string;
+                    name: string;
                     slug: string;
                     price: Prisma.Decimal;
                     images: {
@@ -81,13 +81,13 @@ export declare class CustomersService {
                     }[];
                 } | null;
             } & {
-                productImage: string | null;
-                subtotal: Prisma.Decimal;
-                discountAmount: Prisma.Decimal;
                 id: string;
                 createdAt: Date;
+                subtotal: Prisma.Decimal;
+                discountAmount: Prisma.Decimal;
                 variantId: string | null;
                 sku: string;
+                productImage: string | null;
                 productId: string | null;
                 orderId: string;
                 productName: string;
@@ -98,6 +98,9 @@ export declare class CustomersService {
                 color: string | null;
             })[];
         } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
             orderNumber: string;
             subtotal: Prisma.Decimal;
             deliveryCharge: Prisma.Decimal;
@@ -113,9 +116,6 @@ export declare class CustomersService {
             estimatedDelivery: Date | null;
             adminNotes: string | null;
             status: import("@prisma/client").$Enums.OrderStatus;
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
             customerId: string | null;
             guestName: string | null;
             guestEmail: string | null;
@@ -124,8 +124,8 @@ export declare class CustomersService {
         })[];
         reviews: ({
             product: {
-                name: string;
                 id: string;
+                name: string;
                 slug: string;
                 price: Prisma.Decimal;
                 images: {
@@ -134,13 +134,13 @@ export declare class CustomersService {
                 }[];
             };
         } & {
-            status: import("@prisma/client").$Enums.ReviewStatus;
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            customerId: string;
+            status: import("@prisma/client").$Enums.ReviewStatus;
             images: string[];
             productId: string;
+            customerId: string;
             rating: number;
             comment: string;
             adminFeedback: string | null;
@@ -172,14 +172,14 @@ export declare class CustomersService {
         marketingConsent: boolean;
         id: string;
         passwordHash: string | null;
-        isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        refreshTokenHash: string | null;
         photoUrl: string | null;
+        isActive: boolean;
         banReason: string | null;
         bannedAt: Date | null;
         deletedAt: Date | null;
+        createdAt: Date;
+        updatedAt: Date;
+        refreshTokenHash: string | null;
         resetTokenHash: string | null;
         resetTokenExpiresAt: Date | null;
         secondaryPhone: string | null;
@@ -201,6 +201,7 @@ export declare class CustomersService {
             email: string | null;
             phone: string;
             fullName: string | null;
+            id: string;
             addressLine1: string;
             addressLine2: string | null;
             city: string;
@@ -208,7 +209,6 @@ export declare class CustomersService {
             area: string | null;
             postalCode: string | null;
             deliveryInstructions: string | null;
-            id: string;
             isDefault: boolean;
         }[];
         measurements: {
@@ -243,11 +243,11 @@ export declare class CustomersService {
         };
         activeOrderCount: number;
         activeOrders: {
+            createdAt: Date;
             orderNumber: string;
             totalAmount: Prisma.Decimal;
             paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
             status: import("@prisma/client").$Enums.OrderStatus;
-            createdAt: Date;
         }[];
         recentOrders: {
             items: {
@@ -256,22 +256,22 @@ export declare class CustomersService {
                 unitPrice: Prisma.Decimal;
                 quantity: number;
             }[];
+            createdAt: Date;
             orderNumber: string;
             totalAmount: Prisma.Decimal;
             paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
             status: import("@prisma/client").$Enums.OrderStatus;
-            createdAt: Date;
         }[];
         defaultAddress: {
             phone: string;
             fullName: string | null;
+            id: string;
             addressLine1: string;
             addressLine2: string | null;
             city: string;
             division: string;
             area: string | null;
             postalCode: string | null;
-            id: string;
         };
         wishlistCount: number;
     }>;
@@ -279,6 +279,9 @@ export declare class CustomersService {
         email: string | null;
         phone: string;
         fullName: string | null;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
         addressLine1: string;
         addressLine2: string | null;
         city: string;
@@ -286,15 +289,15 @@ export declare class CustomersService {
         area: string | null;
         postalCode: string | null;
         deliveryInstructions: string | null;
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
         isDefault: boolean;
     }[]>;
     createAddress(customerId: string, dto: CreateAddressDto): Promise<{
         email: string | null;
         phone: string;
         fullName: string | null;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
         addressLine1: string;
         addressLine2: string | null;
         city: string;
@@ -302,15 +305,15 @@ export declare class CustomersService {
         area: string | null;
         postalCode: string | null;
         deliveryInstructions: string | null;
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
         isDefault: boolean;
     }>;
     updateAddress(customerId: string, addressId: string, dto: UpdateAddressDto): Promise<{
         email: string | null;
         phone: string;
         fullName: string | null;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
         addressLine1: string;
         addressLine2: string | null;
         city: string;
@@ -318,15 +321,15 @@ export declare class CustomersService {
         area: string | null;
         postalCode: string | null;
         deliveryInstructions: string | null;
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
         isDefault: boolean;
     }>;
     setDefaultAddress(customerId: string, addressId: string): Promise<{
         email: string | null;
         phone: string;
         fullName: string | null;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
         addressLine1: string;
         addressLine2: string | null;
         city: string;
@@ -334,9 +337,6 @@ export declare class CustomersService {
         area: string | null;
         postalCode: string | null;
         deliveryInstructions: string | null;
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
         isDefault: boolean;
     }>;
     deleteAddress(customerId: string, addressId: string): Promise<{
@@ -399,14 +399,14 @@ export declare class CustomersService {
             marketingConsent: boolean;
             id: string;
             passwordHash: string | null;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            refreshTokenHash: string | null;
             photoUrl: string | null;
+            isActive: boolean;
             banReason: string | null;
             bannedAt: Date | null;
             deletedAt: Date | null;
+            createdAt: Date;
+            updatedAt: Date;
+            refreshTokenHash: string | null;
             resetTokenHash: string | null;
             resetTokenExpiresAt: Date | null;
             secondaryPhone: string | null;
@@ -425,14 +425,14 @@ export declare class CustomersService {
             marketingConsent: boolean;
             id: string;
             passwordHash: string | null;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            refreshTokenHash: string | null;
             photoUrl: string | null;
+            isActive: boolean;
             banReason: string | null;
             bannedAt: Date | null;
             deletedAt: Date | null;
+            createdAt: Date;
+            updatedAt: Date;
+            refreshTokenHash: string | null;
             resetTokenHash: string | null;
             resetTokenExpiresAt: Date | null;
             secondaryPhone: string | null;
@@ -451,14 +451,14 @@ export declare class CustomersService {
             marketingConsent: boolean;
             id: string;
             passwordHash: string | null;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            refreshTokenHash: string | null;
             photoUrl: string | null;
+            isActive: boolean;
             banReason: string | null;
             bannedAt: Date | null;
             deletedAt: Date | null;
+            createdAt: Date;
+            updatedAt: Date;
+            refreshTokenHash: string | null;
             resetTokenHash: string | null;
             resetTokenExpiresAt: Date | null;
             secondaryPhone: string | null;
