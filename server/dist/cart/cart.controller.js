@@ -14,7 +14,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UnauthorizedE
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { OptionalCustomerAuthGuard } from '../auth/guards/optional-customer-auth.guard.js';
-import { CartIdentityDto, AddCartItemDto, UpdateCartItemDto } from './dto/cart-item.dto.js';
+import { CartIdentityDto, AddCartItemDto, UpdateCartItemDto, CartContactDto } from './dto/cart-item.dto.js';
 import { CartService } from './cart.service.js';
 let CartController = class CartController {
     cartService;
@@ -49,6 +49,16 @@ let CartController = class CartController {
         return {
             message: 'Cart emptied successfully',
             data: await this.cartService.clearCart(customerId, query.cartId),
+        };
+    }
+    async saveContact(customerId, dto) {
+        return {
+            message: 'Cart contact updated',
+            data: await this.cartService.saveContact(customerId, dto.cartId, {
+                email: dto.email,
+                phone: dto.phone,
+                name: dto.name,
+            }),
         };
     }
 };
@@ -108,6 +118,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, CartIdentityDto]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "clearCart", null);
+__decorate([
+    Patch('contact'),
+    ApiOperation({ summary: 'Save guest contact details to cart for abandoned cart recovery' }),
+    __param(0, CurrentUser('id')),
+    __param(1, Body()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, CartContactDto]),
+    __metadata("design:returntype", Promise)
+], CartController.prototype, "saveContact", null);
 CartController = __decorate([
     ApiTags('Cart'),
     UseGuards(OptionalCustomerAuthGuard),

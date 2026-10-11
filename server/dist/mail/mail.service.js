@@ -11,7 +11,7 @@ var MailService_1;
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import nodemailer from 'nodemailer';
-import { renderPasswordResetEmail, renderPasswordResetSuccessEmail, renderWelcomeEmail, renderAccountBannedEmail, renderStaffWelcomeEmail, renderOrderConfirmationEmail, renderOrderStatusUpdateEmail, renderOrderEditEmail, } from './templates/index.js';
+import { renderPasswordResetEmail, renderPasswordResetSuccessEmail, renderWelcomeEmail, renderAccountBannedEmail, renderStaffWelcomeEmail, renderOrderConfirmationEmail, renderOrderStatusUpdateEmail, renderOrderEditEmail, renderAbandonedCartReminderEmail, } from './templates/index.js';
 let MailService = MailService_1 = class MailService {
     configService;
     logger = new Logger(MailService_1.name);
@@ -362,6 +362,43 @@ let MailService = MailService_1 = class MailService {
         }
         catch (error) {
             this.logger.warn(`Failed to dispatch order edit email to ${params.email} for ${params.orderNumber}: ${error.message}`);
+            return false;
+        }
+        finally {
+            transporter.close();
+        }
+    }
+    async sendAbandonedCartReminderEmail(params) {
+        const transporter = this.getTransporter();
+        if (!transporter)
+            return false;
+        const webUrl = this.getWebUrl();
+        const cartUrl = `${webUrl}/shop`;
+        const checkoutUrl = `${webUrl}/checkout`;
+        const from = this.getFromAddress('orders');
+        const { subject, html, text } = renderAbandonedCartReminderEmail({
+            customerName: params.customerName,
+            items: params.items,
+            subtotal: params.subtotal,
+            totalAmount: params.totalAmount,
+            cartUrl,
+            checkoutUrl,
+            customMessage: params.customMessage,
+            webUrl,
+        });
+        try {
+            const info = await transporter.sendMail({
+                from,
+                to: params.email,
+                subject,
+                html,
+                text,
+            });
+            this.logger.log(`Abandoned cart reminder email dispatched to ${params.email} via ${from} (Message ID: ${info.messageId})`);
+            return true;
+        }
+        catch (error) {
+            this.logger.warn(`Failed to dispatch abandoned cart reminder email to ${params.email}: ${error.message}`);
             return false;
         }
         finally {

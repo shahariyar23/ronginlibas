@@ -422,6 +422,9 @@ let CustomersService = CustomersService_1 = class CustomersService {
     }
     async createAddress(customerId, dto) {
         const currentCount = await this.prisma.address.count({ where: { customerId } });
+        if (currentCount >= 5) {
+            throw new BadRequestException('You can save a maximum of 5 delivery addresses. Please remove an existing address before adding a new one.');
+        }
         const isDefault = dto.isDefault ?? currentCount === 0;
         const data = {
             customerId,

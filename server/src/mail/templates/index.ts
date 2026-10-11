@@ -7,3 +7,4 @@ export * from './staff-welcome.template.js';
 export * from './order-confirmation.template.js';
 export * from './order-status-update.template.js';
 export * from './order-edit.template.js';
+export * from './abandoned-cart-reminder.template.js';

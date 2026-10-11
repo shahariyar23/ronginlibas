@@ -27,7 +27,7 @@ interface CartContextType {
   addToCart: (product: Product, size: string, color: string, qty?: number, customNotes?: string) => Promise<boolean>;
   removeFromCart: (productId: string, size: string, color: string) => Promise<boolean>;
   updateQuantity: (productId: string, size: string, color: string, quantity: number) => Promise<boolean>;
-  clearCart: () => Promise<boolean>;
+  clearCart: (showToast?: boolean) => Promise<boolean>;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
   appliedCoupon: string | null;
@@ -248,7 +248,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const clearCart = async (): Promise<boolean> => {
+  const clearCart = async (showToast: boolean = true): Promise<boolean> => {
     if (!cartId) return false;
     try {
       const response = await apiRequest<CartResponse>(
@@ -258,10 +258,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       await hydrateCart(response);
       setAppliedCoupon(null);
       setDiscount(0);
-      toast.success('Cart cleared.');
+      if (showToast) {
+        toast.success('Cart cleared.');
+      }
       return true;
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not clear your cart.');
+      if (showToast) {
+        toast.error(error instanceof Error ? error.message : 'Could not clear your cart.');
+      }
       return false;
     }
   };

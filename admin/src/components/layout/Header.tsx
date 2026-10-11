@@ -131,6 +131,7 @@ export function Header() {
     if (pathname.startsWith('/products/add')) return 'Add Product';
     if (pathname.startsWith('/products')) return 'Products';
     if (pathname.startsWith('/orders')) return 'Orders';
+    if (pathname.startsWith('/carts')) return 'Abandoned Carts';
     if (pathname.startsWith('/inventory')) return 'Inventory';
     if (pathname.startsWith('/categories')) return 'Categories';
     if (pathname.startsWith('/customers')) return 'Customers';

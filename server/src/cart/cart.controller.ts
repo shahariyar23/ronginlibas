@@ -13,7 +13,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { OptionalCustomerAuthGuard } from '../auth/guards/optional-customer-auth.guard.js';
-import { CartIdentityDto, AddCartItemDto, UpdateCartItemDto } from './dto/cart-item.dto.js';
+import { CartIdentityDto, AddCartItemDto, UpdateCartItemDto, CartContactDto } from './dto/cart-item.dto.js';
 import { CartService } from './cart.service.js';
 
 @ApiTags('Cart')
@@ -81,6 +81,22 @@ export class CartController {
     return {
       message: 'Cart emptied successfully',
       data: await this.cartService.clearCart(customerId, query.cartId),
+    };
+  }
+
+  @Patch('contact')
+  @ApiOperation({ summary: 'Save guest contact details to cart for abandoned cart recovery' })
+  async saveContact(
+    @CurrentUser('id') customerId: string | undefined,
+    @Body() dto: CartContactDto,
+  ) {
+    return {
+      message: 'Cart contact updated',
+      data: await this.cartService.saveContact(customerId, dto.cartId, {
+        email: dto.email,
+        phone: dto.phone,
+        name: dto.name,
+      }),
     };
   }
 }
