@@ -14,11 +14,11 @@ export declare class AdminCollectionsController {
             };
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             slug: string;
             seoTitle: string | null;
             metaDescription: string | null;
@@ -34,9 +34,9 @@ export declare class AdminCollectionsController {
                 products: number;
             };
             products: {
+                name: string;
                 id: string;
                 isActive: boolean;
-                name: string;
                 slug: string;
                 price: import("@prisma/client/runtime/library").Decimal;
                 compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
@@ -48,11 +48,11 @@ export declare class AdminCollectionsController {
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             slug: string;
             seoTitle: string | null;
             metaDescription: string | null;
@@ -69,11 +69,11 @@ export declare class AdminCollectionsController {
             };
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             slug: string;
             seoTitle: string | null;
             metaDescription: string | null;
@@ -90,11 +90,11 @@ export declare class AdminCollectionsController {
             };
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             slug: string;
             seoTitle: string | null;
             metaDescription: string | null;
@@ -107,11 +107,11 @@ export declare class AdminCollectionsController {
         message: string;
         data: {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             slug: string;
             seoTitle: string | null;
             metaDescription: string | null;

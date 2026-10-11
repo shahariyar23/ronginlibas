@@ -7,8 +7,8 @@ export declare class CategoriesController {
         message: string;
         data: {
             description: string | null;
-            id: string;
             name: string;
+            id: string;
             _count: {
                 products: number;
             };
@@ -18,8 +18,8 @@ export declare class CategoriesController {
             parentId: string | null;
             children: {
                 description: string | null;
-                id: string;
                 name: string;
+                id: string;
                 slug: string;
                 sortOrder: number;
                 image: string | null;
@@ -34,8 +34,8 @@ export declare class CategoriesController {
         message: string;
         data: {
             description: string | null;
-            id: string;
             name: string;
+            id: string;
             _count: {
                 products: number;
             };
@@ -44,8 +44,8 @@ export declare class CategoriesController {
             parentId: string | null;
             children: {
                 description: string | null;
-                id: string;
                 name: string;
+                id: string;
                 slug: string;
                 image: string | null;
             }[];

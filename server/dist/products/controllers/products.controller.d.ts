@@ -50,31 +50,13 @@ export declare class ProductsController {
     findBySlug(slug: string): Promise<{
         message: string;
         data: ({
-            reviews: ({
-                customer: {
-                    firstName: string;
-                    lastName: string | null;
-                };
-            } & {
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
-                status: import("@prisma/client").$Enums.ReviewStatus;
-                images: string[];
-                productId: string;
-                customerId: string;
-                rating: number;
-                comment: string;
-                adminFeedback: string | null;
-                adminFeedbackAt: Date | null;
-            })[];
             category: {
                 description: string | null;
+                name: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 slug: string;
                 seoTitle: string | null;
                 metaDescription: string | null;
@@ -82,6 +64,24 @@ export declare class ProductsController {
                 image: string | null;
                 parentId: string | null;
             };
+            reviews: ({
+                customer: {
+                    firstName: string;
+                    lastName: string | null;
+                };
+            } & {
+                status: import("@prisma/client").$Enums.ReviewStatus;
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                customerId: string;
+                images: string[];
+                productId: string;
+                rating: number;
+                comment: string;
+                adminFeedback: string | null;
+                adminFeedbackAt: Date | null;
+            })[];
             variants: {
                 id: string;
                 isActive: boolean;
@@ -98,10 +98,10 @@ export declare class ProductsController {
                 priceOverride: import("@prisma/client/runtime/library").Decimal | null;
             }[];
             images: {
+                url: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                url: string;
                 sortOrder: number;
                 isPrimary: boolean;
                 productId: string;
@@ -113,12 +113,12 @@ export declare class ProductsController {
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
-            deletedAt: Date | null;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -149,31 +149,13 @@ export declare class ProductsController {
         }) | {
             isRedirect: boolean;
             redirectTargetSlug: string;
-            reviews: ({
-                customer: {
-                    firstName: string;
-                    lastName: string | null;
-                };
-            } & {
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
-                status: import("@prisma/client").$Enums.ReviewStatus;
-                images: string[];
-                productId: string;
-                customerId: string;
-                rating: number;
-                comment: string;
-                adminFeedback: string | null;
-                adminFeedbackAt: Date | null;
-            })[];
             category: {
                 description: string | null;
+                name: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 slug: string;
                 seoTitle: string | null;
                 metaDescription: string | null;
@@ -181,6 +163,24 @@ export declare class ProductsController {
                 image: string | null;
                 parentId: string | null;
             };
+            reviews: ({
+                customer: {
+                    firstName: string;
+                    lastName: string | null;
+                };
+            } & {
+                status: import("@prisma/client").$Enums.ReviewStatus;
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                customerId: string;
+                images: string[];
+                productId: string;
+                rating: number;
+                comment: string;
+                adminFeedback: string | null;
+                adminFeedbackAt: Date | null;
+            })[];
             variants: {
                 id: string;
                 isActive: boolean;
@@ -197,10 +197,10 @@ export declare class ProductsController {
                 priceOverride: import("@prisma/client/runtime/library").Decimal | null;
             }[];
             images: {
+                url: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                url: string;
                 sortOrder: number;
                 isPrimary: boolean;
                 productId: string;
@@ -211,12 +211,12 @@ export declare class ProductsController {
                 quantity: number;
             }[];
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
-            deletedAt: Date | null;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -249,14 +249,14 @@ export declare class ProductsController {
     findRelated(slug: string): Promise<{
         message: string;
         data: ({
+            category: {
+                name: string;
+                id: string;
+                slug: string;
+            };
             reviews: {
                 rating: number;
             }[];
-            category: {
-                id: string;
-                name: string;
-                slug: string;
-            };
             variants: {
                 id: string;
                 isActive: boolean;
@@ -273,10 +273,10 @@ export declare class ProductsController {
                 priceOverride: import("@prisma/client/runtime/library").Decimal | null;
             }[];
             images: {
+                url: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                url: string;
                 sortOrder: number;
                 isPrimary: boolean;
                 productId: string;
@@ -288,12 +288,12 @@ export declare class ProductsController {
             }[];
         } & {
             description: string | null;
+            name: string;
             id: string;
             isActive: boolean;
-            deletedAt: Date | null;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
+            deletedAt: Date | null;
             tags: string[];
             slug: string;
             price: import("@prisma/client/runtime/library").Decimal;

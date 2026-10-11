@@ -14,12 +14,15 @@ import { JwtStrategy } from './strategies/jwt.strategy.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { CustomerAuthGuard } from './guards/customer-auth.guard.js';
 import { OptionalCustomerAuthGuard } from './guards/optional-customer-auth.guard.js';
+import { MailModule } from '../mail/mail.module.js';
+import { FirebaseAdminService } from './services/firebase-admin.service.js';
 let AuthModule = class AuthModule {
 };
 AuthModule = __decorate([
     Module({
         imports: [
             PassportModule.register({ defaultStrategy: 'jwt' }),
+            MailModule,
             JwtModule.registerAsync({
                 imports: [ConfigModule],
                 inject: [ConfigService],
@@ -33,9 +36,17 @@ AuthModule = __decorate([
             }),
         ],
         controllers: [AuthController],
-        providers: [AuthService, JwtStrategy, JwtAuthGuard, CustomerAuthGuard, OptionalCustomerAuthGuard],
+        providers: [
+            AuthService,
+            FirebaseAdminService,
+            JwtStrategy,
+            JwtAuthGuard,
+            CustomerAuthGuard,
+            OptionalCustomerAuthGuard,
+        ],
         exports: [
             AuthService,
+            FirebaseAdminService,
             JwtAuthGuard,
             CustomerAuthGuard,
             OptionalCustomerAuthGuard,
