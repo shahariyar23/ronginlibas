@@ -16,7 +16,7 @@ export declare class OrdersService {
     findById(id: string): Promise<{
         customer: {
             email: string | null;
-            phone: string;
+            phone: string | null;
             firstName: string;
             lastName: string | null;
             id: string;
@@ -222,7 +222,7 @@ export declare class OrdersService {
     updateStatus(id: string, dto: UpdateOrderStatusDto): Promise<{
         customer: {
             email: string | null;
-            phone: string;
+            phone: string | null;
             firstName: string;
             lastName: string | null;
             id: string;
@@ -321,7 +321,7 @@ export declare class OrdersService {
     findOrderForAccess(orderNumber: string, customerId?: string, phone?: string, trackingToken?: string): Promise<{
         customer: {
             email: string | null;
-            phone: string;
+            phone: string | null;
             firstName: string;
             lastName: string | null;
         } | null;

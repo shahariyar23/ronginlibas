@@ -12,6 +12,10 @@ describe('ProductsService storefront catalogue', () => {
         findFirst: vi.fn().mockResolvedValue(null),
         create,
       },
+      productSlugRedirect: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
     } as unknown as PrismaService;
     const service = new ProductsService(
       prisma,
@@ -62,6 +66,10 @@ describe('ProductsService storefront catalogue', () => {
       product: {
         findFirst: vi.fn().mockResolvedValue(null),
         create,
+      },
+      productSlugRedirect: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        findUnique: vi.fn().mockResolvedValue(null),
       },
     } as unknown as PrismaService;
     const service = new ProductsService(
@@ -137,7 +145,7 @@ describe('ProductsService storefront catalogue', () => {
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { isActive: true, deletedAt: null, category: { is: { isActive: true } } },
-        orderBy: [{ orderItems: { _count: 'desc' } }, { createdAt: 'desc' }],
+        orderBy: [{ orderItems: { _count: 'desc' } }, { isBestSeller: 'desc' }, { createdAt: 'desc' }],
         include: expect.objectContaining({
           variants: expect.objectContaining({ where: { isActive: true } }),
         }),
@@ -160,10 +168,63 @@ describe('ProductsService storefront catalogue', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           isNewArrival: true,
-          isBestSeller: true,
+          AND: expect.arrayContaining([
+            expect.objectContaining({
+              OR: [
+                { isBestSeller: true },
+                {
+                  orderItems: {
+                    some: {
+                      order: { status: { not: 'CANCELLED' } },
+                    },
+                  },
+                },
+              ],
+            }),
+          ]),
         }),
       }),
     );
+  });
+
+  it('orders best selling items with larger sales volume first', async () => {
+    const findMany = vi.fn().mockResolvedValue([
+      {
+        id: 'p-1',
+        name: 'Item 1 Sale',
+        isBestSeller: false,
+        createdAt: new Date('2026-01-01'),
+        orderItems: [{ quantity: 1 }],
+      },
+      {
+        id: 'p-30',
+        name: 'Item 30 Sales',
+        isBestSeller: false,
+        createdAt: new Date('2026-01-02'),
+        orderItems: [{ quantity: 15 }, { quantity: 15 }],
+      },
+      {
+        id: 'p-flag',
+        name: 'Item Admin Flagged',
+        isBestSeller: true,
+        createdAt: new Date('2026-01-03'),
+        orderItems: [],
+      },
+    ]);
+    const count = vi.fn().mockResolvedValue(3);
+    const prisma = { product: { findMany, count } } as unknown as PrismaService;
+    const service = new ProductsService(
+      prisma,
+      { destroyProductImage: vi.fn() } as unknown as CloudinaryService,
+    );
+
+    const result = await service.findAll({ bestSeller: true, sort: 'best-selling' });
+
+    expect(result.items.map((item) => item.id)).toEqual(['p-30', 'p-1', 'p-flag']);
+    expect(result.items[0].totalSold).toBe(30);
+    expect(result.items[1].totalSold).toBe(1);
+    expect(result.items[2].totalSold).toBe(0);
+    expect(result.items[2].isBestSeller).toBe(true);
   });
 
   it('returns saved tags in the storefront catalogue response', async () => {

@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CustomersService } from '../services/customers.service.js';
 import { CustomerAuthGuard } from '../../auth/guards/customer-auth.guard.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import { Public } from '../../common/decorators/public.decorator.js';
 import { UpdateCustomerProfileDto } from '../dto/update-customer-profile.dto.js';
 import { CreateAddressDto, UpdateAddressDto } from '../dto/address.dto.js';
 import { MeasurementProfileDto } from '../dto/measurement-profile.dto.js';
@@ -121,6 +122,32 @@ export class CustomersController {
     return {
       message: 'Measurement profile updated successfully',
       data: await this.customersService.updateMeasurements(customerId, dto),
+    };
+  }
+
+  @Delete('me')
+  @ApiOperation({ summary: 'Permanently delete the authenticated customer profile and linked social identities' })
+  async deleteMyAccount(
+    @CurrentUser('id') customerId: string,
+    @Body('reason') reason?: string,
+  ) {
+    const result = await this.customersService.deleteMyAccount(customerId, reason);
+    return {
+      message: 'Your account and personal data have been deleted successfully.',
+      data: result,
+    };
+  }
+
+  @Public()
+  @Post('data-deletion-request')
+  @ApiOperation({ summary: 'Public endpoint to submit a data deletion request (Compliance)' })
+  async submitDataDeletionRequest(
+    @Body() dto: { email: string; phone?: string; reason?: string },
+  ) {
+    const result = await this.customersService.submitPublicDataDeletionRequest(dto);
+    return {
+      message: 'Data deletion request processed.',
+      data: result,
     };
   }
 }

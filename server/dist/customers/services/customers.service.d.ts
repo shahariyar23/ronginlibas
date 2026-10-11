@@ -44,8 +44,8 @@ export declare class CustomersService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            isDefault: boolean;
             customerId: string;
+            isDefault: boolean;
             country: string;
         })[];
         orderAddresses: {
@@ -149,6 +149,7 @@ export declare class CustomersService {
         measurements: {
             id: string;
             updatedAt: Date;
+            customerId: string;
             chest: Prisma.Decimal | null;
             shoulder: Prisma.Decimal | null;
             sleeveLength: Prisma.Decimal | null;
@@ -157,14 +158,13 @@ export declare class CustomersService {
             trouserLength: Prisma.Decimal | null;
             garmentLength: Prisma.Decimal | null;
             tailoringNotes: string | null;
-            customerId: string;
         } | null;
         _count: {
             orders: number;
             reviews: number;
         };
         email: string | null;
-        phone: string;
+        phone: string | null;
         firstName: string;
         lastName: string | null;
         preferredSize: string | null;
@@ -176,6 +176,7 @@ export declare class CustomersService {
         createdAt: Date;
         updatedAt: Date;
         refreshTokenHash: string | null;
+        photoUrl: string | null;
         banReason: string | null;
         bannedAt: Date | null;
         deletedAt: Date | null;
@@ -186,7 +187,7 @@ export declare class CustomersService {
     }>;
     findMyProfile(customerId: string): Promise<{
         email: string | null;
-        phone: string;
+        phone: string | null;
         firstName: string;
         lastName: string | null;
         preferredSize: string | null;
@@ -224,7 +225,7 @@ export declare class CustomersService {
     }>;
     updateMyProfile(customerId: string, dto: UpdateCustomerProfileDto): Promise<{
         email: string | null;
-        phone: string;
+        phone: string | null;
         firstName: string;
         lastName: string | null;
         preferredSize: string | null;
@@ -344,6 +345,7 @@ export declare class CustomersService {
     getMeasurements(customerId: string): Promise<{
         id: string;
         updatedAt: Date;
+        customerId: string;
         chest: Prisma.Decimal | null;
         shoulder: Prisma.Decimal | null;
         sleeveLength: Prisma.Decimal | null;
@@ -352,7 +354,6 @@ export declare class CustomersService {
         trouserLength: Prisma.Decimal | null;
         garmentLength: Prisma.Decimal | null;
         tailoringNotes: string | null;
-        customerId: string;
     } | {
         chest: null;
         shoulder: null;
@@ -368,6 +369,7 @@ export declare class CustomersService {
     updateMeasurements(customerId: string, dto: MeasurementProfileDto): Promise<{
         id: string;
         updatedAt: Date;
+        customerId: string;
         chest: Prisma.Decimal | null;
         shoulder: Prisma.Decimal | null;
         sleeveLength: Prisma.Decimal | null;
@@ -376,7 +378,6 @@ export declare class CustomersService {
         trouserLength: Prisma.Decimal | null;
         garmentLength: Prisma.Decimal | null;
         tailoringNotes: string | null;
-        customerId: string;
     }>;
     private requireOwnedAddress;
     sendPasswordResetLink(id: string, actor: AdminAuditActor): Promise<{
@@ -390,7 +391,7 @@ export declare class CustomersService {
         message: string;
         data: {
             email: string | null;
-            phone: string;
+            phone: string | null;
             firstName: string;
             lastName: string | null;
             preferredSize: string | null;
@@ -402,6 +403,7 @@ export declare class CustomersService {
             createdAt: Date;
             updatedAt: Date;
             refreshTokenHash: string | null;
+            photoUrl: string | null;
             banReason: string | null;
             bannedAt: Date | null;
             deletedAt: Date | null;
@@ -415,7 +417,7 @@ export declare class CustomersService {
         message: string;
         data: {
             email: string | null;
-            phone: string;
+            phone: string | null;
             firstName: string;
             lastName: string | null;
             preferredSize: string | null;
@@ -427,6 +429,7 @@ export declare class CustomersService {
             createdAt: Date;
             updatedAt: Date;
             refreshTokenHash: string | null;
+            photoUrl: string | null;
             banReason: string | null;
             bannedAt: Date | null;
             deletedAt: Date | null;
@@ -440,7 +443,7 @@ export declare class CustomersService {
         message: string;
         data: {
             email: string | null;
-            phone: string;
+            phone: string | null;
             firstName: string;
             lastName: string | null;
             preferredSize: string | null;
@@ -452,6 +455,7 @@ export declare class CustomersService {
             createdAt: Date;
             updatedAt: Date;
             refreshTokenHash: string | null;
+            photoUrl: string | null;
             banReason: string | null;
             bannedAt: Date | null;
             deletedAt: Date | null;
@@ -465,7 +469,7 @@ export declare class CustomersService {
         message: string;
         data: {
             email: string | null;
-            phone: string;
+            phone: string | null;
             firstName: string;
             lastName: string | null;
             id: string;
@@ -481,10 +485,25 @@ export declare class CustomersService {
             deleteReason: string | null;
         };
     }>;
+    deleteMyAccount(customerId: string, reason?: string): Promise<{
+        deleted: boolean;
+        archiveId: string;
+        deletedAt: Date;
+    }>;
+    submitPublicDataDeletionRequest(dto: {
+        email: string;
+        phone?: string;
+        reason?: string;
+    }): Promise<{
+        status: string;
+        confirmationCode: string;
+        email: string;
+        message: string;
+    }>;
     findAllArchives(query: PaginationQueryDto): Promise<PaginatedResult<any>>;
     findArchiveById(id: string): Promise<{
         email: string | null;
-        phone: string;
+        phone: string | null;
         firstName: string;
         lastName: string | null;
         id: string;

@@ -114,17 +114,16 @@ let CartService = class CartService {
         });
         const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
         const settings = await this.settingsService.getPublicSettings();
-        const deliveryCharge = settings.freeShippingEnabled !== false &&
-            subtotal >= Number(settings.freeDeliveryThreshold)
-            ? 0
-            : Number(settings.outsideDhakaDeliveryCharge);
+        const isFree = settings.freeShippingEnabled !== false &&
+            subtotal >= Number(settings.freeDeliveryThreshold);
+        const deliveryCharge = 0;
         return {
             cartId: cartWithItems.guestId ?? cartWithItems.id,
             items,
             subtotal,
             discountAmount: 0,
             deliveryCharge,
-            total: subtotal + deliveryCharge,
+            total: subtotal,
             currency: 'BDT',
         };
     }

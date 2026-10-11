@@ -68,6 +68,10 @@ enum InventoryTransactionType {
   RESTOCK
 }
 
+enum AuthProvider {
+  GOOGLE
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -113,10 +117,11 @@ model AdminAuditLog {
 model Customer {
   id           String    @id @default(uuid())
   email        String?   @unique
-  phone        String    @unique
+  phone        String?   @unique
   firstName    String
   lastName     String?
   passwordHash String?
+  photoUrl     String?
   isActive     Boolean   @default(true)
   banReason    String?
   bannedAt     DateTime?
@@ -132,10 +137,11 @@ model Customer {
   preferredFit String?
   marketingConsent Boolean @default(false)
 
-  addresses Address[]
-  orders    Order[]
-  reviews   Review[]
-  cart Cart?
+  identities AuthIdentity[]
+  addresses  Address[]
+  orders     Order[]
+  reviews    Review[]
+  cart       Cart?
   wishlistItems WishlistItem[]
   measurements CustomerMeasurementProfile?
   reviewVotes ReviewVote[]
@@ -143,6 +149,21 @@ model Customer {
   @@index([isActive, deletedAt])
   @@index([deletedAt])
   @@map("customers")
+}
+
+model AuthIdentity {
+  id             String       @id @default(uuid())
+  customerId     String
+  customer       Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  provider       AuthProvider
+  providerUserId String
+  providerEmail  String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([provider, providerUserId])
+  @@index([customerId])
+  @@map("auth_identities")
 }
 
 model Address {
@@ -184,6 +205,7 @@ model Category {
   updatedAt   DateTime   @updatedAt
 
   products Product[]
+  offers   Offer[]    @relation("OfferCategories")
 
   @@map("categories")
 }
@@ -229,6 +251,8 @@ model Product {
   sourceRelations ProductRelation[] @relation("ProductRelationSource")
   targetRelations ProductRelation[] @relation("ProductRelationTarget")
   slugRedirects   ProductSlugRedirect[]
+  offers          Offer[]               @relation("OfferProducts")
+  collections     Collection[]          @relation("CollectionProducts")
 
   @@index([isActive, createdAt])
   @@index([isActive, deletedAt])
@@ -521,7 +545,7 @@ model CustomerArchive {
   firstName      String
   lastName       String?
   email          String?
-  phone          String
+  phone          String?
   secondaryPhone String?
   addresses      Json?
   measurements   Json?
@@ -550,3 +574,68 @@ model ProductSlugRedirect {
   @@index([productId])
   @@map("product_slug_redirects")
 }
+
+enum OfferType {
+  PRODUCT_DISCOUNT
+  CATEGORY_DISCOUNT
+  STOREWIDE
+  BUNDLE
+}
+
+enum OfferDiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+model Offer {
+  id             String            @id @default(uuid())
+  name           String
+  slug           String            @unique
+  description    String?
+  bannerTitle    String?
+  bannerSubtitle String?
+  bannerMessage  String?
+  offerType      OfferType         @default(PRODUCT_DISCOUNT)
+  discountType   OfferDiscountType @default(PERCENTAGE)
+  discountValue  Decimal           @db.Decimal(10, 2)
+  startDate      DateTime          @default(now())
+  expiryDate     DateTime
+  isActive       Boolean           @default(true)
+  badgeText      String?
+  couponCode     String?
+  priority       Int               @default(0)
+
+  products       Product[]         @relation("OfferProducts")
+  categories     Category[]        @relation("OfferCategories")
+  collections    Collection[]      @relation("OfferCollections")
+
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([isActive, startDate, expiryDate])
+  @@index([slug])
+  @@map("offers")
+}
+
+model Collection {
+  id              String     @id @default(uuid())
+  name            String
+  slug            String     @unique
+  tagline         String?
+  description     String?
+  image           String?
+  isActive        Boolean    @default(true)
+  sortOrder       Int        @default(0)
+  seoTitle        String?
+  metaDescription String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  products        Product[]  @relation("CollectionProducts")
+  offers          Offer[]    @relation("OfferCollections")
+
+  @@index([isActive, sortOrder])
+  @@index([slug])
+  @@map("collections")
+}
+

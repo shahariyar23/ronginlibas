@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Ticket, Plus, Calendar, CheckCircle2, Trash2, Loader2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Ticket, Plus, Calendar, CheckCircle2, Trash2, Loader2, Tag, Sparkles } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import type { AdminCoupon, CouponDiscountType, CreateCouponPayload } from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { TablePageSkeleton } from '@/components/common/Skeleton';
 import { PermissionGuard } from '@/components/auth/PermissionGuard';
+import { OffersManager } from '@/components/offers/OffersManager';
 
 interface Coupon {
   id: string;
@@ -56,6 +58,10 @@ function mapCoupon(coupon: AdminCoupon): Coupon {
 
 function CouponsContent() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const [mainTab, setMainTab] = useState<'offers' | 'coupons'>(
+    searchParams?.get('tab') === 'offers' ? 'offers' : 'coupons',
+  );
   const [coupons, setCoupons] = useState<Coupon[]>(INITIAL_COUPONS);
   const [isLoadingCoupons, setIsLoadingCoupons] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -194,37 +200,66 @@ function CouponsContent() {
     }
   };
 
-  if (isLoadingCoupons) {
-    return (
-      <TablePageSkeleton
-        title="Promotional Atelier Coupons"
-        showAddButton={true}
-        rowCount={6}
-      />
-    );
-  }
-
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#deddd3] pb-6">
         <div>
           <span className="text-[11px] font-bold tracking-widest uppercase text-[#717975]">
-            PROMOTIONAL ARCHITECTURE & VOUCHERS
+            PROMOTIONAL ARCHITECTURE & CAMPAIGNS
           </span>
-          <h1 className="text-3xl font-serif text-[#1b1c18] mt-1 tracking-tight">Coupons & Privileges</h1>
+          <h1 className="text-3xl font-serif text-[#1b1c18] mt-1 tracking-tight">Offers & Coupons</h1>
           <p className="text-xs text-[#69726d] mt-1">
-            Configure seasonal campaign vouchers, exclusive VIP patron privileges, and thresholds.
+            Configure dynamic seasonal offers, countdown campaigns, and customer discount vouchers.
           </p>
         </div>
 
+        {mainTab === 'coupons' && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#00231a] hover:bg-[#073a2d] text-white text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>+ CREATE VOUCHER</span>
+          </button>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex items-center gap-2 border-b border-[#deddd3] pb-1">
         <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#00231a] hover:bg-[#073a2d] text-white text-xs font-semibold uppercase tracking-wider transition-colors"
+          onClick={() => setMainTab('offers')}
+          className={`flex items-center gap-2 px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border-b-2 -mb-[5px] ${
+            mainTab === 'offers'
+              ? 'border-[#073a2d] text-[#073a2d] bg-[#f5f4ed]/60'
+              : 'border-transparent text-[#717975] hover:text-[#1b1c18]'
+          }`}
         >
-          <Plus className="w-3.5 h-3.5" />
-          <span>+ CREATE VOUCHER</span>
+          <Tag className="w-4 h-4 text-[#c79a45]" />
+          <span>Promotional Offers</span>
+        </button>
+        <button
+          onClick={() => setMainTab('coupons')}
+          className={`flex items-center gap-2 px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border-b-2 -mb-[5px] ${
+            mainTab === 'coupons'
+              ? 'border-[#073a2d] text-[#073a2d] bg-[#f5f4ed]/60'
+              : 'border-transparent text-[#717975] hover:text-[#1b1c18]'
+          }`}
+        >
+          <Ticket className="w-4 h-4 text-[#073a2d]" />
+          <span>Vouchers & Coupons</span>
         </button>
       </div>
+
+      {mainTab === 'offers' ? (
+        <OffersManager />
+      ) : isLoadingCoupons ? (
+        <TablePageSkeleton
+          title="Promotional Atelier Coupons"
+          showAddButton={false}
+          rowCount={6}
+        />
+      ) : (
+        <>
 
       {(loadError || mutationError) && (
         <div
@@ -539,6 +574,8 @@ function CouponsContent() {
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

@@ -43,6 +43,8 @@ import {
   Trash2,
   Edit2,
 } from 'lucide-react';
+import { SocialAccountsManager } from '@/components/profile/SocialAccountsManager';
+import { AccountDeletionSection } from '@/components/profile/AccountDeletionSection';
 import {
   getEligibleReviews,
   getCustomerReviews,
@@ -849,6 +851,22 @@ export const ProfileClient: React.FC = () => {
                   </p>
                 </div>
 
+                {!user.hasPhone && (
+                  <div className="p-4 bg-[#fbf5e6] border border-[#c79a45]/50 flex items-start gap-3.5">
+                    <div className="w-7 h-7 rounded-full bg-[#c79a45] text-[#073a2d] flex items-center justify-center shrink-0 font-bold text-xs mt-0.5">
+                      !
+                    </div>
+                    <div>
+                      <h4 className="font-sans text-xs font-semibold text-[#073a2d] uppercase tracking-wider">
+                        Action Required: Add Mobile Number
+                      </h4>
+                      <p className="font-sans text-xs text-[#69726d] mt-0.5 leading-relaxed">
+                        Your account was registered via social authentication. Please specify your primary contact number below to enable order dispatches and courier tracking.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <form onSubmit={handleSaveProfile} className="space-y-8">
                   {/* Section 1: Contact Information */}
                   <div className="space-y-4">
@@ -1338,6 +1356,10 @@ export const ProfileClient: React.FC = () => {
                     <span>Update Sanctuary Password</span>
                   </Button>
                 </form>
+
+                <SocialAccountsManager />
+
+                <AccountDeletionSection />
               </div>
             )}
 

@@ -7,15 +7,15 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 export class LoginDto {
     email;
     password;
 }
 __decorate([
-    ApiProperty({ example: 'admin@ronginlibas.com' }),
-    IsEmail(),
+    ApiProperty({ example: 'patron@ronginlibas.com or +8801712345678' }),
+    IsString(),
     IsNotEmpty(),
     __metadata("design:type", String)
 ], LoginDto.prototype, "email", void 0);

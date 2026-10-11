@@ -15,6 +15,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CustomersService } from '../services/customers.service.js';
 import { CustomerAuthGuard } from '../../auth/guards/customer-auth.guard.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import { Public } from '../../common/decorators/public.decorator.js';
 import { UpdateCustomerProfileDto } from '../dto/update-customer-profile.dto.js';
 import { CreateAddressDto, UpdateAddressDto } from '../dto/address.dto.js';
 import { MeasurementProfileDto } from '../dto/measurement-profile.dto.js';
@@ -82,6 +83,20 @@ let CustomersController = class CustomersController {
         return {
             message: 'Measurement profile updated successfully',
             data: await this.customersService.updateMeasurements(customerId, dto),
+        };
+    }
+    async deleteMyAccount(customerId, reason) {
+        const result = await this.customersService.deleteMyAccount(customerId, reason);
+        return {
+            message: 'Your account and personal data have been deleted successfully.',
+            data: result,
+        };
+    }
+    async submitDataDeletionRequest(dto) {
+        const result = await this.customersService.submitPublicDataDeletionRequest(dto);
+        return {
+            message: 'Data deletion request processed.',
+            data: result,
         };
     }
 };
@@ -172,6 +187,24 @@ __decorate([
     __metadata("design:paramtypes", [String, MeasurementProfileDto]),
     __metadata("design:returntype", Promise)
 ], CustomersController.prototype, "updateMeasurements", null);
+__decorate([
+    Delete('me'),
+    ApiOperation({ summary: 'Permanently delete the authenticated customer profile and linked social identities' }),
+    __param(0, CurrentUser('id')),
+    __param(1, Body('reason')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], CustomersController.prototype, "deleteMyAccount", null);
+__decorate([
+    Public(),
+    Post('data-deletion-request'),
+    ApiOperation({ summary: 'Public endpoint to submit a data deletion request (Compliance)' }),
+    __param(0, Body()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], CustomersController.prototype, "submitDataDeletionRequest", null);
 CustomersController = __decorate([
     ApiTags('Customers'),
     ApiBearerAuth(),

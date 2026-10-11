@@ -26,12 +26,14 @@ let ProductsService = ProductsService_1 = class ProductsService {
         const limit = query.limit || 20;
         const skip = (page - 1) * limit;
         const where = buildProductWhere(query, isAdmin);
+        const isBestSellingSort = query.sort === 'best-selling' ||
+            (query.bestSeller === true && (!query.sort || query.sort === 'featured' || query.sort === 'newest'));
         const orderBy = query.sort === 'price-asc' || query.sort === 'price-low'
             ? { price: 'asc' }
             : query.sort === 'price-desc' || query.sort === 'price-high'
                 ? { price: 'desc' }
-                : query.sort === 'best-selling'
-                    ? [{ orderItems: { _count: 'desc' } }, { createdAt: 'desc' }]
+                : isBestSellingSort
+                    ? [{ orderItems: { _count: 'desc' } }, { isBestSeller: 'desc' }, { createdAt: 'desc' }]
                     : query.sort === 'featured'
                         ? [{ isFeatured: 'desc' }, { createdAt: 'desc' }]
                         : { createdAt: 'desc' };
@@ -63,6 +65,7 @@ let ProductsService = ProductsService_1 = class ProductsService {
                         select: { rating: true },
                     },
                     orderItems: {
+                        where: { order: { status: { not: 'CANCELLED' } } },
                         select: { quantity: true },
                     },
                 },
@@ -70,8 +73,28 @@ let ProductsService = ProductsService_1 = class ProductsService {
             }),
             this.prisma.product.count({ where }),
         ]);
+        const mappedItems = isAdmin ? items : items.map(normalizeStorefrontSizeLabels);
+        if (isBestSellingSort) {
+            mappedItems.sort((a, b) => {
+                const soldA = a.totalSold !== undefined
+                    ? a.totalSold
+                    : (a.orderItems ?? []).reduce((sum, oi) => sum + (oi.quantity || 1), 0);
+                const soldB = b.totalSold !== undefined
+                    ? b.totalSold
+                    : (b.orderItems ?? []).reduce((sum, oi) => sum + (oi.quantity || 1), 0);
+                if (soldB !== soldA)
+                    return soldB - soldA;
+                const flagA = a.isBestSeller ? 1 : 0;
+                const flagB = b.isBestSeller ? 1 : 0;
+                if (flagB !== flagA)
+                    return flagB - flagA;
+                const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                return timeB - timeA;
+            });
+        }
         return {
-            items: isAdmin ? items : items.map(normalizeStorefrontSizeLabels),
+            items: mappedItems,
             page,
             limit,
             total,
@@ -204,12 +227,16 @@ let ProductsService = ProductsService_1 = class ProductsService {
                     take: 10,
                     orderBy: { createdAt: 'desc' },
                 },
+                orderItems: {
+                    where: { order: { status: { not: 'CANCELLED' } } },
+                    select: { quantity: true },
+                },
             },
         });
         if (product) {
             return normalizeStorefrontSizeLabels(product);
         }
-        const redirect = await this.prisma.productSlugRedirect.findUnique({
+        const redirect = await this.prisma.productSlugRedirect?.findUnique({
             where: { sourceSlug: slug },
         });
         if (redirect) {
@@ -226,6 +253,10 @@ let ProductsService = ProductsService_1 = class ProductsService {
                         },
                         take: 10,
                         orderBy: { createdAt: 'desc' },
+                    },
+                    orderItems: {
+                        where: { order: { status: { not: 'CANCELLED' } } },
+                        select: { quantity: true },
                     },
                 },
             });
@@ -279,6 +310,7 @@ let ProductsService = ProductsService_1 = class ProductsService {
                             select: { rating: true },
                         },
                         orderItems: {
+                            where: { order: { status: { not: 'CANCELLED' } } },
                             select: { quantity: true },
                         },
                     },
@@ -306,6 +338,7 @@ let ProductsService = ProductsService_1 = class ProductsService {
                     select: { rating: true },
                 },
                 orderItems: {
+                    where: { order: { status: { not: 'CANCELLED' } } },
                     select: { quantity: true },
                 },
             },
@@ -328,7 +361,7 @@ let ProductsService = ProductsService_1 = class ProductsService {
                 },
                 select: { id: true },
             });
-            const existingRedirect = await this.prisma.productSlugRedirect.findFirst({
+            const existingRedirect = await this.prisma.productSlugRedirect?.findFirst({
                 where: {
                     sourceSlug: candidate,
                     ...(excludeId ? { productId: { not: excludeId } } : {}),
@@ -805,14 +838,74 @@ function buildProductWhere(query, isAdmin, excludedFacet) {
             },
         };
     }
+    if (query.collection) {
+        if (query.collection.toLowerCase() === 'bestsellers') {
+            andConditions.push({
+                OR: [
+                    { isBestSeller: true },
+                    {
+                        orderItems: {
+                            some: {
+                                order: { status: { not: 'CANCELLED' } },
+                            },
+                        },
+                    },
+                    {
+                        collections: {
+                            some: {
+                                ...(isAdmin ? {} : { isActive: true }),
+                                OR: [
+                                    { slug: { equals: query.collection, mode: 'insensitive' } },
+                                    { name: { equals: query.collection, mode: 'insensitive' } },
+                                ],
+                            },
+                        },
+                    },
+                ],
+            });
+        }
+        else {
+            where.collections = {
+                some: {
+                    ...(isAdmin ? {} : { isActive: true }),
+                    OR: [
+                        { slug: { equals: query.collection, mode: 'insensitive' } },
+                        { name: { equals: query.collection, mode: 'insensitive' } },
+                    ],
+                },
+            };
+        }
+    }
     if (query.gender)
         where.gender = query.gender;
     if (query.featured !== undefined)
         where.isFeatured = query.featured;
     if (query.newArrival !== undefined)
         where.isNewArrival = query.newArrival;
-    if (query.bestSeller !== undefined)
-        where.isBestSeller = query.bestSeller;
+    if (query.bestSeller !== undefined) {
+        if (query.bestSeller) {
+            andConditions.push({
+                OR: [
+                    { isBestSeller: true },
+                    {
+                        orderItems: {
+                            some: {
+                                order: { status: { not: 'CANCELLED' } },
+                            },
+                        },
+                    },
+                ],
+            });
+        }
+        else {
+            where.isBestSeller = false;
+            where.orderItems = {
+                none: {
+                    order: { status: { not: 'CANCELLED' } },
+                },
+            };
+        }
+    }
     if (query.onSale)
         where.compareAtPrice = { not: null };
     if (query.expressAvailable !== undefined)
@@ -961,11 +1054,13 @@ function normalizeStorefrontSizeLabels(product) {
         ? Number((reviews.reduce((sum, r) => sum + r.rating, 0) / reviewsCount).toFixed(1))
         : 0;
     const totalSold = (product.orderItems ?? []).reduce((sum, oi) => sum + (oi.quantity || 1), 0);
+    const isBestSeller = Boolean(product.isBestSeller || totalSold > 0);
     const base = {
         ...product,
         reviewsCount,
         averageRating,
         totalSold,
+        isBestSeller,
     };
     if (!product.category || !product.variants)
         return base;

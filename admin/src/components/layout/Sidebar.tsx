@@ -8,16 +8,19 @@ import {
   LayoutDashboard,
   Shirt,
   Layers,
+  Sparkles,
+  Tag,
   ShoppingBag,
+  ShoppingCart,
   Users,
   Warehouse,
   Ticket,
   MessageSquare,
-  Settings,
-  LogOut,
+  BarChart3,
   UserCog,
   Activity,
-  ShoppingCart,
+  Settings,
+  LogOut,
   X,
 } from 'lucide-react';
 import { adminApi, AdminUser } from '@/lib/api';
@@ -31,22 +34,47 @@ interface NavItemDef {
   adminRoleOnly?: boolean;
 }
 
-const NAV_ITEMS: NavItemDef[] = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Products', href: '/products', icon: Shirt, permissionKey: 'products' },
-  { name: 'Categories', href: '/categories', icon: Layers, permissionKey: 'categories' },
-  { name: 'Orders', href: '/orders', icon: ShoppingBag, permissionKey: 'orders' },
-  { name: 'Abandoned Carts', href: '/carts', icon: ShoppingCart, permissionKey: 'orders' },
-  { name: 'Customers', href: '/customers', icon: Users, permissionKey: 'customers' },
-  { name: 'Inventory', href: '/inventory', icon: Warehouse, permissionKey: 'inventory' },
-  { name: 'Coupons', href: '/coupons', icon: Ticket, permissionKey: 'coupons' },
-  { name: 'Reviews', href: '/reviews', icon: MessageSquare, permissionKey: 'reviews' },
-  { name: 'Staff & Roles', href: '/staff', icon: UserCog, permissionKey: 'staff' },
-  { name: 'Admin Activity', href: '/activity', icon: Activity, adminRoleOnly: true },
-];
+interface NavSection {
+  title: string;
+  items: NavItemDef[];
+}
 
-const PREF_ITEMS: NavItemDef[] = [
-  { name: 'Settings', href: '/settings', icon: Settings, permissionKey: 'settings' },
+const NAV_SECTIONS: NavSection[] = [
+  {
+    title: 'OPERATIONS',
+    items: [
+      { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+      { name: 'Products', href: '/products', icon: Shirt, permissionKey: 'products' },
+      { name: 'Categories', href: '/categories', icon: Layers, permissionKey: 'categories' },
+      { name: 'Collections', href: '/collections', icon: Sparkles, permissionKey: 'collections' },
+      { name: 'Offers', href: '/offers', icon: Tag, permissionKey: 'offers' },
+      { name: 'Orders', href: '/orders', icon: ShoppingBag, permissionKey: 'orders' },
+      { name: 'Abandoned Carts', href: '/carts', icon: ShoppingCart, permissionKey: 'orders' },
+      { name: 'Customers', href: '/customers', icon: Users, permissionKey: 'customers' },
+      { name: 'Inventory', href: '/inventory', icon: Warehouse, permissionKey: 'inventory' },
+      { name: 'Coupons', href: '/coupons', icon: Ticket, permissionKey: 'coupons' },
+      { name: 'Reviews', href: '/reviews', icon: MessageSquare, permissionKey: 'reviews' },
+    ],
+  },
+  {
+    title: 'ANALYTICS',
+    items: [
+      { name: 'Reports', href: '/reports', icon: BarChart3, permissionKey: 'reports' },
+    ],
+  },
+  {
+    title: 'TEAM & SECURITY',
+    items: [
+      { name: 'Staff & Roles', href: '/staff', icon: UserCog, permissionKey: 'staff' },
+      { name: 'Admin Activity', href: '/activity', icon: Activity, adminRoleOnly: true },
+    ],
+  },
+  {
+    title: 'PREFERENCES',
+    items: [
+      { name: 'Settings', href: '/settings', icon: Settings, permissionKey: 'settings' },
+    ],
+  },
 ];
 
 export function Sidebar() {
@@ -82,12 +110,26 @@ export function Sidebar() {
     if (!item.permissionKey) return true;
     if (!currentUser) return false;
     if (currentUser.role === 'SUPER_ADMIN') return true;
+
     const permissions = (currentUser.permissions || []).map((p) => p.toLowerCase());
+
+    // Backwards-compatible access for granular modules
+    if (item.permissionKey === 'collections') {
+      return (
+        permissions.includes('collections') ||
+        permissions.includes('categories') ||
+        permissions.includes('products')
+      );
+    }
+    if (item.permissionKey === 'offers') {
+      return permissions.includes('offers') || permissions.includes('coupons');
+    }
+    if (item.permissionKey === 'reports') {
+      return permissions.includes('reports') || permissions.includes('orders');
+    }
+
     return permissions.includes(item.permissionKey.toLowerCase());
   };
-
-  const visibleNavItems = NAV_ITEMS.filter(hasAccess);
-  const visiblePrefItems = PREF_ITEMS.filter(hasAccess);
 
   const isActive = (href: string) => {
     if (href === '/') {
@@ -132,75 +174,47 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* Navigation list */}
+      {/* Navigation Sections */}
       <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-3 py-5">
-        <div>
-          <div className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-[#76a493]">
-            NAVIGATION
-          </div>
-          <nav className="space-y-1">
-            {visibleNavItems.map((item) => {
-              const active = isActive(item.href);
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={() => {
-                    if (isMobile) closeMobileSidebar();
-                  }}
-                  className={`flex items-center gap-3 px-3.5 py-2.5 text-xs font-medium tracking-wide transition-colors ${
-                    active
-                      ? 'bg-[#12503e] text-white border-l-2 border-[#c79a45] shadow-sm font-semibold'
-                      : 'text-[#a1d1be] hover:text-white hover:bg-[#073a2d]/60'
-                  }`}
-                >
-                  <Icon
-                    className={`w-4 h-4 shrink-0 ${
-                      active ? 'text-[#c79a45]' : 'text-[#76a493]'
-                    }`}
-                  />
-                  <span>{item.name}</span>
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
+        {NAV_SECTIONS.map((section) => {
+          const visibleItems = section.items.filter(hasAccess);
+          if (visibleItems.length === 0) return null;
 
-        {visiblePrefItems.length > 0 && (
-          <div>
-            <div className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-[#76a493]">
-              PREFERENCES
-            </div>
-            <nav className="space-y-1">
-              {visiblePrefItems.map((item) => {
-                const active = isActive(item.href);
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={() => {
-                      if (isMobile) closeMobileSidebar();
-                    }}
-                    className={`flex items-center gap-3 px-3.5 py-2.5 text-xs font-medium tracking-wide transition-colors ${
-                      active
-                        ? 'bg-[#12503e] text-white border-l-2 border-[#c79a45] shadow-sm font-semibold'
-                        : 'text-[#a1d1be] hover:text-white hover:bg-[#073a2d]/60'
-                    }`}
-                  >
-                    <Icon
-                      className={`w-4 h-4 shrink-0 ${
-                        active ? 'text-[#c79a45]' : 'text-[#76a493]'
+          return (
+            <div key={section.title}>
+              <div className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-[#76a493]">
+                {section.title}
+              </div>
+              <nav className="space-y-0.5">
+                {visibleItems.map((item) => {
+                  const active = isActive(item.href);
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      onClick={() => {
+                        if (isMobile) closeMobileSidebar();
+                      }}
+                      className={`flex items-center gap-3 px-3.5 py-2 text-xs font-medium tracking-wide transition-colors ${
+                        active
+                          ? 'bg-[#12503e] text-white border-l-2 border-[#c79a45] shadow-xs font-semibold'
+                          : 'text-[#a1d1be] hover:text-white hover:bg-[#073a2d]/60'
                       }`}
-                    />
-                    <span>{item.name}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
-        )}
+                    >
+                      <Icon
+                        className={`w-4 h-4 shrink-0 ${
+                          active ? 'text-[#c79a45]' : 'text-[#76a493]'
+                        }`}
+                      />
+                      <span>{item.name}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+          );
+        })}
       </div>
 
       {/* Bottom Sign Out */}

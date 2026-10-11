@@ -19,7 +19,13 @@ export function HomeContent({ initialProducts }: HomeContentProps) {
   const [products] = useState<Product[]>(initialProducts);
 
   const newArrivals = products.filter((product) => product.isNewArrival);
-  const bestSellers = products.filter((product) => product.isBestSeller);
+  const bestSellers = products
+    .filter((product) => product.isBestSeller || (product.totalSold !== undefined && product.totalSold > 0))
+    .sort(
+      (a, b) =>
+        (b.totalSold || 0) - (a.totalSold || 0) ||
+        (b.isBestSeller ? 1 : 0) - (a.isBestSeller ? 1 : 0),
+    );
   const displayNewArrivals = newArrivals.length > 0 ? newArrivals : products.slice(0, 4);
   const displayBestSellers = bestSellers.length > 0 ? bestSellers : products.slice(0, 4);
 

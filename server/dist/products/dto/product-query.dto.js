@@ -27,6 +27,7 @@ const toBoolean = ({ value }) => value === undefined || value === true || value 
             : value;
 export class ProductQueryDto extends PaginationQueryDto {
     category;
+    collection;
     status;
     gender;
     size;
@@ -50,6 +51,12 @@ __decorate([
     IsOptional(),
     __metadata("design:type", String)
 ], ProductQueryDto.prototype, "category", void 0);
+__decorate([
+    ApiPropertyOptional({ description: 'Collection slug or name' }),
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], ProductQueryDto.prototype, "collection", void 0);
 __decorate([
     ApiPropertyOptional({ enum: ['Active', 'Low Stock', 'Out of Stock', 'Archived', 'All'] }),
     IsString(),

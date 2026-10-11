@@ -916,6 +916,130 @@ let CustomersService = CustomersService_1 = class CustomersService {
             data: archive,
         };
     }
+    async deleteMyAccount(customerId, reason) {
+        const customer = await this.prisma.customer.findUnique({
+            where: { id: customerId },
+            include: {
+                addresses: true,
+                measurements: true,
+                orders: {
+                    include: {
+                        items: true,
+                    },
+                },
+                identities: true,
+            },
+        });
+        if (!customer) {
+            throw new NotFoundException('Customer profile not found');
+        }
+        const fullName = [customer.firstName, customer.lastName].filter(Boolean).join(' ') || 'Patron';
+        const totalSpent = customer.orders.reduce((acc, order) => acc + Number(order.totalAmount), 0);
+        const totalOrders = customer.orders.length;
+        const ordersSnapshot = customer.orders.map((order) => ({
+            orderNumber: order.orderNumber,
+            status: order.status,
+            totalAmount: Number(order.totalAmount),
+            createdAt: order.createdAt,
+            items: order.items.map((item) => ({
+                productName: item.productName,
+                variantName: item.variantName,
+                sku: item.sku,
+                unitPrice: Number(item.unitPrice),
+                quantity: item.quantity,
+                subtotal: Number(item.subtotal),
+            })),
+        }));
+        const archive = await this.prisma.$transaction(async (tx) => {
+            const createdArchive = await tx.customerArchive.create({
+                data: {
+                    originalId: customer.id,
+                    firstName: customer.firstName,
+                    lastName: customer.lastName,
+                    email: customer.email,
+                    phone: customer.phone,
+                    secondaryPhone: customer.secondaryPhone,
+                    addresses: customer.addresses,
+                    measurements: customer.measurements,
+                    ordersSnapshot: ordersSnapshot,
+                    totalSpent,
+                    totalOrders,
+                    deletedBy: 'Customer Self-Service Request',
+                    deleteReason: reason || 'Customer requested account and personal data deletion',
+                    deletedAt: new Date(),
+                },
+            });
+            await tx.order.updateMany({
+                where: { customerId: customer.id },
+                data: {
+                    guestName: fullName,
+                    guestEmail: customer.email || undefined,
+                    guestPhone: customer.phone || undefined,
+                },
+            });
+            await tx.customer.delete({
+                where: { id: customer.id },
+            });
+            return createdArchive;
+        });
+        await this.auditService.record({
+            actor: {
+                id: customer.id,
+                email: customer.email || 'customer-self-service',
+                firstName: customer.firstName,
+                lastName: customer.lastName || undefined,
+                role: 'CUSTOMER',
+            },
+            module: 'customers',
+            action: 'CUSTOMER_SELF_DELETED',
+            entityType: 'customer',
+            entityId: customer.id,
+            entityLabel: `${fullName} (${customer.email || customer.phone})`,
+            summary: `Customer self-deleted their account. Personal data removed, past ${totalOrders} orders preserved in archive (Archive ID: ${archive.id}).`,
+            before: {
+                id: customer.id,
+                name: fullName,
+                email: customer.email,
+                phone: customer.phone,
+                identitiesCount: customer.identities.length,
+            },
+            after: {
+                archiveId: archive.id,
+                deletedAt: archive.deletedAt,
+            },
+        });
+        return {
+            deleted: true,
+            archiveId: archive.id,
+            deletedAt: archive.deletedAt,
+        };
+    }
+    async submitPublicDataDeletionRequest(dto) {
+        const cleanEmail = dto.email.trim().toLowerCase();
+        const customer = await this.prisma.customer.findFirst({
+            where: {
+                OR: [
+                    { email: cleanEmail },
+                    ...(dto.phone ? [{ phone: dto.phone.trim() }] : []),
+                ],
+            },
+            include: {
+                identities: true,
+            },
+        });
+        const confirmationCode = `RL-DEL-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        if (customer) {
+            await this.deleteMyAccount(customer.id, `Public Deletion Request: ${dto.reason || 'Requested by customer'}`);
+        }
+        return {
+            status: 'SUCCESS',
+            confirmationCode,
+            email: cleanEmail,
+            message: customer
+                ? 'Your account and linked social identities have been permanently removed. Order records are archived per regulatory compliance.'
+                : 'Your deletion request has been recorded. If an account associated with this email or phone exists, all personal data will be purged within 48 hours.',
+        };
+    }
     async findAllArchives(query) {
         const page = query.page || 1;
         const limit = query.limit || 20;

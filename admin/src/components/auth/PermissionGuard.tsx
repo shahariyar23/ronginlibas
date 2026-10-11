@@ -6,7 +6,7 @@ import { ShieldAlert, ArrowLeft, Lock } from 'lucide-react';
 import { adminApi, AdminUser } from '@/lib/api';
 
 interface PermissionGuardProps {
-  permission: string;
+  permission: string | string[];
   moduleName?: string;
   children: React.ReactNode;
 }
@@ -59,11 +59,15 @@ export function PermissionGuard({
   }
 
   // Check granular module permission
-  const permissions = (user?.permissions || []).map((p) => p.toLowerCase());
-  const hasAccess = permissions.includes(permission.toLowerCase());
+  const userPermissions = (user?.permissions || []).map((p) => p.toLowerCase());
+  const requiredPermissions = Array.isArray(permission)
+    ? permission.map((p) => p.toLowerCase())
+    : permission.split(',').map((p) => p.trim().toLowerCase());
+  const hasAccess = requiredPermissions.some((req) => userPermissions.includes(req));
 
   if (!hasAccess) {
-    const displayTitle = moduleName || permission.charAt(0).toUpperCase() + permission.slice(1);
+    const primaryPermission = Array.isArray(permission) ? permission[0] : permission;
+    const displayTitle = moduleName || primaryPermission.charAt(0).toUpperCase() + primaryPermission.slice(1);
 
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center p-6 text-center">

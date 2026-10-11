@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Logo } from './Logo';
-import { PhoneCall, Mail, MapPin, ShieldCheck } from 'lucide-react';
+import { PhoneCall, ShieldCheck } from 'lucide-react';
 import { getWhatsAppUrl, useStorefront } from '@/context/StorefrontContext';
 
 const FacebookIcon = () => (
@@ -20,7 +20,7 @@ export const Footer: React.FC = () => {
     <footer className="w-full bg-[#00231a] text-[#fbf9f2] pt-20 pb-12 border-t border-[#073a2d]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Main Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 pb-16 border-b border-[#073a2d]">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 pb-16 border-b border-[#073a2d]">
           {/* Brand Column */}
           <div className="lg:col-span-2 space-y-6">
             <Logo className="h-10 w-auto" inverted />
@@ -49,6 +49,17 @@ export const Footer: React.FC = () => {
                 </a>
               </div>
             )}
+            <div className="pt-2">
+              <a
+                href="https://facebook.com/ronginlibas"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Visit Rongin Libas on Facebook"
+                className="w-8 h-8 rounded-none border border-[#76a493]/30 flex items-center justify-center text-[#fbf9f2] hover:text-[#c79a45] hover:border-[#c79a45] transition-colors"
+              >
+                <FacebookIcon />
+              </a>
+            </div>
           </div>
 
           {/* Shop Column */}
@@ -122,53 +133,29 @@ export const Footer: React.FC = () => {
                 </Link>
               </li>
               <li>
-                <Link href="/checkout" className="hover:text-[#c79a45] transition-colors">
+                <Link href="/terms" className="hover:text-[#c79a45] transition-colors">
                   Delivery & Shipping Terms
                 </Link>
               </li>
-              <li>
-                <span className="hover:text-[#c79a45] transition-colors cursor-pointer">
-                  Doorstep Open-Box Inspection Policy
-                </span>
-              </li>
             </ul>
-          </div>
-
-          {/* Atelier & Connect */}
-          <div>
-            <h4 className="font-serif text-sm tracking-widest text-[#fbf9f2] uppercase mb-5 font-semibold">
-              Atelier
-            </h4>
-            <div className="space-y-4 font-sans text-xs text-[#c0c8c3]">
-              <div className="flex items-start gap-2.5">
-                <MapPin className="w-4 h-4 text-[#c79a45] flex-shrink-0 mt-0.5" />
-                <p>Banani & Dhanmondi Studios, Dhaka, Bangladesh</p>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <Mail className="w-4 h-4 text-[#c79a45] flex-shrink-0" />
-                <a href="mailto:atelier@ronginlibas.com" className="hover:text-[#c79a45]">
-                  atelier@ronginlibas.com
-                </a>
-              </div>
-              <div className="pt-2 flex items-center gap-3">
-                <a
-                  href="https://facebook.com/ronginlibas"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-8 h-8 rounded-none border border-[#76a493]/30 flex items-center justify-center text-[#fbf9f2] hover:text-[#c79a45] hover:border-[#c79a45] transition-colors"
-                >
-                  <FacebookIcon />
-                </a>
-              </div>
-            </div>
           </div>
         </div>
 
         {/* Bottom Bar */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 font-sans text-[11px] text-[#717975]">
           <p>© {new Date().getFullYear()} Rongin Libas. Cloth Your Identity. All rights reserved.</p>
-          <div className="flex items-center gap-6">
-            <span>Payment Partners: bKash • Nagad • Visa • Mastercard • Cash on Delivery</span>
+          <div className="flex flex-wrap items-center gap-5">
+            <Link href="/terms" className="hover:text-[#c79a45] transition-colors">
+              Terms of Service
+            </Link>
+            <span>•</span>
+            <Link href="/privacy" className="hover:text-[#c79a45] transition-colors">
+              Privacy Policy
+            </Link>
+            <span>•</span>
+            <Link href="/data-deletion" className="hover:text-[#c79a45] transition-colors">
+              Data Deletion
+            </Link>
           </div>
         </div>
       </div>

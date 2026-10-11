@@ -26,12 +26,15 @@ import { PermissionGuard } from '@/components/auth/PermissionGuard';
 
 const MODULE_PERMISSIONS = [
   { key: 'products', label: 'Products', description: 'Catalog & apparel items' },
-  { key: 'categories', label: 'Categories', description: 'Product taxonomy & collections' },
+  { key: 'categories', label: 'Categories', description: 'Product taxonomy & classifications' },
+  { key: 'collections', label: 'Collections', description: 'Curated editorial drops & showcases' },
+  { key: 'offers', label: 'Offers', description: 'Promotional countdowns & campaign markdowns' },
   { key: 'orders', label: 'Orders', description: 'Order processing & tracking' },
   { key: 'customers', label: 'Customers', description: 'Patron database & addresses' },
   { key: 'inventory', label: 'Inventory', description: 'Warehouse stock levels' },
   { key: 'coupons', label: 'Coupons', description: 'Promotional discount keys' },
   { key: 'reviews', label: 'Reviews', description: 'Customer reviews & responses' },
+  { key: 'reports', label: 'Reports', description: 'Live sales, order & customer analytics' },
   { key: 'settings', label: 'Settings', description: 'Store configuration & defaults' },
   { key: 'staff', label: 'Staff & Roles', description: 'User & permission administration' },
 ];

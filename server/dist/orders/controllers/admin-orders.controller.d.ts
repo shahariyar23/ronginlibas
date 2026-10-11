@@ -15,7 +15,7 @@ export declare class AdminOrdersController {
         data: {
             customer: {
                 email: string | null;
-                phone: string;
+                phone: string | null;
                 firstName: string;
                 lastName: string | null;
                 id: string;
@@ -133,7 +133,7 @@ export declare class AdminOrdersController {
         data: {
             customer: {
                 email: string | null;
-                phone: string;
+                phone: string | null;
                 firstName: string;
                 lastName: string | null;
                 id: string;
@@ -186,7 +186,7 @@ export declare class AdminOrdersController {
         data: {
             customer: {
                 email: string | null;
-                phone: string;
+                phone: string | null;
                 firstName: string;
                 lastName: string | null;
                 id: string;

@@ -108,6 +108,9 @@ export declare class ProductsService {
             publicId: string | null;
             altText: string | null;
         }[];
+        orderItems: {
+            quantity: number;
+        }[];
     } & {
         description: string | null;
         name: string;
@@ -142,6 +145,7 @@ export declare class ProductsService {
         reviewsCount: number;
         averageRating: number;
         totalSold: number;
+        isBestSeller: boolean;
     }) | {
         isRedirect: boolean;
         redirectTargetSlug: string;
@@ -202,6 +206,9 @@ export declare class ProductsService {
             productId: string;
             publicId: string | null;
             altText: string | null;
+        }[];
+        orderItems: {
+            quantity: number;
         }[];
         description: string | null;
         name: string;
@@ -380,6 +387,7 @@ export declare class ProductsService {
         reviewsCount: number;
         averageRating: number;
         totalSold: number;
+        isBestSeller: boolean;
     })[]>;
     private generateUniqueSlug;
     create(dto: CreateProductDto): Promise<{
