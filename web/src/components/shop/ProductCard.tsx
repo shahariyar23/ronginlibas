@@ -64,10 +64,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     >
       {/* Product Image Frame */}
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#f5f4ed]">
-        <Link href={`/product/${product.id}`} className="block w-full h-full">
+        <Link href={`/products/${product.slug}`} className="block w-full h-full">
           <img
             src={currentImage}
-            alt={product.name}
+            alt={
+              (isHovered && product.imageDetails?.[1]?.altText) ||
+              product.imageDetails?.[0]?.altText ||
+              `${product.name} - ${product.categoryLabel} by Rongin Libas`
+            }
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
           />
         </Link>
@@ -165,7 +171,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <span className="font-sans text-[9px] sm:text-[10px] uppercase tracking-wider text-[#717975] block truncate">
             {product.categoryLabel}
           </span>
-          <Link href={`/product/${product.id}`}>
+          <Link href={`/products/${product.slug}`}>
             <h3 className="font-serif text-xs sm:text-base font-semibold text-[#073a2d] hover:text-[#0d4d3b] transition-colors line-clamp-1 mt-0.5 leading-snug">
               {product.name}
             </h3>

@@ -1,6 +1,7 @@
 export interface AdminProduct {
   id: string;
   name: string;
+  slug?: string;
   sku: string;
   barcode?: string;
   category: string;
@@ -43,6 +44,9 @@ export interface AdminProduct {
   featured?: boolean;
   isNewArrival?: boolean;
   isBestSeller?: boolean;
+  seoTitle?: string | null;
+  metaDescription?: string | null;
+  canonicalUrl?: string | null;
 }
 
 export interface AdminProductDetail {
@@ -52,6 +56,9 @@ export interface AdminProductDetail {
   sku: string;
   description?: string | null;
   shortDescription?: string | null;
+  seoTitle?: string | null;
+  metaDescription?: string | null;
+  canonicalUrl?: string | null;
   price: number;
   compareAtPrice?: number | null;
   costPrice?: number | null;

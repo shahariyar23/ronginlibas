@@ -41,4 +41,7 @@ export declare class CreateProductDto {
     isBestSeller?: boolean;
     variants?: CreateVariantDto[];
     images?: CreateProductImageDto[];
+    seoTitle?: string;
+    metaDescription?: string;
+    canonicalUrl?: string;
 }

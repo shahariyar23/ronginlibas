@@ -206,9 +206,39 @@ let ProductsService = ProductsService_1 = class ProductsService {
                 },
             },
         });
-        if (!product)
-            throw new NotFoundException(`Garment not found with slug or ID: ${slug}`);
-        return normalizeStorefrontSizeLabels(product);
+        if (product) {
+            return normalizeStorefrontSizeLabels(product);
+        }
+        const redirect = await this.prisma.productSlugRedirect.findUnique({
+            where: { sourceSlug: slug },
+        });
+        if (redirect) {
+            const redirectedProduct = await this.prisma.product.findFirst({
+                where: { id: redirect.productId, isActive: true, deletedAt: null },
+                include: {
+                    category: true,
+                    images: { orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }] },
+                    variants: { where: { isActive: true } },
+                    reviews: {
+                        where: { status: 'APPROVED' },
+                        include: {
+                            customer: { select: { firstName: true, lastName: true } },
+                        },
+                        take: 10,
+                        orderBy: { createdAt: 'desc' },
+                    },
+                },
+            });
+            if (redirectedProduct) {
+                const normalized = normalizeStorefrontSizeLabels(redirectedProduct);
+                return {
+                    ...normalized,
+                    isRedirect: true,
+                    redirectTargetSlug: redirect.targetSlug,
+                };
+            }
+        }
+        throw new NotFoundException(`Garment not found with slug or ID: ${slug}`);
     }
     async findById(id) {
         const product = await this.prisma.product.findFirst({
@@ -282,24 +312,53 @@ let ProductsService = ProductsService_1 = class ProductsService {
         });
         return relatedProducts.map(normalizeStorefrontSizeLabels);
     }
+    async generateUniqueSlug(rawSlugOrName, excludeId) {
+        const baseSlug = rawSlugOrName
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)+/g, '') || 'product';
+        let candidate = baseSlug;
+        let counter = 1;
+        while (true) {
+            const existingProduct = await this.prisma.product.findFirst({
+                where: {
+                    slug: candidate,
+                    ...(excludeId ? { id: { not: excludeId } } : {}),
+                },
+                select: { id: true },
+            });
+            const existingRedirect = await this.prisma.productSlugRedirect.findFirst({
+                where: {
+                    sourceSlug: candidate,
+                    ...(excludeId ? { productId: { not: excludeId } } : {}),
+                },
+                select: { id: true },
+            });
+            if (!existingProduct && !existingRedirect) {
+                return candidate;
+            }
+            counter += 1;
+            candidate = `${baseSlug}-${counter}`;
+        }
+    }
     async create(dto) {
-        const slug = dto.slug ||
-            dto.name
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/(^-|-$)+/g, '');
+        const slug = await this.generateUniqueSlug(dto.slug || dto.name);
         try {
             const existing = await this.prisma.product.findFirst({
-                where: { OR: [{ slug }, { sku: dto.sku }] },
+                where: { sku: dto.sku },
             });
             if (existing) {
-                throw new ConflictException('A product with this SKU or slug already exists in the catalog');
+                throw new ConflictException('A product with this SKU already exists in the catalog');
             }
             return await this.prisma.product.create({
                 data: {
                     name: dto.name,
                     slug,
                     description: dto.description,
+                    seoTitle: dto.seoTitle,
+                    metaDescription: dto.metaDescription,
+                    canonicalUrl: dto.canonicalUrl,
                     price: dto.price,
                     compareAtPrice: dto.compareAtPrice,
                     costPrice: dto.costPrice,
@@ -360,11 +419,12 @@ let ProductsService = ProductsService_1 = class ProductsService {
     async update(id, dto) {
         const existing = await this.prisma.product.findFirst({
             where: { OR: [{ id }, { slug: id }] },
-            select: { id: true },
+            select: { id: true, slug: true },
         });
         if (!existing)
             throw new NotFoundException(`Garment not found: ${id}`);
         const targetId = existing.id;
+        const currentSlug = existing.slug;
         if (dto.categoryId !== undefined) {
             const category = await this.prisma.category.findUnique({
                 where: { id: dto.categoryId },
@@ -373,16 +433,62 @@ let ProductsService = ProductsService_1 = class ProductsService {
                 throw new NotFoundException(`Category not found with id: ${dto.categoryId}`);
             }
         }
+        let targetSlug;
+        if (dto.slug) {
+            const cleanedSlug = dto.slug
+                .toLowerCase()
+                .trim()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/(^-|-$)+/g, '');
+            if (cleanedSlug && cleanedSlug !== currentSlug) {
+                const inUse = await this.prisma.product.findFirst({
+                    where: { slug: cleanedSlug, id: { not: targetId } },
+                    select: { id: true },
+                });
+                if (inUse) {
+                    throw new ConflictException(`A product with slug "${cleanedSlug}" already exists in the catalog`);
+                }
+                targetSlug = cleanedSlug;
+            }
+        }
         const previousImages = await this.prisma.productImage.findMany({
             where: { productId: targetId },
             select: { publicId: true },
         });
         const updatedProduct = await this.prisma.$transaction(async (transaction) => {
+            if (targetSlug) {
+                await transaction.productSlugRedirect.upsert({
+                    where: { sourceSlug: currentSlug },
+                    create: {
+                        sourceSlug: currentSlug,
+                        targetSlug,
+                        productId: targetId,
+                    },
+                    update: {
+                        targetSlug,
+                        productId: targetId,
+                    },
+                });
+                await transaction.productSlugRedirect.updateMany({
+                    where: { targetSlug: currentSlug },
+                    data: { targetSlug },
+                });
+                await transaction.productSlugRedirect.deleteMany({
+                    where: { sourceSlug: targetSlug },
+                });
+            }
             await transaction.product.update({
                 where: { id: targetId },
                 data: {
                     ...(dto.name && { name: dto.name }),
-                    ...(dto.slug && { slug: dto.slug }),
+                    ...(targetSlug && { slug: targetSlug }),
+                    ...(dto.seoTitle !== undefined && { seoTitle: dto.seoTitle }),
+                    ...(dto.metaDescription !== undefined && {
+                        metaDescription: dto.metaDescription,
+                    }),
+                    ...(dto.canonicalUrl !== undefined && {
+                        canonicalUrl: dto.canonicalUrl,
+                    }),
                     ...(dto.categoryId !== undefined && { categoryId: dto.categoryId }),
                     ...(dto.description !== undefined && {
                         description: dto.description,

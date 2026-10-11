@@ -125,6 +125,10 @@ function adaptBackendProduct(p: any): AdminProduct {
     })),
     fabricNote: p.fabric || undefined,
     description: p.description,
+    slug: p.slug,
+    seoTitle: p.seoTitle || undefined,
+    metaDescription: p.metaDescription || undefined,
+    canonicalUrl: p.canonicalUrl || undefined,
     tags: Array.isArray(p.tags) ? p.tags : [],
     featured: p.isFeatured,
     isNewArrival: Boolean(p.isNewArrival),
@@ -468,12 +472,16 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     try {
       const payload = {
         name: product.name,
+        slug: product.slug || undefined,
         sku: product.sku,
         price: product.price,
         compareAtPrice: product.promotionalPrice,
         costPrice: product.costOfGoods,
         categoryId: selectedCategory.id,
         description: product.description,
+        seoTitle: product.seoTitle || undefined,
+        metaDescription: product.metaDescription || undefined,
+        canonicalUrl: product.canonicalUrl || undefined,
         fabric: product.fabricNote,
         alertThreshold: product.alertThreshold !== undefined ? Number(product.alertThreshold) : 5,
         isActive: product.status !== 'Out of Stock',
@@ -550,6 +558,10 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
       const payload: Record<string, any> = {
         name: updated.name,
+        ...(updated.slug && { slug: updated.slug }),
+        ...(updated.seoTitle !== undefined && { seoTitle: updated.seoTitle }),
+        ...(updated.metaDescription !== undefined && { metaDescription: updated.metaDescription }),
+        ...(updated.canonicalUrl !== undefined && { canonicalUrl: updated.canonicalUrl }),
         price: updated.price,
         compareAtPrice: updated.promotionalPrice,
         costPrice: updated.costOfGoods,

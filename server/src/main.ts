@@ -49,8 +49,11 @@ async function bootstrap() {
       origin: string | undefined,
       callback: (err: Error | null, allow?: boolean) => void,
     ) => {
-      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server) or vercel deployments
-      if (!origin || corsOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      const isLocalDev =
+        origin && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+
+      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server), vercel deployments, or local dev origins
+      if (!origin || corsOrigins.includes(origin) || origin.endsWith('.vercel.app') || isLocalDev) {
         callback(null, true);
       } else {
         callback(null, false);

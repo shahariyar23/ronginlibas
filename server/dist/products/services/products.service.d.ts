@@ -49,7 +49,7 @@ export declare class ProductsService {
         };
     }>;
     private validatePriceRange;
-    findBySlug(slug: string): Promise<{
+    findBySlug(slug: string): Promise<({
         category: {
             description: string | null;
             name: string;
@@ -58,6 +58,8 @@ export declare class ProductsService {
             createdAt: Date;
             updatedAt: Date;
             slug: string;
+            seoTitle: string | null;
+            metaDescription: string | null;
             sortOrder: number;
             image: string | null;
             parentId: string | null;
@@ -132,8 +134,104 @@ export declare class ProductsService {
         isFeatured: boolean;
         isNewArrival: boolean;
         isBestSeller: boolean;
+        seoTitle: string | null;
+        metaDescription: string | null;
+        canonicalUrl: string | null;
         categoryId: string;
     } & {
+        reviewsCount: number;
+        averageRating: number;
+        totalSold: number;
+    }) | {
+        isRedirect: boolean;
+        redirectTargetSlug: string;
+        category: {
+            description: string | null;
+            name: string;
+            id: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            slug: string;
+            seoTitle: string | null;
+            metaDescription: string | null;
+            sortOrder: number;
+            image: string | null;
+            parentId: string | null;
+        };
+        reviews: ({
+            customer: {
+                firstName: string;
+                lastName: string | null;
+            };
+        } & {
+            status: import("@prisma/client").$Enums.ReviewStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            customerId: string;
+            images: string[];
+            productId: string;
+            rating: number;
+            comment: string;
+            adminFeedback: string | null;
+            adminFeedbackAt: Date | null;
+        })[];
+        variants: {
+            id: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            measurements: Prisma.JsonValue | null;
+            sku: string;
+            productId: string;
+            size: string;
+            color: string;
+            sizeLabel: string | null;
+            sizeType: string | null;
+            stock: number;
+            priceOverride: Prisma.Decimal | null;
+        }[];
+        images: {
+            url: string;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            sortOrder: number;
+            isPrimary: boolean;
+            productId: string;
+            publicId: string | null;
+            altText: string | null;
+        }[];
+        description: string | null;
+        name: string;
+        id: string;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+        tags: string[];
+        slug: string;
+        price: Prisma.Decimal;
+        compareAtPrice: Prisma.Decimal | null;
+        costPrice: Prisma.Decimal | null;
+        sku: string;
+        gender: import("@prisma/client").$Enums.Gender;
+        fabric: string | null;
+        fit: string | null;
+        shortDescription: string | null;
+        fabricOrigin: string | null;
+        gsm: number | null;
+        careInstructions: string | null;
+        isExpressAvailable: boolean;
+        alertThreshold: number;
+        isFeatured: boolean;
+        isNewArrival: boolean;
+        isBestSeller: boolean;
+        seoTitle: string | null;
+        metaDescription: string | null;
+        canonicalUrl: string | null;
+        categoryId: string;
         reviewsCount: number;
         averageRating: number;
         totalSold: number;
@@ -147,6 +245,8 @@ export declare class ProductsService {
             createdAt: Date;
             updatedAt: Date;
             slug: string;
+            seoTitle: string | null;
+            metaDescription: string | null;
             sortOrder: number;
             image: string | null;
             parentId: string | null;
@@ -203,6 +303,9 @@ export declare class ProductsService {
         isFeatured: boolean;
         isNewArrival: boolean;
         isBestSeller: boolean;
+        seoTitle: string | null;
+        metaDescription: string | null;
+        canonicalUrl: string | null;
         categoryId: string;
     }>;
     findRelated(slug: string, relationType: 'RELATED' | 'COMPLEMENTARY'): Promise<({
@@ -269,12 +372,16 @@ export declare class ProductsService {
         isFeatured: boolean;
         isNewArrival: boolean;
         isBestSeller: boolean;
+        seoTitle: string | null;
+        metaDescription: string | null;
+        canonicalUrl: string | null;
         categoryId: string;
     } & {
         reviewsCount: number;
         averageRating: number;
         totalSold: number;
     })[]>;
+    private generateUniqueSlug;
     create(dto: CreateProductDto): Promise<{
         variants: {
             id: string;
@@ -328,6 +435,9 @@ export declare class ProductsService {
         isFeatured: boolean;
         isNewArrival: boolean;
         isBestSeller: boolean;
+        seoTitle: string | null;
+        metaDescription: string | null;
+        canonicalUrl: string | null;
         categoryId: string;
     }>;
     update(id: string, dto: UpdateProductDto): Promise<({
@@ -339,6 +449,8 @@ export declare class ProductsService {
             createdAt: Date;
             updatedAt: Date;
             slug: string;
+            seoTitle: string | null;
+            metaDescription: string | null;
             sortOrder: number;
             image: string | null;
             parentId: string | null;
@@ -395,6 +507,9 @@ export declare class ProductsService {
         isFeatured: boolean;
         isNewArrival: boolean;
         isBestSeller: boolean;
+        seoTitle: string | null;
+        metaDescription: string | null;
+        canonicalUrl: string | null;
         categoryId: string;
     }) | {
         imageCleanupWarning: string;
@@ -406,6 +521,8 @@ export declare class ProductsService {
             createdAt: Date;
             updatedAt: Date;
             slug: string;
+            seoTitle: string | null;
+            metaDescription: string | null;
             sortOrder: number;
             image: string | null;
             parentId: string | null;
@@ -461,6 +578,9 @@ export declare class ProductsService {
         isFeatured: boolean;
         isNewArrival: boolean;
         isBestSeller: boolean;
+        seoTitle: string | null;
+        metaDescription: string | null;
+        canonicalUrl: string | null;
         categoryId: string;
     }>;
     archive(id: string): Promise<{
@@ -474,6 +594,8 @@ export declare class ProductsService {
                 createdAt: Date;
                 updatedAt: Date;
                 slug: string;
+                seoTitle: string | null;
+                metaDescription: string | null;
                 sortOrder: number;
                 image: string | null;
                 parentId: string | null;
@@ -530,6 +652,9 @@ export declare class ProductsService {
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
+            seoTitle: string | null;
+            metaDescription: string | null;
+            canonicalUrl: string | null;
             categoryId: string;
         };
     }>;
@@ -544,6 +669,8 @@ export declare class ProductsService {
                 createdAt: Date;
                 updatedAt: Date;
                 slug: string;
+                seoTitle: string | null;
+                metaDescription: string | null;
                 sortOrder: number;
                 image: string | null;
                 parentId: string | null;
@@ -600,6 +727,9 @@ export declare class ProductsService {
             isFeatured: boolean;
             isNewArrival: boolean;
             isBestSeller: boolean;
+            seoTitle: string | null;
+            metaDescription: string | null;
+            canonicalUrl: string | null;
             categoryId: string;
         };
     }>;

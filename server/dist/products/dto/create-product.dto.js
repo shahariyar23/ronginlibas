@@ -133,6 +133,9 @@ export class CreateProductDto {
     isBestSeller = false;
     variants;
     images;
+    seoTitle;
+    metaDescription;
+    canonicalUrl;
 }
 __decorate([
     ApiProperty({ example: 'Imperial Zari Embroidered Panjabi - Heritage Olive' }),
@@ -288,4 +291,24 @@ __decorate([
     IsOptional(),
     __metadata("design:type", Array)
 ], CreateProductDto.prototype, "images", void 0);
+__decorate([
+    ApiPropertyOptional({ example: 'Premium Mercerized Polo T-Shirt | Rongin Libas' }),
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], CreateProductDto.prototype, "seoTitle", void 0);
+__decorate([
+    ApiPropertyOptional({
+        example: "Premium men's polo T-shirt made from 100% mercerized pique cotton. Regular fit and refined everyday style from Rongin Libas.",
+    }),
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], CreateProductDto.prototype, "metaDescription", void 0);
+__decorate([
+    ApiPropertyOptional({ example: 'https://ronginlibas.com/products/premium-mercerized-polo-t-shirt' }),
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], CreateProductDto.prototype, "canonicalUrl", void 0);
 //# sourceMappingURL=create-product.dto.js.map

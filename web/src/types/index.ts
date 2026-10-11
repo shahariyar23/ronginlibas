@@ -34,6 +34,17 @@ export interface Product {
   isNewArrival?: boolean;
   isBestSeller?: boolean;
   featured?: boolean;
+  seoTitle?: string;
+  metaDescription?: string;
+  canonicalUrl?: string;
+  redirectTargetSlug?: string;
+  isRedirect?: boolean;
+  imageDetails?: {
+    url: string;
+    altText?: string | null;
+    isPrimary?: boolean;
+    publicId?: string | null;
+  }[];
   variants?: {
     id: string;
     size: string;

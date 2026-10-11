@@ -59,6 +59,9 @@ export declare class AdminOrdersController {
                     isFeatured: boolean;
                     isNewArrival: boolean;
                     isBestSeller: boolean;
+                    seoTitle: string | null;
+                    metaDescription: string | null;
+                    canonicalUrl: string | null;
                     categoryId: string;
                 }) | null;
                 variant: {

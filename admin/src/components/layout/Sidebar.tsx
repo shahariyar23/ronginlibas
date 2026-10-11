@@ -58,10 +58,14 @@ export function Sidebar() {
     if (stored) {
       setCurrentUser(stored);
     }
-    // Refresh live profile in background to keep permissions strictly synchronized
-    adminApi.auth.refreshUser().then((live) => {
-      if (live) setCurrentUser(live);
-    });
+    if (adminApi.auth.isAuthenticated()) {
+      adminApi.auth
+        .refreshUser()
+        .then((live) => {
+          if (live) setCurrentUser(live);
+        })
+        .catch(() => {});
+    }
   }, []);
 
   // Close mobile sidebar on route change

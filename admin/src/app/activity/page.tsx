@@ -121,11 +121,18 @@ export default function ActivityPage() {
 
   useEffect(() => {
     let cancelled = false;
-    adminApi.auth.refreshUser().then((live) => {
-      if (cancelled) return;
-      setCurrentUser(live ?? adminApi.auth.getUser());
-      setIsCheckingAccess(false);
-    });
+    adminApi.auth
+      .refreshUser()
+      .then((live) => {
+        if (cancelled) return;
+        setCurrentUser(live ?? adminApi.auth.getUser());
+        setIsCheckingAccess(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setCurrentUser(adminApi.auth.getUser());
+        setIsCheckingAccess(false);
+      });
     return () => {
       cancelled = true;
     };

@@ -33,9 +33,13 @@ export class ProductsController {
   @ApiOperation({ summary: 'Retrieve garment product details by slug' })
   async findBySlug(@Param('slug') slug: string) {
     const data = await this.productsService.findBySlug(slug);
+    const isRedirect = Boolean((data as any)?.isRedirect);
+    const redirectTargetSlug = (data as any)?.redirectTargetSlug;
     return {
-      message: 'Garment retrieved successfully',
+      message: isRedirect ? 'Garment relocated' : 'Garment retrieved successfully',
       data,
+      redirect: isRedirect,
+      redirectTargetSlug,
     };
   }
 

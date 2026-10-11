@@ -24,13 +24,25 @@ export function PermissionGuard({
     if (stored) {
       setUser(stored);
       setIsChecking(false);
+    } else {
+      setIsChecking(false);
+      return;
     }
 
-    // Refresh live in background
-    adminApi.auth.refreshUser().then((live) => {
-      if (live) setUser(live);
-      setIsChecking(false);
-    });
+    // Refresh live in background if authenticated
+    if (adminApi.auth.isAuthenticated()) {
+      adminApi.auth
+        .refreshUser()
+        .then((live) => {
+          if (live) setUser(live);
+        })
+        .catch((err) => {
+          console.warn('[PermissionGuard] Unable to refresh user:', err);
+        })
+        .finally(() => {
+          setIsChecking(false);
+        });
+    }
   }, []);
 
   if (isChecking && !user) {

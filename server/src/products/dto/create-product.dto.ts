@@ -218,4 +218,21 @@ export class CreateProductDto {
   @Type(() => CreateProductImageDto)
   @IsOptional()
   images?: CreateProductImageDto[];
+
+  @ApiPropertyOptional({ example: 'Premium Mercerized Polo T-Shirt | Rongin Libas' })
+  @IsString()
+  @IsOptional()
+  seoTitle?: string;
+
+  @ApiPropertyOptional({
+    example: "Premium men's polo T-shirt made from 100% mercerized pique cotton. Regular fit and refined everyday style from Rongin Libas.",
+  })
+  @IsString()
+  @IsOptional()
+  metaDescription?: string;
+
+  @ApiPropertyOptional({ example: 'https://ronginlibas.com/products/premium-mercerized-polo-t-shirt' })
+  @IsString()
+  @IsOptional()
+  canonicalUrl?: string;
 }

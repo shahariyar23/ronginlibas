@@ -1,40 +1,23 @@
-import React from 'react';
-import { ProductDetailClient } from './ProductDetailClient';
-import { getProduct, getRelatedProducts, getProductReviews } from '@/lib/api';
-import type { Product } from '@/types';
-import type { ProductReviewsResponse } from '@/lib/api';
+import { notFound, permanentRedirect } from 'next/navigation';
+import { getProduct } from '@/lib/api';
 
-interface ProductPageProps {
+interface ProductLegacyPageProps {
   params: Promise<{ id: string }>;
 }
 
 export const dynamic = 'force-dynamic';
 
-export default async function ProductPage({ params }: ProductPageProps) {
+export default async function LegacyProductPage({ params }: ProductLegacyPageProps) {
   const { id } = await params;
-  let product: Product | undefined;
-  let relatedProducts: Product[] = [];
-  let initialReviews: ProductReviewsResponse | undefined;
 
   try {
-    const [loadedProduct, related, revs] = await Promise.all([
-      getProduct(id),
-      getRelatedProducts(id).catch(() => []),
-      getProductReviews(id).catch(() => undefined),
-    ]);
-    product = loadedProduct;
-    relatedProducts = related;
-    initialReviews = revs;
-  } catch (error) {
-    console.warn(`[ProductPage] Could not load product on server (${id}):`, error);
+    const product = await getProduct(id);
+    if (product && product.slug) {
+      permanentRedirect(`/products/${product.slug}`);
+    }
+  } catch {
+    notFound();
   }
 
-  return (
-    <ProductDetailClient
-      productId={id}
-      product={product}
-      relatedProducts={relatedProducts}
-      initialReviews={initialReviews}
-    />
-  );
+  notFound();
 }

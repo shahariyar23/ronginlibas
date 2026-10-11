@@ -1,80 +1,59 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
-import { HeroBanner } from '@/components/home/HeroBanner';
-import { TrustBadges } from '@/components/home/TrustBadges';
-import { CategoryGrid } from '@/components/home/CategoryGrid';
-import { ProductGridSection } from '@/components/home/ProductGridSection';
-import { EditorialBanner } from '@/components/home/EditorialBanner';
-import { CraftStory } from '@/components/home/CraftStory';
-import { InstagramFeed } from '@/components/home/InstagramFeed';
-import { Newsletter } from '@/components/home/Newsletter';
-import type { Product } from '@/types';
+import React from 'react';
+import type { Metadata } from 'next';
 import { getProducts } from '@/lib/api';
-import { toast } from 'sonner';
+import { HomeContent } from './HomeContent';
+import {
+  SITE_CONFIG,
+  generateOrganizationJsonLd,
+  generateWebSiteJsonLd,
+} from '@/lib/seo';
 
-export default function HomePage() {
-  const [products, setProducts] = useState<Product[]>([]);
+export const dynamic = 'force-dynamic';
 
-  useEffect(() => {
-    let active = true;
-    getProducts({ limit: 100 })
-      .then((data) => {
-        if (active) setProducts(data);
-      })
-      .catch((error: unknown) => {
-        if (active) toast.error(error instanceof Error ? error.message : 'Could not load products.');
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+export const metadata: Metadata = {
+  title: 'Rongin Libas | Cloth Your Identity — Aristocratic Menswear & Bespoke Panjabis',
+  description:
+    'Luxury Bangladeshi menswear atelier specializing in bespoke panjabis, mercerized knitwear, and architectural casual wear. Handcrafted in Dhaka.',
+  alternates: {
+    canonical: SITE_CONFIG.url,
+  },
+  openGraph: {
+    title: 'Rongin Libas | Cloth Your Identity',
+    description:
+      'Aristocratic Menswear & Bespoke Panjabis handcrafted with ancestral Bengal weaves in Dhaka.',
+    url: SITE_CONFIG.url,
+    siteName: SITE_CONFIG.name,
+    images: [{ url: `${SITE_CONFIG.url}/hero-model.jpg`, width: 1200, height: 1200, alt: 'Rongin Libas Atelier' }],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Rongin Libas | Cloth Your Identity',
+    description:
+      'Aristocratic Menswear & Bespoke Panjabis handcrafted with ancestral Bengal weaves.',
+    images: [`${SITE_CONFIG.url}/hero-model.jpg`],
+  },
+};
 
-  const newArrivals = products.filter((product) => product.isNewArrival);
-  const bestSellers = products.filter((product) => product.isBestSeller);
+export default async function HomePage() {
+  const products = await getProducts({ limit: 100 }).catch(() => []);
+  const organizationJsonLd = generateOrganizationJsonLd();
+  const websiteJsonLd = generateWebSiteJsonLd();
 
   return (
-    <div className="flex flex-col w-full">
-      {/* 1. Hero Showcase */}
-      <HeroBanner />
-
-      {/* 2. Trust & Craftsmanship Strip */}
-      <TrustBadges />
-
-      {/* 3. Shop by Category */}
-      <CategoryGrid />
-
-      {/* 4. New Arrivals */}
-      <ProductGridSection
-        title="NEW ARRIVALS"
-        subtitle="Discover the latest artisanal cuts, silk blends, and seasonal drops from Rongin Libas."
-        tagline="FRESH OFF THE LOOM"
-        products={newArrivals}
-        viewAllLink="/shop?filter=new"
-        bgLight={true}
+    <>
+      <h1 className="sr-only">
+        Rongin Libas — Cloth Your Identity | Luxury Bangladeshi Menswear Atelier & Bespoke Panjabis
+      </h1>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
       />
-
-      {/* 5. Editorial Spotlight */}
-      <EditorialBanner />
-
-      {/* 6. Best Sellers */}
-      <ProductGridSection
-        title="BEST SELLERS"
-        subtitle="The iconic pieces most celebrated by our patrons across Dhaka, Chattogram, and beyond."
-        tagline="PROVEN EXCELLENCE"
-        products={bestSellers}
-        viewAllLink="/shop?filter=bestseller"
-        bgLight={false}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
       />
-
-      {/* 7. Craftsmanship & Philosophy */}
-      <CraftStory />
-
-      {/* 8. Instagram Editorial Community */}
-      <InstagramFeed />
-
-      {/* 9. VIP Guild Newsletter */}
-      <Newsletter />
-    </div>
+      <HomeContent initialProducts={products} />
+    </>
   );
 }
