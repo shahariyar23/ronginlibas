@@ -85,8 +85,8 @@ export function renderOrderConfirmationEmail(options: OrderConfirmationEmailOpti
   } = options;
 
   const displayName = customerName?.trim() || shippingAddress?.fullName?.trim() || 'Valued Patron';
-  const subject = `Order Confirmed: ${orderNumber} | Rongin Libas Atelier`;
-  const previewText = `Your order ${orderNumber} has been received and confirmed. Total: ${formatCurrency(totalAmount)}.`;
+  const subject = `Order Received: ${orderNumber} (Pending Confirmation) | Rongin Libas`;
+  const previewText = `Your order ${orderNumber} has been received and is pending confirmation. Total: ${formatCurrency(totalAmount)}.`;
 
   const discountNum = typeof discountAmount === 'number' ? discountAmount : parseFloat(discountAmount) || 0;
 
@@ -129,19 +129,22 @@ export function renderOrderConfirmationEmail(options: OrderConfirmationEmailOpti
   }).join('');
 
   const contentHtml = `
-    <!-- GREETING & CONFIRMATION HEADER -->
+    <!-- GREETING & PLACEMENT HEADER -->
     <div style="margin-bottom: 24px;">
       <div style="font-size: 11px; font-weight: 700; color: #c79a45; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px;">
         Sartorial Order Placement
       </div>
-      <h1 style="font-family: 'Cinzel', 'Georgia', serif; font-size: 24px; color: #073a2d; margin: 0 0 14px 0; font-weight: 700; line-height: 1.3;">
-        Order Confirmed: ${escapeHtml(orderNumber)}
+      <h1 style="font-family: 'Cinzel', 'Georgia', serif; font-size: 24px; color: #073a2d; margin: 0 0 10px 0; font-weight: 700; line-height: 1.3;">
+        Order Received: ${escapeHtml(orderNumber)}
       </h1>
+      <div style="display: inline-block; background-color: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 4px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px;">
+        ⏳ Status: Pending Confirmation
+      </div>
       <p style="font-size: 15px; color: #37413d; margin: 0 0 12px 0; line-height: 1.6;">
         Dear <strong>${escapeHtml(displayName)}</strong>,
       </p>
       <p style="font-size: 14px; color: #49544e; margin: 0; line-height: 1.6;">
-        Thank you for choosing Rongin Libas. We have recorded your order with our Bengal heritage atelier. Our master craftsmen and dispatch specialists are now preparing your garments with bespoke care.
+        Thank you for choosing Rongin Libas. We have safely recorded your order in our Bengal heritage atelier ledger under status <strong>Pending Confirmation</strong>. Our concierge and verification team will review your order details and confirm it shortly before dispatch.
       </p>
     </div>
 
@@ -179,15 +182,23 @@ export function renderOrderConfirmationEmail(options: OrderConfirmationEmailOpti
           </td>
           <td width="50%" valign="top" style="padding-bottom: 14px;">
             <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #838e87; font-weight: 600;">
+              Order Status
+            </div>
+            <div style="display: inline-block; background-color: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 3px 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-top: 3px; border-radius: 2px;">
+              ⏳ Pending Confirmation
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td width="50%" valign="top" style="padding-bottom: 14px;">
+            <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #838e87; font-weight: 600;">
               Placement Date
             </div>
             <div style="font-size: 13px; font-weight: 600; color: #2b332f; margin-top: 3px;">
               ${escapeHtml(orderDate)}
             </div>
           </td>
-        </tr>
-        <tr>
-          <td width="50%" valign="top">
+          <td width="50%" valign="top" style="padding-bottom: 14px;">
             <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #838e87; font-weight: 600;">
               Payment Method
             </div>
@@ -195,13 +206,15 @@ export function renderOrderConfirmationEmail(options: OrderConfirmationEmailOpti
               ${escapeHtml(paymentMethod)} <span style="font-size: 11px; color: #c79a45;">(${escapeHtml(paymentStatus)})</span>
             </div>
           </td>
-          <td width="50%" valign="top">
+        </tr>
+        <tr>
+          <td colspan="2" valign="top">
             <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #838e87; font-weight: 600;">
               Delivery Recipient
             </div>
             <div style="font-size: 13px; font-weight: 600; color: #2b332f; margin-top: 3px;">
               ${escapeHtml(shippingAddress?.fullName || displayName)}
-              ${shippingAddress?.phone ? `<br><span style="font-size: 12px; color: #6b7770;">📞 ${escapeHtml(shippingAddress.phone)}</span>` : ''}
+              ${shippingAddress?.phone ? ` &bull; <span style="font-size: 12px; color: #6b7770;">📞 ${escapeHtml(shippingAddress.phone)}</span>` : ''}
             </div>
           </td>
         </tr>
@@ -293,14 +306,15 @@ export function renderOrderConfirmationEmail(options: OrderConfirmationEmailOpti
   });
 
   const text = `
-ORDER CONFIRMED: ${orderNumber}
+ORDER RECEIVED: ${orderNumber} (Pending Confirmation)
 Rongin Libas Atelier
 
 Dear ${displayName},
 
-Thank you for choosing Rongin Libas. Your order has been confirmed and our atelier is preparing your garments.
+Thank you for choosing Rongin Libas. We have recorded your order under status: Pending Confirmation. Our atelier concierge team will review and confirm your order shortly before dispatch.
 
 Order Number: ${orderNumber}
+Order Status: Pending Confirmation
 Date: ${orderDate}
 Payment Method: ${paymentMethod} (${paymentStatus})
 Total Amount: ${formatCurrency(totalAmount)}

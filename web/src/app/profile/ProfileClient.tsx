@@ -39,6 +39,9 @@ import {
   Camera,
   X,
   ImageIcon,
+  Plus,
+  Trash2,
+  Edit2,
 } from 'lucide-react';
 import {
   getEligibleReviews,
@@ -47,12 +50,19 @@ import {
   uploadReviewImage,
   EligibleReviewProduct,
   CustomerSubmittedReview,
+  getCustomerAddresses,
+  createCustomerAddress,
+  updateCustomerAddress,
+  setDefaultCustomerAddress,
+  deleteCustomerAddress,
+  CustomerAddress,
 } from '@/lib/api';
 import {
   BANGLADESH_DIVISIONS,
   getDistrictsByDivision,
   getThanasByDistrict,
 } from '@/data/bangladeshGeo';
+import { cn } from '@/lib/utils';
 
 export const ProfileClient: React.FC = () => {
   const router = useRouter();
@@ -68,10 +78,30 @@ export const ProfileClient: React.FC = () => {
   const { settings } = useStorefront();
   const whatsappUrl = getWhatsAppUrl(settings?.whatsapp || '');
 
-  const [activeTab, setActiveTab] = useState<'details' | 'security' | 'reviews'>(() => {
+  const [activeTab, setActiveTab] = useState<'details' | 'addresses' | 'security' | 'reviews'>(() => {
+    if (tabParam === 'addresses') return 'addresses';
     if (tabParam === 'reviews') return 'reviews';
     if (tabParam === 'security') return 'security';
     return 'details';
+  });
+
+  // Saved Addresses states
+  const [savedAddresses, setSavedAddresses] = useState<CustomerAddress[]>([]);
+  const [isAddressesLoading, setIsAddressesLoading] = useState(false);
+  const [addressModalOpen, setAddressModalOpen] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<CustomerAddress | null>(null);
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
+  const [addressForm, setAddressForm] = useState({
+    fullName: '',
+    phone: '',
+    email: '',
+    division: 'Dhaka',
+    district: 'Dhaka',
+    thana: '',
+    customThana: '',
+    address: '',
+    postalCode: '',
+    isDefault: false,
   });
 
   // Form states
@@ -318,6 +348,176 @@ export const ProfileClient: React.FC = () => {
     setCustomThana('');
   };
 
+  const availableModalDistricts = React.useMemo(() => {
+    return getDistrictsByDivision(addressForm.division);
+  }, [addressForm.division]);
+
+  const availableModalThanas = React.useMemo(() => {
+    return getThanasByDistrict(addressForm.division, addressForm.district);
+  }, [addressForm.division, addressForm.district]);
+
+  const handleModalDivisionChange = (newDivision: string) => {
+    const dists = getDistrictsByDivision(newDivision);
+    setAddressForm((prev) => ({
+      ...prev,
+      division: newDivision,
+      district: dists[0]?.name || '',
+      thana: '',
+      customThana: '',
+    }));
+  };
+
+  const handleModalDistrictChange = (newDistrict: string) => {
+    setAddressForm((prev) => ({
+      ...prev,
+      district: newDistrict,
+      thana: '',
+      customThana: '',
+    }));
+  };
+
+  const loadAddresses = React.useCallback(async () => {
+    try {
+      setIsAddressesLoading(true);
+      const data = await getCustomerAddresses();
+      setSavedAddresses(data);
+    } catch (err: any) {
+      console.warn('Failed to load customer addresses:', err);
+    } finally {
+      setIsAddressesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadAddresses();
+    }
+  }, [user, loadAddresses]);
+
+  const handleOpenAddAddress = () => {
+    if (savedAddresses.length >= 5) {
+      toast.error('You can save a maximum of 5 delivery addresses.');
+      return;
+    }
+    setEditingAddress(null);
+    setAddressForm({
+      fullName: user?.name || '',
+      phone: user?.phone || '',
+      email: user?.email || '',
+      division: 'Dhaka',
+      district: 'Dhaka',
+      thana: '',
+      customThana: '',
+      address: '',
+      postalCode: '',
+      isDefault: savedAddresses.length === 0,
+    });
+    setAddressModalOpen(true);
+  };
+
+  const handleOpenEditAddress = (addr: CustomerAddress) => {
+    setEditingAddress(addr);
+    const addrDivision = addr.division || 'Dhaka';
+    const districts = getDistrictsByDivision(addrDivision);
+    const matchedDistrict = districts.find(
+      (d) => d.name.toLowerCase() === (addr.city || '').toLowerCase(),
+    );
+    const districtName = matchedDistrict ? matchedDistrict.name : (districts[0]?.name || 'Dhaka');
+
+    setAddressForm({
+      fullName: addr.fullName || '',
+      phone: addr.phone || '',
+      email: addr.email || '',
+      division: addrDivision,
+      district: districtName,
+      thana: addr.area || '',
+      customThana: '',
+      address: addr.addressLine1 || '',
+      postalCode: addr.postalCode || '',
+      isDefault: addr.isDefault || false,
+    });
+    setAddressModalOpen(true);
+  };
+
+  const handleSaveAddress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addressForm.fullName.trim() || !addressForm.phone.trim()) {
+      toast.error('Please enter recipient name and phone number.');
+      return;
+    }
+    if (!addressForm.division || !addressForm.district) {
+      toast.error('Please select Division and District.');
+      return;
+    }
+    if (!addressForm.address.trim()) {
+      toast.error('Please enter street address.');
+      return;
+    }
+
+    const effectiveThana = addressForm.thana === 'OTHER' ? addressForm.customThana.trim() : addressForm.thana.trim();
+
+    setIsSavingAddress(true);
+    try {
+      if (editingAddress) {
+        await updateCustomerAddress(editingAddress.id, {
+          fullName: addressForm.fullName.trim(),
+          phone: addressForm.phone.replace(/\s/g, ''),
+          email: addressForm.email.trim() || undefined,
+          division: addressForm.division,
+          city: addressForm.district,
+          area: effectiveThana || undefined,
+          addressLine1: addressForm.address.trim(),
+          postalCode: addressForm.postalCode.trim() || undefined,
+          isDefault: addressForm.isDefault,
+        });
+        toast.success('Address updated successfully');
+      } else {
+        if (savedAddresses.length >= 5) {
+          toast.error('Maximum 5 addresses saved. Please delete an existing address.');
+          return;
+        }
+        await createCustomerAddress({
+          fullName: addressForm.fullName.trim(),
+          phone: addressForm.phone.replace(/\s/g, ''),
+          email: addressForm.email.trim() || undefined,
+          division: addressForm.division,
+          city: addressForm.district,
+          area: effectiveThana || undefined,
+          addressLine1: addressForm.address.trim(),
+          postalCode: addressForm.postalCode.trim() || undefined,
+          isDefault: addressForm.isDefault,
+        });
+        toast.success('Address added successfully');
+      }
+      setAddressModalOpen(false);
+      await loadAddresses();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save address');
+    } finally {
+      setIsSavingAddress(false);
+    }
+  };
+
+  const handleSetDefaultAddress = async (id: string) => {
+    try {
+      await setDefaultCustomerAddress(id);
+      toast.success('Default address updated');
+      await loadAddresses();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update default address');
+    }
+  };
+
+  const handleDeleteAddress = async (id: string) => {
+    try {
+      await deleteCustomerAddress(id);
+      toast.success('Address removed');
+      await loadAddresses();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to remove address');
+    }
+  };
+
   const hasNotifiedRef = useRef(false);
   useEffect(() => {
     if (!isLoading && !isLoggedIn && !hasNotifiedRef.current) {
@@ -530,6 +730,28 @@ export const ProfileClient: React.FC = () => {
                   <span>Personal Details</span>
                 </div>
                 <ChevronRight className="w-4 h-4" />
+              </button>
+
+              {/* Saved Addresses (Tab button) */}
+              <button
+                type="button"
+                onClick={() => setActiveTab('addresses')}
+                className={`w-full flex items-center justify-between p-4 font-sans text-xs uppercase tracking-wider font-semibold transition-colors text-left cursor-pointer ${
+                  activeTab === 'addresses'
+                    ? 'bg-[#073a2d] text-white'
+                    : 'text-[#404945] hover:bg-[#fbf9f2] hover:text-[#073a2d]'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <MapPin className={`w-4 h-4 ${activeTab === 'addresses' ? 'text-[#c79a45]' : 'text-[#717975]'}`} />
+                  <span>Saved Addresses</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className={`${activeTab === 'addresses' ? 'bg-[#c79a45] text-[#073a2d]' : 'bg-[#f0eee7] text-[#073a2d]'} text-[10px] px-2 py-0.5 rounded-full font-bold`}>
+                    {savedAddresses.length}/5
+                  </Badge>
+                  <ChevronRight className="w-4 h-4" />
+                </div>
               </button>
 
               {/* Security / Password (Tab button) */}
@@ -896,6 +1118,126 @@ export const ProfileClient: React.FC = () => {
                     </Button>
                   </div>
                 </form>
+              </div>
+            )}
+
+            {/* ================= TAB: SAVED ADDRESSES ================= */}
+            {activeTab === 'addresses' && (
+              <div className="bg-white border border-[#deddd3] p-6 sm:p-10 shadow-sm space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#f0eee7]">
+                  <div>
+                    <span className="font-sans text-[11px] uppercase tracking-[0.2em] text-[#c79a45] font-semibold block mb-1">
+                      Residence Sanctuary
+                    </span>
+                    <h2 className="font-serif text-2xl sm:text-3xl text-[#073a2d] font-normal">
+                      Saved Delivery Addresses ({savedAddresses.length}/5)
+                    </h2>
+                    <p className="font-sans text-xs text-[#69726d] mt-1">
+                      Manage up to 5 verified delivery addresses. Your default address is pre-selected during checkout.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleOpenAddAddress}
+                    disabled={savedAddresses.length >= 5}
+                    className="bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-wider px-5 h-11 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>{savedAddresses.length >= 5 ? 'Max 5 Reached' : 'Add New Address'}</span>
+                  </Button>
+                </div>
+
+                {isAddressesLoading ? (
+                  <div className="py-12 flex flex-col items-center justify-center gap-3 text-xs text-[#717975]">
+                    <Loader2 className="w-6 h-6 animate-spin text-[#073a2d]" />
+                    <span>Loading saved addresses...</span>
+                  </div>
+                ) : savedAddresses.length === 0 ? (
+                  <div className="py-12 px-4 text-center border-2 border-dashed border-[#deddd3] p-8 space-y-4">
+                    <MapPin className="w-10 h-10 text-[#c79a45] mx-auto opacity-70" />
+                    <h3 className="font-serif text-lg text-[#073a2d] font-semibold">
+                      No Saved Addresses Yet
+                    </h3>
+                    <p className="text-xs text-[#717975] max-w-sm mx-auto">
+                      Add your preferred delivery address now or enter it during checkout to save up to 5 locations.
+                    </p>
+                    <Button
+                      type="button"
+                      onClick={handleOpenAddAddress}
+                      className="bg-[#073a2d] hover:bg-[#0d4d3b] text-white text-xs uppercase tracking-wider px-6 h-10"
+                    >
+                      <Plus className="w-4 h-4 mr-1.5" />
+                      Add Your First Address
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {savedAddresses.map((addr) => (
+                      <div
+                        key={addr.id}
+                        className={cn(
+                          'p-5 border transition-all relative flex flex-col justify-between bg-white',
+                          addr.isDefault
+                            ? 'border-[#073a2d] ring-1 ring-[#073a2d] bg-[#fbf9f2]/40 shadow-xs'
+                            : 'border-[#deddd3] hover:border-[#c79a45]/80',
+                        )}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="font-serif font-bold text-[#073a2d] text-sm">
+                              {addr.fullName || user?.name || 'Saved Address'}
+                            </span>
+                            {addr.isDefault ? (
+                              <Badge className="bg-[#073a2d] text-[#fbf9f2] text-[9px] font-sans px-2 py-0.5 uppercase tracking-wider font-bold">
+                                DEFAULT ADDRESS
+                              </Badge>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleSetDefaultAddress(addr.id)}
+                                className="text-[11px] text-[#c79a45] hover:underline font-semibold cursor-pointer"
+                              >
+                                Set as Default
+                              </button>
+                            )}
+                          </div>
+
+                          <p className="text-xs text-[#404945] font-sans leading-relaxed">
+                            {addr.addressLine1}
+                            {addr.area ? `, ${addr.area}` : ''}
+                            <br />
+                            {addr.city}, {addr.division}
+                            {addr.postalCode ? ` - ${addr.postalCode}` : ''}
+                          </p>
+
+                          <div className="mt-3 pt-3 border-t border-[#deddd3]/60 text-xs text-[#717975] space-y-0.5">
+                            <p>Mobile: <strong className="text-[#1b1c18] font-medium">{addr.phone}</strong></p>
+                            {addr.email && <p>Email: <span className="text-[#1b1c18]">{addr.email}</span></p>}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-[#deddd3]/60">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditAddress(addr)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-[#073a2d] hover:bg-[#fbf9f2] border border-[#deddd3] font-medium cursor-pointer"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAddress(addr.id)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-[#ba1a1a] hover:bg-[#ba1a1a]/10 border border-[#deddd3] font-medium cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1395,6 +1737,188 @@ export const ProfileClient: React.FC = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Address Add/Edit Dialog Modal */}
+      <Dialog open={addressModalOpen} onOpenChange={setAddressModalOpen}>
+        <DialogContent className="max-w-lg bg-white p-6 sm:p-8 rounded-none border border-[#deddd3] max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="pb-3 border-b border-[#deddd3]">
+            <DialogTitle className="font-serif text-xl text-[#073a2d]">
+              {editingAddress ? 'Edit Delivery Address' : 'Add New Delivery Address'}
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveAddress} className="space-y-4 pt-3 text-xs font-sans">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="block uppercase tracking-wider text-[#404945] font-semibold mb-1">
+                  Recipient Name *
+                </Label>
+                <Input
+                  required
+                  placeholder="e.g. Salim Ahmed"
+                  value={addressForm.fullName}
+                  onChange={(e) => setAddressForm({ ...addressForm, fullName: e.target.value })}
+                  className="bg-[#fbf9f2] border-[#deddd3] h-10 text-xs"
+                />
+              </div>
+
+              <div>
+                <Label className="block uppercase tracking-wider text-[#404945] font-semibold mb-1">
+                  Mobile Number (+880) *
+                </Label>
+                <Input
+                  required
+                  placeholder="01XXXXXXXXX"
+                  value={addressForm.phone}
+                  onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
+                  className="bg-[#fbf9f2] border-[#deddd3] h-10 text-xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className="block uppercase tracking-wider text-[#404945] font-semibold mb-1">
+                Email Address (Optional)
+              </Label>
+              <Input
+                type="email"
+                placeholder="For consignment receipts"
+                value={addressForm.email}
+                onChange={(e) => setAddressForm({ ...addressForm, email: e.target.value })}
+                className="bg-[#fbf9f2] border-[#deddd3] h-10 text-xs"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="block uppercase tracking-wider text-[#404945] font-semibold mb-1">
+                  Division *
+                </Label>
+                <select
+                  value={addressForm.division}
+                  onChange={(e) => handleModalDivisionChange(e.target.value)}
+                  className="w-full bg-[#fbf9f2] border border-[#deddd3] h-10 px-3 text-xs font-sans text-[#1b1c18] focus:outline-none focus:border-[#073a2d]"
+                >
+                  {BANGLADESH_DIVISIONS.map((d) => (
+                    <option key={d.name} value={d.name}>
+                      {d.name} Division
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <Label className="block uppercase tracking-wider text-[#404945] font-semibold mb-1">
+                  District (Zilla) *
+                </Label>
+                <select
+                  value={addressForm.district}
+                  onChange={(e) => handleModalDistrictChange(e.target.value)}
+                  className="w-full bg-[#fbf9f2] border border-[#deddd3] h-10 px-3 text-xs font-sans text-[#1b1c18] focus:outline-none focus:border-[#073a2d]"
+                >
+                  {availableModalDistricts.map((d) => (
+                    <option key={d.name} value={d.name}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <Label className="block uppercase tracking-wider text-[#404945] font-semibold mb-1">
+                Thana / Upazila
+              </Label>
+              <select
+                value={addressForm.thana}
+                onChange={(e) => setAddressForm({ ...addressForm, thana: e.target.value })}
+                className="w-full bg-[#fbf9f2] border border-[#deddd3] h-10 px-3 text-xs font-sans text-[#1b1c18] focus:outline-none focus:border-[#073a2d]"
+              >
+                <option value="">Select Thana / Upazila</option>
+                {availableModalThanas.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+                <option value="OTHER">Other / Specify area...</option>
+              </select>
+            </div>
+
+            {addressForm.thana === 'OTHER' && (
+              <div>
+                <Label className="block uppercase tracking-wider text-[#404945] font-semibold mb-1">
+                  Specify Thana / Area *
+                </Label>
+                <Input
+                  required
+                  placeholder="Local police station or upazila"
+                  value={addressForm.customThana}
+                  onChange={(e) => setAddressForm({ ...addressForm, customThana: e.target.value })}
+                  className="bg-[#fbf9f2] border-[#deddd3] h-10 text-xs"
+                />
+              </div>
+            )}
+
+            <div>
+              <Label className="block uppercase tracking-wider text-[#404945] font-semibold mb-1">
+                Street Address, House No & Road *
+              </Label>
+              <Input
+                required
+                placeholder="House 12, Road 4, Sector 3, Uttara"
+                value={addressForm.address}
+                onChange={(e) => setAddressForm({ ...addressForm, address: e.target.value })}
+                className="bg-[#fbf9f2] border-[#deddd3] h-10 text-xs"
+              />
+            </div>
+
+            <div>
+              <Label className="block uppercase tracking-wider text-[#404945] font-semibold mb-1">
+                Postal Code (Optional)
+              </Label>
+              <Input
+                placeholder="e.g. 1230"
+                value={addressForm.postalCode}
+                onChange={(e) => setAddressForm({ ...addressForm, postalCode: e.target.value })}
+                className="bg-[#fbf9f2] border-[#deddd3] h-10 text-xs"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                type="checkbox"
+                id="isDefaultAddress"
+                checked={addressForm.isDefault}
+                onChange={(e) => setAddressForm({ ...addressForm, isDefault: e.target.checked })}
+                className="accent-[#073a2d] w-4 h-4 cursor-pointer"
+              />
+              <label htmlFor="isDefaultAddress" className="text-xs text-[#1b1c18] font-medium cursor-pointer">
+                Set as default delivery address for checkout
+              </label>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#deddd3]">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setAddressModalOpen(false)}
+                className="h-10 text-xs uppercase tracking-wider"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSavingAddress}
+                className="bg-[#073a2d] hover:bg-[#0d4d3b] text-white h-10 text-xs uppercase tracking-wider px-6 flex items-center gap-2"
+              >
+                {isSavingAddress ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>{isSavingAddress ? 'Saving...' : 'Save Address'}</span>
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
+

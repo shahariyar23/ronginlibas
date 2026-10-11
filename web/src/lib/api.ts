@@ -710,3 +710,69 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
   });
 }
 
+export interface CustomerAddress {
+  id: string;
+  fullName?: string | null;
+  email?: string | null;
+  phone: string;
+  addressLine1: string;
+  addressLine2?: string | null;
+  city: string;
+  division: string;
+  area?: string | null;
+  postalCode?: string | null;
+  deliveryInstructions?: string | null;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomerAddressInput {
+  fullName: string;
+  email?: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  division: string;
+  area?: string;
+  postalCode?: string;
+  deliveryInstructions?: string;
+  isDefault?: boolean;
+}
+
+export async function getCustomerAddresses(): Promise<CustomerAddress[]> {
+  const res = await apiRequest<{ data: CustomerAddress[] } | CustomerAddress[]>('/customers/me/addresses');
+  if (Array.isArray(res)) return res;
+  return (res as any)?.data || [];
+}
+
+export async function createCustomerAddress(data: CustomerAddressInput): Promise<CustomerAddress> {
+  const res = await apiRequest<{ data: CustomerAddress } | CustomerAddress>('/customers/me/addresses', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return (res as any)?.data || (res as any);
+}
+
+export async function updateCustomerAddress(id: string, data: Partial<CustomerAddressInput>): Promise<CustomerAddress> {
+  const res = await apiRequest<{ data: CustomerAddress } | CustomerAddress>(`/customers/me/addresses/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  return (res as any)?.data || (res as any);
+}
+
+export async function setDefaultCustomerAddress(id: string): Promise<CustomerAddress> {
+  const res = await apiRequest<{ data: CustomerAddress } | CustomerAddress>(`/customers/me/addresses/${id}/default`, {
+    method: 'PATCH',
+  });
+  return (res as any)?.data || (res as any);
+}
+
+export async function deleteCustomerAddress(id: string): Promise<void> {
+  await apiRequest(`/customers/me/addresses/${id}`, {
+    method: 'DELETE',
+  });
+}
+

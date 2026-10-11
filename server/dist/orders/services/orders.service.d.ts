@@ -316,6 +316,7 @@ export declare class OrdersService {
         }[];
     }>;
     private dispatchOrderConfirmationNotification;
+    private saveAddressForCustomerIfEligible;
     private dispatchOrderStatusOrEditNotification;
     findOrderForAccess(orderNumber: string, customerId?: string, phone?: string, trackingToken?: string): Promise<{
         customer: {

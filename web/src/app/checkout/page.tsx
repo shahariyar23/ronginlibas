@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { getWhatsAppUrl, useStorefront } from '@/context/StorefrontContext';
-import { apiRequest } from '@/lib/api';
+import { apiRequest, getCustomerAddresses, CustomerAddress } from '@/lib/api';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,7 @@ import {
   Smartphone,
   ArrowLeft,
   Loader2,
+  MapPin,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -86,28 +87,112 @@ export default function CheckoutPage() {
   const [orderConfirmed, setOrderConfirmed] = useState(false);
   const [orderId, setOrderId] = useState('');
   const [trackingToken, setTrackingToken] = useState('');
+  const [savedAddresses, setSavedAddresses] = useState<CustomerAddress[]>([]);
+  const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | 'new' | null>(null);
+
+  const applyAddressToForm = React.useCallback(
+    (addr: CustomerAddress) => {
+      const addrDivision = addr.division || '';
+      const addrCity = addr.city || '';
+      const districts = addrDivision ? getDistrictsByDivision(addrDivision) : [];
+      const matchedDistrict = districts.find(
+        (d) => d.name.toLowerCase() === addrCity.toLowerCase(),
+      );
+      const districtName = matchedDistrict ? matchedDistrict.name : addrCity;
+
+      setFormData((prev) => ({
+        ...prev,
+        fullName: addr.fullName || user?.name || prev.fullName || '',
+        phone: addr.phone || user?.phone || prev.phone || '',
+        email: addr.email || user?.email || prev.email || '',
+        division: addrDivision,
+        district: districtName,
+        thana: addr.area || '',
+        customThana: '',
+        address: addr.addressLine1 || '',
+        postalCode: addr.postalCode || '',
+        notes: addr.deliveryInstructions || prev.notes || '',
+      }));
+    },
+    [user],
+  );
 
   React.useEffect(() => {
-    if (!user) return;
-    const userDivision = user.address?.division || '';
-    const userCity = user.address?.city || '';
-    const districts = userDivision ? getDistrictsByDivision(userDivision) : [];
-    const matchedDistrict = districts.find(
-      (d) => d.name.toLowerCase() === userCity.toLowerCase(),
-    );
-    const districtName = matchedDistrict ? matchedDistrict.name : '';
+    if (!user) {
+      setSavedAddresses([]);
+      setSelectedAddressId('new');
+      return;
+    }
 
-    setFormData((previous) => ({
-      ...previous,
-      fullName: previous.fullName || user.name || '',
-      phone: previous.phone || user.phone || '',
-      email: previous.email || user.email || '',
-      division: previous.division || userDivision,
-      district: previous.district || districtName,
-      address: previous.address || user.address?.line1 || '',
-      postalCode: previous.postalCode || user.address?.postalCode || '',
+    let isMounted = true;
+    setIsLoadingAddresses(true);
+
+    getCustomerAddresses()
+      .then((addrs) => {
+        if (!isMounted) return;
+        setSavedAddresses(addrs);
+
+        if (addrs.length > 0) {
+          // Pre-select the default address if available, or first saved address
+          const defaultAddr = addrs.find((a) => a.isDefault) || addrs[0];
+          setSelectedAddressId(defaultAddr.id);
+          applyAddressToForm(defaultAddr);
+        } else {
+          setSelectedAddressId('new');
+          const userDivision = user.address?.division || '';
+          const userCity = user.address?.city || '';
+          const districts = userDivision ? getDistrictsByDivision(userDivision) : [];
+          const matchedDistrict = districts.find(
+            (d) => d.name.toLowerCase() === userCity.toLowerCase(),
+          );
+          const districtName = matchedDistrict ? matchedDistrict.name : userCity;
+
+          setFormData((previous) => ({
+            ...previous,
+            fullName: previous.fullName || user.name || '',
+            phone: previous.phone || user.phone || '',
+            email: previous.email || user.email || '',
+            division: previous.division || userDivision,
+            district: previous.district || districtName,
+            address: previous.address || user.address?.line1 || '',
+            postalCode: previous.postalCode || user.address?.postalCode || '',
+          }));
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not load saved addresses:', err);
+        if (isMounted) setSelectedAddressId('new');
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingAddresses(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, applyAddressToForm]);
+
+  const handleSelectSavedAddress = (addr: CustomerAddress) => {
+    setSelectedAddressId(addr.id);
+    applyAddressToForm(addr);
+  };
+
+  const handleSelectNewAddress = () => {
+    setSelectedAddressId('new');
+    setFormData((prev) => ({
+      ...prev,
+      fullName: user?.name || prev.fullName || '',
+      phone: user?.phone || prev.phone || '',
+      email: user?.email || prev.email || '',
+      division: '',
+      district: '',
+      thana: '',
+      customThana: '',
+      address: '',
+      postalCode: '',
     }));
-  }, [user]);
+  };
 
   const availableDistricts = React.useMemo(() => {
     if (!formData.division) return [];
@@ -254,6 +339,17 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (!formData.email?.trim()) {
+      toast.error('Please enter your email address to receive order confirmation and tracking updates.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email.trim())) {
+      toast.error('Please enter a valid email address.');
+      return;
+    }
+
     if (!formData.division || !formData.district) {
       toast.error('Please select your Division and District.');
       return;
@@ -284,6 +380,8 @@ export default function CheckoutPage() {
       return;
     }
 
+    const recipientEmail = formData.email.trim().toLowerCase();
+
     setIsSubmitting(true);
     try {
       const order = await apiRequest<{
@@ -296,7 +394,7 @@ export default function CheckoutPage() {
           shippingAddress: {
             fullName: formData.fullName.trim(),
             phone: formData.phone.replace(/\s/g, ''),
-            email: formData.email || undefined,
+            email: recipientEmail,
             division: formData.division,
             city: formData.district,
             area: effectiveThana,
@@ -308,13 +406,16 @@ export default function CheckoutPage() {
           couponCode: appliedCoupon || undefined,
           customerNotes: formData.notes || undefined,
           guestName: formData.fullName.trim(),
-          guestEmail: formData.email?.trim() || user?.email || undefined,
+          guestEmail: recipientEmail,
         }),
       });
       setOrderId(order.orderNumber);
       setTrackingToken(order.guestTrackingToken || '');
       setOrderConfirmed(true);
-      await clearCart();
+      await clearCart(false);
+      toast.success('Order created successfully!', {
+        description: `Order reference ${order.orderNumber} placed. Status: Pending Confirmation.`,
+      });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not place your order.');
     } finally {
@@ -631,6 +732,113 @@ export default function CheckoutPage() {
                   </p>
                 </div>
 
+                {/* Saved Addresses Selector (for logged-in patrons) */}
+                {user && (
+                  <div className="mb-6 p-4 bg-[#fbf9f2] border border-[#deddd3]">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-3 border-b border-[#deddd3] gap-2">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-[#073a2d]" />
+                        <h4 className="font-serif text-sm font-bold text-[#073a2d]">
+                          Saved Delivery Addresses ({savedAddresses.length}/5)
+                        </h4>
+                      </div>
+                      <span className="text-[11px] text-[#717975]">
+                        {selectedAddressId === 'new'
+                          ? 'Entering custom delivery address'
+                          : 'Previous/Default address active • Select another to switch'}
+                      </span>
+                    </div>
+
+                    {isLoadingAddresses ? (
+                      <div className="py-4 flex items-center justify-center gap-2 text-xs text-[#717975]">
+                        <Loader2 className="w-4 h-4 animate-spin text-[#073a2d]" />
+                        <span>Loading saved addresses...</span>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {savedAddresses.map((addr) => {
+                          const isSelected = selectedAddressId === addr.id;
+                          return (
+                            <div
+                              key={addr.id}
+                              onClick={() => handleSelectSavedAddress(addr)}
+                              className={cn(
+                                'p-3.5 border transition-all cursor-pointer relative text-left bg-white',
+                                isSelected
+                                  ? 'border-[#073a2d] ring-2 ring-[#073a2d] shadow-xs'
+                                  : 'border-[#deddd3] hover:border-[#c79a45]/80 hover:bg-[#faf9f5]',
+                              )}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="radio"
+                                    name="addressOption"
+                                    checked={isSelected}
+                                    onChange={() => handleSelectSavedAddress(addr)}
+                                    className="accent-[#073a2d] cursor-pointer"
+                                  />
+                                  <span className="font-serif font-bold text-[#073a2d] text-xs">
+                                    {addr.fullName || user.name}
+                                  </span>
+                                </div>
+                                {addr.isDefault && (
+                                  <Badge className="bg-[#073a2d] text-[#fbf9f2] text-[9px] font-sans px-1.5 py-0 h-4 uppercase tracking-wider">
+                                    DEFAULT
+                                  </Badge>
+                                )}
+                              </div>
+
+                              <p className="text-[11px] text-[#404945] font-sans mt-2 line-clamp-2">
+                                {addr.addressLine1}
+                                {addr.area ? `, ${addr.area}` : ''}
+                                {addr.city ? `, ${addr.city}` : ''}
+                                {addr.division ? `, ${addr.division}` : ''}
+                                {addr.postalCode ? ` - ${addr.postalCode}` : ''}
+                              </p>
+                              <p className="text-[11px] text-[#717975] font-sans mt-1">
+                                Mobile: {addr.phone}
+                              </p>
+                            </div>
+                          );
+                        })}
+
+                        {/* Add / Use different address card */}
+                        <div
+                          onClick={savedAddresses.length >= 5 && selectedAddressId !== 'new' ? undefined : handleSelectNewAddress}
+                          className={cn(
+                            'p-3.5 border border-dashed transition-all cursor-pointer text-left flex flex-col justify-center bg-white',
+                            selectedAddressId === 'new'
+                              ? 'border-[#073a2d] ring-2 ring-[#073a2d] bg-[#faf9f5]'
+                              : 'border-[#deddd3] hover:border-[#073a2d] hover:bg-[#faf9f5]',
+                            savedAddresses.length >= 5 && selectedAddressId !== 'new' && 'opacity-60 cursor-not-allowed',
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name="addressOption"
+                              checked={selectedAddressId === 'new'}
+                              disabled={savedAddresses.length >= 5 && selectedAddressId !== 'new'}
+                              onChange={handleSelectNewAddress}
+                              className="accent-[#073a2d] cursor-pointer"
+                            />
+                            <span className="font-serif font-bold text-[#073a2d] text-xs">
+                              + Use Another Address
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[#717975] font-sans mt-1.5">
+                            {savedAddresses.length >= 5
+                              ? 'Maximum 5 addresses saved. Select one or edit in profile.'
+                              : 'Enter a new address below (auto-saved to your address book).'
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans">
                   {/* Recipient Full Name */}
                   <div>
@@ -729,15 +937,19 @@ export default function CheckoutPage() {
                   {/* Email Address */}
                   <div>
                     <label className="block uppercase tracking-wider text-[#404945] font-semibold mb-1">
-                      Email Address (Optional)
+                      Email Address *
                     </label>
                     <Input
                       type="email"
-                      placeholder="For order tracking receipt"
+                      required
+                      placeholder="e.g. yourname@example.com"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       className="bg-[#fbf9f2] rounded-none border-[#deddd3]"
                     />
+                    <p className="text-[10px] text-[#717975] mt-1">
+                      Order confirmation &amp; courier status tracking will be dispatched to this email.
+                    </p>
                   </div>
 
                   {/* Custom Thana field if OTHER is selected */}
@@ -869,18 +1081,30 @@ export default function CheckoutPage() {
       {/* Order Confirmation Modal */}
       <Dialog open={orderConfirmed} onOpenChange={setOrderConfirmed}>
         <DialogContent className="max-w-md p-8 bg-[#fbf9f2] border border-[#073a2d] text-center space-y-4">
-          <div className="w-16 h-16 mx-auto flex items-center justify-center">
-            <img src="/logo.svg" alt="Rongin Libas Logo" className="w-16 h-16 object-contain" />
+          {/* Prominent Success Icon */}
+          <div className="mx-auto flex flex-col items-center justify-center gap-2">
+            <div className="w-16 h-16 rounded-full bg-emerald-50 border-2 border-emerald-600 flex items-center justify-center text-emerald-700 shadow-sm animate-in zoom-in-75 duration-300">
+              <CheckCircle2 className="w-9 h-9 text-emerald-700 stroke-[2.5]" />
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100/80 border border-emerald-300 text-emerald-800 text-xs font-sans font-bold tracking-wider uppercase">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Order Created Successfully</span>
+            </div>
           </div>
 
           <DialogHeader className="space-y-1">
             <span className="text-[11px] font-sans font-semibold uppercase tracking-[0.25em] text-[#c79a45]">
-              Order Confirmed
+              Rongin Libas Atelier
             </span>
             <DialogTitle className="font-serif text-2xl text-[#073a2d]">
               Shukriya for Honoring Us
             </DialogTitle>
-            <DialogDescription className="font-sans text-xs text-[#69726d]">
+            <div className="pt-1">
+              <span className="inline-block bg-amber-100 border border-amber-300 text-amber-900 font-sans text-[11px] font-bold px-3 py-1 uppercase tracking-wider rounded">
+                ⏳ Status: Pending Confirmation
+              </span>
+            </div>
+            <DialogDescription className="font-sans text-xs text-[#69726d] pt-1">
               Your order has been recorded in the atelier ledger under reference:
             </DialogDescription>
           </DialogHeader>
@@ -890,7 +1114,7 @@ export default function CheckoutPage() {
           </div>
 
           <p className="text-xs font-sans text-[#404945] leading-relaxed">
-            Our atelier dispatch team will contact you at <strong>{formData.phone || 'your mobile'}</strong> before departure for seamless delivery to {formData.division || 'your city'}.
+            Your order status is currently <strong>Pending Confirmation</strong>. Our atelier concierge team will review and confirm your order shortly, and reach out to you at <strong>{formData.phone || 'your mobile'}</strong> before departure for seamless delivery to {formData.division || 'your city'}.
           </p>
 
           <div className="pt-4 flex flex-col gap-2">

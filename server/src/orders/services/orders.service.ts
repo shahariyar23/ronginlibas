@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { SettingsService } from '../../settings/services/settings.service.js';
 import { MailService } from '../../mail/mail.service.js';
-import { CreateOrderDto } from '../dto/create-order.dto.js';
+import { CreateOrderDto, ShippingAddressDto } from '../dto/create-order.dto.js';
 import { UpdateOrderStatusDto } from '../dto/update-order-status.dto.js';
 import { OrderQueryDto } from '../dto/order-query.dto.js';
 import { PaginatedResult } from '../../common/dto/pagination-query.dto.js';
@@ -391,6 +391,17 @@ export class OrdersService {
       ? null
       : (dto.guestEmail?.toLowerCase().trim() || dto.shippingAddress.email?.toLowerCase().trim() || null);
 
+    let customerEmail: string | undefined = dto.shippingAddress.email?.toLowerCase().trim();
+    if (customerId && !customerEmail) {
+      const customer = await this.prisma.customer.findUnique({
+        where: { id: customerId },
+        select: { email: true },
+      });
+      if (customer?.email) {
+        customerEmail = customer.email.toLowerCase().trim();
+      }
+    }
+
     if (!customerId && (!guestName || !guestPhone)) {
       throw new BadRequestException('Guest checkout requires a name and contact phone');
     }
@@ -577,8 +588,8 @@ export class OrdersService {
             ...(dto.shippingAddress.fullName !== undefined
               ? { fullName: dto.shippingAddress.fullName }
               : {}),
-            ...(dto.shippingAddress.email !== undefined
-              ? { email: dto.shippingAddress.email }
+            ...((dto.shippingAddress.email || customerEmail || guestEmail)
+              ? { email: (dto.shippingAddress.email || customerEmail || guestEmail)?.toLowerCase().trim() }
               : {}),
             ...(dto.shippingAddress.area !== undefined
               ? { area: dto.shippingAddress.area }
@@ -600,6 +611,13 @@ export class OrdersService {
       });
       return { order, couponId };
     }, { maxWait: 10000, timeout: 30000 });
+
+    // Auto-save address for customer if eligible (max 5 addresses)
+    if (customerId) {
+      this.saveAddressForCustomerIfEligible(customerId, dto.shippingAddress, customerEmail).catch((err) => {
+        this.logger.warn(`Failed to auto-save address for customer ${customerId}: ${err.message}`);
+      });
+    }
 
     // Asynchronously dispatch Order Confirmation email to customer via orders@ronginlibas.com
     this.dispatchOrderConfirmationNotification(createdOrder.order, trackingToken, customerId).catch((err) => {
@@ -715,6 +733,57 @@ export class OrdersService {
     });
   }
 
+  private async saveAddressForCustomerIfEligible(
+    customerId: string,
+    shippingAddress: ShippingAddressDto,
+    fallbackEmail?: string,
+  ) {
+    try {
+      const count = await this.prisma.address.count({ where: { customerId } });
+      if (count >= 5) {
+        return; // Max 5 addresses limit reached
+      }
+
+      const line1 = shippingAddress.addressLine1.trim();
+      const city = shippingAddress.city.trim();
+      const division = shippingAddress.division.trim();
+
+      const existing = await this.prisma.address.findFirst({
+        where: {
+          customerId,
+          addressLine1: { equals: line1, mode: 'insensitive' },
+          city: { equals: city, mode: 'insensitive' },
+          division: { equals: division, mode: 'insensitive' },
+        },
+      });
+
+      if (existing) {
+        return;
+      }
+
+      const email = (shippingAddress.email?.toLowerCase().trim() || fallbackEmail)?.toLowerCase().trim();
+      await this.prisma.address.create({
+        data: {
+          customerId,
+          fullName: shippingAddress.fullName?.trim() || undefined,
+          email: email || undefined,
+          phone: normalizeBangladeshPhone(shippingAddress.phone),
+          addressLine1: line1,
+          addressLine2: shippingAddress.addressLine2?.trim() || undefined,
+          city,
+          division,
+          area: shippingAddress.area?.trim() || undefined,
+          postalCode: shippingAddress.postalCode?.trim() || undefined,
+          deliveryInstructions: shippingAddress.deliveryInstructions?.trim() || undefined,
+          isDefault: count === 0,
+        },
+      });
+      this.logger.log(`Auto-saved delivery address for customer ${customerId} (address count: ${count + 1}/5)`);
+    } catch (error: any) {
+      this.logger.warn(`Failed to auto-save address for customer ${customerId}: ${error.message}`);
+    }
+  }
+
   private async dispatchOrderStatusOrEditNotification(
     order: any,
     previousStatus: string,
@@ -751,10 +820,37 @@ export class OrdersService {
       }
     }
 
+    // Phone lookup fallback if customer email is not directly on order
+    if (!customerEmail && (shipping.phone || order.guestPhone)) {
+      const rawPhone = (shipping.phone || order.guestPhone || '').trim();
+      const normalized = normalizeBangladeshPhone(rawPhone);
+      const digitsOnly = rawPhone.replace(/\D/g, '');
+      const customer = await this.prisma.customer.findFirst({
+        where: {
+          OR: [
+            { phone: normalized },
+            { phone: rawPhone },
+            ...(digitsOnly ? [{ phone: { contains: digitsOnly } }] : []),
+          ],
+        },
+        select: { email: true, firstName: true, lastName: true },
+      });
+      if (customer?.email) {
+        customerEmail = customer.email.trim();
+        if (!customerName) {
+          customerName = `${customer.firstName} ${customer.lastName || ''}`.trim();
+        }
+      }
+    }
+
     if (!customerEmail) {
-      this.logger.debug(`No recipient email address found for order ${order.orderNumber}. Skipping notification.`);
+      this.logger.warn(`No recipient email address found for order ${order.orderNumber}. Skipping notification.`);
       return;
     }
+
+    this.logger.log(
+      `Dispatching order status update email for ${order.orderNumber} to ${customerEmail} (new status: ${order.status}, changed: ${statusChanged})`,
+    );
 
     if (statusChanged) {
       await this.mailService.sendOrderStatusUpdateEmail({
@@ -1550,5 +1646,13 @@ function drawBarcode(
     currX += barW;
   });
   doc.restore();
+}
+
+function normalizeBangladeshPhone(phone: string): string {
+  const cleaned = phone.replace(/[^\d+]/g, '');
+  if (cleaned.startsWith('+880')) return cleaned;
+  if (cleaned.startsWith('880')) return `+${cleaned}`;
+  if (cleaned.startsWith('0')) return `+88${cleaned}`;
+  return cleaned;
 }
 
