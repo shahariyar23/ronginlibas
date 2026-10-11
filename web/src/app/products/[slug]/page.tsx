@@ -10,7 +10,6 @@ import {
   generateProductJsonLd,
   generateBreadcrumbJsonLd,
 } from '@/lib/seo';
-import { Breadcrumbs } from '@/components/common/Breadcrumbs';
 
 interface ProductPageProps {
   params: Promise<{ slug: string }>;
@@ -101,20 +100,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
 
-      {/* Crawlable Breadcrumbs */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-        <Breadcrumbs
-          items={[
-            {
-              label: product.categoryLabel || 'Collection',
-              href: `/categories/${product.category || 'all'}`,
-            },
-            {
-              label: product.name,
-            },
-          ]}
-        />
-      </div>
+
 
       {/* Product Detail Interactive Application */}
       <ProductDetailClient

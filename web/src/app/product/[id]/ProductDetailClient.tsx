@@ -547,7 +547,7 @@ const ProductDetailView: React.FC<{
               {product.gender === 'WOMEN' ? 'Women' : product.gender === 'UNISEX' ? 'Unisex' : 'Men'}
             </Link>
             <span className="text-[#deddd3]">/</span>
-            <Link href={`/shop?category=${product.category}`} className="hover:text-[#073a2d] transition-colors">
+            <Link href={`/categories/${product.category}`} className="hover:text-[#073a2d] transition-colors">
               {product.categoryLabel}
             </Link>
             <span className="text-[#deddd3]">/</span>
