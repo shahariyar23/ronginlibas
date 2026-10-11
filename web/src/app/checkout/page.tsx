@@ -62,6 +62,7 @@ export default function CheckoutPage() {
     appliedCoupon,
     applyCoupon,
     removeCoupon,
+    cartId,
   } = useCart();
 
   // Form states with hierarchical Bangladesh address structure
@@ -77,6 +78,30 @@ export default function CheckoutPage() {
     postalCode: '',
     notes: '',
   });
+
+  const syncCartContact = React.useCallback(
+    async (emailVal?: string, phoneVal?: string, nameVal?: string) => {
+      if (!cartId) return;
+      const targetEmail = (emailVal !== undefined ? emailVal : formData.email)?.trim();
+      const targetPhone = (phoneVal !== undefined ? phoneVal : formData.phone)?.replace(/\s/g, '');
+      const targetName = (nameVal !== undefined ? nameVal : formData.fullName)?.trim();
+      if (!targetEmail && !targetPhone && !targetName) return;
+      try {
+        await apiRequest('/cart/contact', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            cartId,
+            email: targetEmail || undefined,
+            phone: targetPhone || undefined,
+            name: targetName || undefined,
+          }),
+        });
+      } catch {
+        // Non-blocking sync
+      }
+    },
+    [cartId, formData.email, formData.phone, formData.fullName],
+  );
 
   const paymentMethod = 'cod';
   const [couponInput, setCouponInput] = useState('');
@@ -850,6 +875,7 @@ export default function CheckoutPage() {
                       placeholder="e.g. Shahariyar Ahmed"
                       value={formData.fullName}
                       onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                      onBlur={() => syncCartContact()}
                       className="bg-[#fbf9f2] rounded-none border-[#deddd3]"
                     />
                   </div>
@@ -864,6 +890,7 @@ export default function CheckoutPage() {
                       placeholder="01XXXXXXXXX"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      onBlur={() => syncCartContact()}
                       className="bg-[#fbf9f2] rounded-none border-[#deddd3]"
                     />
                   </div>
@@ -945,6 +972,7 @@ export default function CheckoutPage() {
                       placeholder="e.g. yourname@example.com"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      onBlur={() => syncCartContact()}
                       className="bg-[#fbf9f2] rounded-none border-[#deddd3]"
                     />
                     <p className="text-[10px] text-[#717975] mt-1">

@@ -17,6 +17,7 @@ import {
   LogOut,
   UserCog,
   Activity,
+  ShoppingCart,
   X,
 } from 'lucide-react';
 import { adminApi, AdminUser } from '@/lib/api';
@@ -35,6 +36,7 @@ const NAV_ITEMS: NavItemDef[] = [
   { name: 'Products', href: '/products', icon: Shirt, permissionKey: 'products' },
   { name: 'Categories', href: '/categories', icon: Layers, permissionKey: 'categories' },
   { name: 'Orders', href: '/orders', icon: ShoppingBag, permissionKey: 'orders' },
+  { name: 'Abandoned Carts', href: '/carts', icon: ShoppingCart, permissionKey: 'orders' },
   { name: 'Customers', href: '/customers', icon: Users, permissionKey: 'customers' },
   { name: 'Inventory', href: '/inventory', icon: Warehouse, permissionKey: 'inventory' },
   { name: 'Coupons', href: '/coupons', icon: Ticket, permissionKey: 'coupons' },

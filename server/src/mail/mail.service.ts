@@ -11,6 +11,8 @@ import {
   renderOrderConfirmationEmail,
   renderOrderStatusUpdateEmail,
   renderOrderEditEmail,
+  renderAbandonedCartReminderEmail,
+  type CartReminderItem,
   type OrderConfirmationItem,
   type OrderConfirmationAddress,
 } from './templates/index.js';
@@ -471,6 +473,59 @@ export class MailService {
     } catch (error) {
       this.logger.warn(
         `Failed to dispatch order edit email to ${params.email} for ${params.orderNumber}: ${(error as Error).message}`
+      );
+      return false;
+    } finally {
+      transporter.close();
+    }
+  }
+
+  /**
+   * Dispatch Abandoned Cart Reminder email to patron
+   */
+  async sendAbandonedCartReminderEmail(params: {
+    email: string;
+    customerName?: string | null;
+    items: CartReminderItem[];
+    subtotal: number | string;
+    totalAmount: number | string;
+    cartId?: string;
+    customMessage?: string | null;
+  }): Promise<boolean> {
+    const transporter = this.getTransporter();
+    if (!transporter) return false;
+
+    const webUrl = this.getWebUrl();
+    const cartUrl = `${webUrl}/shop`;
+    const checkoutUrl = `${webUrl}/checkout`;
+    const from = this.getFromAddress('orders');
+
+    const { subject, html, text } = renderAbandonedCartReminderEmail({
+      customerName: params.customerName,
+      items: params.items,
+      subtotal: params.subtotal,
+      totalAmount: params.totalAmount,
+      cartUrl,
+      checkoutUrl,
+      customMessage: params.customMessage,
+      webUrl,
+    });
+
+    try {
+      const info = await transporter.sendMail({
+        from,
+        to: params.email,
+        subject,
+        html,
+        text,
+      });
+      this.logger.log(
+        `Abandoned cart reminder email dispatched to ${params.email} via ${from} (Message ID: ${info.messageId})`
+      );
+      return true;
+    } catch (error) {
+      this.logger.warn(
+        `Failed to dispatch abandoned cart reminder email to ${params.email}: ${(error as Error).message}`
       );
       return false;
     } finally {

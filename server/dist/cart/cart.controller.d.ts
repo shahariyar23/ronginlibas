@@ -1,4 +1,4 @@
-import { CartIdentityDto, AddCartItemDto, UpdateCartItemDto } from './dto/cart-item.dto.js';
+import { CartIdentityDto, AddCartItemDto, UpdateCartItemDto, CartContactDto } from './dto/cart-item.dto.js';
 import { CartService } from './cart.service.js';
 export declare class CartController {
     private readonly cartService;
@@ -254,6 +254,21 @@ export declare class CartController {
             total: number;
             currency: string;
         };
+    }>;
+    saveContact(customerId: string | undefined, dto: CartContactDto): Promise<{
+        message: string;
+        data: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            customerId: string | null;
+            guestName: string | null;
+            guestEmail: string | null;
+            guestPhone: string | null;
+            guestId: string | null;
+            lastReminderSentAt: Date | null;
+            reminderCount: number;
+        } | null;
     }>;
 }
 export declare class CartMergeController {

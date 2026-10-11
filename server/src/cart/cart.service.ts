@@ -7,12 +7,17 @@ import { randomUUID } from 'node:crypto';
 import { ProductVariant } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { SettingsService } from '../settings/services/settings.service.js';
+import { MailService } from '../mail/mail.service.js';
+import { AuditService, type AdminAuditActor } from '../audit/audit.service.js';
+import { AdminCartQueryDto } from './dto/cart-item.dto.js';
 
 @Injectable()
 export class CartService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly settingsService: SettingsService,
+    private readonly mailService: MailService,
+    private readonly auditService: AuditService,
   ) {}
 
   async openCart(customerId?: string, cartId?: string) {
@@ -242,6 +247,416 @@ export class CartService {
       return customerCart.id;
     });
     return this.getCart(customerId, customerCartId);
+  }
+
+  async saveContact(
+    customerId: string | undefined,
+    cartId: string | undefined,
+    contact: { email?: string; phone?: string; name?: string },
+  ) {
+    const cart = await this.findCart(customerId, cartId);
+    if (!cart) return null;
+    return this.prisma.cart.update({
+      where: { id: cart.id },
+      data: {
+        guestEmail: contact.email?.trim() || undefined,
+        guestPhone: contact.phone?.trim() || undefined,
+        guestName: contact.name?.trim() || undefined,
+      },
+    });
+  }
+
+  async getAdminCarts(query: AdminCartQueryDto) {
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.max(1, Math.min(100, Number(query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+    const where: any = {};
+
+    if (query.filter === 'WITH_ITEMS') {
+      where.items = { some: {} };
+    } else if (query.filter === 'ABANDONED') {
+      where.items = { some: {} };
+      where.updatedAt = { lt: oneHourAgo };
+    } else if (query.filter === 'REMINDED') {
+      where.reminderCount = { gt: 0 };
+    } else if (query.filter === 'HAS_EMAIL') {
+      where.items = { some: {} };
+      where.OR = [
+        { guestEmail: { not: null } },
+        { customer: { email: { not: null } } },
+      ];
+    }
+
+    if (query.search?.trim()) {
+      const s = query.search.trim();
+      where.OR = [
+        { guestEmail: { contains: s, mode: 'insensitive' } },
+        { guestName: { contains: s, mode: 'insensitive' } },
+        { guestPhone: { contains: s } },
+        { customer: { firstName: { contains: s, mode: 'insensitive' } } },
+        { customer: { lastName: { contains: s, mode: 'insensitive' } } },
+        { customer: { email: { contains: s, mode: 'insensitive' } } },
+        { customer: { phone: { contains: s } } },
+        { id: { contains: s } },
+      ];
+    }
+
+    const [total, carts, allCartsWithItems] = await Promise.all([
+      this.prisma.cart.count({ where }),
+      this.prisma.cart.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { updatedAt: 'desc' },
+        include: {
+          customer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+            },
+          },
+          items: {
+            orderBy: { createdAt: 'desc' },
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  price: true,
+                  images: {
+                    select: { url: true },
+                    orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+                    take: 1,
+                  },
+                },
+              },
+              variant: {
+                select: {
+                  id: true,
+                  size: true,
+                  color: true,
+                  stock: true,
+                  priceOverride: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.cart.findMany({
+        where: { items: { some: {} } },
+        select: {
+          id: true,
+          updatedAt: true,
+          reminderCount: true,
+          items: {
+            select: {
+              quantity: true,
+              product: { select: { price: true } },
+              variant: { select: { priceOverride: true } },
+            },
+          },
+        },
+      }),
+    ]);
+
+    let totalPotentialRevenue = 0;
+    let totalAbandonedCount = 0;
+    let totalRemindersSent = 0;
+
+    for (const c of allCartsWithItems) {
+      if (c.updatedAt < oneHourAgo) totalAbandonedCount++;
+      if (c.reminderCount > 0) totalRemindersSent += c.reminderCount;
+      for (const it of c.items) {
+        const p = it.variant.priceOverride ? Number(it.variant.priceOverride) : Number(it.product.price);
+        totalPotentialRevenue += p * it.quantity;
+      }
+    }
+
+    const formattedCarts = carts.map((cart) => {
+      let subtotal = 0;
+      let totalQuantity = 0;
+
+      const items = cart.items.map((item) => {
+        const unitPrice = item.variant.priceOverride
+          ? Number(item.variant.priceOverride)
+          : Number(item.product.price);
+        const lineTotal = unitPrice * item.quantity;
+        subtotal += lineTotal;
+        totalQuantity += item.quantity;
+
+        return {
+          id: item.id,
+          productId: item.productId,
+          productName: item.product.name,
+          slug: item.product.slug,
+          image: item.product.images[0]?.url || null,
+          variantId: item.variantId,
+          size: item.variant.size,
+          color: item.variant.color,
+          stock: item.variant.stock,
+          unitPrice,
+          quantity: item.quantity,
+          lineTotal,
+        };
+      });
+
+      const customerName =
+        cart.customer
+          ? `${cart.customer.firstName} ${cart.customer.lastName || ''}`.trim()
+          : cart.guestName || null;
+      const email = cart.customer?.email || cart.guestEmail || null;
+      const phone = cart.customer?.phone || cart.guestPhone || null;
+
+      const isAbandoned = cart.items.length > 0 && cart.updatedAt < oneHourAgo;
+
+      return {
+        id: cart.id,
+        guestId: cart.guestId,
+        customerId: cart.customerId,
+        isRegistered: Boolean(cart.customerId),
+        customerName: customerName || 'Anonymous Guest',
+        email,
+        phone,
+        hasEmail: Boolean(email),
+        itemsCount: cart.items.length,
+        totalQuantity,
+        subtotal,
+        isAbandoned,
+        lastReminderSentAt: cart.lastReminderSentAt,
+        reminderCount: cart.reminderCount,
+        createdAt: cart.createdAt,
+        updatedAt: cart.updatedAt,
+        items,
+      };
+    });
+
+    return {
+      carts: formattedCarts,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+      stats: {
+        totalCartsWithItems: allCartsWithItems.length,
+        totalAbandonedCount,
+        totalPotentialRevenue,
+        totalRemindersSent,
+      },
+    };
+  }
+
+  async getAdminCartById(id: string) {
+    const cart = await this.prisma.cart.findUnique({
+      where: { id },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+          },
+        },
+        items: {
+          orderBy: { createdAt: 'asc' },
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                price: true,
+                images: {
+                  select: { url: true },
+                  orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+                  take: 1,
+                },
+              },
+            },
+            variant: {
+              select: {
+                id: true,
+                size: true,
+                color: true,
+                stock: true,
+                priceOverride: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!cart) {
+      throw new NotFoundException('Cart not found');
+    }
+
+    let subtotal = 0;
+    const items = cart.items.map((item) => {
+      const unitPrice = item.variant.priceOverride
+        ? Number(item.variant.priceOverride)
+        : Number(item.product.price);
+      const lineTotal = unitPrice * item.quantity;
+      subtotal += lineTotal;
+
+      return {
+        id: item.id,
+        productId: item.productId,
+        productName: item.product.name,
+        slug: item.product.slug,
+        image: item.product.images[0]?.url || null,
+        variantId: item.variantId,
+        size: item.variant.size,
+        color: item.variant.color,
+        stock: item.variant.stock,
+        unitPrice,
+        quantity: item.quantity,
+        lineTotal,
+      };
+    });
+
+    const customerName =
+      cart.customer
+        ? `${cart.customer.firstName} ${cart.customer.lastName || ''}`.trim()
+        : cart.guestName || null;
+    const email = cart.customer?.email || cart.guestEmail || null;
+    const phone = cart.customer?.phone || cart.guestPhone || null;
+
+    return {
+      id: cart.id,
+      guestId: cart.guestId,
+      customerId: cart.customerId,
+      isRegistered: Boolean(cart.customerId),
+      customerName: customerName || 'Anonymous Guest',
+      email,
+      phone,
+      hasEmail: Boolean(email),
+      itemsCount: cart.items.length,
+      subtotal,
+      lastReminderSentAt: cart.lastReminderSentAt,
+      reminderCount: cart.reminderCount,
+      createdAt: cart.createdAt,
+      updatedAt: cart.updatedAt,
+      items,
+    };
+  }
+
+  async sendCartReminder(cartId: string, customMessage?: string, actor?: AdminAuditActor) {
+    const cart = await this.prisma.cart.findUnique({
+      where: { id: cartId },
+      include: {
+        customer: true,
+        items: {
+          include: {
+            product: {
+              include: {
+                images: {
+                  orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+                  take: 1,
+                },
+              },
+            },
+            variant: true,
+          },
+        },
+      },
+    });
+
+    if (!cart) {
+      throw new NotFoundException('Cart not found');
+    }
+
+    if (cart.items.length === 0) {
+      throw new BadRequestException('Cannot send reminder for an empty cart');
+    }
+
+    const email = cart.customer?.email || cart.guestEmail;
+    if (!email) {
+      throw new BadRequestException('No email address associated with this cart');
+    }
+
+    const customerName = cart.customer
+      ? `${cart.customer.firstName} ${cart.customer.lastName || ''}`.trim()
+      : cart.guestName || 'Valued Patron';
+
+    let subtotal = 0;
+    const reminderItems = cart.items.map((item) => {
+      const unitPrice = item.variant.priceOverride
+        ? Number(item.variant.priceOverride)
+        : Number(item.product.price);
+      const lineTotal = unitPrice * item.quantity;
+      subtotal += lineTotal;
+
+      return {
+        productName: item.product.name,
+        variantName: item.variant.color ? `${item.variant.size} - ${item.variant.color}` : item.variant.size,
+        size: item.variant.size,
+        color: item.variant.color,
+        quantity: item.quantity,
+        unitPrice,
+        subtotal: lineTotal,
+        productImage: item.product.images[0]?.url || null,
+      };
+    });
+
+    const settings = await this.settingsService.getPublicSettings();
+    const deliveryCharge =
+      settings.freeShippingEnabled !== false && subtotal >= Number(settings.freeDeliveryThreshold)
+        ? 0
+        : Number(settings.outsideDhakaDeliveryCharge);
+    const totalAmount = subtotal + deliveryCharge;
+
+    const emailSent = await this.mailService.sendAbandonedCartReminderEmail({
+      email,
+      customerName,
+      items: reminderItems,
+      subtotal,
+      totalAmount,
+      cartId: cart.guestId || cart.id,
+      customMessage: customMessage || undefined,
+    });
+
+    if (!emailSent) {
+      throw new BadRequestException('Failed to dispatch reminder email via mail server');
+    }
+
+    const updated = await this.prisma.cart.update({
+      where: { id: cart.id },
+      data: {
+        lastReminderSentAt: new Date(),
+        reminderCount: { increment: 1 },
+      },
+    });
+
+    if (actor) {
+      await this.auditService.record({
+        actor,
+        module: 'CARTS',
+        action: 'SEND_REMINDER',
+        entityType: 'Cart',
+        entityId: cart.id,
+        entityLabel: `${customerName} (${email})`,
+        summary: `Dispatched abandoned cart recovery awareness email to ${email} (${reminderItems.length} items, ৳${totalAmount})`,
+      });
+    }
+
+    return {
+      success: true,
+      email,
+      reminderCount: updated.reminderCount,
+      lastReminderSentAt: updated.lastReminderSentAt,
+    };
   }
 
   private async findCart(customerId?: string, cartId?: string) {

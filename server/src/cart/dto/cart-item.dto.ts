@@ -35,3 +35,46 @@ export class CartIdentityDto {
   @IsOptional()
   cartId?: string;
 }
+
+export class CartContactDto {
+  @ApiPropertyOptional()
+  @IsUUID()
+  @IsOptional()
+  cartId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  email?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  phone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  name?: string;
+}
+
+export class AdminCartQueryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  page?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  limit?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  filter?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  search?: string;
+}
+
+export class SendCartReminderDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  customMessage?: string;
+}

@@ -531,6 +531,25 @@ export const adminApi = {
       }),
   },
 
+  // Abandoned Carts
+  carts: {
+    getAll: (params?: { page?: number; limit?: number; filter?: string; search?: string }) => {
+      const query = new URLSearchParams();
+      if (params?.page) query.set('page', params.page.toString());
+      if (params?.limit) query.set('limit', params.limit.toString());
+      if (params?.filter && params.filter !== 'ALL') query.set('filter', params.filter);
+      if (params?.search) query.set('search', params.search);
+      const qs = query.toString();
+      return request<any>(`/admin/carts${qs ? `?${qs}` : ''}`);
+    },
+    getById: (id: string) => request<any>(`/admin/carts/${encodeURIComponent(id.trim())}`),
+    sendReminder: (id: string, customMessage?: string) =>
+      request<any>(`/admin/carts/${encodeURIComponent(id.trim())}/send-reminder`, {
+        method: 'POST',
+        body: JSON.stringify({ customMessage }),
+      }),
+  },
+
   // Reviews
   reviews: {
     getAll: (params?: { page?: number; limit?: number; status?: string }) => {

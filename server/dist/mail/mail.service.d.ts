@@ -1,5 +1,5 @@
 import { ConfigService } from '@nestjs/config';
-import { type OrderConfirmationItem, type OrderConfirmationAddress } from './templates/index.js';
+import { type CartReminderItem, type OrderConfirmationItem, type OrderConfirmationAddress } from './templates/index.js';
 export declare class MailService {
     private readonly configService;
     private readonly logger;
@@ -64,5 +64,14 @@ export declare class MailService {
         trackingUrl?: string | null;
         adminNotes?: string | null;
         trackingToken?: string;
+    }): Promise<boolean>;
+    sendAbandonedCartReminderEmail(params: {
+        email: string;
+        customerName?: string | null;
+        items: CartReminderItem[];
+        subtotal: number | string;
+        totalAmount: number | string;
+        cartId?: string;
+        customMessage?: string | null;
     }): Promise<boolean>;
 }
