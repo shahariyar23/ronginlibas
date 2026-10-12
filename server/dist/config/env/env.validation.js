@@ -38,6 +38,13 @@ class EnvironmentVariables {
     CLOUDINARY_CLOUD_NAME;
     CLOUDINARY_API_KEY;
     CLOUDINARY_API_SECRET;
+    PATHAO_ENV;
+    PATHAO_BASE_URL;
+    PATHAO_CLIENT_ID;
+    PATHAO_CLIENT_SECRET;
+    PATHAO_USERNAME;
+    PATHAO_PASSWORD;
+    PATHAO_GRANT_TYPE;
 }
 __decorate([
     IsEnum(Environment),
@@ -149,6 +156,41 @@ __decorate([
     IsOptional(),
     __metadata("design:type", String)
 ], EnvironmentVariables.prototype, "CLOUDINARY_API_SECRET", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "PATHAO_ENV", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "PATHAO_BASE_URL", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "PATHAO_CLIENT_ID", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "PATHAO_CLIENT_SECRET", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "PATHAO_USERNAME", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "PATHAO_PASSWORD", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "PATHAO_GRANT_TYPE", void 0);
 export function validateEnv(config) {
     const validatedConfig = plainToInstance(EnvironmentVariables, config, {
         enableImplicitConversion: true,

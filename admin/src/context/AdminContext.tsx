@@ -218,6 +218,15 @@ function adaptBackendOrder(o: any): AdminOrder {
     trackingNumber: o.trackingNumber || undefined,
     trackingUrl: o.trackingUrl || undefined,
     createdAt: o.createdAt,
+    source: o.source,
+    createdById: o.createdById,
+    createdByName: o.createdByName,
+    paymentReference: o.paymentReference,
+    paidAmount: o.paidAmount !== undefined && o.paidAmount !== null ? Number(o.paidAmount) : undefined,
+    manualDiscountAmount:
+      o.manualDiscountAmount !== undefined && o.manualDiscountAmount !== null
+        ? Number(o.manualDiscountAmount)
+        : undefined,
   };
 }
 

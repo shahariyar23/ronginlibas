@@ -146,7 +146,7 @@ export interface AdminOrder {
   discountAmount?: number;
   deliveryCharge?: number;
   paymentMethod: 'COD' | 'BKASH' | 'NAGAD' | 'CARD';
-  paymentStatus?: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
+  paymentStatus?: 'PENDING' | 'PAID' | 'PARTIALLY_PAID' | 'FAILED' | 'REFUNDED';
   status: 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
   dateStr: string;
   timeDetail: string;
@@ -156,9 +156,21 @@ export interface AdminOrder {
   customerNotes?: string;
   adminNotes?: string;
   courierName?: string;
+  courierProvider?: string;
+  courierConsignmentId?: string;
+  courierStatus?: string;
+  courierTrackingUrl?: string;
+  courierCreatedAt?: string;
+  courierResponseMetadata?: any;
   trackingNumber?: string;
   trackingUrl?: string;
   createdAt?: string;
+  source?: string;
+  createdById?: string;
+  createdByName?: string;
+  paymentReference?: string;
+  paidAmount?: number;
+  manualDiscountAmount?: number;
 }
 
 export interface InventoryItem {

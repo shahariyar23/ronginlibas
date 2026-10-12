@@ -26,10 +26,15 @@ import {
   ShieldCheck,
   AlertCircle,
   Loader2,
+  Plus,
+  ExternalLink,
+  RefreshCw,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useAdmin } from '@/context/AdminContext';
+import { adminApi } from '@/lib/api';
+import { useToast } from '@/context/ToastContext';
 import { AdminOrder } from '@/data/adminData';
 import { TablePageSkeleton } from '@/components/common/Skeleton';
 import { printParcelSlip } from '@/utils/printParcelSlip';
@@ -78,7 +83,8 @@ function BarcodeGraphic({ value }: { value: string }) {
 
 
 function OrdersPageContent() {
-  const { orders, updateOrderStatus, isLoading } = useAdmin();
+  const { orders, updateOrderStatus, isLoading, refreshData } = useAdmin();
+  const { toast } = useToast();
   const searchParams = useSearchParams();
   const focusedOrderId = searchParams.get('orderId')?.trim() || '';
   const [activeTab, setActiveTab] = useState<string>('ALL');
@@ -90,6 +96,65 @@ function OrdersPageContent() {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [targetStatus, setTargetStatus] = useState<string | null>(null);
   const [showFlowGuide, setShowFlowGuide] = useState(false);
+
+  // Pathao Courier Sandbox States
+  const [isBookingPathao, setIsBookingPathao] = useState(false);
+  const [isRefreshingPathao, setIsRefreshingPathao] = useState(false);
+
+  const handleBookPathaoParcel = async (orderId: string) => {
+    setIsBookingPathao(true);
+    try {
+      const res = await adminApi.pathao.createParcelFromOrder(orderId);
+      if (res.success && res.data) {
+        const payload = res.data;
+        toast.success(`Pathao Sandbox parcel created! Consignment #${payload.parcel.consignment_id}`);
+        const consignmentId = payload.parcel.consignment_id;
+        const trackingUrl = `https://pathao.com/courier/track?consignment_id=${consignmentId}`;
+
+        setSelectedOrderForInvoice((prev: any) =>
+          prev
+            ? {
+                ...prev,
+                courierName: 'Pathao',
+                courierProvider: 'Pathao',
+                courierConsignmentId: consignmentId,
+                trackingNumber: consignmentId,
+                courierStatus: payload.parcel.order_status,
+                trackingUrl,
+              }
+            : null,
+        );
+        await refreshData();
+      } else {
+        toast.error(res.error || 'Failed to create Pathao sandbox parcel');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Error creating Pathao sandbox parcel');
+    } finally {
+      setIsBookingPathao(false);
+    }
+  };
+
+  const handleRefreshPathaoStatus = async (orderId: string) => {
+    setIsRefreshingPathao(true);
+    try {
+      const res = await adminApi.pathao.refreshStatus(orderId);
+      if (res.success && res.data) {
+        const payload = res.data;
+        toast.success(`Pathao status updated: ${payload.courierStatus}`);
+        setSelectedOrderForInvoice((prev: any) =>
+          prev ? { ...prev, courierStatus: payload.courierStatus } : null,
+        );
+        await refreshData();
+      } else {
+        toast.error(res.error || 'Failed to refresh Pathao status');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Error refreshing Pathao status');
+    } finally {
+      setIsRefreshingPathao(false);
+    }
+  };
 
   // Tab counts
   const pendingCount = orders.filter((o) => o.status === 'PENDING').length;
@@ -187,6 +252,14 @@ function OrdersPageContent() {
               <p className="font-serif font-bold text-[#8c6722]">{pendingCount} Queued</p>
             </div>
           </div>
+
+          <Link
+            href="/orders/create"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-[#073a2d] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#00231a] transition-colors shadow-xs"
+          >
+            <Plus className="w-3.5 h-3.5 text-[#c79a45]" />
+            <span>CREATE ORDER</span>
+          </Link>
 
           <button
             onClick={() => setShowFlowGuide(!showFlowGuide)}
@@ -774,6 +847,12 @@ function OrdersPageContent() {
                     <p className="text-[11px] text-[#717975] mt-1">
                       Ordered: {selectedOrderForInvoice.dateStr} at {selectedOrderForInvoice.timeDetail}
                     </p>
+                    {selectedOrderForInvoice.source && (
+                      <p className="text-[10px] font-bold text-[#073a2d] mt-0.5">
+                        Channel: {selectedOrderForInvoice.source}
+                        {selectedOrderForInvoice.createdByName && ` • Created by ${selectedOrderForInvoice.createdByName}`}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -815,6 +894,12 @@ function OrdersPageContent() {
                             >
                               {selectedOrderForInvoice.customerEmail}
                             </a>
+                          </p>
+                        )}
+                        {selectedOrderForInvoice.paymentReference && (
+                          <p className="text-[11px] font-mono text-[#073a2d] font-semibold pt-1 border-t border-[#deddd3]/60">
+                            Txn / Ref: {selectedOrderForInvoice.paymentReference}
+                            {selectedOrderForInvoice.paidAmount !== undefined && ` • Paid: ৳${selectedOrderForInvoice.paidAmount.toLocaleString()}`}
                           </p>
                         )}
                       </div>
@@ -949,15 +1034,23 @@ function OrdersPageContent() {
                     {Boolean(
                       selectedOrderForInvoice.discountAmount &&
                         selectedOrderForInvoice.discountAmount > 0
-                    )}
-                    {Boolean(
-                      selectedOrderForInvoice.discountAmount &&
-                        selectedOrderForInvoice.discountAmount > 0
                     ) && (
                       <div className="flex justify-between text-[#8c6722]">
-                        <span>Voucher / Atelier Discount</span>
+                        <span>Voucher / Coupon Discount</span>
                         <span className="font-mono font-medium">
                           -৳{selectedOrderForInvoice.discountAmount?.toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+
+                    {Boolean(
+                      selectedOrderForInvoice.manualDiscountAmount &&
+                        selectedOrderForInvoice.manualDiscountAmount > 0
+                    ) && (
+                      <div className="flex justify-between text-[#8c6722]">
+                        <span>Manual Admin Concession</span>
+                        <span className="font-mono font-medium">
+                          -৳{selectedOrderForInvoice.manualDiscountAmount?.toLocaleString()}
                         </span>
                       </div>
                     )}
@@ -985,6 +1078,111 @@ function OrdersPageContent() {
                       </span>
                     </div>
                   </div>
+                </div>
+
+                {/* Pathao Courier Sandbox Dispatch Section */}
+                <div className="bg-[#fbf9f2] border border-[#deddd3] p-4 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#deddd3]/60 pb-2">
+                    <div className="flex items-center gap-2">
+                      <Truck className="w-4 h-4 text-[#8c6722]" />
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-[#1b1c18]">
+                        Pathao Courier Logistics
+                      </h4>
+                      <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-[#c79a45]/20 text-[#8c6722] border border-[#c79a45]/40">
+                        SANDBOX / TEST
+                      </span>
+                    </div>
+
+                    <p className="text-[10px] text-[#717975] italic">
+                      Testing Mode — No real delivery will be created.
+                    </p>
+                  </div>
+
+                  {selectedOrderForInvoice.courierConsignmentId ? (
+                    <div className="bg-white border border-[#deddd3] p-3 space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#717975] block">
+                            Sandbox Consignment ID
+                          </span>
+                          <span className="font-mono text-sm font-black text-[#073a2d]">
+                            #{selectedOrderForInvoice.courierConsignmentId}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-1 text-xs font-semibold bg-[#b0ecd3]/40 border border-[#0d4d3b]/30 text-[#073a2d]">
+                            {selectedOrderForInvoice.courierStatus || 'Pending'}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRefreshPathaoStatus(selectedOrderForInvoice.id)}
+                            disabled={isRefreshingPathao}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-[#deddd3] hover:bg-[#fbf9f2] text-xs font-medium text-[#404945] transition-colors disabled:opacity-50 cursor-pointer"
+                          >
+                            {isRefreshingPathao ? (
+                              <Loader2 className="w-3 h-3 animate-spin text-[#073a2d]" />
+                            ) : (
+                              <RefreshCw className="w-3 h-3 text-[#717975]" />
+                            )}
+                            <span>{isRefreshingPathao ? 'Syncing...' : 'Refresh Status'}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-[#f0eee7] flex items-center justify-between text-xs text-[#717975]">
+                        <span>Carrier: <strong>Pathao Express (Sandbox)</strong></span>
+                        <a
+                          href={
+                            selectedOrderForInvoice.trackingUrl ||
+                            `https://pathao.com/courier/track?consignment_id=${selectedOrderForInvoice.courierConsignmentId}`
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-[#073a2d] hover:underline font-semibold"
+                        >
+                          <span>Track Consignment</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-[#deddd3] p-3 text-xs">
+                      <div>
+                        <p className="font-semibold text-[#1b1c18]">Ready for Sandbox Courier Booking</p>
+                        <p className="text-[11px] text-[#69726d] mt-0.5">
+                          Collect: ৳
+                          {selectedOrderForInvoice.paymentStatus === 'PAID'
+                            ? 0
+                            : Math.max(
+                                0,
+                                selectedOrderForInvoice.amount - (selectedOrderForInvoice.paidAmount || 0),
+                              ).toLocaleString()}{' '}
+                          • Units: {selectedOrderForInvoice.itemCount} Total Garment(s)
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleBookPathaoParcel(selectedOrderForInvoice.id)}
+                        disabled={isBookingPathao}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#073a2d] hover:bg-[#0c4e3b] text-white text-xs font-semibold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer shadow-xs whitespace-nowrap"
+                      >
+                        {isBookingPathao ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Booking Sandbox Parcel...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Truck className="w-3.5 h-3.5 text-[#c79a45]" />
+                            <span>Book Pathao Sandbox Parcel</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

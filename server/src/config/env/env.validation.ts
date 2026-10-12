@@ -95,6 +95,34 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   CLOUDINARY_API_SECRET?: string;
+
+  @IsString()
+  @IsOptional()
+  PATHAO_ENV?: string;
+
+  @IsString()
+  @IsOptional()
+  PATHAO_BASE_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  PATHAO_CLIENT_ID?: string;
+
+  @IsString()
+  @IsOptional()
+  PATHAO_CLIENT_SECRET?: string;
+
+  @IsString()
+  @IsOptional()
+  PATHAO_USERNAME?: string;
+
+  @IsString()
+  @IsOptional()
+  PATHAO_PASSWORD?: string;
+
+  @IsString()
+  @IsOptional()
+  PATHAO_GRANT_TYPE?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>) {

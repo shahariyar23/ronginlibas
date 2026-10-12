@@ -59,18 +59,18 @@ export declare class AuthService {
     }>;
     linkSocialAccount(customerId: string, dto: SocialLoginDto): Promise<{
         linked: boolean;
-        provider: "GOOGLE";
+        provider: import("@prisma/client").$Enums.AuthProvider;
         message: string;
     }>;
     unlinkSocialAccount(customerId: string, provider: AuthProvider): Promise<{
         unlinked: boolean;
-        provider: "GOOGLE";
+        provider: import("@prisma/client").$Enums.AuthProvider;
         message: string;
     }>;
     getCustomerIdentities(customerId: string): Promise<{
         id: string;
         createdAt: Date;
-        provider: "GOOGLE";
+        provider: import("@prisma/client").$Enums.AuthProvider;
         providerEmail: string | null;
     }[]>;
     registerCustomer(dto: RegisterCustomerDto): Promise<{

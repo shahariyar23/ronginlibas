@@ -147,7 +147,7 @@ export declare class AuthController {
         message: string;
         data: {
             linked: boolean;
-            provider: "GOOGLE";
+            provider: import("@prisma/client").$Enums.AuthProvider;
             message: string;
         };
     }>;
@@ -155,7 +155,7 @@ export declare class AuthController {
         message: string;
         data: {
             unlinked: boolean;
-            provider: "GOOGLE";
+            provider: import("@prisma/client").$Enums.AuthProvider;
             message: string;
         };
     }>;
@@ -164,7 +164,7 @@ export declare class AuthController {
         data: {
             id: string;
             createdAt: Date;
-            provider: "GOOGLE";
+            provider: import("@prisma/client").$Enums.AuthProvider;
             providerEmail: string | null;
         }[];
     }>;

@@ -379,7 +379,11 @@ function ReviewsContent() {
                         onClick={() => updateReviewStatus(rev.id, 'PENDING')}
                         className="inline-flex items-center gap-1.5 bg-white border border-[#deddd3] hover:bg-[#ebe8df] text-[#404945] px-2.5 py-1.5 text-xs font-semibold disabled:opacity-50 cursor-pointer transition-colors"
                       >
-                        <Clock className="w-3 h-3 text-[#717975]" />
+                        {isUpdating ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Clock className="w-3 h-3 text-[#717975]" />
+                        )}
                         <span>Revert to Pending</span>
                       </button>
                     )}
@@ -456,7 +460,11 @@ function ReviewsContent() {
                         }}
                         className="inline-flex items-center gap-1.5 bg-[#c79a45] hover:bg-[#b08535] px-4 py-2 text-xs font-semibold text-white disabled:opacity-60 cursor-pointer transition-colors"
                       >
-                        <ShieldCheck className="w-3.5 h-3.5" />
+                        {submittingReviewId === rev.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                        )}
                         <span>Send Response &amp; Approve</span>
                       </button>
                     )}

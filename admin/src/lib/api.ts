@@ -237,6 +237,65 @@ export interface AdminCollection {
   };
 }
 
+export interface CreateAdminOrderPayload {
+  customerId?: string;
+  customer?: {
+    fullName?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    phoneNumber?: string;
+  };
+  newCustomer?: {
+    fullName?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    phoneNumber?: string;
+  };
+  addressId?: string;
+  shippingAddress?: {
+    addressLine1?: string;
+    addressLine2?: string;
+    streetAddress?: string;
+    city?: string;
+    district?: string;
+    thana?: string;
+    area?: string;
+    division?: string;
+    postalCode?: string;
+    phone?: string;
+    receiverPhone?: string;
+    fullName?: string;
+    receiverName?: string;
+    email?: string;
+    deliveryInstructions?: string;
+    notes?: string;
+  };
+  items: Array<{
+    productId?: string;
+    variantId?: string;
+    productVariantId?: string;
+    quantity: number;
+  }>;
+  couponCode?: string;
+  paymentMethod?: string;
+  paymentStatus?: string;
+  paymentReference?: string;
+  paidAmount?: number;
+  courierName?: string;
+  courierProvider?: string;
+  shippingMethod?: string;
+  deliveryCharge?: number;
+  source?: string;
+  customerNotes?: string;
+  adminNotes?: string;
+  manualDiscountType?: 'FIXED' | 'PERCENTAGE';
+  manualDiscountValue?: number;
+}
+
 export interface CreateCollectionPayload {
   name: string;
   slug?: string;
@@ -725,6 +784,11 @@ export const adminApi = {
         method: 'PATCH',
         body: JSON.stringify(payload),
       }),
+    create: (payload: CreateAdminOrderPayload) =>
+      request<any>('/admin/orders', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
   },
 
   // Abandoned Carts
@@ -956,4 +1020,117 @@ export const adminApi = {
         body: JSON.stringify(payload),
       }),
   },
+
+  // Pathao Courier Sandbox Integration
+  pathao: {
+    testConnection: () =>
+      request<{
+        success: boolean;
+        environment: 'sandbox';
+        provider: 'Pathao';
+        message: string;
+        details?: any;
+      }>('/admin/pathao/test-connection'),
+    getStatus: () =>
+      request<{
+        environment: 'sandbox';
+        provider: 'Pathao';
+        configured: boolean;
+        connected: boolean;
+        baseUrl: string;
+        message?: string;
+        defaultStoreId?: number | null;
+        stores?: Array<{
+          store_id: number;
+          store_name: string;
+          store_address: string;
+        }>;
+      }>('/admin/pathao/status'),
+    getCities: () =>
+      request<Array<{ city_id: number; city_name: string }>>('/admin/pathao/cities'),
+    getZones: (cityId: number) =>
+      request<Array<{ zone_id: number; zone_name: string }>>(`/admin/pathao/cities/${cityId}/zones`),
+    getAreas: (zoneId: number) =>
+      request<Array<{ area_id: number; area_name: string }>>(`/admin/pathao/zones/${zoneId}/areas`),
+    getStores: () =>
+      request<Array<{ store_id: number; store_name: string; store_address: string }>>('/admin/pathao/stores'),
+    calculatePrice: (payload: {
+      store_id?: number;
+      item_type?: number;
+      delivery_type?: number;
+      item_weight: number;
+      recipient_city: number;
+      recipient_zone: number;
+    }) =>
+      request<{
+        price: number;
+        plan_id?: number;
+        additional_charge?: number;
+        discount?: number;
+      }>('/admin/pathao/price-plan', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    createTestOrder: (payload: {
+      store_id?: number;
+      merchant_order_id?: string;
+      recipient_name: string;
+      recipient_phone: string;
+      recipient_address: string;
+      recipient_city?: number;
+      recipient_zone?: number;
+      recipient_area?: number;
+      delivery_type?: number;
+      item_type?: number;
+      special_instruction?: string;
+      item_quantity: number;
+      item_weight: number | string;
+      amount_to_collect: number;
+      item_description: string;
+    }) =>
+      request<{
+        consignment_id: string;
+        merchant_order_id: string;
+        order_status: string;
+        delivery_fee?: number;
+      }>('/admin/pathao/test-orders', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    createParcelFromOrder: (
+      orderId: string,
+      options?: {
+        store_id?: number;
+        special_instruction?: string;
+        item_weight?: number;
+        delivery_type?: number;
+        forceDuplicate?: boolean;
+      },
+    ) =>
+      request<{
+        order: any;
+        parcel: {
+          consignment_id: string;
+          merchant_order_id: string;
+          order_status: string;
+          delivery_fee?: number;
+        };
+      }>(`/admin/pathao/orders/${orderId}/create-parcel`, {
+        method: 'POST',
+        body: JSON.stringify(options || {}),
+      }),
+    trackOrder: (orderId: string) => request<any>(`/admin/pathao/orders/${orderId}/track`),
+    refreshStatus: (orderId: string) =>
+      request<{
+        orderId: string;
+        orderNumber: string;
+        courierConsignmentId: string;
+        courierStatus: string;
+        lastSyncedAt: string;
+        trackingInfo: any;
+      }>(`/admin/pathao/orders/${orderId}/refresh-status`, {
+        method: 'POST',
+      }),
+  },
 };
+
