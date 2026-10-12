@@ -11,12 +11,14 @@ describe('DashboardService', () => {
     recentOrders = [],
     variants = [],
     topSellingGroups = [],
+    cartCount = 4,
   }: {
     periodOrders?: unknown[];
     dailyOrders?: unknown[];
     recentOrders?: unknown[];
     variants?: unknown[];
     topSellingGroups?: unknown[];
+    cartCount?: number;
   } = {}) {
     const findMany = vi
       .fn()
@@ -42,6 +44,7 @@ describe('DashboardService', () => {
       productVariant: { findMany: productVariantFindMany },
       review: { count: vi.fn().mockResolvedValue(4) },
       orderItem: { groupBy },
+      cart: { count: vi.fn().mockResolvedValue(cartCount) },
     } as unknown as PrismaService;
     return {
       service: new DashboardService(prisma),
@@ -116,7 +119,7 @@ describe('DashboardService', () => {
     expect(result.salesOverview.kpis).toEqual({
       averageOrderValue: 300,
       deliveryRate: 50,
-      conversionRate: null,
+      conversionRate: 50,
       fulfillmentVelocityHours: 5,
     });
     expect(result.salesOverview.chartData).toHaveLength(7);
@@ -156,7 +159,7 @@ describe('DashboardService', () => {
   });
 
   it('uses the current month window and represents missing metrics as unavailable', async () => {
-    const { service, findMany } = makeService();
+    const { service, findMany } = makeService({ cartCount: 0 });
 
     const result = await service.getAdminDashboardMetrics('month', now);
 

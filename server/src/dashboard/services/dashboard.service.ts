@@ -21,6 +21,7 @@ export class DashboardService {
       variants,
       pendingReviews,
       topSellingGroups,
+      activeCartsCount,
     ] = await Promise.all([
       this.prisma.order.findMany({
         where: {
@@ -96,6 +97,14 @@ export class DashboardService {
           },
         },
         _sum: { quantity: true, subtotal: true, discountAmount: true },
+      }),
+      this.prisma.cart.count({
+        where: {
+          OR: [
+            { createdAt: { gte: range.start, lte: range.end } },
+            { updatedAt: { gte: range.start, lte: range.end } },
+          ],
+        },
       }),
     ]);
 
@@ -174,7 +183,12 @@ export class DashboardService {
           deliveryRate: periodOrders.length
             ? Number(((deliveredOrders.length / periodOrders.length) * 100).toFixed(1))
             : null,
-          conversionRate: null,
+          conversionRate: (() => {
+            const totalSessions = Math.max(activeCartsCount, periodOrders.length);
+            return totalSessions > 0
+              ? Number(((periodOrders.length / totalSessions) * 100).toFixed(1))
+              : null;
+          })(),
           fulfillmentVelocityHours: fulfillmentDurations.length
             ? Number(
                 (

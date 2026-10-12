@@ -16,7 +16,7 @@ let DashboardService = class DashboardService {
     }
     async getAdminDashboardMetrics(period = '7', now = new Date()) {
         const range = getPeriodRange(period, now);
-        const [periodOrders, dailyOrders, recentOrders, activeProducts, totalCustomers, pendingOrders, failedPayments, variants, pendingReviews, topSellingGroups,] = await Promise.all([
+        const [periodOrders, dailyOrders, recentOrders, activeProducts, totalCustomers, pendingOrders, failedPayments, variants, pendingReviews, topSellingGroups, activeCartsCount,] = await Promise.all([
             this.prisma.order.findMany({
                 where: {
                     status: { not: 'CANCELLED' },
@@ -92,6 +92,14 @@ let DashboardService = class DashboardService {
                 },
                 _sum: { quantity: true, subtotal: true, discountAmount: true },
             }),
+            this.prisma.cart.count({
+                where: {
+                    OR: [
+                        { createdAt: { gte: range.start, lte: range.end } },
+                        { updatedAt: { gte: range.start, lte: range.end } },
+                    ],
+                },
+            }),
         ]);
         const chartData = makePeriodChart(periodOrders, range, period);
         const dailySales = makeDailySales(dailyOrders, now);
@@ -157,7 +165,12 @@ let DashboardService = class DashboardService {
                     deliveryRate: periodOrders.length
                         ? Number(((deliveredOrders.length / periodOrders.length) * 100).toFixed(1))
                         : null,
-                    conversionRate: null,
+                    conversionRate: (() => {
+                        const totalSessions = Math.max(activeCartsCount, periodOrders.length);
+                        return totalSessions > 0
+                            ? Number(((periodOrders.length / totalSessions) * 100).toFixed(1))
+                            : null;
+                    })(),
                     fulfillmentVelocityHours: fulfillmentDurations.length
                         ? Number((fulfillmentDurations.reduce((sum, hours) => sum + hours, 0) /
                             fulfillmentDurations.length).toFixed(1))

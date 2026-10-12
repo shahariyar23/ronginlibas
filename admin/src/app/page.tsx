@@ -63,7 +63,10 @@ export default function DashboardPage() {
     ? '—'
     : `${kpis.deliveryRate}%`;
   const averageOrderValue = kpis?.averageOrderValue;
-  const conversionRate = kpis?.conversionRate;
+  const conversionRate =
+    kpis?.conversionRate === null || kpis?.conversionRate === undefined
+      ? '—'
+      : `${kpis.conversionRate}%`;
   const fulfillmentVelocityHours = kpis?.fulfillmentVelocityHours;
   const attention = dashboardMetrics?.needsAttention;
   const lowStockCount = attention?.lowStockVariants ?? 0;
@@ -124,7 +127,7 @@ export default function DashboardPage() {
       ['Total Customers', totalCustomers],
       ['Average Order Value (BDT)', averageOrderValue ?? 'Unavailable'],
       ['Delivery Rate', deliveryRate],
-      ['Conversion Rate', conversionRate ?? 'Analytics data unavailable'],
+      ['Conversion Rate', conversionRate !== '—' ? conversionRate : 'Unavailable'],
       ['Fulfillment Velocity (hours)', fulfillmentVelocityHours ?? 'Unavailable'],
       ['Pending Orders', attention?.pendingOrders ?? 0],
       ['Low Stock Variants', lowStockCount],
@@ -608,8 +611,12 @@ export default function DashboardPage() {
             </div>
             <div>
               <p className="text-[10px] uppercase font-semibold text-[#717975]">CONVERSION RATE</p>
-              <p className="text-base font-serif font-bold text-[#1b1c18]">{conversionRate ?? '—'}</p>
-              <p className="text-[10px] text-[#717975]">Analytics data unavailable</p>
+              <p className="text-base font-serif font-bold text-[#1b1c18]">{conversionRate}</p>
+              <p className="text-[10px] text-[#717975]">
+                {kpis?.conversionRate === null || kpis?.conversionRate === undefined
+                  ? 'No session activity in period'
+                  : 'Orders / tracked shopping sessions'}
+              </p>
             </div>
           </div>
 

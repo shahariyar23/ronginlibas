@@ -27,7 +27,7 @@ export declare class DashboardService {
             kpis: {
                 averageOrderValue: number | null;
                 deliveryRate: number | null;
-                conversionRate: null;
+                conversionRate: number | null;
                 fulfillmentVelocityHours: number | null;
             };
         };
