@@ -34,6 +34,7 @@ import { MailModule } from '../mail/mail.module.js';
 import { OffersModule } from '../offers/offers.module.js';
 import { CollectionsModule } from '../collections/collections.module.js';
 import { ReportsModule } from '../reports/reports.module.js';
+import { PathaoModule } from '../pathao/pathao.module.js';
 import { AppController } from './app.controller.js';
 import { HealthController } from './health.controller.js';
 import { TransformInterceptor } from '../common/interceptors/transform.interceptor.js';
@@ -66,6 +67,7 @@ AppModule = __decorate([
             SettingsModule,
             PaymentsModule,
             ShippingModule,
+            PathaoModule,
             StorefrontModule,
             CartModule,
             WishlistModule,

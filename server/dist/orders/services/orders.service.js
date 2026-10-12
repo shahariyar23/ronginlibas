@@ -12,6 +12,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 };
 var OrdersService_1;
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, Optional, ServiceUnavailableException, } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import PDFDocument from 'pdfkit';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import fs from 'node:fs';
@@ -20,6 +21,9 @@ import { fileURLToPath } from 'node:url';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { SettingsService } from '../../settings/services/settings.service.js';
 import { MailService } from '../../mail/mail.service.js';
+function roundCurrency(val) {
+    return Math.round((val + Number.EPSILON) * 100) / 100;
+}
 const orderItemCustomerSelect = {
     id: true,
     productId: true,
@@ -142,6 +146,12 @@ let OrdersService = OrdersService_1 = class OrdersService {
                     trackingNumber: true,
                     trackingUrl: true,
                     estimatedDelivery: true,
+                    source: true,
+                    createdById: true,
+                    createdByName: true,
+                    paymentReference: true,
+                    paidAmount: true,
+                    manualDiscountAmount: true,
                     createdAt: true,
                     updatedAt: true,
                     customer: { select: { firstName: true, lastName: true, email: true, phone: true } },
@@ -607,6 +617,369 @@ let OrdersService = OrdersService_1 = class OrdersService {
             trackingEvents: createdOrder.order.trackingEvents,
             ...(trackingToken ? { guestTrackingToken: trackingToken } : {}),
         };
+    }
+    async createByAdmin(dto, actor) {
+        if (!dto.items?.length) {
+            throw new BadRequestException('Order must contain at least one item');
+        }
+        const variantIds = dto.items.map((item) => item.productVariantId || item.variantId);
+        if (new Set(variantIds).size !== variantIds.length) {
+            throw new BadRequestException('Each product variant must appear only once in an order');
+        }
+        let resolvedAddress = null;
+        if (dto.addressId) {
+            const savedAddress = await this.prisma.address?.findUnique?.({
+                where: { id: dto.addressId },
+            });
+            if (savedAddress) {
+                resolvedAddress = {
+                    addressLine1: savedAddress.addressLine1 || savedAddress.streetAddress || '',
+                    addressLine2: savedAddress.addressLine2 || undefined,
+                    city: savedAddress.city || savedAddress.district || '',
+                    division: savedAddress.division || '',
+                    area: savedAddress.area || savedAddress.thana || undefined,
+                    postalCode: savedAddress.postalCode || undefined,
+                    phone: savedAddress.phone || '',
+                    fullName: savedAddress.fullName || savedAddress.name || undefined,
+                    email: savedAddress.email || undefined,
+                    deliveryInstructions: savedAddress.deliveryInstructions || savedAddress.notes || undefined,
+                };
+            }
+        }
+        if (!resolvedAddress && dto.shippingAddress) {
+            const rawAddr = dto.shippingAddress;
+            const street = rawAddr.addressLine1 || rawAddr.streetAddress;
+            const city = rawAddr.city || rawAddr.district || rawAddr.thana;
+            const div = rawAddr.division;
+            const ph = rawAddr.phone || rawAddr.receiverPhone;
+            if (!street || !city || !div || !ph) {
+                throw new BadRequestException('Delivery address requires street address, city, division, and contact phone');
+            }
+            resolvedAddress = {
+                addressLine1: String(street).trim(),
+                addressLine2: rawAddr.addressLine2 ? String(rawAddr.addressLine2).trim() : undefined,
+                city: String(city).trim(),
+                division: String(div).trim(),
+                area: rawAddr.area || rawAddr.thana ? String(rawAddr.area || rawAddr.thana).trim() : undefined,
+                postalCode: rawAddr.postalCode ? String(rawAddr.postalCode).trim() : undefined,
+                phone: String(ph).trim(),
+                fullName: rawAddr.fullName || rawAddr.receiverName ? String(rawAddr.fullName || rawAddr.receiverName).trim() : undefined,
+                email: rawAddr.email ? String(rawAddr.email).toLowerCase().trim() : undefined,
+                deliveryInstructions: rawAddr.deliveryInstructions || rawAddr.notes ? String(rawAddr.deliveryInstructions || rawAddr.notes).trim() : undefined,
+            };
+        }
+        if (!resolvedAddress) {
+            throw new BadRequestException('A valid delivery address is required');
+        }
+        const settings = await this.settingsService.getPublicSettings();
+        const freeDeliveryThreshold = Number(settings.freeDeliveryThreshold);
+        const dhakaDeliveryCharge = Number(settings.dhakaDeliveryCharge);
+        const outsideDhakaDeliveryCharge = Number(settings.outsideDhakaDeliveryCharge);
+        const orderNumber = `#RL${Date.now().toString().slice(-8)}${randomBytes(2).toString('hex').toUpperCase()}`;
+        const createdOrder = await this.prisma.$transaction(async (transaction) => {
+            let customerId = dto.customerId?.trim() || null;
+            let customerFirstName = null;
+            let customerLastName = null;
+            let customerEmail = null;
+            let customerPhone = null;
+            const custInput = dto.newCustomer || dto.customer;
+            if (customerId) {
+                const existingCustomer = await transaction.customer.findUnique({
+                    where: { id: customerId },
+                });
+                if (!existingCustomer || existingCustomer.deletedAt) {
+                    throw new BadRequestException('Selected customer is invalid or archived');
+                }
+                customerFirstName = existingCustomer.firstName;
+                customerLastName = existingCustomer.lastName;
+                customerEmail = existingCustomer.email;
+                customerPhone = existingCustomer.phone;
+            }
+            else if (custInput) {
+                const rawPhone = (custInput.phone || custInput.phoneNumber || '').trim();
+                const rawEmail = custInput.email?.toLowerCase().trim() || null;
+                let matched = await transaction.customer.findFirst({
+                    where: { phone: rawPhone, deletedAt: null },
+                });
+                if (!matched && rawEmail) {
+                    matched = await transaction.customer.findFirst({
+                        where: { email: rawEmail, deletedAt: null },
+                    });
+                }
+                if (matched) {
+                    customerId = matched.id;
+                    customerFirstName = matched.firstName;
+                    customerLastName = matched.lastName;
+                    customerEmail = matched.email;
+                    customerPhone = matched.phone;
+                }
+                else {
+                    const rawFullName = custInput.fullName ||
+                        [custInput.firstName, custInput.lastName].filter(Boolean).join(' ') ||
+                        'Customer';
+                    const parts = rawFullName.trim().split(/\s+/);
+                    const firstName = parts[0] || 'Customer';
+                    const lastName = parts.slice(1).join(' ') || null;
+                    const newCust = await transaction.customer.create({
+                        data: {
+                            firstName,
+                            lastName,
+                            phone: rawPhone,
+                            email: rawEmail,
+                            isActive: true,
+                        },
+                    });
+                    customerId = newCust.id;
+                    customerFirstName = newCust.firstName;
+                    customerLastName = newCust.lastName;
+                    customerEmail = newCust.email;
+                    customerPhone = newCust.phone;
+                }
+            }
+            const guestName = resolvedAddress.fullName ||
+                (customerFirstName ? [customerFirstName, customerLastName].filter(Boolean).join(' ') : null);
+            const guestPhone = resolvedAddress.phone || customerPhone;
+            const guestEmail = resolvedAddress.email || customerEmail;
+            const orderItems = [];
+            let subtotal = 0;
+            for (const item of dto.items) {
+                const variantId = item.productVariantId || item.variantId;
+                const quantity = item.quantity;
+                if (!quantity || quantity <= 0) {
+                    throw new BadRequestException('Item quantity must be at least 1');
+                }
+                const variant = await transaction.productVariant.findFirst({
+                    where: {
+                        id: variantId,
+                        isActive: true,
+                        product: { isActive: true, deletedAt: null },
+                    },
+                    include: {
+                        product: {
+                            include: {
+                                images: { orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }] },
+                            },
+                        },
+                    },
+                });
+                if (!variant) {
+                    throw new BadRequestException(`A selected product variant (${variantId}) is currently unavailable or inactive`);
+                }
+                if (item.productId && item.productId !== variant.productId) {
+                    throw new BadRequestException('The selected variant does not belong to the specified product');
+                }
+                if (variant.stock < quantity) {
+                    throw new BadRequestException(`Insufficient stock: "${variant.product.name}" (${variant.color} - ${variant.sizeLabel || variant.size}) only has ${variant.stock} units in stock`);
+                }
+                const price = variant.priceOverride
+                    ? Number(variant.priceOverride)
+                    : Number(variant.product.price);
+                const lineTotal = price * item.quantity;
+                subtotal += lineTotal;
+                const reserved = await transaction.productVariant.updateMany({
+                    where: { id: variant.id, isActive: true, stock: variant.stock },
+                    data: { stock: { decrement: item.quantity } },
+                });
+                if (!reserved.count) {
+                    throw new BadRequestException(`Stock for "${variant.product.name}" has changed. Please retry.`);
+                }
+                await transaction.inventoryTransaction.create({
+                    data: {
+                        variantId: variant.id,
+                        quantityChange: -item.quantity,
+                        previousStock: variant.stock,
+                        newStock: variant.stock - item.quantity,
+                        type: 'SALE',
+                        note: `Admin order ${orderNumber} created by ${[actor?.firstName, actor?.lastName].filter(Boolean).join(' ') || actor?.email || 'Admin'}`,
+                    },
+                });
+                const primaryImage = variant.product.images?.find((img) => img.isPrimary)?.url ||
+                    variant.product.images?.[0]?.url ||
+                    undefined;
+                orderItems.push({
+                    productId: variant.productId,
+                    variantId: variant.id,
+                    productName: variant.product.name,
+                    variantName: `${variant.color} - Size ${variant.sizeLabel || variant.size}`,
+                    sku: variant.sku,
+                    unitPrice: price,
+                    quantity: item.quantity,
+                    subtotal: lineTotal,
+                    size: variant.sizeLabel || variant.size,
+                    color: variant.color,
+                    productImage: primaryImage,
+                });
+            }
+            let couponDiscount = 0;
+            let couponId;
+            if (dto.couponCode?.trim()) {
+                const coupon = await transaction.coupon.findUnique({
+                    where: { code: dto.couponCode.trim().toUpperCase() },
+                });
+                const now = new Date();
+                if (!coupon ||
+                    !coupon.isActive ||
+                    now < coupon.startDate ||
+                    now > coupon.expiryDate ||
+                    (coupon.usageLimit !== null && coupon.usageCount >= coupon.usageLimit) ||
+                    subtotal < Number(coupon.minimumOrderAmount)) {
+                    throw new BadRequestException('Coupon is invalid or does not apply to this order');
+                }
+                couponDiscount =
+                    coupon.type === 'PERCENTAGE'
+                        ? (subtotal * Number(coupon.value)) / 100
+                        : Number(coupon.value);
+                if (coupon.maximumDiscount !== null && coupon.maximumDiscount !== undefined) {
+                    couponDiscount = Math.min(couponDiscount, Number(coupon.maximumDiscount));
+                }
+                couponDiscount = Math.min(couponDiscount, subtotal);
+                couponId = coupon.id;
+                const update = await transaction.coupon.updateMany({
+                    where: {
+                        id: coupon.id,
+                        isActive: true,
+                        ...(coupon.usageLimit !== null ? { usageCount: { lt: coupon.usageLimit } } : {}),
+                    },
+                    data: { usageCount: { increment: 1 } },
+                });
+                if (!update.count) {
+                    throw new BadRequestException('Coupon redemption limit has been reached');
+                }
+            }
+            let manualDiscountAmount = 0;
+            if (dto.manualDiscountType && dto.manualDiscountValue && dto.manualDiscountValue > 0) {
+                if (dto.manualDiscountType === 'PERCENTAGE') {
+                    const pct = Math.min(100, Math.max(0, dto.manualDiscountValue));
+                    manualDiscountAmount = roundCurrency((subtotal * pct) / 100);
+                }
+                else {
+                    manualDiscountAmount = roundCurrency(Math.min(subtotal, dto.manualDiscountValue));
+                }
+            }
+            const totalDiscount = Math.min(subtotal, roundCurrency(couponDiscount + manualDiscountAmount));
+            let deliveryCharge;
+            if (dto.deliveryCharge !== undefined && dto.deliveryCharge !== null) {
+                deliveryCharge = Math.max(0, Number(dto.deliveryCharge));
+            }
+            else {
+                const cityLower = (resolvedAddress.city || '').trim().toLowerCase();
+                const divisionLower = (resolvedAddress.division || '').trim().toLowerCase();
+                const areaLower = (resolvedAddress.area || '').trim().toLowerCase();
+                const outsideDhakaDistricts = [
+                    'gazipur', 'narayanganj', 'tangail', 'kishoreganj', 'manikganj',
+                    'munshiganj', 'narsingdi', 'faridpur', 'gopalganj', 'madaripur',
+                    'rajbari', 'shariatpur'
+                ];
+                const isOutsideDhakaDistrict = outsideDhakaDistricts.includes(cityLower);
+                const dhakaMetroAreas = [
+                    'dhaka', 'dhanmondi', 'gulshan', 'banani', 'uttara', 'mirpur', 'mohammadpur',
+                    'motijheel', 'tejgaon', 'badda', 'khilgaon', 'paltan', 'ramna',
+                    'shahbagh', 'lalbagh', 'sutrapur', 'kotwali', 'wari', 'jatrabari',
+                    'demra', 'kadamtali', 'shyampur', 'kamrangirchar', 'hazaribagh',
+                    'new market', 'kalabagan', 'cantonment', 'kafrul', 'pallabi',
+                    'rupnagar', 'darus salam', 'shah ali', 'vashantek', 'bhatara',
+                    'khilkhet', 'dakshinkhan', 'uttarkhan', 'turag', 'airport',
+                    'rampura', 'sabujbagh', 'mugda', 'gandaria', 'chawkbazar',
+                    'bangshal', 'keraniganj', 'savar', 'dhamrai', 'dohar', 'nawabganj'
+                ];
+                const isDhaka = !isOutsideDhakaDistrict &&
+                    (cityLower === 'dhaka' ||
+                        dhakaMetroAreas.some((a) => cityLower.includes(a) || areaLower.includes(a)) ||
+                        (divisionLower.includes('dhaka') && (!cityLower || cityLower === 'dhaka')));
+                deliveryCharge =
+                    settings.freeShippingEnabled !== false &&
+                        subtotal - totalDiscount >= freeDeliveryThreshold
+                        ? 0
+                        : isDhaka
+                            ? dhakaDeliveryCharge
+                            : outsideDhakaDeliveryCharge;
+            }
+            const grandTotal = Math.max(0, roundCurrency(subtotal - totalDiscount + deliveryCharge));
+            const rawStatus = dto.paymentStatus || 'PENDING';
+            const paymentStatus = (rawStatus === 'UNPAID' ? 'PENDING' : rawStatus);
+            let paidAmount = null;
+            if (paymentStatus === 'PAID') {
+                paidAmount = dto.paidAmount !== undefined ? dto.paidAmount : grandTotal;
+            }
+            else if (paymentStatus === 'PARTIALLY_PAID') {
+                paidAmount = dto.paidAmount !== undefined ? dto.paidAmount : 0;
+            }
+            const creatorName = [actor?.firstName, actor?.lastName].filter(Boolean).join(' ') ||
+                actor?.email ||
+                'Admin';
+            const order = await transaction.order.create({
+                data: {
+                    orderNumber,
+                    customerId: customerId ?? null,
+                    guestName,
+                    guestEmail,
+                    guestPhone,
+                    status: dto.orderStatus || 'PENDING',
+                    paymentStatus,
+                    paymentMethod: (dto.paymentMethod || 'COD'),
+                    paymentReference: dto.paymentReference?.trim() || null,
+                    paidAmount: paidAmount !== null ? new Prisma.Decimal(paidAmount) : null,
+                    subtotal: new Prisma.Decimal(subtotal),
+                    discountAmount: new Prisma.Decimal(totalDiscount),
+                    manualDiscountAmount: new Prisma.Decimal(manualDiscountAmount),
+                    deliveryCharge: new Prisma.Decimal(deliveryCharge),
+                    totalAmount: new Prisma.Decimal(grandTotal),
+                    courierName: dto.courierName?.trim() || dto.courierProvider?.trim() || null,
+                    source: dto.source?.trim() || 'ADMIN',
+                    createdById: actor?.id || null,
+                    createdByName: creatorName,
+                    shippingAddress: {
+                        addressLine1: resolvedAddress.addressLine1,
+                        city: resolvedAddress.city,
+                        division: resolvedAddress.division,
+                        phone: resolvedAddress.phone,
+                        ...(resolvedAddress.addressLine2 ? { addressLine2: resolvedAddress.addressLine2 } : {}),
+                        ...(resolvedAddress.fullName ? { fullName: resolvedAddress.fullName } : {}),
+                        ...(resolvedAddress.email ? { email: resolvedAddress.email } : {}),
+                        ...(resolvedAddress.area ? { area: resolvedAddress.area } : {}),
+                        ...(resolvedAddress.postalCode ? { postalCode: resolvedAddress.postalCode } : {}),
+                        ...(resolvedAddress.deliveryInstructions
+                            ? { deliveryInstructions: resolvedAddress.deliveryInstructions }
+                            : {}),
+                    },
+                    customerNotes: dto.customerNotes?.trim() || null,
+                    adminNotes: dto.adminNotes?.trim() || null,
+                    items: { create: orderItems },
+                    trackingEvents: {
+                        create: {
+                            status: dto.orderStatus || 'PENDING',
+                            description: `Order created manually by admin ${creatorName} (${dto.source || 'ADMIN'})`,
+                        },
+                    },
+                },
+                include: {
+                    customer: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+                    items: {
+                        include: {
+                            product: {
+                                include: {
+                                    images: { orderBy: { sortOrder: 'asc' } },
+                                },
+                            },
+                            variant: true,
+                        },
+                    },
+                    trackingEvents: { orderBy: { createdAt: 'asc' } },
+                },
+            });
+            return { order, couponId };
+        }, { maxWait: 10000, timeout: 30000 });
+        if (createdOrder.order.customerId && !dto.addressId && resolvedAddress) {
+            this.saveAddressForCustomerIfEligible(createdOrder.order.customerId, resolvedAddress, resolvedAddress.email).catch((err) => {
+                this.logger.warn(`Failed to auto-save address for customer ${createdOrder.order.customerId}: ${err.message}`);
+            });
+        }
+        if (createdOrder.order.customer?.email || resolvedAddress.email) {
+            this.dispatchOrderConfirmationNotification(createdOrder.order, undefined, createdOrder.order.customerId || undefined).catch((err) => {
+                this.logger.warn(`Failed to dispatch order confirmation for admin order ${createdOrder.order.orderNumber}: ${err.message}`);
+            });
+        }
+        return createdOrder.order;
     }
     async dispatchOrderConfirmationNotification(order, trackingToken, customerId) {
         if (!this.mailService)

@@ -1,8 +1,9 @@
-import { Controller, Get, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OrdersService } from '../services/orders.service.js';
 import { UpdateOrderStatusDto } from '../dto/update-order-status.dto.js';
 import { OrderQueryDto } from '../dto/order-query.dto.js';
+import { CreateAdminOrderDto } from '../dto/create-admin-order.dto.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
@@ -22,6 +23,35 @@ export class AdminOrdersController {
     private readonly ordersService: OrdersService,
     private readonly auditService: AuditService,
   ) {}
+
+  @Post()
+  @ApiOperation({ summary: 'Create manual order by admin or staff' })
+  async createOrder(
+    @Body() dto: CreateAdminOrderDto,
+    @CurrentUser() actor: AdminAuditActor,
+  ) {
+    const data = await this.ordersService.createByAdmin(dto, actor);
+    await this.auditService.record({
+      actor,
+      module: 'orders',
+      action: 'ORDER_CREATED_BY_ADMIN',
+      entityType: 'order',
+      entityId: data.id,
+      entityLabel: data.orderNumber,
+      summary: `Created order ${data.orderNumber} via ${dto.source || 'ADMIN'} for ${data.customer ? `${data.customer.firstName} ${data.customer.lastName || ''}`.trim() : data.guestName || 'Walk-in Customer'}`,
+      after: {
+        orderNumber: data.orderNumber,
+        totalAmount: data.totalAmount,
+        status: data.status,
+        paymentStatus: data.paymentStatus,
+        source: data.source,
+      },
+    });
+    return {
+      message: 'Order created successfully',
+      data,
+    };
+  }
 
   @Get()
   @ApiOperation({ summary: 'List all customer orders across all dispatch stages' })

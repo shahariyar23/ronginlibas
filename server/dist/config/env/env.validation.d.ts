@@ -26,6 +26,13 @@ declare class EnvironmentVariables {
     CLOUDINARY_CLOUD_NAME?: string;
     CLOUDINARY_API_KEY?: string;
     CLOUDINARY_API_SECRET?: string;
+    PATHAO_ENV?: string;
+    PATHAO_BASE_URL?: string;
+    PATHAO_CLIENT_ID?: string;
+    PATHAO_CLIENT_SECRET?: string;
+    PATHAO_USERNAME?: string;
+    PATHAO_PASSWORD?: string;
+    PATHAO_GRANT_TYPE?: string;
 }
 export declare function validateEnv(config: Record<string, unknown>): EnvironmentVariables;
 export {};

@@ -181,3 +181,372 @@ describe('OrdersService customer access', () => {
     );
   });
 });
+
+describe('OrdersService.createByAdmin', () => {
+  const actor = {
+    id: 'admin-id-123',
+    firstName: 'Mostak',
+    lastName: 'Admin',
+    email: 'admin@ronginlibas.com',
+    role: 'SUPER_ADMIN',
+  };
+
+  const sampleVariant = {
+    id: 'var-1',
+    productId: 'prod-1',
+    sku: 'RL-POLO-GRN-L',
+    size: 'L',
+    sizeLabel: 'L',
+    color: 'Forest Green',
+    stock: 10,
+    priceOverride: null,
+    isActive: true,
+    product: {
+      id: 'prod-1',
+      name: 'Mercerized Polo T-Shirt',
+      price: 1590,
+      compareAtPrice: 1890,
+      isActive: true,
+      deletedAt: null,
+      images: [{ url: 'https://cdn.example.com/polo.jpg', isPrimary: true }],
+    },
+  };
+
+  function setupAdminPrismaMock(options?: {
+    variant?: any;
+    customer?: any;
+    coupon?: any;
+    updateManyCount?: number;
+  }) {
+    const variantData = options?.variant !== undefined ? options.variant : sampleVariant;
+    const customerData = options?.customer !== undefined ? options.customer : null;
+    const couponData = options?.coupon !== undefined ? options.coupon : null;
+    const updateCount = options?.updateManyCount !== undefined ? options.updateManyCount : 1;
+
+    const tx = {
+      customer: {
+        findUnique: vi.fn().mockResolvedValue(customerData),
+        findFirst: vi.fn().mockResolvedValue(customerData),
+        create: vi.fn().mockImplementation((args) =>
+          Promise.resolve({
+            id: 'new-cust-id',
+            firstName: args.data.firstName,
+            lastName: args.data.lastName,
+            phone: args.data.phone,
+            email: args.data.email,
+          }),
+        ),
+      },
+      address: {
+        findUnique: vi.fn().mockImplementation(({ where }) => {
+          if (where.id === 'addr-1') {
+            return Promise.resolve({
+              id: 'addr-1',
+              addressLine1: 'Section 10, Block C',
+              city: 'Dhaka',
+              division: 'Dhaka',
+              phone: '01916664011',
+              fullName: 'Mostak Shahariyar',
+            });
+          }
+          return Promise.resolve(null);
+        }),
+        create: vi.fn().mockResolvedValue({ id: 'new-addr-id' }),
+      },
+      customerAddress: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue({ id: 'new-addr-id' }),
+      },
+      productVariant: {
+        findMany: vi.fn().mockResolvedValue(variantData ? [variantData] : []),
+        findUnique: vi.fn().mockResolvedValue(variantData),
+        findFirst: vi.fn().mockImplementation((args) => {
+          if (!variantData) return Promise.resolve(null);
+          if (args?.where?.product?.isActive === true && variantData.product?.isActive === false) {
+            return Promise.resolve(null);
+          }
+          if (args?.where?.isActive === true && variantData.isActive === false) {
+            return Promise.resolve(null);
+          }
+          return Promise.resolve(variantData);
+        }),
+        updateMany: vi.fn().mockResolvedValue({ count: updateCount }),
+      },
+      coupon: {
+        findUnique: vi.fn().mockResolvedValue(couponData),
+        update: vi.fn().mockResolvedValue({ count: 1 }),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+      inventoryTransaction: {
+        create: vi.fn().mockResolvedValue({ id: 'inv-tx-1' }),
+      },
+      order: {
+        create: vi.fn().mockImplementation((args) =>
+          Promise.resolve({
+            id: 'admin-order-id-1',
+            orderNumber: '#RL20261012-001',
+            ...args.data,
+            items: args.data.items?.create || [],
+            trackingEvents: [],
+            customer: customerData || {
+              firstName: 'Test',
+              lastName: 'Customer',
+              phone: '01916664011',
+            },
+          }),
+        ),
+      },
+      orderTrackingEvent: {
+        create: vi.fn().mockResolvedValue({ id: 'evt-1' }),
+      },
+    };
+
+    const prisma = {
+      $transaction: vi.fn((cb: (txArg: typeof tx) => Promise<unknown>) => cb(tx)),
+      address: {
+        findUnique: vi.fn().mockImplementation(({ where }) => {
+          if (where.id === 'addr-1') {
+            return Promise.resolve({
+              id: 'addr-1',
+              addressLine1: 'Section 10, Block C',
+              city: 'Dhaka',
+              division: 'Dhaka',
+              phone: '01916664011',
+              fullName: 'Mostak Shahariyar',
+            });
+          }
+          return Promise.resolve(null);
+        }),
+      },
+    } as unknown as PrismaService;
+
+    const settings = {
+      getPublicSettings: vi.fn().mockResolvedValue({
+        freeDeliveryThreshold: 2000,
+        dhakaDeliveryCharge: 80,
+        outsideDhakaDeliveryCharge: 130,
+      }),
+    } as unknown as SettingsService;
+
+    return { prisma, settings, tx };
+  }
+
+  it('creates a COD order for an existing customer successfully with inventory decrement and transaction', async () => {
+    const existingCustomer = {
+      id: 'cust-101',
+      firstName: 'Mostak',
+      lastName: 'Shahariyar',
+      phone: '01916664011',
+      email: 'client@example.com',
+      addresses: [
+        {
+          id: 'addr-1',
+          division: 'Dhaka',
+          district: 'Dhaka',
+          thana: 'Mirpur',
+          streetAddress: 'Section 10, Block C',
+        },
+      ],
+    };
+
+    const { prisma, settings, tx } = setupAdminPrismaMock({
+      customer: existingCustomer,
+    });
+    tx.customerAddress.findFirst = vi.fn().mockResolvedValue(existingCustomer.addresses[0]);
+
+    const service = new OrdersService(prisma, settings);
+
+    const result = await service.createByAdmin(
+      {
+        customerId: 'cust-101',
+        addressId: 'addr-1',
+        items: [{ productVariantId: 'var-1', quantity: 2 }],
+        paymentMethod: 'COD',
+        paymentStatus: 'UNPAID',
+        deliveryCharge: 80,
+        courierProvider: 'Steadfast',
+        source: 'ADMIN',
+      },
+      actor,
+    );
+
+    expect(tx.productVariant.updateMany).toHaveBeenCalledWith({
+      where: { id: 'var-1', isActive: true, stock: 10 },
+      data: { stock: { decrement: 2 } },
+    });
+
+    expect(tx.inventoryTransaction.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        variantId: 'var-1',
+        quantityChange: -2,
+        previousStock: 10,
+        newStock: 8,
+        type: 'SALE',
+      }),
+    });
+
+    const createdData1 = tx.order.create.mock.calls[0][0].data;
+    expect(createdData1.customerId).toBe('cust-101');
+    expect(createdData1.subtotal.toString()).toBe('3180');
+    expect(createdData1.deliveryCharge.toString()).toBe('80');
+    expect(createdData1.totalAmount.toString()).toBe('3260');
+    expect(createdData1.paymentMethod).toBe('COD');
+    expect(createdData1.paymentStatus).toBe('PENDING');
+    expect(createdData1.source).toBe('ADMIN');
+    expect(createdData1.createdById).toBe('admin-id-123');
+    expect(createdData1.createdByName).toBe('Mostak Admin');
+
+    expect(result.id).toBe('admin-order-id-1');
+  });
+
+  it('creates a paid order with payment reference and paid amount', async () => {
+    const { prisma, settings, tx } = setupAdminPrismaMock();
+
+    const service = new OrdersService(prisma, settings);
+
+    await service.createByAdmin(
+      {
+        customer: {
+          firstName: 'Farhan',
+          lastName: 'Ahmed',
+          phoneNumber: '01819998877',
+        },
+        shippingAddress: {
+          receiverName: 'Farhan Ahmed',
+          receiverPhone: '01819998877',
+          division: 'Dhaka',
+          district: 'Dhaka',
+          thana: 'Gulshan',
+          streetAddress: 'Road 11, House 22',
+        },
+        items: [{ productVariantId: 'var-1', quantity: 1 }],
+        paymentMethod: 'BKASH',
+        paymentStatus: 'PAID',
+        paymentReference: 'TRX-BKASH-9988',
+        paidAmount: 1670,
+        deliveryCharge: 80,
+      },
+      actor,
+    );
+
+    const createdData2 = tx.order.create.mock.calls[0][0].data;
+    expect(createdData2.paymentMethod).toBe('BKASH');
+    expect(createdData2.paymentStatus).toBe('PAID');
+    expect(createdData2.paymentReference).toBe('TRX-BKASH-9988');
+    expect(createdData2.paidAmount.toString()).toBe('1670');
+  });
+
+  it('rejects order creation if variant stock is insufficient', async () => {
+    const { prisma, settings, tx } = setupAdminPrismaMock({
+      variant: {
+        ...sampleVariant,
+        stock: 1, // Only 1 in stock
+      },
+    });
+
+    const service = new OrdersService(prisma, settings);
+
+    await expect(
+      service.createByAdmin(
+        {
+          customer: { firstName: 'Test', phoneNumber: '01700000000' },
+          shippingAddress: {
+            receiverName: 'Test',
+            receiverPhone: '01700000000',
+            division: 'Dhaka',
+            district: 'Dhaka',
+            thana: 'Uttara',
+            streetAddress: 'Sector 3',
+          },
+          items: [{ productVariantId: 'var-1', quantity: 3 }], // Requesting 3
+        },
+        actor,
+      ),
+    ).rejects.toThrow(/Insufficient stock/);
+  });
+
+  it('rejects order creation if product is inactive or deleted', async () => {
+    const { prisma, settings } = setupAdminPrismaMock({
+      variant: {
+        ...sampleVariant,
+        product: {
+          ...sampleVariant.product,
+          isActive: false, // Inactive
+        },
+      },
+    });
+
+    const service = new OrdersService(prisma, settings);
+
+    await expect(
+      service.createByAdmin(
+        {
+          customer: { firstName: 'Test', phoneNumber: '01700000000' },
+          shippingAddress: {
+            receiverName: 'Test',
+            receiverPhone: '01700000000',
+            division: 'Dhaka',
+            district: 'Dhaka',
+            thana: 'Uttara',
+            streetAddress: 'Sector 3',
+          },
+          items: [{ productVariantId: 'var-1', quantity: 1 }],
+        },
+        actor,
+      ),
+    ).rejects.toThrow(/is currently unavailable/);
+  });
+
+  it('applies coupon and manual discount correctly', async () => {
+    const activeCoupon = {
+      id: 'coupon-1',
+      code: 'EID20',
+      type: 'PERCENTAGE',
+      value: 20,
+      minimumOrderAmount: 1000,
+      startDate: new Date('2026-01-01'),
+      expiryDate: new Date('2026-12-31'),
+      isActive: true,
+      usageLimit: null,
+      usageCount: 0,
+    };
+
+    const { prisma, settings, tx } = setupAdminPrismaMock({
+      coupon: activeCoupon,
+    });
+
+    const service = new OrdersService(prisma, settings);
+
+    await service.createByAdmin(
+      {
+        customer: { firstName: 'VIP', phoneNumber: '01711112233' },
+        shippingAddress: {
+          receiverName: 'VIP Client',
+          receiverPhone: '01711112233',
+          division: 'Dhaka',
+          district: 'Dhaka',
+          thana: 'Banani',
+          streetAddress: 'Road 10',
+        },
+        items: [{ productVariantId: 'var-1', quantity: 2 }], // 3180 subtotal
+        couponCode: 'EID20', // 20% of 3180 = 636
+        manualDiscountType: 'FIXED',
+        manualDiscountValue: 144, // 144 manual discount
+        deliveryCharge: 80,
+      },
+      actor,
+    );
+
+    // subtotal: 3180
+    // coupon: 636
+    // manual: 144
+    // total discount: 780
+    // delivery: 80
+    const createdData5 = tx.order.create.mock.calls[0][0].data;
+    expect(createdData5.subtotal.toString()).toBe('3180');
+    expect(createdData5.discountAmount.toString()).toBe('780');
+    expect(createdData5.manualDiscountAmount.toString()).toBe('144');
+    expect(createdData5.deliveryCharge.toString()).toBe('80');
+    expect(createdData5.totalAmount.toString()).toBe('2480');
+  });
+});

@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   Search,
   Sparkles,
+  Loader2,
 } from 'lucide-react';
 import { adminApi, StaffUser, CreateStaffUserPayload, UpdateStaffUserPayload, AdminUser } from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
@@ -80,6 +81,7 @@ function StaffContent() {
   // Admin Reset Password form state
   const [newAdminResetPw, setNewAdminResetPw] = useState('');
   const [isSubmittingResetPw, setIsSubmittingResetPw] = useState(false);
+  const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
 
   useEffect(() => {
     setCurrentUser(adminApi.auth.getUser());
@@ -233,6 +235,7 @@ function StaffContent() {
   // Delete Staff
   const handleDeleteConfirm = async () => {
     if (!deletingStaff) return;
+    setIsSubmittingDelete(true);
     try {
       const res = await adminApi.users.delete(deletingStaff.id);
       if (res.success) {
@@ -244,6 +247,8 @@ function StaffContent() {
       }
     } catch (err: any) {
       toast.error(err?.message || 'Error deleting staff member');
+    } finally {
+      setIsSubmittingDelete(false);
     }
   };
 
@@ -682,9 +687,10 @@ function StaffContent() {
                 <button
                   type="submit"
                   disabled={isSubmittingAdd}
-                  className="px-4 py-2 bg-[#073a2d] hover:bg-[#0c4e3b] text-white text-xs font-semibold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#073a2d] hover:bg-[#0c4e3b] text-white text-xs font-semibold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
                 >
-                  {isSubmittingAdd ? 'Creating...' : 'Create Staff User'}
+                  {isSubmittingAdd && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{isSubmittingAdd ? 'Creating...' : 'Create Staff User'}</span>
                 </button>
               </div>
             </form>
@@ -850,9 +856,10 @@ function StaffContent() {
                 <button
                   type="submit"
                   disabled={isSubmittingEdit}
-                  className="px-4 py-2 bg-[#073a2d] hover:bg-[#0c4e3b] text-white text-xs font-semibold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#073a2d] hover:bg-[#0c4e3b] text-white text-xs font-semibold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
                 >
-                  {isSubmittingEdit ? 'Saving...' : 'Save Changes'}
+                  {isSubmittingEdit && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{isSubmittingEdit ? 'Saving...' : 'Save Changes'}</span>
                 </button>
               </div>
             </form>
@@ -914,9 +921,10 @@ function StaffContent() {
                 <button
                   type="submit"
                   disabled={isSubmittingResetPw}
-                  className="px-4 py-2 bg-[#073a2d] hover:bg-[#0c4e3b] text-white text-xs font-semibold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#073a2d] hover:bg-[#0c4e3b] text-white text-xs font-semibold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
                 >
-                  {isSubmittingResetPw ? 'Resetting...' : 'Set New Password'}
+                  {isSubmittingResetPw && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{isSubmittingResetPw ? 'Resetting...' : 'Set New Password'}</span>
                 </button>
               </div>
             </form>
@@ -953,9 +961,11 @@ function StaffContent() {
               <button
                 type="button"
                 onClick={handleDeleteConfirm}
-                className="px-4 py-2 bg-[#ba1a1a] hover:bg-[#991b1b] text-white text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer"
+                disabled={isSubmittingDelete}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#ba1a1a] hover:bg-[#991b1b] text-white text-xs font-semibold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
               >
-                Delete Member
+                {isSubmittingDelete && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>{isSubmittingDelete ? 'Deleting...' : 'Delete Member'}</span>
               </button>
             </div>
           </div>

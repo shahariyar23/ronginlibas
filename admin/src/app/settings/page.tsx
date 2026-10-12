@@ -5,6 +5,7 @@ import { useAdmin } from '@/context/AdminContext';
 import { Settings, Save, CheckCircle2, Shield, Phone, Globe, CreditCard, Truck, RefreshCw, Tag } from 'lucide-react';
 import { SettingsSkeleton } from '@/components/common/Skeleton';
 import { PermissionGuard } from '@/components/auth/PermissionGuard';
+import { PathaoSandboxCard } from '@/components/settings/PathaoSandboxCard';
 
 function SettingsContent() {
   const { settings, updateSettings, backendConnected, refreshData, isLoading } = useAdmin();
@@ -401,6 +402,9 @@ function SettingsContent() {
             </div>
           </div>
         </div>
+
+        {/* Pathao Logistics Courier Integration (Sandbox Testing) */}
+        <PathaoSandboxCard />
 
         {/* Database Sync Status */}
         <div className="p-4 bg-[#fbf9f2] border border-[#deddd3] flex items-center justify-between text-xs text-[#717975]">

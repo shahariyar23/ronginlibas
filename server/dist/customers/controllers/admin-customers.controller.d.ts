@@ -142,6 +142,19 @@ export declare class AdminCustomersController {
                 guestEmail: string | null;
                 guestPhone: string | null;
                 trackingTokenHash: string | null;
+                courierProvider: string | null;
+                courierOrderId: string | null;
+                courierConsignmentId: string | null;
+                courierStatus: string | null;
+                courierTrackingUrl: string | null;
+                courierCreatedAt: Date | null;
+                courierResponseMetadata: import("@prisma/client/runtime/library").JsonValue | null;
+                paymentReference: string | null;
+                paidAmount: import("@prisma/client/runtime/library").Decimal | null;
+                manualDiscountAmount: import("@prisma/client/runtime/library").Decimal;
+                source: string | null;
+                createdById: string | null;
+                createdByName: string | null;
             })[];
             reviews: ({
                 product: {
