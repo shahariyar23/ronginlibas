@@ -74,4 +74,14 @@ export declare class MailService {
         cartId?: string;
         customMessage?: string | null;
     }): Promise<boolean>;
+    sendBackInStockEmail(params: {
+        email: string;
+        customerName?: string | null;
+        productName: string;
+        productSlug: string;
+        price: number | string;
+        imageUrl?: string | null;
+        size?: string | null;
+        color?: string | null;
+    }): Promise<boolean>;
 }

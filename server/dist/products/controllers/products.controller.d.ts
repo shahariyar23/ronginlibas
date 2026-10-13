@@ -83,6 +83,8 @@ export declare class ProductsController {
                 adminFeedbackAt: Date | null;
             })[];
             variants: {
+                size: string;
+                color: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
@@ -90,8 +92,6 @@ export declare class ProductsController {
                 measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
                 productId: string;
-                size: string;
-                color: string;
                 sizeLabel: string | null;
                 sizeType: string | null;
                 stock: number;
@@ -114,6 +114,7 @@ export declare class ProductsController {
         } & {
             description: string | null;
             name: string;
+            price: import("@prisma/client/runtime/library").Decimal;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -121,7 +122,6 @@ export declare class ProductsController {
             deletedAt: Date | null;
             tags: string[];
             slug: string;
-            price: import("@prisma/client/runtime/library").Decimal;
             compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
             costPrice: import("@prisma/client/runtime/library").Decimal | null;
             sku: string;
@@ -182,6 +182,8 @@ export declare class ProductsController {
                 adminFeedbackAt: Date | null;
             })[];
             variants: {
+                size: string;
+                color: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
@@ -189,8 +191,6 @@ export declare class ProductsController {
                 measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
                 productId: string;
-                size: string;
-                color: string;
                 sizeLabel: string | null;
                 sizeType: string | null;
                 stock: number;
@@ -212,6 +212,7 @@ export declare class ProductsController {
             }[];
             description: string | null;
             name: string;
+            price: import("@prisma/client/runtime/library").Decimal;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -219,7 +220,6 @@ export declare class ProductsController {
             deletedAt: Date | null;
             tags: string[];
             slug: string;
-            price: import("@prisma/client/runtime/library").Decimal;
             compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
             costPrice: import("@prisma/client/runtime/library").Decimal | null;
             sku: string;
@@ -258,6 +258,8 @@ export declare class ProductsController {
                 rating: number;
             }[];
             variants: {
+                size: string;
+                color: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
@@ -265,8 +267,6 @@ export declare class ProductsController {
                 measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
                 productId: string;
-                size: string;
-                color: string;
                 sizeLabel: string | null;
                 sizeType: string | null;
                 stock: number;
@@ -289,6 +289,7 @@ export declare class ProductsController {
         } & {
             description: string | null;
             name: string;
+            price: import("@prisma/client/runtime/library").Decimal;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -296,7 +297,6 @@ export declare class ProductsController {
             deletedAt: Date | null;
             tags: string[];
             slug: string;
-            price: import("@prisma/client/runtime/library").Decimal;
             compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
             costPrice: import("@prisma/client/runtime/library").Decimal | null;
             sku: string;

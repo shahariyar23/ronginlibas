@@ -7,18 +7,24 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 var ProductsService_1;
-import { Logger, Injectable, BadRequestException, NotFoundException, ConflictException, } from '@nestjs/common';
+import { Logger, Injectable, BadRequestException, NotFoundException, ConflictException, Optional, } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { CloudinaryService } from './cloudinary.service.js';
+import { WishlistService } from '../../wishlist/wishlist.service.js';
 let ProductsService = ProductsService_1 = class ProductsService {
     prisma;
     cloudinary;
+    wishlistService;
     logger = new Logger(ProductsService_1.name);
-    constructor(prisma, cloudinary) {
+    constructor(prisma, cloudinary, wishlistService) {
         this.prisma = prisma;
         this.cloudinary = cloudinary;
+        this.wishlistService = wishlistService;
     }
     async findAll(query, isAdmin = false) {
         this.validatePriceRange(query);
@@ -488,6 +494,7 @@ let ProductsService = ProductsService_1 = class ProductsService {
             where: { productId: targetId },
             select: { publicId: true },
         });
+        let wasRestocked = false;
         const updatedProduct = await this.prisma.$transaction(async (transaction) => {
             if (targetSlug) {
                 await transaction.productSlugRedirect.upsert({
@@ -601,10 +608,13 @@ let ProductsService = ProductsService_1 = class ProductsService {
             for (const variant of dto.variants ?? []) {
                 const current = await transaction.productVariant.findUnique({
                     where: { sku: variant.sku },
-                    select: { id: true, productId: true },
+                    select: { id: true, productId: true, stock: true },
                 });
                 if (current && current.productId !== targetId) {
                     throw new ConflictException('A product variant with this SKU already exists');
+                }
+                if ((!current || current.stock <= 0) && (variant.stock ?? 0) > 0) {
+                    wasRestocked = true;
                 }
                 const data = {
                     size: variant.sizeLabel
@@ -641,6 +651,13 @@ let ProductsService = ProductsService_1 = class ProductsService {
             maxWait: 10000,
             timeout: 30000,
         });
+        if (wasRestocked) {
+            this.wishlistService
+                ?.notifyWishlistCustomersBackInStock(targetId)
+                .catch((err) => {
+                this.logger.error(`Failed to send back-in-stock notifications for product ${targetId}: ${err.message}`);
+            });
+        }
         if (dto.images !== undefined) {
             const retainedPublicIds = new Set(dto.images
                 .map((image) => image.publicId)
@@ -796,8 +813,10 @@ let ProductsService = ProductsService_1 = class ProductsService {
 };
 ProductsService = ProductsService_1 = __decorate([
     Injectable(),
+    __param(2, Optional()),
     __metadata("design:paramtypes", [PrismaService,
-        CloudinaryService])
+        CloudinaryService,
+        WishlistService])
 ], ProductsService);
 export { ProductsService };
 function isUniqueConstraintError(error) {

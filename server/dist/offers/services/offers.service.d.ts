@@ -144,9 +144,9 @@ export declare class OffersService {
         status: "ACTIVE" | "SCHEDULED" | "EXPIRED" | "INACTIVE";
         products: {
             name: string;
+            price: Prisma.Decimal;
             id: string;
             slug: string;
-            price: Prisma.Decimal;
             sku: string;
         }[];
         categories: {

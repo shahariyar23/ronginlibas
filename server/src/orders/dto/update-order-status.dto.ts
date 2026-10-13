@@ -51,4 +51,8 @@ export class UpdateOrderStatusDto {
   @IsObject()
   @IsOptional()
   shippingAddress?: Record<string, any>;
+
+  @ApiPropertyOptional({ description: 'Explicit override to bypass automated courier status checks' })
+  @IsOptional()
+  overrideCourierStatus?: boolean;
 }

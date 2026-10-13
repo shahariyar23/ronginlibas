@@ -48,6 +48,7 @@ enum PaymentMethod {
   BKASH
   NAGAD
   CARD
+  WAITMARK_PAY
 }
 
 enum CouponType {
@@ -149,6 +150,7 @@ model Customer {
   wishlistItems WishlistItem[]
   measurements CustomerMeasurementProfile?
   reviewVotes ReviewVote[]
+  analyticsVisitors AnalyticsVisitor[]
 
   @@index([isActive, deletedAt])
   @@index([deletedAt])
@@ -257,6 +259,7 @@ model Product {
   slugRedirects   ProductSlugRedirect[]
   offers          Offer[]               @relation("OfferProducts")
   collections     Collection[]          @relation("CollectionProducts")
+  analyticsEvents AnalyticsEvent[]
 
   @@index([isActive, createdAt])
   @@index([isActive, deletedAt])
@@ -338,6 +341,9 @@ model Order {
   courierOrderId String?
   courierConsignmentId String?
   courierStatus String?
+  courierStatusRaw String?
+  courierLastSyncedAt DateTime?
+  courierStatusUpdatedAt DateTime?
   courierTrackingUrl String?
   courierCreatedAt DateTime?
   courierResponseMetadata Json?
@@ -363,6 +369,7 @@ model Order {
 
   items OrderItem[]
   trackingEvents OrderTrackingEvent[]
+  payments Payment[]
 
   @@index([customerId, createdAt])
   @@index([status, createdAt])
@@ -506,6 +513,28 @@ model OrderTrackingEvent {
 
   @@index([orderId, createdAt])
   @@map("order_tracking_events")
+}
+
+model Payment {
+  id                    String        @id @default(uuid())
+  orderId               String
+  order                 Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider              String        @default("WAITMARK_PAY")
+  providerOrderId       String        @unique
+  providerTransactionId String?
+  amount                Decimal       @db.Decimal(10, 2)
+  currency              String        @default("BDT")
+  status                PaymentStatus @default(PENDING)
+  failureReason         String?
+  rawWebhookPayload     Json?
+  paidAt                DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@index([orderId, createdAt])
+  @@index([provider, status])
+  @@index([providerTransactionId])
+  @@map("payments")
 }
 
 model ProductRelation {
@@ -655,4 +684,101 @@ model Collection {
   @@index([slug])
   @@map("collections")
 }
+
+model AnalyticsVisitor {
+  id           String            @id @default(uuid())
+  visitorToken String            @unique
+  customerId   String?
+  customer     Customer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  firstSeenAt  DateTime          @default(now())
+  lastSeenAt   DateTime          @default(now())
+  userAgent    String?
+  ipHash       String?
+
+  sessions     AnalyticsSession[]
+  events       AnalyticsEvent[]
+  consents     AnalyticsConsent[]
+
+  @@index([visitorToken])
+  @@index([customerId])
+  @@index([lastSeenAt])
+  @@map("analytics_visitors")
+}
+
+model AnalyticsSession {
+  id           String            @id @default(uuid())
+  visitorId    String
+  visitor      AnalyticsVisitor  @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  startedAt    DateTime          @default(now())
+  lastActiveAt DateTime          @default(now())
+  endedAt      DateTime?
+  landingPage  String?
+  referrer     String?
+  deviceType   String?
+
+  events       AnalyticsEvent[]
+
+  @@index([visitorId, startedAt])
+  @@index([lastActiveAt])
+  @@map("analytics_sessions")
+}
+
+model AnalyticsEvent {
+  id                 String            @id @default(uuid())
+  visitorId          String
+  visitor            AnalyticsVisitor  @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  sessionId          String?
+  session            AnalyticsSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  eventType          String
+  productId          String?
+  product            Product?          @relation(fields: [productId], references: [id], onDelete: SetNull)
+  pagePath           String
+  timestamp          DateTime          @default(now())
+  engagementDuration Int?
+  properties         Json?
+  campaignSource     String?
+  campaignMedium     String?
+  campaignName       String?
+
+  @@index([eventType, timestamp])
+  @@index([visitorId, timestamp])
+  @@index([sessionId])
+  @@index([productId, eventType])
+  @@index([timestamp])
+  @@map("analytics_events")
+}
+
+model AnalyticsConsent {
+  id               String            @id @default(uuid())
+  visitorId        String
+  visitor          AnalyticsVisitor  @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  analyticsConsent Boolean           @default(false)
+  marketingConsent Boolean           @default(false)
+  version          String            @default("1.0")
+  ipHash           String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([visitorId])
+  @@map("analytics_consents")
+}
+
+model MetaConversionLog {
+  id             String            @id @default(uuid())
+  orderId        String
+  eventName      String
+  eventId        String
+  status         String            @default("PENDING")
+  responseCode   Int?
+  responseBody   Json?
+  errorMessage   String?
+  retryCount     Int               @default(0)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([orderId, eventName])
+  @@index([status, createdAt])
+  @@map("meta_conversion_logs")
+}
+
 

@@ -640,7 +640,7 @@ export const ProfileClient: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen pt-6 sm:pt-10 pb-20 sm:pb-24 bg-[#fbf9f2]">
+    <div className="min-h-screen pt-6 sm:pt-10 pb-20 sm:pb-24 bg-[#fbf9f2]" data-clarity-mask="true">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-6 sm:space-y-8">
         {/* Top Breadcrumb & Sanctuary Header */}
         <div>

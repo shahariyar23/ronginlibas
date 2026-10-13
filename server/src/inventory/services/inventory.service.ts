@@ -2,17 +2,25 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { InventoryTransactionType, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { WishlistService } from '../../wishlist/wishlist.service.js';
 import { AdjustStockDto } from '../dto/adjust-stock.dto.js';
 import { InventoryQueryDto } from '../dto/inventory-query.dto.js';
 import { PaginatedResult } from '../../common/dto/pagination-query.dto.js';
 
 @Injectable()
 export class InventoryService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(InventoryService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly wishlistService?: WishlistService,
+  ) {}
 
   async getInventoryList(query: InventoryQueryDto): Promise<PaginatedResult<any>> {
     const page = query.page || 1;
@@ -137,7 +145,7 @@ export class InventoryService {
   }
 
   async adjustStock(dto: AdjustStockDto, userId?: string) {
-    return this.prisma.$transaction(async (transaction) => {
+    const result = await this.prisma.$transaction(async (transaction) => {
       const variant = await transaction.productVariant.findUnique({
         where: { id: dto.variantId },
       });
@@ -211,8 +219,28 @@ export class InventoryService {
       return {
         variant: updatedVariant,
         transaction: history,
+        wasRestocked: previousStock <= 0 && newStock > 0,
       };
     });
+
+    if (result.wasRestocked && this.wishlistService) {
+      this.wishlistService
+        .notifyWishlistCustomersBackInStock(result.variant.productId, {
+          size: result.variant.size,
+          color: result.variant.color,
+          stock: result.variant.stock,
+        })
+        .catch((err) => {
+          this.logger.warn(
+            `Failed to dispatch restock notification for product ${result.variant.productId}: ${err?.message}`,
+          );
+        });
+    }
+
+    return {
+      variant: result.variant,
+      transaction: result.transaction,
+    };
   }
 
   async getTransactionHistory(variantId: string) {

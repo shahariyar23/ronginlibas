@@ -7,4 +7,5 @@ export declare class UpdateOrderStatusDto {
     trackingUrl?: string;
     estimatedDelivery?: string;
     shippingAddress?: Record<string, any>;
+    overrideCourierStatus?: boolean;
 }

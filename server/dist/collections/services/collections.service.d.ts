@@ -32,10 +32,10 @@ export declare class CollectionsService implements OnModuleInit {
         };
         products: {
             name: string;
+            price: Prisma.Decimal;
             id: string;
             isActive: boolean;
             slug: string;
-            price: Prisma.Decimal;
             compareAtPrice: Prisma.Decimal | null;
             sku: string;
             images: {
@@ -67,9 +67,9 @@ export declare class CollectionsService implements OnModuleInit {
                 slug: string;
             };
             name: string;
+            price: Prisma.Decimal;
             id: string;
             slug: string;
-            price: Prisma.Decimal;
             compareAtPrice: Prisma.Decimal | null;
             sku: string;
             gender: import("@prisma/client").$Enums.Gender;
@@ -77,9 +77,9 @@ export declare class CollectionsService implements OnModuleInit {
             isNewArrival: boolean;
             isBestSeller: boolean;
             variants: {
-                id: string;
                 size: string;
                 color: string;
+                id: string;
                 stock: number;
             }[];
             images: {

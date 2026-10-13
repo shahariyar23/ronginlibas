@@ -11,10 +11,12 @@ import { AdminProductsController } from './controllers/admin-products.controller
 import { ProductSearchController } from './controllers/product-search.controller.js';
 import { AdminProductImagesController } from './controllers/admin-product-images.controller.js';
 import { CloudinaryService } from './services/cloudinary.service.js';
+import { WishlistModule } from '../wishlist/wishlist.module.js';
 let ProductsModule = class ProductsModule {
 };
 ProductsModule = __decorate([
     Module({
+        imports: [WishlistModule],
         controllers: [
             ProductsController,
             ProductSearchController,

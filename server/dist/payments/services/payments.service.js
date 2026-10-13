@@ -10,14 +10,18 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OrdersService } from '../../orders/services/orders.service.js';
+import { WaitmarkPaymentService } from './waitmark-payment.service.js';
 let PaymentsService = class PaymentsService {
     configService;
     ordersService;
-    constructor(configService, ordersService) {
+    waitmarkService;
+    constructor(configService, ordersService, waitmarkService) {
         this.configService = configService;
         this.ordersService = ordersService;
+        this.waitmarkService = waitmarkService;
     }
     async getAvailableMethods() {
+        const waitmarkConfigured = this.waitmarkService.isConfigured();
         const bkashConfigured = Boolean(this.configService.get('BKASH_APP_KEY') &&
             this.configService.get('BKASH_APP_SECRET'));
         const nagadConfigured = Boolean(this.configService.get('NAGAD_MERCHANT_ID') &&
@@ -27,14 +31,20 @@ let PaymentsService = class PaymentsService {
         return [
             { id: 'COD', name: 'Cash on Delivery', isEnabled: true },
             {
+                id: 'WAITMARK_PAY',
+                name: 'Waitmark Pay (Cards, Mobile Banking & Wallets)',
+                isEnabled: waitmarkConfigured,
+                credentialsConfigured: waitmarkConfigured,
+            },
+            {
                 id: 'BKASH',
-                name: 'bKash',
+                name: 'bKash Direct',
                 isEnabled: false,
                 credentialsConfigured: bkashConfigured,
             },
             {
                 id: 'NAGAD',
-                name: 'Nagad',
+                name: 'Nagad Direct',
                 isEnabled: false,
                 credentialsConfigured: nagadConfigured,
             },
@@ -67,7 +77,8 @@ let PaymentsService = class PaymentsService {
 PaymentsService = __decorate([
     Injectable(),
     __metadata("design:paramtypes", [ConfigService,
-        OrdersService])
+        OrdersService,
+        WaitmarkPaymentService])
 ], PaymentsService);
 export { PaymentsService };
 //# sourceMappingURL=payments.service.js.map

@@ -25,3 +25,9 @@ export declare class AdminCartQueryDto {
 export declare class SendCartReminderDto {
     customMessage?: string;
 }
+export declare class RestoreCartFromOrderDto {
+    orderId: string;
+    cartId?: string;
+    phone?: string;
+    trackingToken?: string;
+}

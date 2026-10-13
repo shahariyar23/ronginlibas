@@ -549,4 +549,210 @@ describe('OrdersService.createByAdmin', () => {
     expect(createdData5.deliveryCharge.toString()).toBe('80');
     expect(createdData5.totalAmount.toString()).toBe('2480');
   });
+
+  describe('Courier Status Action Protection (Requirements 27 & 28)', () => {
+    it('rejects transitioning to DELIVERED when linked Pathao courier status is UNKNOWN', async () => {
+      const orderWithUnknownCourier = {
+        id: 'ord-unknown',
+        orderNumber: '#RL9911',
+        status: OrderStatus.SHIPPED,
+        courierConsignmentId: 'CSG-UNKNOWN-1',
+        courierStatus: 'UNKNOWN',
+        courierStatusRaw: 'some-future-pathao-state',
+        items: [],
+      };
+
+      const tx = {
+        order: {
+          findFirst: vi.fn().mockResolvedValue(orderWithUnknownCourier),
+          update: vi.fn(),
+        },
+      };
+      const prisma = {
+        $transaction: vi.fn((cb: any) => cb(tx)),
+      } as unknown as PrismaService;
+      const settings = {} as unknown as SettingsService;
+      const service = new OrdersService(prisma, settings);
+
+      await expect(
+        service.updateStatus('ord-unknown', { status: OrderStatus.DELIVERED } as UpdateOrderStatusDto),
+      ).rejects.toThrow(/Cannot transition order to DELIVERED: Courier shipment is not in a confirmed DELIVERED state/);
+    });
+
+    it('permits transitioning to DELIVERED when linked Pathao courier status is DELIVERED', async () => {
+      const orderWithDeliveredCourier = {
+        id: 'ord-delivered',
+        orderNumber: '#RL9922',
+        status: OrderStatus.SHIPPED,
+        courierConsignmentId: 'CSG-DELIVERED-1',
+        courierStatus: 'DELIVERED',
+        courierStatusRaw: 'delivered',
+        items: [],
+      };
+
+      const tx = {
+        order: {
+          findFirst: vi.fn().mockResolvedValue(orderWithDeliveredCourier),
+          update: vi.fn().mockResolvedValue({ ...orderWithDeliveredCourier, status: OrderStatus.DELIVERED }),
+        },
+        orderTrackingEvent: {
+          create: vi.fn().mockResolvedValue({ id: 'evt-1' }),
+        },
+      };
+      const prisma = {
+        $transaction: vi.fn((cb: any) => cb(tx)),
+      } as unknown as PrismaService;
+      const settings = {} as unknown as SettingsService;
+      const service = new OrdersService(prisma, settings);
+
+      const result = await service.updateStatus('ord-delivered', {
+        status: OrderStatus.DELIVERED,
+      } as UpdateOrderStatusDto);
+      expect(result.status).toBe(OrderStatus.DELIVERED);
+    });
+
+    it('permits override when overrideCourierStatus is explicitly set', async () => {
+      const orderWithUnknownCourier = {
+        id: 'ord-override',
+        orderNumber: '#RL9933',
+        status: OrderStatus.SHIPPED,
+        courierConsignmentId: 'CSG-UNKNOWN-2',
+        courierStatus: 'UNKNOWN',
+        courierStatusRaw: 'new-unmapped-status',
+        items: [],
+      };
+
+      const tx = {
+        order: {
+          findFirst: vi.fn().mockResolvedValue(orderWithUnknownCourier),
+          update: vi.fn().mockResolvedValue({ ...orderWithUnknownCourier, status: OrderStatus.DELIVERED }),
+        },
+        orderTrackingEvent: {
+          create: vi.fn().mockResolvedValue({ id: 'evt-2' }),
+        },
+      };
+      const prisma = {
+        $transaction: vi.fn((cb: any) => cb(tx)),
+      } as unknown as PrismaService;
+      const settings = {} as unknown as SettingsService;
+      const service = new OrdersService(prisma, settings);
+
+      const result = await service.updateStatus('ord-override', {
+        status: OrderStatus.DELIVERED,
+        overrideCourierStatus: true,
+      } as UpdateOrderStatusDto);
+      expect(result.status).toBe(OrderStatus.DELIVERED);
+    });
+
+    it('masks UNKNOWN courier status as UPDATING for customer tracking without exposing internal tokens', async () => {
+      const orderRecord = {
+        id: 'ord-cust-1',
+        orderNumber: '#RL9944',
+        status: OrderStatus.SHIPPED,
+        courierName: 'Pathao',
+        courierProvider: 'Pathao',
+        courierStatus: 'UNKNOWN',
+        courierStatusRaw: 'sorting-hub-drone-queue',
+        trackingNumber: 'CSG-CUST-1',
+        trackingUrl: 'https://pathao.com/track',
+        estimatedDelivery: null,
+        updatedAt: new Date(),
+        trackingEvents: [],
+      };
+
+      const prisma = {} as unknown as PrismaService;
+      const settings = {} as unknown as SettingsService;
+      const service = new OrdersService(prisma, settings);
+      vi.spyOn(service as any, 'findOrderForAccess').mockResolvedValue(orderRecord);
+
+      const tracking = await service.getTracking('#RL9944');
+      expect(tracking.courierStatus).toBe('UPDATING');
+      expect(tracking.courier).toBe('Pathao');
+      expect((tracking as any).courierStatusRaw).toBeUndefined();
+    });
+  });
+
+  describe('Unpaid Order Expiration & Inventory Release', () => {
+    it('cancels expired unpaid WAITMARK_PAY orders and releases reserved stock back to variants', async () => {
+      const expiredOrder = {
+        id: 'ord-expired-1',
+        orderNumber: '#RL100300',
+        paymentMethod: 'WAITMARK_PAY',
+        status: OrderStatus.PENDING,
+        paymentStatus: 'PENDING',
+        createdAt: new Date(Date.now() - 40 * 60 * 1000), // 40 minutes old
+        items: [{ variantId: 'v-101', quantity: 2 }],
+      };
+
+      const tx = {
+        productVariant: {
+          findUnique: vi.fn().mockResolvedValue({ id: 'v-101', stock: 5 }),
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+        inventoryTransaction: {
+          create: vi.fn().mockResolvedValue({ id: 'itx-1' }),
+        },
+        order: {
+          update: vi.fn().mockResolvedValue({ ...expiredOrder, status: OrderStatus.CANCELLED }),
+        },
+        orderTrackingEvent: {
+          create: vi.fn().mockResolvedValue({ id: 'evt-timeout' }),
+        },
+      };
+
+      const prisma = {
+        order: {
+          findMany: vi.fn().mockResolvedValue([expiredOrder]),
+        },
+        $transaction: vi.fn(async (cb: any) => cb(tx)),
+      } as unknown as PrismaService;
+
+      const settings = {} as unknown as SettingsService;
+      const service = new OrdersService(prisma, settings);
+
+      const count = await service.cancelExpiredUnpaidOrders(30);
+
+      expect(count).toBe(1);
+      expect(tx.productVariant.updateMany).toHaveBeenCalledWith({
+        where: { id: 'v-101', stock: 5 },
+        data: { stock: 7 }, // 5 + 2
+      });
+      expect(tx.inventoryTransaction.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          variantId: 'v-101',
+          quantityChange: 2,
+          type: 'RETURN',
+        }),
+      });
+      expect(tx.order.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'ord-expired-1' },
+          data: expect.objectContaining({
+            status: OrderStatus.CANCELLED,
+            paymentStatus: 'FAILED',
+          }),
+        }),
+      );
+    });
+
+    it('rejects explicit cancellation of an already PAID order', async () => {
+      const paidOrder = {
+        id: 'ord-paid',
+        orderNumber: '#RL100400',
+        paymentStatus: 'PAID',
+        status: OrderStatus.CONFIRMED,
+        customerId: 'cust-1',
+        items: [],
+      };
+
+      const prisma = {} as unknown as PrismaService;
+      const settings = {} as unknown as SettingsService;
+      const service = new OrdersService(prisma, settings);
+      vi.spyOn(service as any, 'findOrderForAccess').mockResolvedValue(paidOrder);
+
+      await expect(
+        service.cancelUnpaidOrder('#RL100400', 'cust-1'),
+      ).rejects.toThrow('Cannot cancel an already paid order');
+    });
+  });
 });

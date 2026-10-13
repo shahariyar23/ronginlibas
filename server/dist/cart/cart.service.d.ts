@@ -27,8 +27,8 @@ export declare class CartService {
                 slug: string;
                 image: {
                     url: string;
-                    isPrimary: boolean;
                     altText: string | null;
+                    isPrimary: boolean;
                 };
             };
             variant: {
@@ -66,8 +66,8 @@ export declare class CartService {
                 slug: string;
                 image: {
                     url: string;
-                    isPrimary: boolean;
                     altText: string | null;
+                    isPrimary: boolean;
                 };
             };
             variant: {
@@ -105,8 +105,8 @@ export declare class CartService {
                 slug: string;
                 image: {
                     url: string;
-                    isPrimary: boolean;
                     altText: string | null;
+                    isPrimary: boolean;
                 };
             };
             variant: {
@@ -144,8 +144,8 @@ export declare class CartService {
                 slug: string;
                 image: {
                     url: string;
-                    isPrimary: boolean;
                     altText: string | null;
+                    isPrimary: boolean;
                 };
             };
             variant: {
@@ -183,8 +183,8 @@ export declare class CartService {
                 slug: string;
                 image: {
                     url: string;
-                    isPrimary: boolean;
                     altText: string | null;
+                    isPrimary: boolean;
                 };
             };
             variant: {
@@ -222,8 +222,8 @@ export declare class CartService {
                 slug: string;
                 image: {
                     url: string;
-                    isPrimary: boolean;
                     altText: string | null;
+                    isPrimary: boolean;
                 };
             };
             variant: {
@@ -261,8 +261,8 @@ export declare class CartService {
                 slug: string;
                 image: {
                     url: string;
-                    isPrimary: boolean;
                     altText: string | null;
+                    isPrimary: boolean;
                 };
             };
             variant: {
@@ -288,16 +288,55 @@ export declare class CartService {
         name?: string;
     }): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         customerId: string | null;
-        guestName: string | null;
+        guestId: string | null;
         guestEmail: string | null;
         guestPhone: string | null;
-        guestId: string | null;
+        guestName: string | null;
         lastReminderSentAt: Date | null;
         reminderCount: number;
+        createdAt: Date;
+        updatedAt: Date;
     } | null>;
+    restoreOrderToCart(customerId: string | undefined, cartId: string | undefined, orderId: string, phone?: string, trackingToken?: string): Promise<{
+        cartId: string | null;
+        items: never[];
+        subtotal: number;
+        deliveryCharge: number;
+        total: number;
+        currency: string;
+        discountAmount?: undefined;
+    } | {
+        cartId: string;
+        items: {
+            id: string;
+            product: {
+                id: string;
+                name: string;
+                slug: string;
+                image: {
+                    url: string;
+                    altText: string | null;
+                    isPrimary: boolean;
+                };
+            };
+            variant: {
+                id: string;
+                size: string;
+                sizeLabel: string | null;
+                color: string;
+                availability: string;
+            };
+            quantity: number;
+            unitPrice: number;
+            lineTotal: number;
+        }[];
+        subtotal: number;
+        discountAmount: number;
+        deliveryCharge: number;
+        total: number;
+        currency: string;
+    }>;
     getAdminCarts(query: AdminCartQueryDto): Promise<{
         carts: {
             id: string;

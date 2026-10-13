@@ -1,4 +1,4 @@
-import { CartIdentityDto, AddCartItemDto, UpdateCartItemDto, CartContactDto } from './dto/cart-item.dto.js';
+import { CartIdentityDto, AddCartItemDto, UpdateCartItemDto, CartContactDto, RestoreCartFromOrderDto } from './dto/cart-item.dto.js';
 import { CartService } from './cart.service.js';
 export declare class CartController {
     private readonly cartService;
@@ -23,8 +23,8 @@ export declare class CartController {
                     slug: string;
                     image: {
                         url: string;
-                        isPrimary: boolean;
                         altText: string | null;
+                        isPrimary: boolean;
                     };
                 };
                 variant: {
@@ -65,8 +65,8 @@ export declare class CartController {
                     slug: string;
                     image: {
                         url: string;
-                        isPrimary: boolean;
                         altText: string | null;
+                        isPrimary: boolean;
                     };
                 };
                 variant: {
@@ -107,8 +107,8 @@ export declare class CartController {
                     slug: string;
                     image: {
                         url: string;
-                        isPrimary: boolean;
                         altText: string | null;
+                        isPrimary: boolean;
                     };
                 };
                 variant: {
@@ -149,8 +149,8 @@ export declare class CartController {
                     slug: string;
                     image: {
                         url: string;
-                        isPrimary: boolean;
                         altText: string | null;
+                        isPrimary: boolean;
                     };
                 };
                 variant: {
@@ -191,8 +191,8 @@ export declare class CartController {
                     slug: string;
                     image: {
                         url: string;
-                        isPrimary: boolean;
                         altText: string | null;
+                        isPrimary: boolean;
                     };
                 };
                 variant: {
@@ -233,8 +233,8 @@ export declare class CartController {
                     slug: string;
                     image: {
                         url: string;
-                        isPrimary: boolean;
                         altText: string | null;
+                        isPrimary: boolean;
                     };
                 };
                 variant: {
@@ -259,16 +259,58 @@ export declare class CartController {
         message: string;
         data: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             customerId: string | null;
-            guestName: string | null;
+            guestId: string | null;
             guestEmail: string | null;
             guestPhone: string | null;
-            guestId: string | null;
+            guestName: string | null;
             lastReminderSentAt: Date | null;
             reminderCount: number;
+            createdAt: Date;
+            updatedAt: Date;
         } | null;
+    }>;
+    restoreOrder(customerId: string | undefined, dto: RestoreCartFromOrderDto): Promise<{
+        message: string;
+        data: {
+            cartId: string | null;
+            items: never[];
+            subtotal: number;
+            deliveryCharge: number;
+            total: number;
+            currency: string;
+            discountAmount?: undefined;
+        } | {
+            cartId: string;
+            items: {
+                id: string;
+                product: {
+                    id: string;
+                    name: string;
+                    slug: string;
+                    image: {
+                        url: string;
+                        altText: string | null;
+                        isPrimary: boolean;
+                    };
+                };
+                variant: {
+                    id: string;
+                    size: string;
+                    sizeLabel: string | null;
+                    color: string;
+                    availability: string;
+                };
+                quantity: number;
+                unitPrice: number;
+                lineTotal: number;
+            }[];
+            subtotal: number;
+            discountAmount: number;
+            deliveryCharge: number;
+            total: number;
+            currency: string;
+        };
     }>;
 }
 export declare class CartMergeController {
@@ -294,8 +336,8 @@ export declare class CartMergeController {
                     slug: string;
                     image: {
                         url: string;
-                        isPrimary: boolean;
                         altText: string | null;
+                        isPrimary: boolean;
                     };
                 };
                 variant: {

@@ -102,10 +102,10 @@ export class CreateOrderDto {
   @Type(() => ShippingAddressDto)
   shippingAddress: ShippingAddressDto;
 
-  @ApiPropertyOptional({ enum: ['COD', 'BKASH', 'NAGAD', 'CARD'], default: 'COD' })
-  @IsEnum(['COD', 'BKASH', 'NAGAD', 'CARD'])
+  @ApiPropertyOptional({ enum: ['COD', 'BKASH', 'NAGAD', 'CARD', 'WAITMARK_PAY'], default: 'COD' })
+  @IsEnum(['COD', 'BKASH', 'NAGAD', 'CARD', 'WAITMARK_PAY'])
   @IsOptional()
-  paymentMethod?: 'COD' | 'BKASH' | 'NAGAD' | 'CARD' = 'COD';
+  paymentMethod?: 'COD' | 'BKASH' | 'NAGAD' | 'CARD' | 'WAITMARK_PAY' = 'COD';
 
   @ApiPropertyOptional({ example: 'EID2026' })
   @IsString()

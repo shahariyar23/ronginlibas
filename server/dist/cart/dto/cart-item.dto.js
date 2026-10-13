@@ -117,4 +117,30 @@ __decorate([
     IsOptional(),
     __metadata("design:type", String)
 ], SendCartReminderDto.prototype, "customMessage", void 0);
+export class RestoreCartFromOrderDto {
+    orderId;
+    cartId;
+    phone;
+    trackingToken;
+}
+__decorate([
+    ApiProperty({ description: 'Order ID or Order Number' }),
+    __metadata("design:type", String)
+], RestoreCartFromOrderDto.prototype, "orderId", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    IsUUID(),
+    IsOptional(),
+    __metadata("design:type", String)
+], RestoreCartFromOrderDto.prototype, "cartId", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    IsOptional(),
+    __metadata("design:type", String)
+], RestoreCartFromOrderDto.prototype, "phone", void 0);
+__decorate([
+    ApiPropertyOptional(),
+    IsOptional(),
+    __metadata("design:type", String)
+], RestoreCartFromOrderDto.prototype, "trackingToken", void 0);
 //# sourceMappingURL=cart-item.dto.js.map

@@ -14,7 +14,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UnauthorizedE
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { OptionalCustomerAuthGuard } from '../auth/guards/optional-customer-auth.guard.js';
-import { CartIdentityDto, AddCartItemDto, UpdateCartItemDto, CartContactDto } from './dto/cart-item.dto.js';
+import { CartIdentityDto, AddCartItemDto, UpdateCartItemDto, CartContactDto, RestoreCartFromOrderDto, } from './dto/cart-item.dto.js';
 import { CartService } from './cart.service.js';
 let CartController = class CartController {
     cartService;
@@ -59,6 +59,12 @@ let CartController = class CartController {
                 phone: dto.phone,
                 name: dto.name,
             }),
+        };
+    }
+    async restoreOrder(customerId, dto) {
+        return {
+            message: 'Items restored to cart successfully',
+            data: await this.cartService.restoreOrderToCart(customerId, dto.cartId, dto.orderId, dto.phone, dto.trackingToken),
         };
     }
 };
@@ -127,6 +133,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, CartContactDto]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "saveContact", null);
+__decorate([
+    Post('restore-order'),
+    ApiOperation({ summary: 'Restore eligible items from an unpaid or failed order to the customer or guest cart' }),
+    __param(0, CurrentUser('id')),
+    __param(1, Body()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, RestoreCartFromOrderDto]),
+    __metadata("design:returntype", Promise)
+], CartController.prototype, "restoreOrder", null);
 CartController = __decorate([
     ApiTags('Cart'),
     UseGuards(OptionalCustomerAuthGuard),

@@ -35,10 +35,10 @@ export declare class AdminCollectionsController {
             };
             products: {
                 name: string;
+                price: import("@prisma/client/runtime/library").Decimal;
                 id: string;
                 isActive: boolean;
                 slug: string;
-                price: import("@prisma/client/runtime/library").Decimal;
                 compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
                 sku: string;
                 images: {

@@ -105,6 +105,7 @@ export const CartDrawer: React.FC = () => {
       <SheetContent
         side="right"
         className="w-full sm:max-w-md p-0 flex flex-col bg-[#fbf9f2] border-l border-[#deddd3] text-[#1b1c18]"
+        data-clarity-mask="true"
       >
         {/* Header */}
         <SheetHeader className="p-4 sm:p-6 border-b border-[#deddd3] bg-white">

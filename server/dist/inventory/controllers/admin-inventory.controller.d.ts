@@ -14,6 +14,8 @@ export declare class AdminInventoryController {
         message: string;
         data: {
             variant: {
+                size: string;
+                color: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
@@ -21,8 +23,6 @@ export declare class AdminInventoryController {
                 measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
                 productId: string;
-                size: string;
-                color: string;
                 sizeLabel: string | null;
                 sizeType: string | null;
                 stock: number;

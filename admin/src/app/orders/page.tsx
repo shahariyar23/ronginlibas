@@ -119,7 +119,9 @@ function OrdersPageContent() {
                 courierProvider: 'Pathao',
                 courierConsignmentId: consignmentId,
                 trackingNumber: consignmentId,
-                courierStatus: payload.parcel.order_status,
+                courierStatus: payload.order?.courierStatus || payload.parcel.order_status,
+                courierStatusRaw: payload.order?.courierStatusRaw || payload.parcel.order_status,
+                courierLastSyncedAt: new Date().toISOString(),
                 trackingUrl,
               }
             : null,
@@ -143,7 +145,14 @@ function OrdersPageContent() {
         const payload = res.data;
         toast.success(`Pathao status updated: ${payload.courierStatus}`);
         setSelectedOrderForInvoice((prev: any) =>
-          prev ? { ...prev, courierStatus: payload.courierStatus } : null,
+          prev
+            ? {
+                ...prev,
+                courierStatus: payload.courierStatus,
+                courierStatusRaw: payload.courierStatusRaw,
+                courierLastSyncedAt: payload.lastSyncedAt,
+              }
+            : null,
         );
         await refreshData();
       } else {
@@ -392,6 +401,7 @@ function OrdersPageContent() {
             >
               <option value="ALL">All Payment Methods</option>
               <option value="COD">COD</option>
+              <option value="WAITMARK_PAY">Waitmark Pay</option>
               <option value="BKASH">bKash</option>
               <option value="NAGAD">Nagad</option>
             </select>
@@ -490,8 +500,14 @@ function OrdersPageContent() {
                       ৳{order.amount.toLocaleString()}
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className="px-2 py-0.5 bg-[#f0eee7] text-[10px] font-mono font-bold text-[#404945] border border-[#deddd3]">
-                        {order.paymentMethod}
+                      <span
+                        className={`px-2 py-0.5 text-[10px] font-mono font-bold border ${
+                          order.paymentMethod === 'WAITMARK_PAY'
+                            ? 'bg-purple-50 text-purple-800 border-purple-200'
+                            : 'bg-[#f0eee7] text-[#404945] border-[#deddd3]'
+                        }`}
+                      >
+                        {order.paymentMethod === 'WAITMARK_PAY' ? 'WAITMARK PAY' : order.paymentMethod}
                       </span>
                     </td>
                     <td className="py-3.5 px-4">
@@ -1111,7 +1127,15 @@ function OrdersPageContent() {
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <span className="px-2.5 py-1 text-xs font-semibold bg-[#b0ecd3]/40 border border-[#0d4d3b]/30 text-[#073a2d]">
+                          <span
+                            className={`px-2.5 py-1 text-xs font-semibold border ${
+                              selectedOrderForInvoice.courierStatus === 'UNKNOWN'
+                                ? 'bg-amber-100/60 border-amber-400 text-amber-900 font-bold'
+                                : selectedOrderForInvoice.courierStatus === 'DELIVERED'
+                                  ? 'bg-[#b0ecd3]/50 border-[#0d4d3b]/40 text-[#073a2d]'
+                                  : 'bg-[#b0ecd3]/40 border-[#0d4d3b]/30 text-[#073a2d]'
+                            }`}
+                          >
                             {selectedOrderForInvoice.courierStatus || 'Pending'}
                           </span>
 
@@ -1131,21 +1155,70 @@ function OrdersPageContent() {
                         </div>
                       </div>
 
-                      <div className="pt-2 border-t border-[#f0eee7] flex items-center justify-between text-xs text-[#717975]">
-                        <span>Carrier: <strong>Pathao Express (Sandbox)</strong></span>
-                        <a
-                          href={
-                            selectedOrderForInvoice.trackingUrl ||
-                            `https://pathao.com/courier/track?consignment_id=${selectedOrderForInvoice.courierConsignmentId}`
-                          }
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-[#073a2d] hover:underline font-semibold"
-                        >
-                          <span>Track Consignment</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
+                      {/* Unknown Status Warning Notice (Requirement 14) */}
+                      {selectedOrderForInvoice.courierStatus === 'UNKNOWN' && (
+                        <div className="p-2.5 bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                          <div className="space-y-0.5">
+                            <p className="font-bold text-amber-900">
+                              Pathao reported a status that is not currently mapped.
+                            </p>
+                            <p className="text-[11px] text-amber-800">
+                              Provider Status:{' '}
+                              <code className="font-mono bg-white/80 px-1 py-0.5 border border-amber-300">
+                                {selectedOrderForInvoice.courierStatusRaw || 'unknown'}
+                              </code>
+                              . No automated order completion or stock changes have occurred.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Courier Diagnostics / Status Breakdown */}
+                      <div className="bg-[#fbf9f2] border border-[#deddd3] p-2.5 space-y-1 text-xs">
+                        <div className="flex items-center justify-between text-[11px] text-[#717975]">
+                          <span>Courier:</span>
+                          <span className="font-semibold text-[#1b1c18]">Pathao Express (Sandbox)</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] text-[#717975]">
+                          <span>Normalized Status:</span>
+                          <span className="font-mono font-bold text-[#073a2d]">
+                            {selectedOrderForInvoice.courierStatus || 'PENDING'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] text-[#717975]">
+                          <span>Raw Provider Status:</span>
+                          <span className="font-mono text-[#404945]">
+                            {selectedOrderForInvoice.courierStatusRaw || selectedOrderForInvoice.courierStatus || 'Pending'}
+                          </span>
+                        </div>
+                        {selectedOrderForInvoice.courierLastSyncedAt && (
+                          <div className="flex items-center justify-between text-[11px] text-[#717975]">
+                            <span>Last Synced:</span>
+                            <span className="text-[#404945]">
+                              {new Date(selectedOrderForInvoice.courierLastSyncedAt).toLocaleString()}
+                            </span>
+                          </div>
+                        )}
                       </div>
+
+                      <div className="pt-2 border-t border-[#f0eee7] flex flex-wrap items-center justify-between gap-2 text-xs text-[#717975]">
+                        <span>Carrier: <strong>Pathao Express (Sandbox)</strong></span>
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={`https://merchant.pathao.com/tracking?consignment_id=${selectedOrderForInvoice.courierConsignmentId}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-[#073a2d] hover:underline font-semibold"
+                          >
+                            <span>Pathao Portal</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-[#717975] italic">
+                        Note: Sandbox test parcels exist only in the Pathao Sandbox API. Click &quot;Refresh Status&quot; above to sync live test updates.
+                      </p>
                     </div>
                   ) : (
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-[#deddd3] p-3 text-xs">

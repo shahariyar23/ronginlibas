@@ -13,7 +13,13 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { OptionalCustomerAuthGuard } from '../auth/guards/optional-customer-auth.guard.js';
-import { CartIdentityDto, AddCartItemDto, UpdateCartItemDto, CartContactDto } from './dto/cart-item.dto.js';
+import {
+  CartIdentityDto,
+  AddCartItemDto,
+  UpdateCartItemDto,
+  CartContactDto,
+  RestoreCartFromOrderDto,
+} from './dto/cart-item.dto.js';
 import { CartService } from './cart.service.js';
 
 @ApiTags('Cart')
@@ -97,6 +103,24 @@ export class CartController {
         phone: dto.phone,
         name: dto.name,
       }),
+    };
+  }
+
+  @Post('restore-order')
+  @ApiOperation({ summary: 'Restore eligible items from an unpaid or failed order to the customer or guest cart' })
+  async restoreOrder(
+    @CurrentUser('id') customerId: string | undefined,
+    @Body() dto: RestoreCartFromOrderDto,
+  ) {
+    return {
+      message: 'Items restored to cart successfully',
+      data: await this.cartService.restoreOrderToCart(
+        customerId,
+        dto.cartId,
+        dto.orderId,
+        dto.phone,
+        dto.trackingToken,
+      ),
     };
   }
 }

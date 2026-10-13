@@ -129,4 +129,23 @@ export class OrdersController {
       ),
     };
   }
+
+  @Post(':orderNumber/cancel')
+  @ApiOperation({ summary: 'Cancel an unpaid order and release reserved stock' })
+  async cancelOrder(
+    @Param('orderNumber') orderNumber: string,
+    @CurrentUser('id') customerId: string | undefined,
+    @Body() dto: OrderAccessDto,
+  ) {
+    return {
+      message: 'Order cancelled successfully',
+      data: await this.ordersService.cancelUnpaidOrder(
+        orderNumber,
+        customerId,
+        dto.phone,
+        dto.trackingToken,
+      ),
+    };
+  }
 }
+

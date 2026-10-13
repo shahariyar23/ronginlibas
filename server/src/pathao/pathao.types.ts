@@ -1,3 +1,5 @@
+export * from './status/courier-status.types.js';
+
 export type PathaoEnvironment = 'sandbox' | 'production';
 
 export interface PathaoTokenResponse {
@@ -72,8 +74,10 @@ export interface PathaoCreateOrderResponse {
   consignment_id: string;
   merchant_order_id: string;
   order_status: string;
+  order_status_slug?: string;
   delivery_fee?: number;
   created_at?: string;
+  [key: string]: unknown;
 }
 
 export interface PathaoOrderInfoResponse {
@@ -93,6 +97,7 @@ export interface PathaoOrderInfoResponse {
     message?: string;
     time?: string;
   }>;
+  [key: string]: unknown;
 }
 
 export interface PathaoConnectionTestResult {

@@ -6,7 +6,13 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { getWhatsAppUrl, useStorefront } from '@/context/StorefrontContext';
-import { apiRequest, getCustomerAddresses, CustomerAddress } from '@/lib/api';
+import {
+  apiRequest,
+  getCustomerAddresses,
+  CustomerAddress,
+  initiateWaitmarkPaymentApi,
+} from '@/lib/api';
+import { analytics } from '@/lib/analytics/client';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -32,6 +38,8 @@ import {
   Banknote,
   Smartphone,
   ArrowLeft,
+  ArrowRight,
+  RefreshCw,
   Loader2,
   MapPin,
 } from 'lucide-react';
@@ -79,6 +87,27 @@ export default function CheckoutPage() {
     notes: '',
   });
 
+  // Track checkout initiation once items are present
+  React.useEffect(() => {
+    if (items.length > 0) {
+      analytics.trackBeginCheckout({
+        pagePath: '/checkout',
+        value: total,
+        currency: 'BDT',
+        coupon: appliedCoupon || undefined,
+        items: items.map((i) => ({
+          item_id: i.product.id,
+          item_name: i.product.name,
+          item_category: i.product.categoryLabel,
+          item_variant: `${i.selectedSize} / ${i.selectedColor}`,
+          price: i.product.price,
+          quantity: i.quantity,
+          currency: 'BDT',
+        })),
+      });
+    }
+  }, [items.length > 0]);
+
   const syncCartContact = React.useCallback(
     async (emailVal?: string, phoneVal?: string, nameVal?: string) => {
       if (!cartId) return;
@@ -103,12 +132,14 @@ export default function CheckoutPage() {
     [cartId, formData.email, formData.phone, formData.fullName],
   );
 
-  const paymentMethod = 'cod';
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'COD' | 'WAITMARK_PAY'>('COD');
   const [couponInput, setCouponInput] = useState('');
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [updatingKey, setUpdatingKey] = useState<string | null>(null);
   const [removingKey, setRemovingKey] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [gatewayCheckoutUrl, setGatewayCheckoutUrl] = useState<string | null>(null);
+  const [isRedirectingToGateway, setIsRedirectingToGateway] = useState(false);
   const [orderConfirmed, setOrderConfirmed] = useState(false);
   const [orderId, setOrderId] = useState('');
   const [trackingToken, setTrackingToken] = useState('');
@@ -407,9 +438,36 @@ export default function CheckoutPage() {
 
     const recipientEmail = formData.email.trim().toLowerCase();
 
+    const checkoutAnalyticsItems = items.map((i) => ({
+      item_id: i.product.id,
+      item_name: i.product.name,
+      item_category: i.product.categoryLabel,
+      item_variant: `${i.selectedSize} / ${i.selectedColor}`,
+      price: i.product.price,
+      quantity: i.quantity,
+      currency: 'BDT',
+    }));
+
+    analytics.trackAddShippingInfo({
+      pagePath: '/checkout',
+      currency: 'BDT',
+      value: total,
+      shippingTier: formData.division === 'DHAKA' ? 'Dhaka Express (48h)' : 'Nationwide Courier',
+      items: checkoutAnalyticsItems,
+    });
+
+    analytics.trackAddPaymentInfo({
+      pagePath: '/checkout',
+      currency: 'BDT',
+      value: total,
+      paymentType: selectedPaymentMethod,
+      items: checkoutAnalyticsItems,
+    });
+
     setIsSubmitting(true);
     try {
       const order = await apiRequest<{
+        id: string;
         orderNumber: string;
         guestTrackingToken?: string;
       }>('/orders', {
@@ -427,15 +485,106 @@ export default function CheckoutPage() {
             postalCode: formData.postalCode.trim() || undefined,
             deliveryInstructions: formData.notes || undefined,
           },
-          paymentMethod: paymentMethod.toUpperCase(),
+          paymentMethod: selectedPaymentMethod,
           couponCode: appliedCoupon || undefined,
           customerNotes: formData.notes || undefined,
           guestName: formData.fullName.trim(),
           guestEmail: recipientEmail,
         }),
       });
+
       setOrderId(order.orderNumber);
       setTrackingToken(order.guestTrackingToken || '');
+
+      // Only track purchase if the order state is immediately confirmed (e.g. COD)
+      // Pending online payments via Waitmark Pay are tracked upon successful payment confirmation at /payment/result
+      if (selectedPaymentMethod === 'COD') {
+        analytics.trackPurchase({
+          pagePath: '/checkout',
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          currency: 'BDT',
+          value: total,
+          deliveryCharge: shippingFee,
+          coupon: appliedCoupon || undefined,
+          paymentMethod: selectedPaymentMethod,
+          items: items.map((i) => ({
+            item_id: i.product.id,
+            item_name: i.product.name,
+            item_category: i.product.categoryLabel,
+            item_variant: `${i.selectedSize} / ${i.selectedColor}`,
+            price: i.product.price,
+            quantity: i.quantity,
+            currency: 'BDT',
+          })),
+        });
+      } else if (selectedPaymentMethod === 'WAITMARK_PAY') {
+        try {
+          sessionStorage.setItem(
+            `rl_pending_order_items_${order.orderNumber}`,
+            JSON.stringify(
+              items.map((i) => ({
+                item_id: i.product.id,
+                item_name: i.product.name,
+                item_category: i.product.categoryLabel,
+                item_variant: `${i.selectedSize} / ${i.selectedColor}`,
+                price: i.product.price,
+                quantity: i.quantity,
+                currency: 'BDT',
+              })),
+            ),
+          );
+        } catch {
+          // ignore
+        }
+      }
+
+      if (selectedPaymentMethod === 'WAITMARK_PAY') {
+        setIsRedirectingToGateway(true);
+        toast.info('Order placed! Initializing Waitmark Pay checkout...');
+        try {
+          const paymentSession = await initiateWaitmarkPaymentApi({
+            orderId: order.id,
+            phone: formData.phone.replace(/\s/g, ''),
+            trackingToken: order.guestTrackingToken || undefined,
+          });
+
+          const targetCheckoutUrl =
+            paymentSession?.checkoutUrl || (paymentSession as any)?.data?.checkoutUrl;
+
+          if (targetCheckoutUrl) {
+            setGatewayCheckoutUrl(targetCheckoutUrl);
+            try {
+              sessionStorage.setItem('rl_last_order_id', order.orderNumber);
+              sessionStorage.setItem('rl_last_order_uuid', order.id);
+              if (order.guestTrackingToken) {
+                sessionStorage.setItem('rl_last_tracking_token', order.guestTrackingToken);
+              }
+              sessionStorage.setItem('rl_last_phone', formData.phone.replace(/\s/g, ''));
+            } catch {
+              // ignore
+            }
+            void clearCart(false);
+
+            try {
+              window.location.href = targetCheckoutUrl;
+            } catch {
+              window.location.assign(targetCheckoutUrl);
+            }
+            return;
+          }
+        } catch (paymentErr: any) {
+          setIsRedirectingToGateway(false);
+          toast.error(
+            paymentErr?.message ||
+              'Payment session could not be opened automatically. You can complete payment from your order confirmation.',
+          );
+          setOrderConfirmed(true);
+          void clearCart(false);
+          return;
+        }
+      }
+
       setOrderConfirmed(true);
       await clearCart(false);
       toast.success('Order created successfully!', {
@@ -619,7 +768,7 @@ export default function CheckoutPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12">
             {/* Left Form Canvas (7 Cols) */}
-            <form onSubmit={handleSubmitOrder} className="lg:col-span-7 space-y-6 sm:space-y-10">
+            <form onSubmit={handleSubmitOrder} className="lg:col-span-7 space-y-6 sm:space-y-10" data-clarity-mask="true">
               {/* Step 1: Cart Items Review */}
               <div className="bg-white border border-[#deddd3] p-4 sm:p-6 shadow-xs">
                 <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#deddd3] mb-4 sm:mb-5">
@@ -1052,13 +1201,18 @@ export default function CheckoutPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* COD */}
                   <label
-                    className="p-4 border flex items-start gap-3 border-[#073a2d] bg-[#f0eee7]"
+                    onClick={() => setSelectedPaymentMethod('COD')}
+                    className={`p-4 border flex items-start gap-3 cursor-pointer transition-all ${
+                      selectedPaymentMethod === 'COD'
+                        ? 'border-[#073a2d] bg-[#f0eee7]'
+                        : 'border-[#deddd3] bg-white hover:border-[#073a2d]/50'
+                    }`}
                   >
                     <input
                       type="radio"
                       name="paymentMethod"
-                      checked
-                      readOnly
+                      checked={selectedPaymentMethod === 'COD'}
+                      onChange={() => setSelectedPaymentMethod('COD')}
                       className="mt-0.5 accent-[#073a2d]"
                     />
                     <div>
@@ -1072,10 +1226,37 @@ export default function CheckoutPage() {
                     </div>
                   </label>
 
+                  {/* Waitmark Pay */}
+                  <label
+                    onClick={() => setSelectedPaymentMethod('WAITMARK_PAY')}
+                    className={`p-4 border flex items-start gap-3 cursor-pointer transition-all ${
+                      selectedPaymentMethod === 'WAITMARK_PAY'
+                        ? 'border-[#073a2d] bg-[#f0eee7]'
+                        : 'border-[#deddd3] bg-white hover:border-[#073a2d]/50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      checked={selectedPaymentMethod === 'WAITMARK_PAY'}
+                      onChange={() => setSelectedPaymentMethod('WAITMARK_PAY')}
+                      className="mt-0.5 accent-[#073a2d]"
+                    />
+                    <div>
+                      <div className="flex items-center gap-1.5 font-sans font-bold text-xs uppercase text-[#073a2d]">
+                        <CreditCard className="w-4 h-4 text-[#c79a45]" />
+                        <span>Waitmark Pay (Online)</span>
+                      </div>
+                      <p className="text-[11px] text-[#69726d] mt-1 font-sans">
+                        Instant digital checkout via bKash, Nagad, Visa, Mastercard & Internet Banking.
+                      </p>
+                    </div>
+                  </label>
                 </div>
-                <p className="mt-4 text-xs text-[#69726d]">
-                  Online payments are not available yet. Cash on delivery is the currently supported method.
-                </p>
+                <div className="mt-4 flex items-center gap-2 text-xs text-[#69726d]">
+                  <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <span>Both Cash on Delivery and 256-bit encrypted Online Payment via Waitmark Pay are supported.</span>
+                </div>
               </div>
 
               {/* Submit CTA */}
@@ -1083,11 +1264,13 @@ export default function CheckoutPage() {
                 <Button
                   type="submit"
                   loading={isSubmitting}
-                  loadingText="PLACING ORDER..."
+                  loadingText={selectedPaymentMethod === 'WAITMARK_PAY' ? 'PREPARING PAYMENT...' : 'PLACING ORDER...'}
                   disabled={isSubmitting}
                   className="w-full h-14 bg-[#073a2d] hover:bg-[#0d4d3b] text-[#fbf9f2] font-sans uppercase tracking-[0.18em] text-xs font-bold shadow-lg cursor-pointer"
                 >
-                  {`Place Order - ৳${effectiveGrandTotal.toLocaleString()}`}
+                  {selectedPaymentMethod === 'WAITMARK_PAY'
+                    ? `Proceed to Pay - ৳${effectiveGrandTotal.toLocaleString()}`
+                    : `Place Order - ৳${effectiveGrandTotal.toLocaleString()}`}
                 </Button>
                 <p className="mt-2.5 text-center font-sans text-[11px] text-[#717975] leading-relaxed">
                   By placing an order, you agree to Rongin Libas&apos;s{' '}
@@ -1117,9 +1300,52 @@ export default function CheckoutPage() {
         )}
       </div>
 
+      {/* Waitmark Pay Immediate Redirect Screen */}
+      {isRedirectingToGateway && (
+        <div className="fixed inset-0 z-50 bg-[#073a2d]/95 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white border-2 border-[#c79a45] max-w-md w-full p-8 text-center space-y-5 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 mx-auto rounded-full bg-purple-50 border-2 border-purple-600 flex items-center justify-center">
+              <CreditCard className="w-8 h-8 text-purple-700 animate-pulse" />
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-[10px] uppercase font-bold tracking-[0.25em] text-[#c79a45]">
+                Rongin Libas Atelier
+              </span>
+              <h3 className="font-serif text-2xl text-[#1b1c18]">
+                Connecting to Waitmark Pay
+              </h3>
+              <p className="text-xs text-[#717975] leading-relaxed">
+                Order <strong>{orderId}</strong> created successfully. Transferring you to Waitmark Pay secure gateway for cards, bKash & mobile wallets.
+              </p>
+            </div>
+
+            {gatewayCheckoutUrl ? (
+              <div className="pt-2 space-y-3">
+                <a
+                  href={gatewayCheckoutUrl}
+                  className="w-full inline-flex items-center justify-center gap-2 bg-purple-700 hover:bg-purple-800 text-white font-sans uppercase tracking-wider text-xs h-12 font-bold shadow-md transition-all cursor-pointer"
+                >
+                  <span>Proceed to Payment Now (৳{effectiveGrandTotal.toLocaleString()})</span>
+                  <ArrowRight className="w-4 h-4" />
+                </a>
+                <p className="text-[11px] text-[#717975]">
+                  If your browser didn't redirect automatically, click the button above.
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-2 text-xs font-mono text-[#073a2d] py-3">
+                <Loader2 className="w-4 h-4 animate-spin text-[#073a2d]" />
+                <span>Preparing secure gateway session...</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Order Confirmation Modal */}
       <Dialog open={orderConfirmed} onOpenChange={setOrderConfirmed}>
-        <DialogContent className="max-w-md p-8 bg-[#fbf9f2] border border-[#073a2d] text-center space-y-4">
+        <DialogContent className="max-w-md p-8 bg-[#fbf9f2] border border-[#073a2d] text-center space-y-4" data-clarity-mask="true">
           {/* Prominent Success Icon */}
           <div className="mx-auto flex flex-col items-center justify-center gap-2">
             <div className="w-16 h-16 rounded-full bg-emerald-50 border-2 border-emerald-600 flex items-center justify-center text-emerald-700 shadow-sm animate-in zoom-in-75 duration-300">
@@ -1157,6 +1383,14 @@ export default function CheckoutPage() {
           </p>
 
           <div className="pt-4 flex flex-col gap-2">
+            {selectedPaymentMethod === 'WAITMARK_PAY' && (
+              <a
+                href={`/payment/result?orderId=${encodeURIComponent(orderId)}${formData.phone ? `&phone=${encodeURIComponent(formData.phone)}` : ''}`}
+                className="w-full inline-flex items-center justify-center bg-purple-800 hover:bg-purple-900 text-white font-sans uppercase tracking-wider text-xs h-11 font-bold transition-colors"
+              >
+                Complete Payment via Waitmark Pay →
+              </a>
+            )}
             <Button
               onClick={() => {
                 setOrderConfirmed(false);

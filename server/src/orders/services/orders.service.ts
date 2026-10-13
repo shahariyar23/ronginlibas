@@ -16,12 +16,19 @@ import { fileURLToPath } from 'node:url';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { SettingsService } from '../../settings/services/settings.service.js';
 import { MailService } from '../../mail/mail.service.js';
+import { Ga4MeasurementProtocolService } from '../../analytics/services/ga4-measurement-protocol.service.js';
 import { CreateOrderDto, ShippingAddressDto } from '../dto/create-order.dto.js';
 import { CreateAdminOrderDto } from '../dto/create-admin-order.dto.js';
 import { UpdateOrderStatusDto } from '../dto/update-order-status.dto.js';
 import { OrderQueryDto } from '../dto/order-query.dto.js';
 import { PaginatedResult } from '../../common/dto/pagination-query.dto.js';
 import type { AdminAuditActor } from '../../audit/audit.service.js';
+import {
+  canMarkOrderDelivered,
+  canProcessReturn,
+  normalizePathaoStatus,
+  getCustomerSafeCourierStatus,
+} from '../../pathao/status/courier-status.types.js';
 
 function roundCurrency(val: number): number {
   return Math.round((val + Number.EPSILON) * 100) / 100;
@@ -44,6 +51,9 @@ const orderItemCustomerSelect = {
   createdAt: true,
   product: {
     select: {
+      id: true,
+      name: true,
+      slug: true,
       images: {
         take: 1,
         orderBy: { sortOrder: 'asc' },
@@ -61,26 +71,32 @@ const customerOrderSelect = {
   paymentMethod: true,
   subtotal: true,
   discountAmount: true,
+  manualDiscountAmount: true,
   deliveryCharge: true,
   totalAmount: true,
+  paidAmount: true,
+  paymentReference: true,
   shippingAddress: true,
   customerNotes: true,
   courierName: true,
+  courierProvider: true,
+  courierStatus: true,
+  courierLastSyncedAt: true,
   trackingNumber: true,
   trackingUrl: true,
   estimatedDelivery: true,
   createdAt: true,
   updatedAt: true,
   items: { select: orderItemCustomerSelect },
-} satisfies Prisma.OrderSelect;
-
-const customerOrderDetailSelect = {
-  ...customerOrderSelect,
   trackingEvents: {
     where: { customerVisible: true },
     select: { status: true, description: true, createdAt: true },
     orderBy: { createdAt: 'asc' },
   },
+} satisfies Prisma.OrderSelect;
+
+const customerOrderDetailSelect = {
+  ...customerOrderSelect,
 } satisfies Prisma.OrderSelect;
 
 const orderAccessSelect = {
@@ -108,6 +124,7 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     private readonly settingsService: SettingsService,
     @Optional() private readonly mailService?: MailService,
+    @Optional() private readonly ga4Service?: Ga4MeasurementProtocolService,
   ) {}
 
   async findAll(query: OrderQueryDto): Promise<PaginatedResult<any>> {
@@ -149,6 +166,10 @@ export class OrdersService {
           customerNotes: true,
           adminNotes: true,
           courierName: true,
+          courierProvider: true,
+          courierConsignmentId: true,
+          courierStatus: true,
+          courierTrackingUrl: true,
           trackingNumber: true,
           trackingUrl: true,
           estimatedDelivery: true,
@@ -244,6 +265,146 @@ export class OrdersService {
     return order;
   }
 
+  /**
+   * Restores reserved inventory stock within a Prisma transaction client.
+   */
+  public async releaseOrderStockInTx(
+    transaction: any,
+    order: { orderNumber: string; items: Array<{ variantId?: string | null; quantity: number }> },
+    reason: string = 'Order cancellation',
+  ) {
+    for (const item of order.items) {
+      if (!item.variantId) continue;
+      const variant = await transaction.productVariant.findUnique({
+        where: { id: item.variantId },
+        select: { id: true, stock: true },
+      });
+      if (!variant) {
+        throw new NotFoundException(`Order variant not found: ${item.variantId}`);
+      }
+      const newStock = variant.stock + item.quantity;
+      const restored = await transaction.productVariant.updateMany({
+        where: { id: variant.id, stock: variant.stock },
+        data: { stock: newStock },
+      });
+      if (!restored.count) {
+        throw new BadRequestException('Inventory changed while releasing reserved stock; retry the status update');
+      }
+      await transaction.inventoryTransaction.create({
+        data: {
+          variantId: variant.id,
+          quantityChange: item.quantity,
+          previousStock: variant.stock,
+          newStock,
+          type: 'RETURN',
+          note: `${reason} ${order.orderNumber}`,
+        },
+      });
+    }
+  }
+
+  /**
+   * Releases reserved stock and cancels unpaid online orders exceeding the timeout window.
+   */
+  async cancelExpiredUnpaidOrders(timeoutMinutes = 30): Promise<number> {
+    const cutoff = new Date(Date.now() - timeoutMinutes * 60 * 1000);
+    const expiredOrders = await this.prisma.order.findMany({
+      where: {
+        paymentMethod: PaymentMethod.WAITMARK_PAY,
+        status: OrderStatus.PENDING,
+        paymentStatus: { in: [PaymentStatus.PENDING, PaymentStatus.FAILED] },
+        createdAt: { lt: cutoff },
+      },
+      include: {
+        items: true,
+      },
+    });
+
+    let cancelledCount = 0;
+    for (const order of expiredOrders) {
+      try {
+        await this.prisma.$transaction(async (tx) => {
+          await this.releaseOrderStockInTx(
+            tx,
+            order,
+            `Payment timeout (${timeoutMinutes}m) stock release:`,
+          );
+
+          await tx.order.update({
+            where: { id: order.id },
+            data: {
+              status: OrderStatus.CANCELLED,
+              paymentStatus: PaymentStatus.FAILED,
+            },
+          });
+
+          await tx.orderTrackingEvent.create({
+            data: {
+              orderId: order.id,
+              status: OrderStatus.CANCELLED,
+              description: `Order cancelled and inventory released due to payment timeout (${timeoutMinutes} minutes).`,
+              customerVisible: true,
+            },
+          });
+        });
+        cancelledCount++;
+        this.logger.log(
+          `[Inventory] Released reserved stock for expired unpaid order ${order.orderNumber}`,
+        );
+      } catch (err: any) {
+        this.logger.error(
+          `Failed to release expired order ${order.orderNumber}: ${err.message}`,
+        );
+      }
+    }
+    return cancelledCount;
+  }
+
+  /**
+   * Explicitly cancel an unpaid order by customer, releasing reserved stock.
+   */
+  async cancelUnpaidOrder(
+    orderId: string,
+    customerId?: string,
+    phone?: string,
+    trackingToken?: string,
+  ) {
+    const order = await this.findOrderForAccess(orderId, customerId, phone, trackingToken);
+    if (order.paymentStatus === PaymentStatus.PAID) {
+      throw new BadRequestException('Cannot cancel an already paid order.');
+    }
+    if (order.status === OrderStatus.CANCELLED) {
+      return order;
+    }
+    if (['SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(order.status)) {
+      throw new BadRequestException('Cannot cancel order after shipment.');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await this.releaseOrderStockInTx(tx, order as any, 'Customer unpaid cancellation:');
+
+      const updated = await tx.order.update({
+        where: { id: order.id },
+        data: {
+          status: OrderStatus.CANCELLED,
+          paymentStatus: PaymentStatus.FAILED,
+        },
+        select: customerOrderDetailSelect,
+      });
+
+      await tx.orderTrackingEvent.create({
+        data: {
+          orderId: order.id,
+          status: OrderStatus.CANCELLED,
+          description: 'Order cancelled and reserved stock released.',
+          customerVisible: true,
+        },
+      });
+
+      return updated;
+    });
+  }
+
   async updateStatus(id: string, dto: UpdateOrderStatusDto) {
     const { updated, previousStatus, statusChanged, changes } = await this.prisma.$transaction(
       async (transaction) => {
@@ -285,35 +446,31 @@ export class OrdersService {
           throw new BadRequestException('An order cannot be cancelled after shipment');
         }
 
-        if (dto.status && order.status !== 'CANCELLED' && dto.status === 'CANCELLED') {
-          for (const item of order.items) {
-            if (!item.variantId) continue;
-            const variant = await transaction.productVariant.findUnique({
-              where: { id: item.variantId },
-              select: { id: true, stock: true },
-            });
-            if (!variant) {
-              throw new NotFoundException(`Order variant not found: ${item.variantId}`);
-            }
-            const newStock = variant.stock + item.quantity;
-            const restored = await transaction.productVariant.updateMany({
-              where: { id: variant.id, stock: variant.stock },
-              data: { stock: newStock },
-            });
-            if (!restored.count) {
-              throw new BadRequestException('Inventory changed while cancelling; retry the status update');
-            }
-            await transaction.inventoryTransaction.create({
-              data: {
-                variantId: variant.id,
-                quantityChange: item.quantity,
-                previousStock: variant.stock,
-                newStock,
-                type: 'RETURN',
-                note: `Order cancellation ${order.orderNumber}`,
-              },
-            });
+        // Sensitive courier status action validation (Requirements 27 & 28)
+        if (dto.status === 'DELIVERED' && order.courierConsignmentId && !dto.overrideCourierStatus) {
+          const courierNormalized = normalizePathaoStatus(order.courierStatus);
+          if (!canMarkOrderDelivered(courierNormalized)) {
+            throw new BadRequestException(
+              `Cannot transition order to DELIVERED: Courier shipment is not in a confirmed DELIVERED state (Current courier status: "${order.courierStatus || 'PENDING'}").`,
+            );
           }
+        }
+
+        if (
+          (dto.status === 'RETURNED' || dto.status === 'REFUNDED') &&
+          order.courierConsignmentId &&
+          !dto.overrideCourierStatus
+        ) {
+          const courierNormalized = normalizePathaoStatus(order.courierStatus);
+          if (!canProcessReturn(courierNormalized)) {
+            throw new BadRequestException(
+              `Cannot transition order to ${dto.status}: Courier shipment has not reached a verified return state (Current status: "${order.courierStatus || 'PENDING'}").`,
+            );
+          }
+        }
+
+        if (dto.status && order.status !== 'CANCELLED' && dto.status === 'CANCELLED') {
+          await this.releaseOrderStockInTx(transaction, order, 'Order cancellation');
         }
 
         const previousStatus = order.status;
@@ -388,6 +545,18 @@ export class OrdersService {
       this.logger.warn(`Failed to dispatch order notification for ${updated.orderNumber}: ${err.message}`);
     });
 
+    if (this.ga4Service && ['CONFIRMED', 'PROCESSING'].includes(updated.status)) {
+      this.ga4Service
+        .sendPurchaseEvent({
+          id: updated.id,
+          orderNumber: updated.orderNumber,
+          totalAmount: updated.totalAmount,
+          customerId: (updated as any).customerId,
+          items: (updated as any).items,
+        })
+        .catch((e) => this.logger.warn(`GA4 MP error on order status update: ${e?.message}`));
+    }
+
     return updated;
   }
 
@@ -418,8 +587,8 @@ export class OrdersService {
       throw new BadRequestException('Guest checkout requires a name and contact phone');
     }
     const paymentMethod = dto.paymentMethod ?? 'COD';
-    if (paymentMethod !== 'COD') {
-      throw new ServiceUnavailableException('Online payment methods are not currently available');
+    if (paymentMethod !== 'COD' && paymentMethod !== 'WAITMARK_PAY') {
+      throw new ServiceUnavailableException(`Online payment method ${paymentMethod} is not currently available`);
     }
     const variantIds = dto.items.map((item) => item.variantId);
     if (new Set(variantIds).size !== variantIds.length) {
@@ -632,11 +801,15 @@ export class OrdersService {
     }
 
     // Asynchronously dispatch Order Confirmation email to customer via orders@ronginlibas.com
-    this.dispatchOrderConfirmationNotification(createdOrder.order, trackingToken, customerId).catch((err) => {
-      this.logger.warn(`Failed to dispatch order confirmation email for ${createdOrder.order.orderNumber}: ${err.message}`);
-    });
+    // Only dispatch immediately for COD (since COD is confirmed on placement).
+    // For online gateways (WAITMARK_PAY), confirmation email is dispatched after successful payment verification.
+    if (dto.paymentMethod === 'COD') {
+      this.dispatchOrderConfirmationNotification(createdOrder.order, trackingToken, customerId).catch((err) => {
+        this.logger.warn(`Failed to dispatch order confirmation email for ${createdOrder.order.orderNumber}: ${err.message}`);
+      });
+    }
 
-    return {
+    const responseOrder = {
       id: createdOrder.order.id,
       orderNumber: createdOrder.order.orderNumber,
       status: createdOrder.order.status,
@@ -658,6 +831,21 @@ export class OrdersService {
       trackingEvents: createdOrder.order.trackingEvents,
       ...(trackingToken ? { guestTrackingToken: trackingToken } : {}),
     };
+
+    if (this.ga4Service && createdOrder.order.paymentMethod === 'COD') {
+      this.ga4Service
+        .sendPurchaseEvent({
+          id: createdOrder.order.id,
+          orderNumber: createdOrder.order.orderNumber,
+          totalAmount: createdOrder.order.totalAmount,
+          customerId: (createdOrder.order as any).customerId,
+          guestTrackingToken: trackingToken,
+          items: createdOrder.order.items,
+        })
+        .catch((err) => this.logger.warn(`GA4 MP error on COD order: ${err?.message}`));
+    }
+
+    return responseOrder;
   }
 
   async createByAdmin(dto: CreateAdminOrderDto, actor: AdminAuditActor) {
@@ -1094,6 +1282,26 @@ export class OrdersService {
     return createdOrder.order;
   }
 
+  /**
+   * Dispatches order confirmation email after an online payment clears.
+   */
+  public async dispatchConfirmationNotificationForPaidOrder(orderId: string) {
+    if (!this.mailService) return;
+    try {
+      const order = await this.prisma.order.findUnique({
+        where: { id: orderId },
+        include: {
+          items: true,
+          customer: true,
+        },
+      });
+      if (!order) return;
+      await this.dispatchOrderConfirmationNotification(order, undefined, order.customerId || undefined);
+    } catch (err: any) {
+      this.logger.warn(`Failed to dispatch confirmation email for verified order ${orderId}: ${err?.message}`);
+    }
+  }
+
   private async dispatchOrderConfirmationNotification(
     order: any,
     trackingToken?: string,
@@ -1388,13 +1596,19 @@ export class OrdersService {
     trackingToken?: string,
   ) {
     const order = await this.findOrderForAccess(orderNumber, customerId, phone, trackingToken);
+    const normalizedCourier = normalizePathaoStatus(order.courierStatus);
+    const safeCourierStatus = getCustomerSafeCourierStatus(normalizedCourier);
+
     return {
       orderNumber: order.orderNumber,
       status: order.status,
+      courier: order.courierProvider || order.courierName || 'PATHAO',
       courierName: order.courierName,
+      courierStatus: safeCourierStatus,
       trackingNumber: order.trackingNumber,
       trackingUrl: order.trackingUrl,
       estimatedDelivery: order.estimatedDelivery,
+      lastUpdatedAt: (order as any).courierLastSyncedAt || order.updatedAt,
       trackingEvents: order.trackingEvents,
     };
   }

@@ -72,9 +72,9 @@ export declare class CustomersService {
             items: ({
                 product: {
                     name: string;
+                    price: Prisma.Decimal;
                     id: string;
                     slug: string;
-                    price: Prisma.Decimal;
                     images: {
                         url: string;
                         altText: string | null;
@@ -84,18 +84,18 @@ export declare class CustomersService {
                 productImage: string | null;
                 subtotal: Prisma.Decimal;
                 discountAmount: Prisma.Decimal;
+                productName: string;
+                size: string | null;
+                color: string | null;
                 id: string;
                 createdAt: Date;
                 variantId: string | null;
                 sku: string;
                 productId: string | null;
                 orderId: string;
-                productName: string;
                 variantName: string;
                 unitPrice: Prisma.Decimal;
                 quantity: number;
-                size: string | null;
-                color: string | null;
             })[];
         } & {
             orderNumber: string;
@@ -125,6 +125,9 @@ export declare class CustomersService {
             courierOrderId: string | null;
             courierConsignmentId: string | null;
             courierStatus: string | null;
+            courierStatusRaw: string | null;
+            courierLastSyncedAt: Date | null;
+            courierStatusUpdatedAt: Date | null;
             courierTrackingUrl: string | null;
             courierCreatedAt: Date | null;
             courierResponseMetadata: Prisma.JsonValue | null;
@@ -138,9 +141,9 @@ export declare class CustomersService {
         reviews: ({
             product: {
                 name: string;
+                price: Prisma.Decimal;
                 id: string;
                 slug: string;
-                price: Prisma.Decimal;
                 images: {
                     url: string;
                     altText: string | null;

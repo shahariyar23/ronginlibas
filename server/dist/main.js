@@ -4,14 +4,16 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { default as helmet } from 'helmet';
 import compression from 'compression';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app/app.module.js';
 async function bootstrap() {
     const logger = new Logger('Bootstrap');
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, { rawBody: true });
     const configService = app.get(ConfigService);
     const helmetMiddleware = helmet;
     app.use(helmetMiddleware());
     app.use(compression());
+    app.use(cookieParser());
     const apiPrefix = configService.get('app.apiPrefix') || '/api/v1';
     app.setGlobalPrefix(apiPrefix.replace(/^\//, ''), {
         exclude: ['/'],
@@ -44,7 +46,7 @@ async function bootstrap() {
         },
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'X-Waitmark-Signature', 'x-waitmark-signature', 'X-Visitor-Id', 'x-visitor-id'],
     });
     const swaggerConfig = new DocumentBuilder()
         .setTitle('Rongin Libas API')

@@ -12,6 +12,7 @@ import {
   renderOrderStatusUpdateEmail,
   renderOrderEditEmail,
   renderAbandonedCartReminderEmail,
+  renderBackInStockEmail,
   type CartReminderItem,
   type OrderConfirmationItem,
   type OrderConfirmationAddress,
@@ -526,6 +527,58 @@ export class MailService {
     } catch (error) {
       this.logger.warn(
         `Failed to dispatch abandoned cart reminder email to ${params.email}: ${(error as Error).message}`
+      );
+      return false;
+    } finally {
+      transporter.close();
+    }
+  }
+
+  /**
+   * Dispatch Back-in-Stock email to wishlisting patrons
+   */
+  async sendBackInStockEmail(params: {
+    email: string;
+    customerName?: string | null;
+    productName: string;
+    productSlug: string;
+    price: number | string;
+    imageUrl?: string | null;
+    size?: string | null;
+    color?: string | null;
+  }): Promise<boolean> {
+    const transporter = this.getTransporter();
+    if (!transporter) return false;
+
+    const webUrl = this.getWebUrl();
+    const from = this.getFromAddress('orders');
+
+    const { subject, html, text } = renderBackInStockEmail({
+      customerName: params.customerName,
+      productName: params.productName,
+      productSlug: params.productSlug,
+      price: params.price,
+      imageUrl: params.imageUrl,
+      size: params.size,
+      color: params.color,
+      webUrl,
+    });
+
+    try {
+      const info = await transporter.sendMail({
+        from,
+        to: params.email,
+        subject,
+        html,
+        text,
+      });
+      this.logger.log(
+        `Back-in-stock notification dispatched to ${params.email} for ${params.productName} (Message ID: ${info.messageId})`
+      );
+      return true;
+    } catch (error) {
+      this.logger.warn(
+        `Failed to dispatch back-in-stock notification to ${params.email}: ${(error as Error).message}`
       );
       return false;
     } finally {

@@ -322,7 +322,7 @@ export const LoginClient: React.FC = () => {
           </div>
 
           {/* Right Dual-Tabbed Auth Sanctuary (7 Cols) */}
-          <div className="lg:col-span-7 p-4 sm:p-10 md:p-12 flex flex-col justify-center bg-white">
+          <div className="lg:col-span-7 p-4 sm:p-10 md:p-12 flex flex-col justify-center bg-white" data-clarity-mask="true">
             {/* Crest & Title */}
             <div className="text-center pb-5 sm:pb-6">
               <div className="flex justify-center mb-3 sm:mb-4">

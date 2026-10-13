@@ -35,9 +35,9 @@ export declare class CollectionsController {
                     slug: string;
                 };
                 name: string;
+                price: import("@prisma/client/runtime/library").Decimal;
                 id: string;
                 slug: string;
-                price: import("@prisma/client/runtime/library").Decimal;
                 compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
                 sku: string;
                 gender: import("@prisma/client").$Enums.Gender;
@@ -45,9 +45,9 @@ export declare class CollectionsController {
                 isNewArrival: boolean;
                 isBestSeller: boolean;
                 variants: {
-                    id: string;
                     size: string;
                     color: string;
+                    id: string;
                     stock: number;
                 }[];
                 images: {

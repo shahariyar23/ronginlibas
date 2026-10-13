@@ -123,6 +123,34 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   PATHAO_GRANT_TYPE?: string;
+
+  @IsString()
+  @IsOptional()
+  WAITMARK_PUBLIC_KEY?: string;
+
+  @IsString()
+  @IsOptional()
+  WAITMARK_SECRET_KEY?: string;
+
+  @IsString()
+  @IsOptional()
+  WAITMARK_CHECKOUT_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  WAITMARK_SUCCESS_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  META_PIXEL_ID?: string;
+
+  @IsString()
+  @IsOptional()
+  META_CONVERSIONS_API_ACCESS_TOKEN?: string;
+
+  @IsString()
+  @IsOptional()
+  META_TEST_EVENT_CODE?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>) {

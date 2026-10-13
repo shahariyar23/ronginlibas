@@ -1126,11 +1126,334 @@ export const adminApi = {
         orderNumber: string;
         courierConsignmentId: string;
         courierStatus: string;
+        courierStatusRaw?: string;
         lastSyncedAt: string;
         trackingInfo: any;
       }>(`/admin/pathao/orders/${orderId}/refresh-status`, {
         method: 'POST',
       }),
   },
+  analytics: {
+    getOverview: (params?: { period?: string; from?: string; to?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.period) q.set('period', params.period);
+      if (params?.from) q.set('from', params.from);
+      if (params?.to) q.set('to', params.to);
+      const query = q.toString() ? `?${q.toString()}` : '';
+      return request<AnalyticsOverviewResponse>(`/analytics/admin/overview${query}`);
+    },
+    getRealtime: () => request<AnalyticsRealtimeResponse>('/analytics/admin/realtime'),
+    getProducts: (params?: { period?: string; from?: string; to?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.period) q.set('period', params.period);
+      if (params?.from) q.set('from', params.from);
+      if (params?.to) q.set('to', params.to);
+      const query = q.toString() ? `?${q.toString()}` : '';
+      return request<AnalyticsProductsResponse>(`/analytics/admin/products${query}`);
+    },
+    getFunnel: (params?: { period?: string; from?: string; to?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.period) q.set('period', params.period);
+      if (params?.from) q.set('from', params.from);
+      if (params?.to) q.set('to', params.to);
+      const query = q.toString() ? `?${q.toString()}` : '';
+      return request<AnalyticsFunnelResponse>(`/analytics/admin/funnel${query}`);
+    },
+    getTraffic: (params?: { period?: string; from?: string; to?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.period) q.set('period', params.period);
+      if (params?.from) q.set('from', params.from);
+      if (params?.to) q.set('to', params.to);
+      const query = q.toString() ? `?${q.toString()}` : '';
+      return request<AnalyticsTrafficResponse>(`/analytics/admin/traffic${query}`);
+    },
+    getEvents: (params?: { period?: string; from?: string; to?: string; page?: number; limit?: number; search?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.period) q.set('period', params.period);
+      if (params?.from) q.set('from', params.from);
+      if (params?.to) q.set('to', params.to);
+      if (params?.page) q.set('page', String(params.page));
+      if (params?.limit) q.set('limit', String(params.limit));
+      if (params?.search) q.set('search', params.search);
+      const query = q.toString() ? `?${q.toString()}` : '';
+      return request<AnalyticsEventsResponse>(`/analytics/admin/events${query}`);
+    },
+    getCarts: (params?: { period?: string; from?: string; to?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.period) q.set('period', params.period);
+      if (params?.from) q.set('from', params.from);
+      if (params?.to) q.set('to', params.to);
+      const query = q.toString() ? `?${q.toString()}` : '';
+      return request<AnalyticsCartsResponse>(`/analytics/admin/carts${query}`);
+    },
+    getSessions: (params?: { period?: string; from?: string; to?: string; page?: number; limit?: number }) => {
+      const q = new URLSearchParams();
+      if (params?.period) q.set('period', params.period);
+      if (params?.from) q.set('from', params.from);
+      if (params?.to) q.set('to', params.to);
+      if (params?.page) q.set('page', String(params.page));
+      if (params?.limit) q.set('limit', String(params.limit));
+      const query = q.toString() ? `?${q.toString()}` : '';
+      return request<AnalyticsSessionsResponse>(`/analytics/admin/sessions${query}`);
+    },
+    getTopPages: (params?: { period?: string; from?: string; to?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.period) q.set('period', params.period);
+      if (params?.from) q.set('from', params.from);
+      if (params?.to) q.set('to', params.to);
+      const query = q.toString() ? `?${q.toString()}` : '';
+      return request<AnalyticsTopPagesResponse>(`/analytics/admin/top-pages${query}`);
+    },
+    getSearches: (params?: { period?: string; from?: string; to?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.period) q.set('period', params.period);
+      if (params?.from) q.set('from', params.from);
+      if (params?.to) q.set('to', params.to);
+      const query = q.toString() ? `?${q.toString()}` : '';
+      return request<AnalyticsSearchesResponse>(`/analytics/admin/searches${query}`);
+    },
+    getDevices: (params?: { period?: string; from?: string; to?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.period) q.set('period', params.period);
+      if (params?.from) q.set('from', params.from);
+      if (params?.to) q.set('to', params.to);
+      const query = q.toString() ? `?${q.toString()}` : '';
+      return request<AnalyticsDevicesResponse>(`/analytics/admin/devices${query}`);
+    },
+    getCustomerActivity: (customerId: string, params?: { page?: number; limit?: number }) => {
+      const q = new URLSearchParams();
+      if (params?.page) q.set('page', String(params.page));
+      if (params?.limit) q.set('limit', String(params.limit));
+      const query = q.toString() ? `?${q.toString()}` : '';
+      return request<CustomerActivityResponse>(
+        `/analytics/admin/customers/${encodeURIComponent(customerId)}/activity${query}`,
+      );
+    },
+    cleanupRetention: (days = 180) =>
+      request<{ purgedEvents: number; purgedSessions: number; cutoffDate: string }>(
+        '/analytics/admin/retention/cleanup',
+        {
+          method: 'POST',
+          body: JSON.stringify({ days }),
+        },
+      ),
+  },
 };
+
+export interface AnalyticsOverviewResponse {
+  period: string;
+  dateRange: { startDate: string; endDate: string };
+  metrics: {
+    uniqueVisitors: number;
+    totalSessions: number;
+    activeSessions: number;
+    pageViews: number;
+    productViews: number;
+    cartAdditions: number;
+    checkoutInitiations: number;
+    confirmedPurchases: number;
+    revenue: number;
+    conversionRate: number;
+    cartAbandonment: number;
+  };
+  trends: Array<{
+    date: string;
+    pageViews: number;
+    productViews: number;
+    cartAdditions: number;
+  }>;
+}
+
+export interface RealtimeActiveVisitor {
+  sessionId: string;
+  visitorId: string;
+  visitorToken: string;
+  isCustomer: boolean;
+  customerName: string | null;
+  customerEmail: string | null;
+  customerId: string | null;
+  startedAt: string;
+  lastActiveAt: string;
+  durationSeconds: number;
+  landingPage: string;
+  currentPage: string;
+  lastEventType: string;
+  deviceType: string;
+  referrer: string;
+  recentProduct: { id: string; name: string; slug: string } | null;
+}
+
+export interface AnalyticsRealtimeResponse {
+  activeCount: number;
+  activeVisitors: RealtimeActiveVisitor[];
+}
+
+export interface AnalyticsProductItem {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  category: string;
+  image: string | null;
+  views: number;
+  cartAdditions: number;
+  purchases: number;
+  revenue: number;
+  viewToCartRate: number;
+  cartToPurchaseRate: number;
+  topSizes: Array<{ size: string; count: number }>;
+  topColors: Array<{ color: string; count: number }>;
+  isHighInterestLowConversion: boolean;
+}
+
+export interface AnalyticsProductsResponse {
+  totalAnalyzed: number;
+  products: AnalyticsProductItem[];
+}
+
+export interface FunnelStep {
+  name: string;
+  count: number;
+  conversionRate: number;
+  dropoffRate: number;
+}
+
+export interface AnalyticsFunnelResponse {
+  steps: FunnelStep[];
+  overallConversionRate: number;
+}
+
+export interface CustomerActivityTimelineItem {
+  id: string;
+  eventType: string;
+  pagePath: string;
+  timestamp: string;
+  engagementDuration?: number;
+  product?: { id: string; name: string; slug: string } | null;
+  properties?: Record<string, any>;
+}
+
+export interface CustomerActivityResponse {
+  customer: {
+    id: string;
+    firstName: string;
+    lastName: string | null;
+    email: string | null;
+    phone: string | null;
+    createdAt: string;
+  };
+  totalEvents: number;
+  page: number;
+  limit: number;
+  orders: Array<{
+    id: string;
+    orderNumber: string;
+    totalAmount: number;
+    status: string;
+    createdAt: string;
+    items: Array<{ productName: string; quantity: number }>;
+  }>;
+  timeline: CustomerActivityTimelineItem[];
+}
+
+export interface AnalyticsTrafficResponse {
+  period: string;
+  dateRange: { startDate: string; endDate: string };
+  totalSessions: number;
+  totalVisitors: number;
+  timeline: Array<{ date: string; sessions: number }>;
+  topReferrers: Array<{ referrer: string; count: number; percentage: number }>;
+  topLandingPages: Array<{ path: string; count: number; percentage: number }>;
+}
+
+export interface AnalyticsEventsResponse {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  events: Array<{
+    id: string;
+    eventType: string;
+    pagePath: string;
+    timestamp: string;
+    engagementDuration?: number;
+    visitorToken: string | null;
+    customerId: string | null;
+    product?: { id: string; name: string; slug: string } | null;
+    properties?: Record<string, any>;
+  }>;
+}
+
+export interface AnalyticsCartsResponse {
+  period: string;
+  dateRange: { startDate: string; endDate: string };
+  metrics: {
+    cartAdditions: number;
+    cartRemovals: number;
+    uniqueCartVisitors: number;
+    checkoutInitiations: number;
+    confirmedPurchases: number;
+    cartAbandonmentRate: number;
+    checkoutAbandonmentRate: number;
+  };
+  topCartProducts: Array<{
+    productId: string;
+    name: string;
+    slug: string;
+    price: number;
+    image: string | null;
+    additionsCount: number;
+  }>;
+}
+
+export interface AnalyticsSessionsResponse {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  sessions: Array<{
+    id: string;
+    visitorToken: string;
+    customerName: string | null;
+    startedAt: string;
+    lastActiveAt: string;
+    durationSeconds: number;
+    landingPage: string;
+    referrer: string;
+    deviceType: string;
+    eventsCount: number;
+  }>;
+}
+
+export interface AnalyticsTopPagesResponse {
+  period: string;
+  totalPageViews: number;
+  pages: Array<{
+    pagePath: string;
+    views: number;
+    percentage: number;
+    avgDurationSeconds: number;
+  }>;
+}
+
+export interface AnalyticsSearchesResponse {
+  period: string;
+  totalSearchesTracked: number;
+  searches: Array<{
+    term: string;
+    count: number;
+    lastSearchedAt: string;
+  }>;
+}
+
+export interface AnalyticsDevicesResponse {
+  period: string;
+  totalSessions: number;
+  breakdown: Array<{
+    deviceType: string;
+    sessions: number;
+    percentage: number;
+  }>;
+}
+
 

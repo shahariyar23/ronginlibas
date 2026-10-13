@@ -8,6 +8,7 @@ import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useAuth } from '@/context/AuthContext';
 import { ProductCard } from '@/components/shop/ProductCard';
+import { analytics } from '@/lib/analytics/client';
 import {
   getProduct,
   getRelatedProducts,
@@ -235,6 +236,14 @@ const ProductDetailView: React.FC<{
   const canSelectSize = Boolean(selectedSize) &&
     (product.variants?.length ? Boolean(selectedVariant) : true);
 
+  const isProductOutOfStock =
+    product.inStock === false ||
+    product.stockCount === 0 ||
+    (Boolean(product.variants?.length) && product.variants!.every((v) => (v.stock ?? 0) <= 0));
+
+  const isCurrentVariantOutOfStock =
+    Boolean(selectedVariant ? (selectedVariant.stock ?? 0) <= 0 : isProductOutOfStock);
+
   const activeSku = selectedVariant?.sku || product.sku || product.slug;
   const currentPrice =
     selectedVariant?.priceOverride !== undefined &&
@@ -272,14 +281,58 @@ const ProductDetailView: React.FC<{
     ),
   ];
 
+  React.useEffect(() => {
+    if (!product?.id) return;
+    analytics.trackViewItem({
+      pagePath: `/products/${product.slug || product.id}`,
+      productId: product.id,
+      productName: product.name,
+      price: currentPrice,
+      currency: 'BDT',
+      category: product.categoryLabel || String(product.category || 'Garments'),
+      variant: `${selectedSize} / ${selectedColor}`,
+      items: [
+        {
+          item_id: product.id,
+          item_name: product.name,
+          item_category: product.categoryLabel || String(product.category || 'Garments'),
+          item_variant: `${selectedSize} / ${selectedColor}`,
+          price: currentPrice,
+          quantity: 1,
+          currency: 'BDT',
+        },
+      ],
+    });
+  }, [product?.id]);
+
   const selectColor = (color: string) => {
     setSelectedColor(color);
+    if (product) {
+      analytics.trackSelectColor({
+        pagePath: `/products/${product.slug || product.id}`,
+        productId: product.id,
+        productName: product.name,
+        color,
+      });
+    }
     const colorSizes = (product.variants ?? [])
       .filter((variant) => variant.isActive !== false && variant.color === color)
       .map((variant) => getVariantSize(variant))
       .filter((size): size is string => Boolean(size));
     if (colorSizes.length && !colorSizes.includes(selectedSize)) {
       setSelectedSize(colorSizes[0]);
+    }
+  };
+
+  const handleSelectSize = (size: string) => {
+    setSelectedSize(size);
+    if (product) {
+      analytics.trackSelectSize({
+        pagePath: `/products/${product.slug || product.id}`,
+        productId: product.id,
+        productName: product.name,
+        size,
+      });
     }
   };
 
@@ -485,7 +538,30 @@ const ProductDetailView: React.FC<{
     }
     setIsAddingToCart(true);
     try {
-      await addToCart(product, selectedSize, selectedColor, quantity, customNotes);
+      const added = await addToCart(product, selectedSize, selectedColor, quantity, customNotes);
+      if (added) {
+        analytics.trackAddToCart({
+          pagePath: `/products/${product.slug || product.id}`,
+          productId: product.id,
+          productName: product.name,
+          price: currentPrice,
+          quantity,
+          size: selectedSize,
+          color: selectedColor,
+          currency: 'BDT',
+          items: [
+            {
+              item_id: product.id,
+              item_name: product.name,
+              item_category: product.categoryLabel || String(product.category || 'Garments'),
+              item_variant: `${selectedSize} / ${selectedColor}`,
+              price: currentPrice,
+              quantity,
+              currency: 'BDT',
+            },
+          ],
+        });
+      }
     } finally {
       setIsAddingToCart(false);
     }
@@ -515,6 +591,27 @@ const ProductDetailView: React.FC<{
     try {
       const added = await addToCart(product, selectedSize, selectedColor, quantity, customNotes);
       if (added) {
+        analytics.trackAddToCart({
+          pagePath: `/products/${product.slug || product.id}`,
+          productId: product.id,
+          productName: product.name,
+          price: currentPrice,
+          quantity,
+          size: selectedSize,
+          color: selectedColor,
+          currency: 'BDT',
+          items: [
+            {
+              item_id: product.id,
+              item_name: product.name,
+              item_category: product.categoryLabel || String(product.category || 'Garments'),
+              item_variant: `${selectedSize} / ${selectedColor}`,
+              price: currentPrice,
+              quantity,
+              currency: 'BDT',
+            },
+          ],
+        });
         router.push('/checkout');
       }
     } finally {
@@ -654,6 +751,17 @@ const ProductDetailView: React.FC<{
                     backgroundRepeat: 'no-repeat',
                   }}
                 />
+
+                {/* Center Section Out of Stock Banner */}
+                {isCurrentVariantOutOfStock && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 p-4">
+                    <div className="bg-[#1b1c18]/90 text-[#fbf9f2] backdrop-blur-xs px-6 py-2.5 border border-[#c79a45]/50 shadow-2xl text-center">
+                      <span className="font-sans text-xs sm:text-sm font-bold uppercase tracking-[0.25em] text-[#fbf9f2] block">
+                        Out of Stock
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Bottom Visual Tag */}
@@ -678,9 +786,15 @@ const ProductDetailView: React.FC<{
                   Rongin Libas Atelier • Dhaka
                 </span>
                 <span className="w-1.5 h-1.5 rounded-full bg-[#073a2d]" />
-                <span className="font-sans text-[11px] uppercase tracking-wider text-[#073a2d] font-semibold">
-                  {selectedVariant ? (selectedVariant.stock > 0 ? 'In Stock' : 'Out of Stock') : (product.inStock ? 'In Stock' : 'Out of Stock')}
-                </span>
+                {isCurrentVariantOutOfStock ? (
+                  <span className="font-sans text-[10px] uppercase tracking-wider text-white bg-neutral-900 font-bold px-2 py-0.5 shadow-xs">
+                    Out of Stock
+                  </span>
+                ) : (
+                  <span className="font-sans text-[11px] uppercase tracking-wider text-[#073a2d] font-semibold">
+                    In Stock (Ready to Dispatch)
+                  </span>
+                )}
                 {product.gender && (
                   <>
                     <span className="w-1.5 h-1.5 rounded-full bg-[#deddd3]" />
@@ -854,7 +968,7 @@ const ProductDetailView: React.FC<{
                     <button
                       key={sizeLabel}
                       type="button"
-                      onClick={() => setSelectedSize(sizeLabel)}
+                      onClick={() => handleSelectSize(sizeLabel)}
                       className={`h-12 border flex flex-col items-center justify-center transition-colors cursor-pointer ${
                         selectedSize === sizeLabel
                           ? 'bg-[#073a2d] text-white border-[#073a2d] shadow-xs'
@@ -938,16 +1052,56 @@ const ProductDetailView: React.FC<{
                   </button>
                 </div>
 
+                {/* Restock Notification Card for Out of Stock items */}
+                {isCurrentVariantOutOfStock && (
+                  <div className="p-4 bg-[#fbf9f2] border border-[#c79a45]/50 space-y-2.5 animate-in fade-in">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-sans font-bold uppercase tracking-wider text-[#073a2d] flex items-center gap-1.5">
+                        <Heart className={`w-4 h-4 ${isFavorite ? 'fill-[#ba1a1a] text-[#ba1a1a]' : 'text-[#c79a45]'}`} />
+                        <span>Restock Alert</span>
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 bg-neutral-900 text-white font-bold uppercase tracking-wider">
+                        Sold Out
+                      </span>
+                    </div>
+                    <p className="text-xs font-sans text-[#69726d] leading-relaxed">
+                      This piece {selectedSize ? `in Size ${selectedSize}` : ''} is currently out of stock. Add it to your <strong>Wishlist</strong> to automatically receive an email alert the moment it is restocked.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isWishlistBusy}
+                      onClick={async () => {
+                        const willFavorite = !isFavorite;
+                        await toggleWishlist(product.id, product.name);
+                        if (willFavorite) {
+                          toast.success('Restock Notification Set', {
+                            description: `We will email you as soon as ${product.name} is back in stock.`,
+                          });
+                        }
+                      }}
+                      className="w-full h-11 border-[#073a2d] text-[#073a2d] hover:bg-[#073a2d] hover:text-white text-xs font-sans font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-xs"
+                    >
+                      <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''}`} />
+                      <span>{isFavorite ? 'Saved in Wishlist (Alert Active)' : 'Notify Me When Available'}</span>
+                    </Button>
+                  </div>
+                )}
+
                 {/* Primary Add to Cart */}
                 <Button
                   loading={isAddingToCart}
                   loadingText="Adding To Cart..."
-                  disabled={isAddingToCart || isBuyingNow}
+                  disabled={isCurrentVariantOutOfStock || isAddingToCart || isBuyingNow}
                   onClick={handleAddToCart}
-                  className="flex-1 h-13 bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans uppercase tracking-[0.16em] text-xs font-bold shadow-md flex items-center justify-center gap-2 group cursor-pointer"
+                  className={`flex-1 h-13 font-sans uppercase tracking-[0.16em] text-xs font-bold shadow-md flex items-center justify-center gap-2 group transition-all ${
+                    isCurrentVariantOutOfStock
+                      ? 'bg-neutral-300 text-neutral-500 hover:bg-neutral-300 cursor-not-allowed border border-neutral-300'
+                      : 'bg-[#073a2d] hover:bg-[#0d4d3b] text-white cursor-pointer'
+                  }`}
                 >
-                  <ShoppingCart className="w-4 h-4 text-[#c79a45]" />
-                  <span>Add To Cart</span>
+                  <ShoppingCart className={`w-4 h-4 ${isCurrentVariantOutOfStock ? 'text-neutral-400' : 'text-[#c79a45]'}`} />
+                  <span>{isCurrentVariantOutOfStock ? 'Out of Stock' : 'Add To Cart'}</span>
                 </Button>
               </div>
 
@@ -956,12 +1110,16 @@ const ProductDetailView: React.FC<{
                 variant="outline"
                 loading={isBuyingNow}
                 loadingText="Preparing Checkout..."
-                disabled={isAddingToCart || isBuyingNow}
+                disabled={isCurrentVariantOutOfStock || isAddingToCart || isBuyingNow}
                 onClick={handleBuyNow}
-                className="w-full h-12 bg-white hover:bg-[#f5f4ed] text-[#073a2d] border-[#073a2d] font-sans text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 cursor-pointer"
+                className={`w-full h-12 font-sans text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all ${
+                  isCurrentVariantOutOfStock
+                    ? 'bg-neutral-100 text-neutral-400 border-neutral-200 cursor-not-allowed'
+                    : 'bg-white hover:bg-[#f5f4ed] text-[#073a2d] border-[#073a2d] cursor-pointer'
+                }`}
               >
-                <Truck className="w-4 h-4 text-[#073a2d]" />
-                <span>Buy It Now (Cash on Delivery)</span>
+                <Truck className={`w-4 h-4 ${isCurrentVariantOutOfStock ? 'text-neutral-400' : 'text-[#073a2d]'}`} />
+                <span>{isCurrentVariantOutOfStock ? 'Currently Unavailable' : 'Buy It Now (Cash on Delivery)'}</span>
               </Button>
 
               {/* WhatsApp Concierge Stylist CTA */}
@@ -1691,25 +1849,46 @@ const ProductDetailView: React.FC<{
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              loading={isAddingToCart}
-              loadingText="Adding..."
-              disabled={isAddingToCart || isBuyingNow}
-              onClick={handleAddToCart}
-              className="h-9 px-3.5 bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-wider font-bold shadow-xs cursor-pointer"
-            >
-              <ShoppingCart className="w-3.5 h-3.5 mr-1 text-[#c79a45]" />
-              Add
-            </Button>
-            <Button
-              loading={isBuyingNow}
-              loadingText="Preparing..."
-              disabled={isAddingToCart || isBuyingNow}
-              onClick={handleBuyNow}
-              className="h-9 px-3.5 bg-[#c79a45] hover:bg-[#b58b3a] text-[#073a2d] font-sans text-xs uppercase tracking-wider font-bold shadow-xs cursor-pointer"
-            >
-              Buy Now
-            </Button>
+            {isCurrentVariantOutOfStock ? (
+              <Button
+                disabled={isWishlistBusy}
+                onClick={async () => {
+                  const willFavorite = !isFavorite;
+                  await toggleWishlist(product.id, product.name);
+                  if (willFavorite) {
+                    toast.success('Restock Alert Set', {
+                      description: `We will email you when ${product.name} is restocked.`,
+                    });
+                  }
+                }}
+                className="h-9 px-3.5 bg-neutral-900 hover:bg-neutral-800 text-white font-sans text-xs uppercase tracking-wider font-bold shadow-xs cursor-pointer flex items-center gap-1.5"
+              >
+                <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'fill-[#ba1a1a] text-[#ba1a1a]' : ''}`} />
+                <span>{isFavorite ? 'Alert Active' : 'Notify Me'}</span>
+              </Button>
+            ) : (
+              <>
+                <Button
+                  loading={isAddingToCart}
+                  loadingText="Adding..."
+                  disabled={isAddingToCart || isBuyingNow}
+                  onClick={handleAddToCart}
+                  className="h-9 px-3.5 bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-wider font-bold shadow-xs cursor-pointer"
+                >
+                  <ShoppingCart className="w-3.5 h-3.5 mr-1 text-[#c79a45]" />
+                  Add
+                </Button>
+                <Button
+                  loading={isBuyingNow}
+                  loadingText="Preparing..."
+                  disabled={isAddingToCart || isBuyingNow}
+                  onClick={handleBuyNow}
+                  className="h-9 px-3.5 bg-[#c79a45] hover:bg-[#b58b3a] text-[#073a2d] font-sans text-xs uppercase tracking-wider font-bold shadow-xs cursor-pointer"
+                >
+                  Buy Now
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>
