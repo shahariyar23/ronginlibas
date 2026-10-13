@@ -61,6 +61,12 @@ let OrdersController = class OrdersController {
             data: await this.ordersService.getOrderForCustomerAccess(orderNumber, customerId, query.phone, query.trackingToken),
         };
     }
+    async cancelOrder(orderNumber, customerId, dto) {
+        return {
+            message: 'Order cancelled successfully',
+            data: await this.ordersService.cancelUnpaidOrder(orderNumber, customerId, dto.phone, dto.trackingToken),
+        };
+    }
 };
 __decorate([
     Post(),
@@ -128,6 +134,16 @@ __decorate([
     __metadata("design:paramtypes", [String, Object, OrderAccessDto]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "getOrder", null);
+__decorate([
+    Post(':orderNumber/cancel'),
+    ApiOperation({ summary: 'Cancel an unpaid order and release reserved stock' }),
+    __param(0, Param('orderNumber')),
+    __param(1, CurrentUser('id')),
+    __param(2, Body()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, OrderAccessDto]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "cancelOrder", null);
 OrdersController = __decorate([
     ApiTags('Orders'),
     UseGuards(OptionalCustomerAuthGuard),

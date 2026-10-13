@@ -51,7 +51,8 @@ export declare class AdminPathaoController {
             orderId: string;
             orderNumber: string;
             courierConsignmentId: string;
-            courierStatus: string;
+            courierStatus: import("../pathao.types.js").CourierStatus;
+            courierStatusRaw: string;
             lastSyncedAt: string;
             trackingInfo: import("../pathao.types.js").PathaoOrderInfoResponse;
         };
@@ -63,7 +64,8 @@ export declare class AdminPathaoController {
             orderId: string;
             orderNumber: string;
             courierConsignmentId: string;
-            courierStatus: string;
+            courierStatus: import("../pathao.types.js").CourierStatus;
+            courierStatusRaw: string;
             lastSyncedAt: string;
             trackingInfo: import("../pathao.types.js").PathaoOrderInfoResponse;
         };

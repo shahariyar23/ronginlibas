@@ -93,9 +93,9 @@ export declare class AdminCustomersController {
                 items: ({
                     product: {
                         name: string;
+                        price: import("@prisma/client/runtime/library").Decimal;
                         id: string;
                         slug: string;
-                        price: import("@prisma/client/runtime/library").Decimal;
                         images: {
                             url: string;
                             altText: string | null;
@@ -105,18 +105,18 @@ export declare class AdminCustomersController {
                     productImage: string | null;
                     subtotal: import("@prisma/client/runtime/library").Decimal;
                     discountAmount: import("@prisma/client/runtime/library").Decimal;
+                    productName: string;
+                    size: string | null;
+                    color: string | null;
                     id: string;
                     createdAt: Date;
                     variantId: string | null;
                     sku: string;
                     productId: string | null;
                     orderId: string;
-                    productName: string;
                     variantName: string;
                     unitPrice: import("@prisma/client/runtime/library").Decimal;
                     quantity: number;
-                    size: string | null;
-                    color: string | null;
                 })[];
             } & {
                 orderNumber: string;
@@ -146,6 +146,9 @@ export declare class AdminCustomersController {
                 courierOrderId: string | null;
                 courierConsignmentId: string | null;
                 courierStatus: string | null;
+                courierStatusRaw: string | null;
+                courierLastSyncedAt: Date | null;
+                courierStatusUpdatedAt: Date | null;
                 courierTrackingUrl: string | null;
                 courierCreatedAt: Date | null;
                 courierResponseMetadata: import("@prisma/client/runtime/library").JsonValue | null;
@@ -159,9 +162,9 @@ export declare class AdminCustomersController {
             reviews: ({
                 product: {
                     name: string;
+                    price: import("@prisma/client/runtime/library").Decimal;
                     id: string;
                     slug: string;
-                    price: import("@prisma/client/runtime/library").Decimal;
                     images: {
                         url: string;
                         altText: string | null;

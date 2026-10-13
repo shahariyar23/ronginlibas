@@ -18,6 +18,7 @@ export class UpdateOrderStatusDto {
     trackingUrl;
     estimatedDelivery;
     shippingAddress;
+    overrideCourierStatus;
 }
 __decorate([
     ApiPropertyOptional({
@@ -75,4 +76,9 @@ __decorate([
     IsOptional(),
     __metadata("design:type", Object)
 ], UpdateOrderStatusDto.prototype, "shippingAddress", void 0);
+__decorate([
+    ApiPropertyOptional({ description: 'Explicit override to bypass automated courier status checks' }),
+    IsOptional(),
+    __metadata("design:type", Boolean)
+], UpdateOrderStatusDto.prototype, "overrideCourierStatus", void 0);
 //# sourceMappingURL=update-order-status.dto.js.map

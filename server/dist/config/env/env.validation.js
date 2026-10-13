@@ -45,6 +45,13 @@ class EnvironmentVariables {
     PATHAO_USERNAME;
     PATHAO_PASSWORD;
     PATHAO_GRANT_TYPE;
+    WAITMARK_PUBLIC_KEY;
+    WAITMARK_SECRET_KEY;
+    WAITMARK_CHECKOUT_URL;
+    WAITMARK_SUCCESS_URL;
+    META_PIXEL_ID;
+    META_CONVERSIONS_API_ACCESS_TOKEN;
+    META_TEST_EVENT_CODE;
 }
 __decorate([
     IsEnum(Environment),
@@ -191,6 +198,41 @@ __decorate([
     IsOptional(),
     __metadata("design:type", String)
 ], EnvironmentVariables.prototype, "PATHAO_GRANT_TYPE", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "WAITMARK_PUBLIC_KEY", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "WAITMARK_SECRET_KEY", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "WAITMARK_CHECKOUT_URL", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "WAITMARK_SUCCESS_URL", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "META_PIXEL_ID", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "META_CONVERSIONS_API_ACCESS_TOKEN", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "META_TEST_EVENT_CODE", void 0);
 export function validateEnv(config) {
     const validatedConfig = plainToInstance(EnvironmentVariables, config, {
         enableImplicitConversion: true,

@@ -1,14 +1,19 @@
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { WishlistService } from '../../wishlist/wishlist.service.js';
 import { AdjustStockDto } from '../dto/adjust-stock.dto.js';
 import { InventoryQueryDto } from '../dto/inventory-query.dto.js';
 import { PaginatedResult } from '../../common/dto/pagination-query.dto.js';
 export declare class InventoryService {
     private readonly prisma;
-    constructor(prisma: PrismaService);
+    private readonly wishlistService?;
+    private readonly logger;
+    constructor(prisma: PrismaService, wishlistService?: WishlistService | undefined);
     getInventoryList(query: InventoryQueryDto): Promise<PaginatedResult<any>>;
     adjustStock(dto: AdjustStockDto, userId?: string): Promise<{
         variant: {
+            size: string;
+            color: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -16,8 +21,6 @@ export declare class InventoryService {
             measurements: Prisma.JsonValue | null;
             sku: string;
             productId: string;
-            size: string;
-            color: string;
             sizeLabel: string | null;
             sizeType: string | null;
             stock: number;

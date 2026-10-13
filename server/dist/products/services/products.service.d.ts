@@ -5,11 +5,13 @@ import { UpdateProductDto } from '../dto/update-product.dto.js';
 import { ProductQueryDto } from '../dto/product-query.dto.js';
 import { PaginatedResult } from '../../common/dto/pagination-query.dto.js';
 import { CloudinaryService } from './cloudinary.service.js';
+import { WishlistService } from '../../wishlist/wishlist.service.js';
 export declare class ProductsService {
     private readonly prisma;
     private readonly cloudinary;
+    private readonly wishlistService?;
     private readonly logger;
-    constructor(prisma: PrismaService, cloudinary: CloudinaryService);
+    constructor(prisma: PrismaService, cloudinary: CloudinaryService, wishlistService?: WishlistService | undefined);
     findAll(query: ProductQueryDto, isAdmin?: boolean): Promise<PaginatedResult<any>>;
     getFilters(query: ProductQueryDto): Promise<{
         categories: {
@@ -83,6 +85,8 @@ export declare class ProductsService {
             adminFeedbackAt: Date | null;
         })[];
         variants: {
+            size: string;
+            color: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -90,8 +94,6 @@ export declare class ProductsService {
             measurements: Prisma.JsonValue | null;
             sku: string;
             productId: string;
-            size: string;
-            color: string;
             sizeLabel: string | null;
             sizeType: string | null;
             stock: number;
@@ -114,6 +116,7 @@ export declare class ProductsService {
     } & {
         description: string | null;
         name: string;
+        price: Prisma.Decimal;
         id: string;
         isActive: boolean;
         createdAt: Date;
@@ -121,7 +124,6 @@ export declare class ProductsService {
         deletedAt: Date | null;
         tags: string[];
         slug: string;
-        price: Prisma.Decimal;
         compareAtPrice: Prisma.Decimal | null;
         costPrice: Prisma.Decimal | null;
         sku: string;
@@ -182,6 +184,8 @@ export declare class ProductsService {
             adminFeedbackAt: Date | null;
         })[];
         variants: {
+            size: string;
+            color: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -189,8 +193,6 @@ export declare class ProductsService {
             measurements: Prisma.JsonValue | null;
             sku: string;
             productId: string;
-            size: string;
-            color: string;
             sizeLabel: string | null;
             sizeType: string | null;
             stock: number;
@@ -212,6 +214,7 @@ export declare class ProductsService {
         }[];
         description: string | null;
         name: string;
+        price: Prisma.Decimal;
         id: string;
         isActive: boolean;
         createdAt: Date;
@@ -219,7 +222,6 @@ export declare class ProductsService {
         deletedAt: Date | null;
         tags: string[];
         slug: string;
-        price: Prisma.Decimal;
         compareAtPrice: Prisma.Decimal | null;
         costPrice: Prisma.Decimal | null;
         sku: string;
@@ -259,6 +261,8 @@ export declare class ProductsService {
             parentId: string | null;
         };
         variants: {
+            size: string;
+            color: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -266,8 +270,6 @@ export declare class ProductsService {
             measurements: Prisma.JsonValue | null;
             sku: string;
             productId: string;
-            size: string;
-            color: string;
             sizeLabel: string | null;
             sizeType: string | null;
             stock: number;
@@ -287,6 +289,7 @@ export declare class ProductsService {
     } & {
         description: string | null;
         name: string;
+        price: Prisma.Decimal;
         id: string;
         isActive: boolean;
         createdAt: Date;
@@ -294,7 +297,6 @@ export declare class ProductsService {
         deletedAt: Date | null;
         tags: string[];
         slug: string;
-        price: Prisma.Decimal;
         compareAtPrice: Prisma.Decimal | null;
         costPrice: Prisma.Decimal | null;
         sku: string;
@@ -325,6 +327,8 @@ export declare class ProductsService {
             rating: number;
         }[];
         variants: {
+            size: string;
+            color: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -332,8 +336,6 @@ export declare class ProductsService {
             measurements: Prisma.JsonValue | null;
             sku: string;
             productId: string;
-            size: string;
-            color: string;
             sizeLabel: string | null;
             sizeType: string | null;
             stock: number;
@@ -356,6 +358,7 @@ export declare class ProductsService {
     } & {
         description: string | null;
         name: string;
+        price: Prisma.Decimal;
         id: string;
         isActive: boolean;
         createdAt: Date;
@@ -363,7 +366,6 @@ export declare class ProductsService {
         deletedAt: Date | null;
         tags: string[];
         slug: string;
-        price: Prisma.Decimal;
         compareAtPrice: Prisma.Decimal | null;
         costPrice: Prisma.Decimal | null;
         sku: string;
@@ -392,6 +394,8 @@ export declare class ProductsService {
     private generateUniqueSlug;
     create(dto: CreateProductDto): Promise<{
         variants: {
+            size: string;
+            color: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -399,8 +403,6 @@ export declare class ProductsService {
             measurements: Prisma.JsonValue | null;
             sku: string;
             productId: string;
-            size: string;
-            color: string;
             sizeLabel: string | null;
             sizeType: string | null;
             stock: number;
@@ -420,6 +422,7 @@ export declare class ProductsService {
     } & {
         description: string | null;
         name: string;
+        price: Prisma.Decimal;
         id: string;
         isActive: boolean;
         createdAt: Date;
@@ -427,7 +430,6 @@ export declare class ProductsService {
         deletedAt: Date | null;
         tags: string[];
         slug: string;
-        price: Prisma.Decimal;
         compareAtPrice: Prisma.Decimal | null;
         costPrice: Prisma.Decimal | null;
         sku: string;
@@ -464,6 +466,8 @@ export declare class ProductsService {
             parentId: string | null;
         };
         variants: {
+            size: string;
+            color: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -471,8 +475,6 @@ export declare class ProductsService {
             measurements: Prisma.JsonValue | null;
             sku: string;
             productId: string;
-            size: string;
-            color: string;
             sizeLabel: string | null;
             sizeType: string | null;
             stock: number;
@@ -492,6 +494,7 @@ export declare class ProductsService {
     } & {
         description: string | null;
         name: string;
+        price: Prisma.Decimal;
         id: string;
         isActive: boolean;
         createdAt: Date;
@@ -499,7 +502,6 @@ export declare class ProductsService {
         deletedAt: Date | null;
         tags: string[];
         slug: string;
-        price: Prisma.Decimal;
         compareAtPrice: Prisma.Decimal | null;
         costPrice: Prisma.Decimal | null;
         sku: string;
@@ -536,6 +538,8 @@ export declare class ProductsService {
             parentId: string | null;
         };
         variants: {
+            size: string;
+            color: string;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -543,8 +547,6 @@ export declare class ProductsService {
             measurements: Prisma.JsonValue | null;
             sku: string;
             productId: string;
-            size: string;
-            color: string;
             sizeLabel: string | null;
             sizeType: string | null;
             stock: number;
@@ -563,6 +565,7 @@ export declare class ProductsService {
         }[];
         description: string | null;
         name: string;
+        price: Prisma.Decimal;
         id: string;
         isActive: boolean;
         createdAt: Date;
@@ -570,7 +573,6 @@ export declare class ProductsService {
         deletedAt: Date | null;
         tags: string[];
         slug: string;
-        price: Prisma.Decimal;
         compareAtPrice: Prisma.Decimal | null;
         costPrice: Prisma.Decimal | null;
         sku: string;
@@ -609,6 +611,8 @@ export declare class ProductsService {
                 parentId: string | null;
             };
             variants: {
+                size: string;
+                color: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
@@ -616,8 +620,6 @@ export declare class ProductsService {
                 measurements: Prisma.JsonValue | null;
                 sku: string;
                 productId: string;
-                size: string;
-                color: string;
                 sizeLabel: string | null;
                 sizeType: string | null;
                 stock: number;
@@ -637,6 +639,7 @@ export declare class ProductsService {
         } & {
             description: string | null;
             name: string;
+            price: Prisma.Decimal;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -644,7 +647,6 @@ export declare class ProductsService {
             deletedAt: Date | null;
             tags: string[];
             slug: string;
-            price: Prisma.Decimal;
             compareAtPrice: Prisma.Decimal | null;
             costPrice: Prisma.Decimal | null;
             sku: string;
@@ -684,6 +686,8 @@ export declare class ProductsService {
                 parentId: string | null;
             };
             variants: {
+                size: string;
+                color: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
@@ -691,8 +695,6 @@ export declare class ProductsService {
                 measurements: Prisma.JsonValue | null;
                 sku: string;
                 productId: string;
-                size: string;
-                color: string;
                 sizeLabel: string | null;
                 sizeType: string | null;
                 stock: number;
@@ -712,6 +714,7 @@ export declare class ProductsService {
         } & {
             description: string | null;
             name: string;
+            price: Prisma.Decimal;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -719,7 +722,6 @@ export declare class ProductsService {
             deletedAt: Date | null;
             tags: string[];
             slug: string;
-            price: Prisma.Decimal;
             compareAtPrice: Prisma.Decimal | null;
             costPrice: Prisma.Decimal | null;
             sku: string;

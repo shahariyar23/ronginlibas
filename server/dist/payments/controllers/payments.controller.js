@@ -10,22 +10,60 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Post, Query, Req, Res, UseGuards, } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 import { PaymentsService } from '../services/payments.service.js';
+import { WaitmarkPaymentService } from '../services/waitmark-payment.service.js';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { CreatePaymentDto, VerifyPaymentDto } from '../dto/payment-request.dto.js';
+import { InitiateWaitmarkPaymentDto } from '../dto/initiate-waitmark-payment.dto.js';
 import { OptionalCustomerAuthGuard } from '../../auth/guards/optional-customer-auth.guard.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 let PaymentsController = class PaymentsController {
     paymentsService;
-    constructor(paymentsService) {
+    waitmarkService;
+    configService;
+    constructor(paymentsService, waitmarkService, configService) {
         this.paymentsService = paymentsService;
+        this.waitmarkService = waitmarkService;
+        this.configService = configService;
     }
     async getMethods() {
         const data = await this.paymentsService.getAvailableMethods();
         return {
             message: 'Payment methods retrieved successfully',
+            data,
+        };
+    }
+    async initiateWaitmark(dto, requester) {
+        const data = await this.waitmarkService.initiatePayment(dto, requester);
+        return {
+            success: true,
+            message: 'Waitmark Pay checkout session created successfully',
+            data,
+        };
+    }
+    async waitmarkWebhook(req, sigHeader, sigHeaderUpper, body) {
+        const signature = sigHeader || sigHeaderUpper;
+        const rawBody = req.rawBody ||
+            (typeof body === 'string' ? Buffer.from(body) : Buffer.from(JSON.stringify(body || '')));
+        const result = await this.waitmarkService.processWebhook(rawBody, signature);
+        return {
+            success: true,
+            message: result.message,
+            idempotent: result.idempotent,
+        };
+    }
+    async waitmarkRedirect(orderId, trxId, res) {
+        const frontendUrl = this.configService.get('WEB_FRONTEND_URL') || 'http://localhost:3000';
+        const redirectUrl = `${frontendUrl.replace(/\/+$/, '')}/payment/result?orderId=${encodeURIComponent(orderId || '')}${trxId ? `&trx_id=${encodeURIComponent(trxId)}` : ''}`;
+        return res ? res.redirect(redirectUrl) : { redirectUrl };
+    }
+    async getPaymentStatus(orderId, requester, phone, trackingToken) {
+        const data = await this.waitmarkService.getPaymentStatus(orderId, requester, phone, trackingToken);
+        return {
+            success: true,
             data,
         };
     }
@@ -55,6 +93,51 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], PaymentsController.prototype, "getMethods", null);
+__decorate([
+    Post('waitmark/initiate'),
+    UseGuards(OptionalCustomerAuthGuard),
+    ApiBearerAuth(),
+    ApiOperation({ summary: 'Initiate Waitmark Pay online payment session for an order' }),
+    __param(0, Body()),
+    __param(1, CurrentUser()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [InitiateWaitmarkPaymentDto, Object]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "initiateWaitmark", null);
+__decorate([
+    Post('waitmark/webhook'),
+    ApiOperation({ summary: 'Receive and verify official Waitmark Pay HMAC webhook' }),
+    __param(0, Req()),
+    __param(1, Headers('x-waitmark-signature')),
+    __param(2, Headers('X-Waitmark-Signature')),
+    __param(3, Body()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, Object]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "waitmarkWebhook", null);
+__decorate([
+    Get('waitmark/webhook'),
+    ApiOperation({ summary: 'Handle potential browser redirect from Waitmark Pay' }),
+    __param(0, Query('order_id')),
+    __param(1, Query('trx_id')),
+    __param(2, Res()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "waitmarkRedirect", null);
+__decorate([
+    Get('status/:orderId'),
+    UseGuards(OptionalCustomerAuthGuard),
+    ApiBearerAuth(),
+    ApiOperation({ summary: 'Retrieve verified payment status and transaction history' }),
+    __param(0, Param('orderId')),
+    __param(1, CurrentUser()),
+    __param(2, Query('phone')),
+    __param(3, Query('trackingToken')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, String, String]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "getPaymentStatus", null);
 __decorate([
     Post('create'),
     UseGuards(OptionalCustomerAuthGuard),
@@ -87,7 +170,9 @@ PaymentsController = __decorate([
     ApiTags('Payments'),
     Public(),
     Controller('payments'),
-    __metadata("design:paramtypes", [PaymentsService])
+    __metadata("design:paramtypes", [PaymentsService,
+        WaitmarkPaymentService,
+        ConfigService])
 ], PaymentsController);
 export { PaymentsController };
 //# sourceMappingURL=payments.controller.js.map

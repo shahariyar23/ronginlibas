@@ -10,14 +10,16 @@ import { PaymentsController } from './controllers/payments.controller.js';
 import { ConfigModule } from '@nestjs/config';
 import { OrdersModule } from '../orders/orders.module.js';
 import { AuthModule } from '../auth/auth.module.js';
+import { WaitmarkPaymentService } from './services/waitmark-payment.service.js';
+import { AnalyticsModule } from '../analytics/analytics.module.js';
 let PaymentsModule = class PaymentsModule {
 };
 PaymentsModule = __decorate([
     Module({
-        imports: [ConfigModule, OrdersModule, AuthModule],
+        imports: [ConfigModule, OrdersModule, AuthModule, AnalyticsModule],
         controllers: [PaymentsController],
-        providers: [PaymentsService],
-        exports: [PaymentsService],
+        providers: [PaymentsService, WaitmarkPaymentService],
+        exports: [PaymentsService, WaitmarkPaymentService],
     })
 ], PaymentsModule);
 export { PaymentsModule };

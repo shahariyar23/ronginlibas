@@ -35,6 +35,7 @@ import { OffersModule } from '../offers/offers.module.js';
 import { CollectionsModule } from '../collections/collections.module.js';
 import { ReportsModule } from '../reports/reports.module.js';
 import { PathaoModule } from '../pathao/pathao.module.js';
+import { AnalyticsModule } from '../analytics/analytics.module.js';
 import { AppController } from './app.controller.js';
 import { HealthController } from './health.controller.js';
 import { TransformInterceptor } from '../common/interceptors/transform.interceptor.js';
@@ -64,6 +65,7 @@ AppModule = __decorate([
             ReviewsModule,
             DashboardModule,
             ReportsModule,
+            AnalyticsModule,
             SettingsModule,
             PaymentsModule,
             ShippingModule,

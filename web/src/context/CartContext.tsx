@@ -5,6 +5,7 @@ import { Product, CartItem } from '@/types';
 import { toast } from 'sonner';
 import { apiRequest, getProduct } from '@/lib/api';
 import { useAuth } from './AuthContext';
+import { analytics } from '@/lib/analytics/client';
 
 interface CartResponse {
   cartId: string | null;
@@ -42,6 +43,7 @@ interface CartContextType {
   cartId: string | null;
   isCartLoading: boolean;
   refreshCart: () => Promise<void>;
+  restoreFromOrder: (orderId: string, phone?: string, trackingToken?: string) => Promise<boolean>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -214,6 +216,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       );
       await hydrateCart(response);
       toast.success('Item removed from cart.');
+      analytics.trackRemoveFromCart({
+        pagePath: typeof window !== 'undefined' ? window.location.pathname : '/cart',
+        productId: item.product.id,
+        productName: item.product.name,
+        price: item.product.price,
+        quantity: item.quantity,
+        size: item.selectedSize,
+        color: item.selectedColor,
+      });
       return true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not remove this item.');
@@ -305,6 +316,42 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setTotal(subtotal + shippingFee);
   };
 
+  const restoreFromOrder = async (
+    orderId: string,
+    phone?: string,
+    trackingToken?: string,
+  ): Promise<boolean> => {
+    try {
+      const response = await apiRequest<{
+        cartId: string | null;
+        items: any[];
+        subtotal: number;
+        discountAmount?: number;
+        deliveryCharge: number;
+        total: number;
+      }>('/cart/restore-order', {
+        method: 'POST',
+        body: JSON.stringify({
+          orderId,
+          cartId: cartId || undefined,
+          phone: phone || undefined,
+          trackingToken: trackingToken || undefined,
+        }),
+      });
+      const cartData = (response as any)?.data || response;
+      if (cartData?.cartId && cartData.cartId !== cartId) {
+        setCartId(cartData.cartId);
+        localStorage.setItem(CART_ID_KEY, cartData.cartId);
+      }
+      await hydrateCart(cartData);
+      toast.success('Items successfully restored to your cart.');
+      return true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not restore items from order.');
+      return false;
+    }
+  };
+
   const couponDiscountPercent = subtotal > 0 ? Math.round((discount / subtotal) * 100) : 0;
   const totalCount = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
 
@@ -330,6 +377,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         cartId,
         isCartLoading,
         refreshCart,
+        restoreFromOrder,
       }}
     >
       {children}

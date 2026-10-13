@@ -990,4 +990,99 @@ export async function submitDataDeletionRequestApi(data: {
   });
 }
 
+export interface PaymentMethodItem {
+  id: string;
+  name: string;
+  isEnabled: boolean;
+  credentialsConfigured?: boolean;
+}
+
+export interface WaitmarkInitiateResult {
+  checkoutUrl: string;
+  paymentAttemptId: string;
+  orderId: string;
+  orderNumber: string;
+  amount: number;
+  currency: string;
+}
+
+export interface OrderPaymentStatusResult {
+  orderId: string;
+  orderNumber: string;
+  paymentStatus: string;
+  orderStatus: string;
+  totalAmount: number;
+  paidAmount: number;
+  paymentReference: string | null;
+  paymentMethod: string;
+  payments: Array<{
+    id: string;
+    provider: string;
+    providerOrderId: string;
+    providerTransactionId: string | null;
+    amount: number;
+    currency: string;
+    status: string;
+    failureReason: string | null;
+    paidAt: string | null;
+    createdAt: string;
+  }>;
+}
+
+export async function getPaymentMethodsApi(): Promise<PaymentMethodItem[]> {
+  return apiRequest<PaymentMethodItem[]>('/payments/methods', {
+    method: 'GET',
+  });
+}
+
+export async function initiateWaitmarkPaymentApi(data: {
+  orderId: string;
+  phone?: string;
+  trackingToken?: string;
+}): Promise<WaitmarkInitiateResult> {
+  return apiRequest<WaitmarkInitiateResult>('/payments/waitmark/initiate', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getPaymentStatusApi(
+  orderId: string,
+  params?: { phone?: string; trackingToken?: string },
+): Promise<OrderPaymentStatusResult> {
+  const query = new URLSearchParams();
+  if (params?.phone) query.set('phone', params.phone);
+  if (params?.trackingToken) query.set('trackingToken', params.trackingToken);
+  const qStr = query.toString();
+  return apiRequest<OrderPaymentStatusResult>(
+    `/payments/status/${encodeURIComponent(orderId)}${qStr ? `?${qStr}` : ''}`,
+    {
+      method: 'GET',
+    },
+  );
+}
+
+export async function restoreCartFromOrderApi(data: {
+  orderId: string;
+  cartId?: string;
+  phone?: string;
+  trackingToken?: string;
+}): Promise<any> {
+  return apiRequest('/cart/restore-order', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function cancelOrderApi(
+  orderNumber: string,
+  params?: { phone?: string; trackingToken?: string },
+): Promise<any> {
+  return apiRequest(`/orders/${encodeURIComponent(orderNumber)}/cancel`, {
+    method: 'POST',
+    body: JSON.stringify(params || {}),
+  });
+}
+
+
 

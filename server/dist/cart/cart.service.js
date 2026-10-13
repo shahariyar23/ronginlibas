@@ -7,7 +7,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { BadRequestException, Injectable, NotFoundException, } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { SettingsService } from '../settings/services/settings.service.js';
@@ -254,6 +254,126 @@ let CartService = class CartService {
                 guestName: contact.name?.trim() || undefined,
             },
         });
+    }
+    async restoreOrderToCart(customerId, cartId, orderId, phone, trackingToken) {
+        if (!orderId) {
+            throw new BadRequestException('An order reference is required to restore items');
+        }
+        const order = await this.prisma.order.findFirst({
+            where: {
+                OR: [
+                    { id: orderId },
+                    { orderNumber: orderId },
+                    { orderNumber: orderId.startsWith('#') ? orderId : `#${orderId}` },
+                ],
+            },
+            include: {
+                items: true,
+            },
+        });
+        if (!order) {
+            throw new NotFoundException(`Order "${orderId}" not found`);
+        }
+        if (order.customerId) {
+            if (customerId && customerId !== order.customerId) {
+                throw new ForbiddenException('You do not have permission to restore this order');
+            }
+        }
+        else {
+            const shippingAddress = order.shippingAddress || {};
+            const expectedPhone = (order.guestPhone ||
+                shippingAddress.phone ||
+                shippingAddress.receiverPhone ||
+                '')
+                .replace(/\D/g, '')
+                .slice(-11);
+            const suppliedPhone = (phone || '').replace(/\D/g, '').slice(-11);
+            const phoneMatches = Boolean(expectedPhone && suppliedPhone && expectedPhone === suppliedPhone);
+            const tokenMatches = Boolean(trackingToken && order.trackingTokenHash);
+            if (!customerId && !phoneMatches && !tokenMatches) {
+                throw new ForbiddenException('Guest order access could not be verified');
+            }
+        }
+        if (order.paymentStatus === 'PAID') {
+            throw new BadRequestException('Cannot restore items from an already paid order');
+        }
+        const cart = await this.requireCart(customerId, cartId);
+        if (order.status === 'PENDING') {
+            await this.prisma.$transaction(async (tx) => {
+                for (const item of order.items) {
+                    if (!item.variantId)
+                        continue;
+                    const variant = await tx.productVariant.findUnique({
+                        where: { id: item.variantId },
+                        select: { id: true, stock: true },
+                    });
+                    if (!variant)
+                        continue;
+                    await tx.productVariant.updateMany({
+                        where: { id: variant.id, stock: variant.stock },
+                        data: { stock: variant.stock + item.quantity },
+                    });
+                    await tx.inventoryTransaction.create({
+                        data: {
+                            variantId: variant.id,
+                            quantityChange: item.quantity,
+                            previousStock: variant.stock,
+                            newStock: variant.stock + item.quantity,
+                            type: 'RETURN',
+                            note: `Cart restoration from unpaid order ${order.orderNumber}`,
+                        },
+                    });
+                }
+                await tx.order.update({
+                    where: { id: order.id },
+                    data: {
+                        status: 'CANCELLED',
+                        paymentStatus: 'FAILED',
+                    },
+                });
+                await tx.orderTrackingEvent.create({
+                    data: {
+                        orderId: order.id,
+                        status: 'CANCELLED',
+                        description: 'Order cancelled and items restored to cart for checkout.',
+                        customerVisible: true,
+                    },
+                });
+            });
+        }
+        for (const item of order.items) {
+            if (!item.variantId)
+                continue;
+            const variant = await this.prisma.productVariant.findUnique({
+                where: { id: item.variantId },
+                include: { product: { select: { isActive: true } } },
+            });
+            if (!variant || !variant.isActive || !variant.product.isActive) {
+                continue;
+            }
+            const existingCartItem = await this.prisma.cartItem.findUnique({
+                where: {
+                    cartId_variantId: {
+                        cartId: cart.id,
+                        variantId: item.variantId,
+                    },
+                },
+            });
+            if (!existingCartItem) {
+                const eligibleQty = Math.max(1, Math.min(item.quantity, variant.stock));
+                if (eligibleQty > 0) {
+                    await this.prisma.cartItem.create({
+                        data: {
+                            cartId: cart.id,
+                            productId: variant.productId,
+                            variantId: variant.id,
+                            quantity: eligibleQty,
+                        },
+                    });
+                }
+            }
+        }
+        return this.getCart(customerId, cart.guestId ?? cart.id);
     }
     async getAdminCarts(query) {
         const page = Math.max(1, Number(query.page) || 1);

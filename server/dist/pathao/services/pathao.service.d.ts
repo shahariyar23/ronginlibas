@@ -1,6 +1,7 @@
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { PathaoAuthService } from './pathao-auth.service.js';
 import type { PathaoCity, PathaoZone, PathaoArea, PathaoStore, PathaoPricePlanResponse, PathaoCreateOrderResponse, PathaoOrderInfoResponse, PathaoConnectionTestResult, PathaoStatusResponse } from '../pathao.types.js';
+import { CourierStatus } from '../status/courier-status.types.js';
 import type { CalculatePriceDto } from '../dto/calculate-price.dto.js';
 import type { CreateSandboxOrderDto } from '../dto/create-sandbox-order.dto.js';
 import type { CreateParcelDto } from '../dto/create-parcel.dto.js';
@@ -33,8 +34,18 @@ export declare class PathaoService {
         orderId: string;
         orderNumber: string;
         courierConsignmentId: string;
-        courierStatus: string;
+        courierStatus: CourierStatus;
+        courierStatusRaw: string;
         lastSyncedAt: string;
         trackingInfo: PathaoOrderInfoResponse;
+    }>;
+    processWebhook(payload: Record<string, unknown>): Promise<{
+        success: boolean;
+        message: string;
+        orderId?: string;
+        orderNumber?: string;
+        consignmentId?: string;
+        courierStatus?: CourierStatus;
+        courierStatusRaw?: string;
     }>;
 }

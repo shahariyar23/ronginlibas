@@ -118,7 +118,8 @@ let AdminPathaoController = class AdminPathaoController {
             summary: `Booked Pathao Sandbox parcel #${result.parcel.consignment_id} for order ${result.order.orderNumber}`,
             after: {
                 courierConsignmentId: result.parcel.consignment_id,
-                courierStatus: result.parcel.order_status,
+                courierStatus: result.order.courierStatus,
+                courierStatusRaw: result.order.courierStatusRaw,
             },
         });
         return {

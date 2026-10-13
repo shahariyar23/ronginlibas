@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
   ConflictException,
+  Optional,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -12,6 +13,7 @@ import { UpdateProductDto } from '../dto/update-product.dto.js';
 import { ProductQueryDto } from '../dto/product-query.dto.js';
 import { PaginatedResult } from '../../common/dto/pagination-query.dto.js';
 import { CloudinaryService } from './cloudinary.service.js';
+import { WishlistService } from '../../wishlist/wishlist.service.js';
 
 @Injectable()
 export class ProductsService {
@@ -20,6 +22,7 @@ export class ProductsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cloudinary: CloudinaryService,
+    @Optional() private readonly wishlistService?: WishlistService,
   ) {}
 
   async findAll(
@@ -547,6 +550,7 @@ export class ProductsService {
       where: { productId: targetId },
       select: { publicId: true },
     });
+    let wasRestocked = false;
     const updatedProduct = await this.prisma.$transaction(
       async (transaction) => {
         if (targetSlug) {
@@ -669,12 +673,15 @@ export class ProductsService {
         for (const variant of dto.variants ?? []) {
           const current = await transaction.productVariant.findUnique({
             where: { sku: variant.sku },
-            select: { id: true, productId: true },
+            select: { id: true, productId: true, stock: true },
           });
           if (current && current.productId !== targetId) {
             throw new ConflictException(
               'A product variant with this SKU already exists',
             );
+          }
+          if ((!current || current.stock <= 0) && (variant.stock ?? 0) > 0) {
+            wasRestocked = true;
           }
           const data = {
             size: variant.sizeLabel
@@ -713,6 +720,16 @@ export class ProductsService {
         timeout: 30000,
       },
     );
+
+    if (wasRestocked) {
+      this.wishlistService
+        ?.notifyWishlistCustomersBackInStock(targetId)
+        .catch((err) => {
+          this.logger.error(
+            `Failed to send back-in-stock notifications for product ${targetId}: ${err.message}`,
+          );
+        });
+    }
     if (dto.images !== undefined) {
       const retainedPublicIds = new Set(
         dto.images

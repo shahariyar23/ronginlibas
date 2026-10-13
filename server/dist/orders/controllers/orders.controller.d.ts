@@ -29,29 +29,32 @@ export declare class OrdersController {
             updatedAt: Date;
             items: {
                 product: {
+                    id: string;
+                    name: string;
+                    slug: string;
                     images: {
                         url: string;
                     }[];
                 } | null;
                 productImage: string | null;
+                id: string;
                 subtotal: import("@prisma/client/runtime/library").Decimal;
                 discountAmount: import("@prisma/client/runtime/library").Decimal;
-                id: string;
                 createdAt: Date;
-                variantId: string | null;
-                sku: string;
-                productId: string | null;
                 productName: string;
                 variantName: string;
+                sku: string;
                 unitPrice: import("@prisma/client/runtime/library").Decimal;
                 quantity: number;
                 size: string | null;
                 color: string | null;
+                productId: string | null;
+                variantId: string | null;
             }[];
             trackingEvents: {
-                description: string | null;
                 status: import("@prisma/client").$Enums.OrderStatus;
                 createdAt: Date;
+                description: string | null;
             }[];
         };
     }>;
@@ -59,44 +62,58 @@ export declare class OrdersController {
         message: string;
         data: {
             items: {
+                id: string;
+                orderNumber: string;
+                courierName: string | null;
+                trackingNumber: string | null;
+                trackingUrl: string | null;
+                courierProvider: string | null;
+                courierStatus: string | null;
+                courierLastSyncedAt: Date | null;
+                estimatedDelivery: Date | null;
+                status: import("@prisma/client").$Enums.OrderStatus;
+                paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
+                paymentMethod: import("@prisma/client").$Enums.PaymentMethod;
+                paymentReference: string | null;
+                paidAmount: import("@prisma/client/runtime/library").Decimal | null;
+                subtotal: import("@prisma/client/runtime/library").Decimal;
+                discountAmount: import("@prisma/client/runtime/library").Decimal;
+                manualDiscountAmount: import("@prisma/client/runtime/library").Decimal;
+                deliveryCharge: import("@prisma/client/runtime/library").Decimal;
+                totalAmount: import("@prisma/client/runtime/library").Decimal;
+                shippingAddress: import("@prisma/client/runtime/library").JsonValue;
+                customerNotes: string | null;
+                createdAt: Date;
+                updatedAt: Date;
                 items: {
                     product: {
+                        id: string;
+                        name: string;
+                        slug: string;
                         images: {
                             url: string;
                         }[];
                     } | null;
                     productImage: string | null;
+                    id: string;
                     subtotal: import("@prisma/client/runtime/library").Decimal;
                     discountAmount: import("@prisma/client/runtime/library").Decimal;
-                    id: string;
                     createdAt: Date;
-                    variantId: string | null;
-                    sku: string;
-                    productId: string | null;
                     productName: string;
                     variantName: string;
+                    sku: string;
                     unitPrice: import("@prisma/client/runtime/library").Decimal;
                     quantity: number;
                     size: string | null;
                     color: string | null;
+                    productId: string | null;
+                    variantId: string | null;
                 }[];
-                orderNumber: string;
-                subtotal: import("@prisma/client/runtime/library").Decimal;
-                deliveryCharge: import("@prisma/client/runtime/library").Decimal;
-                discountAmount: import("@prisma/client/runtime/library").Decimal;
-                totalAmount: import("@prisma/client/runtime/library").Decimal;
-                paymentMethod: import("@prisma/client").$Enums.PaymentMethod;
-                paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
-                shippingAddress: import("@prisma/client/runtime/library").JsonValue;
-                customerNotes: string | null;
-                courierName: string | null;
-                trackingNumber: string | null;
-                trackingUrl: string | null;
-                estimatedDelivery: Date | null;
-                status: import("@prisma/client").$Enums.OrderStatus;
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
+                trackingEvents: {
+                    status: import("@prisma/client").$Enums.OrderStatus;
+                    createdAt: Date;
+                    description: string | null;
+                }[];
             }[];
             page: number;
             limit: number;
@@ -107,48 +124,57 @@ export declare class OrdersController {
     getMyOrder(customerId: string, orderNumber: string): Promise<{
         message: string;
         data: {
+            id: string;
+            orderNumber: string;
+            courierName: string | null;
+            trackingNumber: string | null;
+            trackingUrl: string | null;
+            courierProvider: string | null;
+            courierStatus: string | null;
+            courierLastSyncedAt: Date | null;
+            estimatedDelivery: Date | null;
+            status: import("@prisma/client").$Enums.OrderStatus;
+            paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
+            paymentMethod: import("@prisma/client").$Enums.PaymentMethod;
+            paymentReference: string | null;
+            paidAmount: import("@prisma/client/runtime/library").Decimal | null;
+            subtotal: import("@prisma/client/runtime/library").Decimal;
+            discountAmount: import("@prisma/client/runtime/library").Decimal;
+            manualDiscountAmount: import("@prisma/client/runtime/library").Decimal;
+            deliveryCharge: import("@prisma/client/runtime/library").Decimal;
+            totalAmount: import("@prisma/client/runtime/library").Decimal;
+            shippingAddress: import("@prisma/client/runtime/library").JsonValue;
+            customerNotes: string | null;
+            createdAt: Date;
+            updatedAt: Date;
             items: {
                 product: {
+                    id: string;
+                    name: string;
+                    slug: string;
                     images: {
                         url: string;
                     }[];
                 } | null;
                 productImage: string | null;
+                id: string;
                 subtotal: import("@prisma/client/runtime/library").Decimal;
                 discountAmount: import("@prisma/client/runtime/library").Decimal;
-                id: string;
                 createdAt: Date;
-                variantId: string | null;
-                sku: string;
-                productId: string | null;
                 productName: string;
                 variantName: string;
+                sku: string;
                 unitPrice: import("@prisma/client/runtime/library").Decimal;
                 quantity: number;
                 size: string | null;
                 color: string | null;
+                productId: string | null;
+                variantId: string | null;
             }[];
-            orderNumber: string;
-            subtotal: import("@prisma/client/runtime/library").Decimal;
-            deliveryCharge: import("@prisma/client/runtime/library").Decimal;
-            discountAmount: import("@prisma/client/runtime/library").Decimal;
-            totalAmount: import("@prisma/client/runtime/library").Decimal;
-            paymentMethod: import("@prisma/client").$Enums.PaymentMethod;
-            paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
-            shippingAddress: import("@prisma/client/runtime/library").JsonValue;
-            customerNotes: string | null;
-            courierName: string | null;
-            trackingNumber: string | null;
-            trackingUrl: string | null;
-            estimatedDelivery: Date | null;
-            status: import("@prisma/client").$Enums.OrderStatus;
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
             trackingEvents: {
-                description: string | null;
                 status: import("@prisma/client").$Enums.OrderStatus;
                 createdAt: Date;
+                description: string | null;
             }[];
         };
     }>;
@@ -157,14 +183,17 @@ export declare class OrdersController {
         data: {
             orderNumber: string;
             status: import("@prisma/client").$Enums.OrderStatus;
+            courier: string;
             courierName: string | null;
+            courierStatus: string;
             trackingNumber: string | null;
             trackingUrl: string | null;
             estimatedDelivery: Date | null;
+            lastUpdatedAt: any;
             trackingEvents: {
-                description: string | null;
                 status: import("@prisma/client").$Enums.OrderStatus;
                 createdAt: Date;
+                description: string | null;
             }[];
         };
     }>;
@@ -191,29 +220,89 @@ export declare class OrdersController {
             updatedAt: Date;
             items: {
                 product: {
+                    id: string;
+                    name: string;
+                    slug: string;
                     images: {
                         url: string;
                     }[];
                 } | null;
                 productImage: string | null;
+                id: string;
                 subtotal: import("@prisma/client/runtime/library").Decimal;
                 discountAmount: import("@prisma/client/runtime/library").Decimal;
-                id: string;
                 createdAt: Date;
-                variantId: string | null;
-                sku: string;
-                productId: string | null;
                 productName: string;
                 variantName: string;
+                sku: string;
                 unitPrice: import("@prisma/client/runtime/library").Decimal;
                 quantity: number;
                 size: string | null;
                 color: string | null;
+                productId: string | null;
+                variantId: string | null;
             }[];
             trackingEvents: {
-                description: string | null;
                 status: import("@prisma/client").$Enums.OrderStatus;
                 createdAt: Date;
+                description: string | null;
+            }[];
+        };
+    }>;
+    cancelOrder(orderNumber: string, customerId: string | undefined, dto: OrderAccessDto): Promise<{
+        message: string;
+        data: {
+            id: string;
+            orderNumber: string;
+            courierName: string | null;
+            trackingNumber: string | null;
+            trackingUrl: string | null;
+            courierProvider: string | null;
+            courierStatus: string | null;
+            courierLastSyncedAt: Date | null;
+            estimatedDelivery: Date | null;
+            status: import("@prisma/client").$Enums.OrderStatus;
+            paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
+            paymentMethod: import("@prisma/client").$Enums.PaymentMethod;
+            paymentReference: string | null;
+            paidAmount: import("@prisma/client/runtime/library").Decimal | null;
+            subtotal: import("@prisma/client/runtime/library").Decimal;
+            discountAmount: import("@prisma/client/runtime/library").Decimal;
+            manualDiscountAmount: import("@prisma/client/runtime/library").Decimal;
+            deliveryCharge: import("@prisma/client/runtime/library").Decimal;
+            totalAmount: import("@prisma/client/runtime/library").Decimal;
+            shippingAddress: import("@prisma/client/runtime/library").JsonValue;
+            customerNotes: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            items: {
+                product: {
+                    id: string;
+                    name: string;
+                    slug: string;
+                    images: {
+                        url: string;
+                    }[];
+                } | null;
+                productImage: string | null;
+                id: string;
+                subtotal: import("@prisma/client/runtime/library").Decimal;
+                discountAmount: import("@prisma/client/runtime/library").Decimal;
+                createdAt: Date;
+                productName: string;
+                variantName: string;
+                sku: string;
+                unitPrice: import("@prisma/client/runtime/library").Decimal;
+                quantity: number;
+                size: string | null;
+                color: string | null;
+                productId: string | null;
+                variantId: string | null;
+            }[];
+            trackingEvents: {
+                status: import("@prisma/client").$Enums.OrderStatus;
+                createdAt: Date;
+                description: string | null;
             }[];
         };
     }>;

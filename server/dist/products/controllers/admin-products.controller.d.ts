@@ -29,6 +29,8 @@ export declare class AdminProductsController {
                 parentId: string | null;
             };
             variants: {
+                size: string;
+                color: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
@@ -36,8 +38,6 @@ export declare class AdminProductsController {
                 measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
                 productId: string;
-                size: string;
-                color: string;
                 sizeLabel: string | null;
                 sizeType: string | null;
                 stock: number;
@@ -57,6 +57,7 @@ export declare class AdminProductsController {
         } & {
             description: string | null;
             name: string;
+            price: import("@prisma/client/runtime/library").Decimal;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -64,7 +65,6 @@ export declare class AdminProductsController {
             deletedAt: Date | null;
             tags: string[];
             slug: string;
-            price: import("@prisma/client/runtime/library").Decimal;
             compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
             costPrice: import("@prisma/client/runtime/library").Decimal | null;
             sku: string;
@@ -90,6 +90,8 @@ export declare class AdminProductsController {
         message: string;
         data: {
             variants: {
+                size: string;
+                color: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
@@ -97,8 +99,6 @@ export declare class AdminProductsController {
                 measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
                 productId: string;
-                size: string;
-                color: string;
                 sizeLabel: string | null;
                 sizeType: string | null;
                 stock: number;
@@ -118,6 +118,7 @@ export declare class AdminProductsController {
         } & {
             description: string | null;
             name: string;
+            price: import("@prisma/client/runtime/library").Decimal;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -125,7 +126,6 @@ export declare class AdminProductsController {
             deletedAt: Date | null;
             tags: string[];
             slug: string;
-            price: import("@prisma/client/runtime/library").Decimal;
             compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
             costPrice: import("@prisma/client/runtime/library").Decimal | null;
             sku: string;
@@ -165,6 +165,8 @@ export declare class AdminProductsController {
                 parentId: string | null;
             };
             variants: {
+                size: string;
+                color: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
@@ -172,8 +174,6 @@ export declare class AdminProductsController {
                 measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
                 productId: string;
-                size: string;
-                color: string;
                 sizeLabel: string | null;
                 sizeType: string | null;
                 stock: number;
@@ -193,6 +193,7 @@ export declare class AdminProductsController {
         } & {
             description: string | null;
             name: string;
+            price: import("@prisma/client/runtime/library").Decimal;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -200,7 +201,6 @@ export declare class AdminProductsController {
             deletedAt: Date | null;
             tags: string[];
             slug: string;
-            price: import("@prisma/client/runtime/library").Decimal;
             compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
             costPrice: import("@prisma/client/runtime/library").Decimal | null;
             sku: string;
@@ -237,6 +237,8 @@ export declare class AdminProductsController {
                 parentId: string | null;
             };
             variants: {
+                size: string;
+                color: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
@@ -244,8 +246,6 @@ export declare class AdminProductsController {
                 measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
                 productId: string;
-                size: string;
-                color: string;
                 sizeLabel: string | null;
                 sizeType: string | null;
                 stock: number;
@@ -264,6 +264,7 @@ export declare class AdminProductsController {
             }[];
             description: string | null;
             name: string;
+            price: import("@prisma/client/runtime/library").Decimal;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -271,7 +272,6 @@ export declare class AdminProductsController {
             deletedAt: Date | null;
             tags: string[];
             slug: string;
-            price: import("@prisma/client/runtime/library").Decimal;
             compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
             costPrice: import("@prisma/client/runtime/library").Decimal | null;
             sku: string;
@@ -311,6 +311,8 @@ export declare class AdminProductsController {
                 parentId: string | null;
             };
             variants: {
+                size: string;
+                color: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
@@ -318,8 +320,6 @@ export declare class AdminProductsController {
                 measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
                 productId: string;
-                size: string;
-                color: string;
                 sizeLabel: string | null;
                 sizeType: string | null;
                 stock: number;
@@ -339,6 +339,7 @@ export declare class AdminProductsController {
         } & {
             description: string | null;
             name: string;
+            price: import("@prisma/client/runtime/library").Decimal;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -346,7 +347,6 @@ export declare class AdminProductsController {
             deletedAt: Date | null;
             tags: string[];
             slug: string;
-            price: import("@prisma/client/runtime/library").Decimal;
             compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
             costPrice: import("@prisma/client/runtime/library").Decimal | null;
             sku: string;
@@ -386,6 +386,8 @@ export declare class AdminProductsController {
                 parentId: string | null;
             };
             variants: {
+                size: string;
+                color: string;
                 id: string;
                 isActive: boolean;
                 createdAt: Date;
@@ -393,8 +395,6 @@ export declare class AdminProductsController {
                 measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
                 productId: string;
-                size: string;
-                color: string;
                 sizeLabel: string | null;
                 sizeType: string | null;
                 stock: number;
@@ -414,6 +414,7 @@ export declare class AdminProductsController {
         } & {
             description: string | null;
             name: string;
+            price: import("@prisma/client/runtime/library").Decimal;
             id: string;
             isActive: boolean;
             createdAt: Date;
@@ -421,7 +422,6 @@ export declare class AdminProductsController {
             deletedAt: Date | null;
             tags: string[];
             slug: string;
-            price: import("@prisma/client/runtime/library").Decimal;
             compareAtPrice: import("@prisma/client/runtime/library").Decimal | null;
             costPrice: import("@prisma/client/runtime/library").Decimal | null;
             sku: string;

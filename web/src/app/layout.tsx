@@ -6,8 +6,11 @@ import { AuthProvider } from '@/context/AuthContext';
 import { Header } from '@/components/common/Header';
 import { Footer } from '@/components/common/Footer';
 import { CartDrawer } from '@/components/common/CartDrawer';
-import { Toaster } from '@/components/ui/sonner';
 import { StorefrontProvider } from '@/context/StorefrontContext';
+import { AnalyticsProvider } from '@/components/analytics/AnalyticsProvider';
+import { ConsentBanner } from '@/components/analytics/ConsentBanner';
+import { Toaster } from '@/components/ui/sonner';
+import { Suspense } from 'react';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://ronginlibas.com'),
@@ -51,17 +54,22 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <StorefrontProvider>
-          <AuthProvider>
-            <CartProvider>
-              <WishlistProvider>
-                <Header />
-                <main className="flex-1 w-full">{children}</main>
-                <CartDrawer />
-                <Footer />
-                <Toaster position="top-right" richColors />
-              </WishlistProvider>
-            </CartProvider>
-          </AuthProvider>
+          <Suspense fallback={null}>
+            <AnalyticsProvider>
+              <AuthProvider>
+                <CartProvider>
+                  <WishlistProvider>
+                    <Header />
+                    <main className="flex-1 w-full">{children}</main>
+                    <CartDrawer />
+                    <Footer />
+                    <ConsentBanner />
+                    <Toaster position="top-right" richColors />
+                  </WishlistProvider>
+                </CartProvider>
+              </AuthProvider>
+            </AnalyticsProvider>
+          </Suspense>
         </StorefrontProvider>
       </body>
     </html>

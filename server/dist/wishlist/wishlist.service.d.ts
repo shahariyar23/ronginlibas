@@ -1,7 +1,10 @@
 import { PrismaService } from '../prisma/prisma.service.js';
+import { MailService } from '../mail/mail.service.js';
 export declare class WishlistService {
     private readonly prisma;
-    constructor(prisma: PrismaService);
+    private readonly mailService?;
+    private readonly logger;
+    constructor(prisma: PrismaService, mailService?: MailService | undefined);
     findAll(customerId: string): Promise<{
         createdAt: Date;
         product: {
@@ -27,5 +30,12 @@ export declare class WishlistService {
     }>;
     remove(customerId: string, productId: string): Promise<{
         removed: boolean;
+    }>;
+    notifyWishlistCustomersBackInStock(productId: string, variantDetails?: {
+        size?: string;
+        color?: string;
+        stock?: number;
+    }): Promise<{
+        notifiedCount: number;
     }>;
 }

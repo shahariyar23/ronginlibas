@@ -10,12 +10,13 @@ import { AuditModule } from '../audit/audit.module.js';
 import { PathaoAuthService } from './services/pathao-auth.service.js';
 import { PathaoService } from './services/pathao.service.js';
 import { AdminPathaoController } from './controllers/admin-pathao.controller.js';
+import { PathaoWebhookController } from './controllers/pathao-webhook.controller.js';
 let PathaoModule = class PathaoModule {
 };
 PathaoModule = __decorate([
     Module({
         imports: [PrismaModule, AuditModule],
-        controllers: [AdminPathaoController],
+        controllers: [AdminPathaoController, PathaoWebhookController],
         providers: [PathaoAuthService, PathaoService],
         exports: [PathaoService, PathaoAuthService],
     })

@@ -21,6 +21,11 @@ import type {
   PathaoConnectionTestResult,
   PathaoStatusResponse,
 } from '../pathao.types.js';
+import {
+  CourierStatus,
+  extractPathaoStatus,
+  normalizePathaoStatus,
+} from '../status/courier-status.types.js';
 import type { CalculatePriceDto } from '../dto/calculate-price.dto.js';
 import type { CreateSandboxOrderDto } from '../dto/create-sandbox-order.dto.js';
 import type { CreateParcelDto } from '../dto/create-parcel.dto.js';
@@ -744,6 +749,21 @@ export class PathaoService {
       item_description: itemDescriptions || 'Rongin Libas Luxury Apparel',
     });
 
+    const statusExtraction = extractPathaoStatus(parcelResponse, this.logger);
+    const courierStatus: CourierStatus = statusExtraction.normalizedStatus;
+    const courierStatusRaw: string = statusExtraction.rawStatus;
+    const now = new Date();
+
+    this.logger.log(
+      `[Pathao Sandbox Parcel Created] Order #${order.orderNumber} -> Consignment: #${parcelResponse.consignment_id}, Raw: "${courierStatusRaw}", Normalized: ${courierStatus}`,
+    );
+
+    if (courierStatus === CourierStatus.UNKNOWN) {
+      this.logger.warn(
+        `Unknown Pathao courier status received on booking: "${courierStatusRaw}" for consignment #${parcelResponse.consignment_id}`,
+      );
+    }
+
     const trackingUrl = `https://pathao.com/courier/track?consignment_id=${parcelResponse.consignment_id}`;
 
     // Sanitized response metadata (never store access tokens or secrets)
@@ -751,13 +771,17 @@ export class PathaoService {
       consignment_id: parcelResponse.consignment_id,
       merchant_order_id: parcelResponse.merchant_order_id,
       order_status: parcelResponse.order_status,
+      order_status_slug: parcelResponse.order_status_slug,
       delivery_fee: parcelResponse.delivery_fee,
       environment: 'sandbox',
-      bookedAt: new Date().toISOString(),
+      bookedAt: now.toISOString(),
       bookedBy: actor?.email || 'Admin',
+      lastSyncedAt: now.toISOString(),
+      lastStatus: courierStatus,
+      lastStatusRaw: courierStatusRaw,
     };
 
-    // Update order with courier details
+    // Update order with courier details (persisting both normalized and raw statuses)
     const updatedOrder = await this.prisma.order.update({
       where: { id: order.id },
       data: {
@@ -766,10 +790,13 @@ export class PathaoService {
         courierOrderId: parcelResponse.merchant_order_id || order.orderNumber,
         courierConsignmentId: parcelResponse.consignment_id,
         trackingNumber: parcelResponse.consignment_id,
-        courierStatus: parcelResponse.order_status || 'Pending',
+        courierStatus: courierStatus,
+        courierStatusRaw: courierStatusRaw,
+        courierLastSyncedAt: now,
+        courierStatusUpdatedAt: now,
         courierTrackingUrl: trackingUrl,
         trackingUrl,
-        courierCreatedAt: new Date(),
+        courierCreatedAt: now,
         courierResponseMetadata: sanitizedMetadata,
       },
       include: {
@@ -785,8 +812,7 @@ export class PathaoService {
         data: {
           orderId: order.id,
           status: order.status,
-          title: 'Pathao Sandbox Parcel Created',
-          description: `Consignment #${parcelResponse.consignment_id} dispatched via Pathao Courier (Sandbox).`,
+          description: `Consignment #${parcelResponse.consignment_id} dispatched via Pathao Courier (Status: ${courierStatus}, Raw: "${courierStatusRaw || 'N/A'}").`,
         },
       });
     } catch (trackErr: any) {
@@ -829,13 +855,17 @@ export class PathaoService {
   }
 
   /**
-   * Requirement 11: Refresh status from Pathao and sync with internal order.
+   * Requirement 11 & 18: Refresh status from Pathao and sync with internal order.
+   * Preserves raw provider status while normalizing to internal CourierStatus.
+   * Unknown statuses NEVER trigger sensitive business actions (delivered, returned,
+   * refund, inventory release, or payment settlement).
    */
   public async refreshOrderStatus(orderId: string): Promise<{
     orderId: string;
     orderNumber: string;
     courierConsignmentId: string;
-    courierStatus: string;
+    courierStatus: CourierStatus;
+    courierStatusRaw: string;
     lastSyncedAt: string;
     trackingInfo: PathaoOrderInfoResponse;
   }> {
@@ -844,8 +874,11 @@ export class PathaoService {
       select: {
         id: true,
         orderNumber: true,
+        status: true,
+        paymentStatus: true,
         courierConsignmentId: true,
         courierStatus: true,
+        courierStatusRaw: true,
         courierResponseMetadata: true,
       },
     });
@@ -863,18 +896,53 @@ export class PathaoService {
     const trackingInfo = await this.trackOrder(order.courierConsignmentId);
     const now = new Date();
 
+    const statusExtraction = extractPathaoStatus(trackingInfo, this.logger);
+    const normalizedStatus: CourierStatus = statusExtraction.normalizedStatus;
+    const rawStatus: string = statusExtraction.rawStatus;
+
+    this.logger.log(
+      `[Pathao Status Sync] Order #${order.orderNumber} (Consignment #${order.courierConsignmentId}) -> Raw: "${rawStatus}", Normalized: ${normalizedStatus}`,
+    );
+
+    if (normalizedStatus === CourierStatus.UNKNOWN) {
+      this.logger.warn(
+        `Unknown Pathao courier status received: "${rawStatus}" for order #${order.orderNumber} (Consignment #${order.courierConsignmentId})`,
+      );
+    }
+
     const existingMeta = (order.courierResponseMetadata as Record<string, any>) || {};
     const updatedMeta = {
       ...existingMeta,
       lastSyncedAt: now.toISOString(),
-      lastStatus: trackingInfo.order_status,
+      lastStatus: normalizedStatus,
+      lastStatusRaw: rawStatus,
       historyCount: trackingInfo.history?.length || 0,
     };
+
+    // Record tracking event if courier status changed
+    const statusChanged =
+      order.courierStatus !== normalizedStatus || order.courierStatusRaw !== rawStatus;
+    if (statusChanged) {
+      try {
+        await this.prisma.orderTrackingEvent.create({
+          data: {
+            orderId: order.id,
+            status: order.status,
+            description: `Pathao status synced: ${normalizedStatus} (Provider: "${rawStatus || 'N/A'}").`,
+          },
+        });
+      } catch (trackErr: any) {
+        this.logger.warn(`Could not append tracking event: ${trackErr?.message}`);
+      }
+    }
 
     await this.prisma.order.update({
       where: { id: order.id },
       data: {
-        courierStatus: trackingInfo.order_status,
+        courierStatus: normalizedStatus,
+        courierStatusRaw: rawStatus,
+        courierLastSyncedAt: now,
+        courierStatusUpdatedAt: trackingInfo.updated_at ? new Date(trackingInfo.updated_at) : now,
         courierResponseMetadata: updatedMeta,
       },
     });
@@ -883,9 +951,134 @@ export class PathaoService {
       orderId: order.id,
       orderNumber: order.orderNumber,
       courierConsignmentId: order.courierConsignmentId,
-      courierStatus: trackingInfo.order_status,
+      courierStatus: normalizedStatus,
+      courierStatusRaw: rawStatus,
       lastSyncedAt: now.toISOString(),
       trackingInfo,
+    };
+  }
+
+  /**
+   * Requirement 17: Process incoming Pathao webhook notifications.
+   * Both webhook and polling share the EXACT same extractPathaoStatus() logic.
+   * Unknown statuses are logged as warnings and NEVER trigger sensitive operations.
+   */
+  public async processWebhook(payload: Record<string, unknown>): Promise<{
+    success: boolean;
+    message: string;
+    orderId?: string;
+    orderNumber?: string;
+    consignmentId?: string;
+    courierStatus?: CourierStatus;
+    courierStatusRaw?: string;
+  }> {
+    if (!payload || typeof payload !== 'object') {
+      throw new BadRequestException('Invalid Pathao webhook payload.');
+    }
+
+    const consignmentId = String(
+      payload.consignment_id || payload.consignmentId || '',
+    ).trim();
+    const merchantOrderId = String(
+      payload.merchant_order_id || payload.merchantOrderId || '',
+    ).trim();
+
+    if (!consignmentId && !merchantOrderId) {
+      this.logger.warn('[Pathao Webhook] Webhook received missing consignment_id and merchant_order_id.');
+      throw new BadRequestException('Webhook missing consignment_id and merchant_order_id.');
+    }
+
+    // Locate order by consignment ID or merchant order number
+    const order = await this.prisma.order.findFirst({
+      where: {
+        OR: [
+          ...(consignmentId ? [{ courierConsignmentId: consignmentId }] : []),
+          ...(merchantOrderId ? [{ orderNumber: merchantOrderId }] : []),
+        ],
+      },
+      select: {
+        id: true,
+        orderNumber: true,
+        status: true,
+        paymentStatus: true,
+        courierConsignmentId: true,
+        courierStatus: true,
+        courierStatusRaw: true,
+        courierResponseMetadata: true,
+      },
+    });
+
+    if (!order) {
+      this.logger.warn(
+        `[Pathao Webhook] Received webhook for unlinked order (consignment: "${consignmentId}", merchant: "${merchantOrderId}")`,
+      );
+      return {
+        success: false,
+        message: 'Order not found in database for provided consignment/merchant ID',
+        consignmentId,
+      };
+    }
+
+    const statusExtraction = extractPathaoStatus(payload as any, this.logger);
+    const normalizedStatus: CourierStatus = statusExtraction.normalizedStatus;
+    const rawStatus: string = statusExtraction.rawStatus;
+    const now = new Date();
+
+    this.logger.log(
+      `[Pathao Webhook] Order #${order.orderNumber} (Consignment #${consignmentId || order.courierConsignmentId}) -> Raw: "${rawStatus}", Normalized: ${normalizedStatus}`,
+    );
+
+    if (normalizedStatus === CourierStatus.UNKNOWN) {
+      this.logger.warn(
+        `Unknown Pathao courier status received via webhook: "${rawStatus}" for order #${order.orderNumber}. Safe fallback applied: No automated order mutations.`,
+      );
+    }
+
+    const existingMeta = (order.courierResponseMetadata as Record<string, any>) || {};
+    const updatedMeta = {
+      ...existingMeta,
+      lastSyncedAt: now.toISOString(),
+      lastStatus: normalizedStatus,
+      lastStatusRaw: rawStatus,
+      lastWebhookReceivedAt: now.toISOString(),
+      lastWebhookPayload: payload,
+    };
+
+    const statusChanged =
+      order.courierStatus !== normalizedStatus || order.courierStatusRaw !== rawStatus;
+    if (statusChanged) {
+      try {
+        await this.prisma.orderTrackingEvent.create({
+          data: {
+            orderId: order.id,
+            status: order.status,
+            description: `Pathao webhook update: ${normalizedStatus} (Provider: "${rawStatus || 'N/A'}").`,
+          },
+        });
+      } catch (trackErr: any) {
+        this.logger.warn(`Could not append tracking event: ${trackErr?.message}`);
+      }
+    }
+
+    await this.prisma.order.update({
+      where: { id: order.id },
+      data: {
+        courierStatus: normalizedStatus,
+        courierStatusRaw: rawStatus,
+        courierLastSyncedAt: now,
+        courierStatusUpdatedAt: payload.updated_at ? new Date(String(payload.updated_at)) : now,
+        courierResponseMetadata: updatedMeta as any,
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Pathao webhook processed successfully',
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      consignmentId: order.courierConsignmentId || consignmentId,
+      courierStatus: normalizedStatus,
+      courierStatusRaw: rawStatus,
     };
   }
 }

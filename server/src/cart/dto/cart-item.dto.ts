@@ -78,3 +78,22 @@ export class SendCartReminderDto {
   @IsOptional()
   customMessage?: string;
 }
+
+export class RestoreCartFromOrderDto {
+  @ApiProperty({ description: 'Order ID or Order Number' })
+  orderId: string;
+
+  @ApiPropertyOptional()
+  @IsUUID()
+  @IsOptional()
+  cartId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  phone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  trackingToken?: string;
+}
+

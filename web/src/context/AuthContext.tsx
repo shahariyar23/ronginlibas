@@ -17,6 +17,7 @@ import {
   authenticateWithFirebaseProvider,
   linkFirebaseProvider,
 } from '@/lib/firebase';
+import { analytics } from '@/lib/analytics/client';
 
 export interface PatronUser {
   id: string;
@@ -178,6 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (active) {
           setUser(profile);
           void refreshSocialIdentities();
+          analytics.identify(profile.id);
         }
       } catch (error) {
         setAccessToken(null);
@@ -201,8 +203,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ email: email.trim(), password }),
       });
       setAccessToken(session.accessToken);
-      setUser(await loadCustomerProfile());
+      const profile = await loadCustomerProfile();
+      setUser(profile);
+      analytics.identify(profile.id);
       void refreshSocialIdentities();
+      analytics.trackAuthEvent('login', typeof window !== 'undefined' ? window.location.pathname : '/login');
       toast.success('Welcome back to the Patron Sanctuary');
       return true;
     } catch (error) {
@@ -234,8 +239,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }),
       });
       setAccessToken(session.accessToken);
-      setUser(await loadCustomerProfile());
+      const profile = await loadCustomerProfile();
+      setUser(profile);
+      analytics.identify(profile.id);
       void refreshSocialIdentities();
+      analytics.trackAuthEvent('sign_up', typeof window !== 'undefined' ? window.location.pathname : '/register');
       toast.success('Your Rongin Libas account is ready.');
       return true;
     } catch (error) {
@@ -251,7 +259,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAccessToken(session.accessToken);
       const profile = await loadCustomerProfile();
       setUser(profile);
+      analytics.identify(profile.id);
       void refreshSocialIdentities();
+      analytics.trackAuthEvent('login', typeof window !== 'undefined' ? window.location.pathname : '/login');
       toast.success('Welcome to Rongin Libas via Google');
       return true;
     } catch (error: any) {

@@ -9,6 +9,7 @@ import { useWishlist } from '@/context/WishlistContext';
 import { Heart, ShoppingCart, Loader2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { analytics } from '@/lib/analytics/client';
 
 interface ProductCardProps {
   product: Product;
@@ -26,8 +27,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const isFavorite = isInWishlist(product.id);
   const isWishlistBusy = isItemLoading(product.id);
 
+  const isOutOfStock =
+    product.inStock === false ||
+    product.stockCount === 0 ||
+    (Boolean(product.variants?.length) && product.variants!.every((v) => (v.stock ?? 0) <= 0));
+
   const handleQuickAdd = async (size: string) => {
-    if (isAddingSize) return;
+    if (isOutOfStock || isAddingSize) return;
     if (!user) {
       toast.error('First login please', {
         description: 'Please login first to add items to your cart.',
@@ -43,7 +49,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     }
     setIsAddingSize(size);
     try {
-      await addToCart(product, size, selectedColor, 1);
+      const added = await addToCart(product, size, selectedColor, 1);
+      if (added) {
+        analytics.trackAddToCart({
+          pagePath: `/products/${product.slug}`,
+          productId: product.id,
+          productName: product.name,
+          price: product.price,
+          quantity: 1,
+          size,
+          color: selectedColor,
+          currency: 'BDT',
+        });
+      }
     } finally {
       setIsAddingSize(null);
       setShowSizePicker(false);
@@ -74,7 +92,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             }
             loading="lazy"
             decoding="async"
-            className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
+            className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
+              isOutOfStock ? 'opacity-85 grayscale-[15%]' : ''
+            }`}
           />
         </Link>
 
@@ -90,12 +110,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               {product.badge}
             </span>
           )}
-          {product.stockCount && product.stockCount <= 8 && (
-            <span className="bg-[#9c4a2f] text-white font-sans text-[8px] sm:text-[9px] font-semibold px-1.5 sm:px-2 py-0.5 uppercase tracking-wider shadow-xs">
-              Only {product.stockCount} Left
-            </span>
-          )}
+          {!isOutOfStock &&
+            typeof product.stockCount === 'number' &&
+            product.stockCount > 0 &&
+            product.stockCount <= 8 && (
+              <span className="bg-[#9c4a2f] text-white font-sans text-[8px] sm:text-[9px] font-semibold px-1.5 sm:px-2 py-0.5 uppercase tracking-wider shadow-xs">
+                Only {product.stockCount} Left
+              </span>
+            )}
         </div>
+
+        {/* Center Section Out of Stock Banner */}
+        {isOutOfStock && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 p-3">
+            <div className="bg-[#1b1c18]/90 text-[#fbf9f2] backdrop-blur-xs px-4 py-2 border border-[#c79a45]/50 shadow-xl text-center transform transition-transform duration-300 group-hover:scale-105">
+              <span className="font-sans text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#fbf9f2] block">
+                Out of Stock
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Wishlist Floating Button */}
         <button
@@ -103,7 +137,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           onClick={async (e) => {
             e.preventDefault();
             if (isWishlistBusy) return;
+            const willFavorite = !isFavorite;
             await toggleWishlist(product.id, product.name);
+            if (willFavorite && isOutOfStock) {
+              toast.info('Restock Notification Set', {
+                description: `We will email you as soon as ${product.name} is restocked and available.`,
+              });
+            }
           }}
           aria-label={isWishlistBusy ? "Updating wishlist" : "Toggle Wishlist"}
           aria-busy={isWishlistBusy ? "true" : undefined}
@@ -120,9 +160,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           )}
         </button>
 
-        {/* Quick Add Overlay */}
+        {/* Quick Add Overlay / View Details for Out of Stock */}
         <div className="absolute inset-x-2 sm:inset-x-3 bottom-2 sm:bottom-3 z-10 transition-all duration-300 opacity-0 group-hover:opacity-100 hidden sm:block">
-          {showSizePicker ? (
+          {isOutOfStock ? (
+            <Link
+              href={`/products/${product.slug}`}
+              className="w-full bg-[#1b1c18]/90 hover:bg-[#1b1c18] text-[#fbf9f2] font-sans text-xs uppercase tracking-widest h-10 shadow-md flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <span>View Details</span>
+            </Link>
+          ) : showSizePicker ? (
             <div className="bg-[#073a2d] text-white p-2.5 border border-[#c79a45]/40 shadow-xl space-y-1.5 animate-in fade-in">
               <span className="text-[10px] font-sans uppercase tracking-widest text-[#c79a45] block text-center">
                 {isAddingSize ? 'Adding to bag...' : 'Select Your Size'}
@@ -176,7 +223,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <span className="font-sans text-[9px] sm:text-[10px] uppercase tracking-wider text-[#717975] block truncate">
             {product.categoryLabel}
           </span>
-          <Link href={`/products/${product.slug}`}>
+          <Link
+            href={`/products/${product.slug}`}
+            onClick={() =>
+              analytics.trackSelectItem({
+                productId: product.id,
+                productName: product.name,
+                pagePath: `/products/${product.slug}`,
+                price: product.price,
+              })
+            }
+          >
             <h3 className="font-serif text-xs sm:text-base font-semibold text-[#073a2d] hover:text-[#0d4d3b] transition-colors line-clamp-1 mt-0.5 leading-snug">
               {product.name}
             </h3>

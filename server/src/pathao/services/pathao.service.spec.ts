@@ -300,6 +300,8 @@ describe('Pathao Courier Sandbox Integration', () => {
           recipient_name: 'Test',
           recipient_phone: '12345', // invalid
           recipient_address: 'House 1, Road 2, Dhaka',
+          delivery_type: 48,
+          item_type: 2,
           item_quantity: 1,
           item_weight: 0.5,
           amount_to_collect: 0,
@@ -396,18 +398,20 @@ describe('Pathao Courier Sandbox Integration', () => {
       expect(updateData.courierProvider).toBe('Pathao');
       expect(updateData.courierConsignmentId).toBe('CSG-778899');
       expect(updateData.trackingNumber).toBe('CSG-778899');
-      expect(updateData.courierStatus).toBe('Pending');
+      expect(updateData.courierStatus).toBe('PENDING');
+      expect(updateData.courierStatusRaw).toBe('Pending');
       expect(updateData.trackingUrl).toContain('CSG-778899');
     });
   });
 
-  describe('Requirement 11: Tracking & Refresh Status', () => {
-    it('fetches tracking info for an order consignment', async () => {
+  describe('Requirement 11 & 18: Tracking & Refresh Status', () => {
+    it('fetches tracking info for an order consignment and normalizes status while preserving raw', async () => {
       mockPrisma.order.findUnique.mockResolvedValue({
         id: 'order-track-1',
         orderNumber: '#RL5001',
         courierConsignmentId: 'CSG-112233',
-        courierStatus: 'Pending',
+        courierStatus: 'PENDING',
+        courierStatusRaw: 'Pending',
       });
 
       mockPrisma.order.update.mockResolvedValue({});
@@ -419,6 +423,7 @@ describe('Pathao Courier Sandbox Integration', () => {
           data: {
             consignment_id: 'CSG-112233',
             order_status: 'In Transit',
+            order_status_slug: 'in-transit',
             history: [{ status: 'Picked Up', time: '2026-10-12T10:00:00Z' }],
           },
         }),
@@ -427,8 +432,98 @@ describe('Pathao Courier Sandbox Integration', () => {
       vi.spyOn(authService, 'getAccessToken').mockResolvedValue('token');
 
       const refresh = await pathaoService.refreshOrderStatus('order-track-1');
-      expect(refresh.courierStatus).toBe('In Transit');
+      expect(refresh.courierStatus).toBe('IN_TRANSIT');
+      expect(refresh.courierStatusRaw).toBe('in-transit');
       expect(mockPrisma.order.update).toHaveBeenCalledTimes(1);
+      const updateData = mockPrisma.order.update.mock.calls[0][0].data;
+      expect(updateData.courierStatus).toBe('IN_TRANSIT');
+      expect(updateData.courierStatusRaw).toBe('in-transit');
+    });
+
+    it('safely handles unknown/future Pathao status during refresh without crashing and preserves raw', async () => {
+      mockPrisma.order.findUnique.mockResolvedValue({
+        id: 'order-track-2',
+        orderNumber: '#RL5002',
+        courierConsignmentId: 'CSG-998877',
+        courierStatus: 'IN_TRANSIT',
+        courierStatusRaw: 'in-transit',
+      });
+
+      mockPrisma.order.update.mockResolvedValue({});
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: {
+            consignment_id: 'CSG-998877',
+            order_status: 'Sorting Facility Inspection',
+            order_status_slug: 'sorting-facility-inspection',
+          },
+        }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+      vi.spyOn(authService, 'getAccessToken').mockResolvedValue('token');
+
+      const refresh = await pathaoService.refreshOrderStatus('order-track-2');
+      expect(refresh.courierStatus).toBe('UNKNOWN');
+      expect(refresh.courierStatusRaw).toBe('sorting-facility-inspection');
+      expect(mockPrisma.order.update).toHaveBeenCalledTimes(1);
+      const updateData = mockPrisma.order.update.mock.calls[0][0].data;
+      expect(updateData.courierStatus).toBe('UNKNOWN');
+      expect(updateData.courierStatusRaw).toBe('sorting-facility-inspection');
+    });
+  });
+
+  describe('Requirement 17: Webhook Processing Safety', () => {
+    it('processes webhook event for known status and updates order safely', async () => {
+      mockPrisma.order.findFirst = vi.fn().mockResolvedValue({
+        id: 'order-wb-1',
+        orderNumber: '#RL9001',
+        courierConsignmentId: 'CSG-WB-100',
+        courierStatus: 'IN_TRANSIT',
+        courierStatusRaw: 'in-transit',
+      });
+      mockPrisma.order.update.mockResolvedValue({});
+
+      const result = await pathaoService.processWebhook({
+        consignment_id: 'CSG-WB-100',
+        order_status: 'Delivered',
+        order_status_slug: 'delivered',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.courierStatus).toBe('DELIVERED');
+      expect(result.courierStatusRaw).toBe('delivered');
+      expect(mockPrisma.order.update).toHaveBeenCalledTimes(1);
+      const updateData = mockPrisma.order.update.mock.calls[0][0].data;
+      expect(updateData.courierStatus).toBe('DELIVERED');
+      expect(updateData.courierStatusRaw).toBe('delivered');
+    });
+
+    it('processes webhook event with unknown status safely without crashing', async () => {
+      mockPrisma.order.findFirst = vi.fn().mockResolvedValue({
+        id: 'order-wb-2',
+        orderNumber: '#RL9002',
+        courierConsignmentId: 'CSG-WB-200',
+        courierStatus: 'IN_TRANSIT',
+        courierStatusRaw: 'in-transit',
+      });
+      mockPrisma.order.update.mockResolvedValue({});
+
+      const result = await pathaoService.processWebhook({
+        consignment_id: 'CSG-WB-200',
+        order_status: 'Customer Rescheduled Drone Drop',
+        order_status_slug: 'customer-rescheduled-drone-drop',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.courierStatus).toBe('UNKNOWN');
+      expect(result.courierStatusRaw).toBe('customer-rescheduled-drone-drop');
+      expect(mockPrisma.order.update).toHaveBeenCalledTimes(1);
+      const updateData = mockPrisma.order.update.mock.calls[0][0].data;
+      expect(updateData.courierStatus).toBe('UNKNOWN');
+      expect(updateData.courierStatusRaw).toBe('customer-rescheduled-drone-drop');
     });
   });
 });

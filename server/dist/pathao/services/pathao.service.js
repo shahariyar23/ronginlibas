@@ -11,6 +11,7 @@ var PathaoService_1;
 import { Injectable, Logger, BadRequestException, NotFoundException, ServiceUnavailableException, UnauthorizedException, } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { PathaoAuthService } from './pathao-auth.service.js';
+import { CourierStatus, extractPathaoStatus, } from '../status/courier-status.types.js';
 let PathaoService = PathaoService_1 = class PathaoService {
     prisma;
     authService;
@@ -570,15 +571,27 @@ let PathaoService = PathaoService_1 = class PathaoService {
             amount_to_collect: amountToCollect,
             item_description: itemDescriptions || 'Rongin Libas Luxury Apparel',
         });
+        const statusExtraction = extractPathaoStatus(parcelResponse, this.logger);
+        const courierStatus = statusExtraction.normalizedStatus;
+        const courierStatusRaw = statusExtraction.rawStatus;
+        const now = new Date();
+        this.logger.log(`[Pathao Sandbox Parcel Created] Order #${order.orderNumber} -> Consignment: #${parcelResponse.consignment_id}, Raw: "${courierStatusRaw}", Normalized: ${courierStatus}`);
+        if (courierStatus === CourierStatus.UNKNOWN) {
+            this.logger.warn(`Unknown Pathao courier status received on booking: "${courierStatusRaw}" for consignment #${parcelResponse.consignment_id}`);
+        }
         const trackingUrl = `https://pathao.com/courier/track?consignment_id=${parcelResponse.consignment_id}`;
         const sanitizedMetadata = {
             consignment_id: parcelResponse.consignment_id,
             merchant_order_id: parcelResponse.merchant_order_id,
             order_status: parcelResponse.order_status,
+            order_status_slug: parcelResponse.order_status_slug,
             delivery_fee: parcelResponse.delivery_fee,
             environment: 'sandbox',
-            bookedAt: new Date().toISOString(),
+            bookedAt: now.toISOString(),
             bookedBy: actor?.email || 'Admin',
+            lastSyncedAt: now.toISOString(),
+            lastStatus: courierStatus,
+            lastStatusRaw: courierStatusRaw,
         };
         const updatedOrder = await this.prisma.order.update({
             where: { id: order.id },
@@ -588,10 +601,13 @@ let PathaoService = PathaoService_1 = class PathaoService {
                 courierOrderId: parcelResponse.merchant_order_id || order.orderNumber,
                 courierConsignmentId: parcelResponse.consignment_id,
                 trackingNumber: parcelResponse.consignment_id,
-                courierStatus: parcelResponse.order_status || 'Pending',
+                courierStatus: courierStatus,
+                courierStatusRaw: courierStatusRaw,
+                courierLastSyncedAt: now,
+                courierStatusUpdatedAt: now,
                 courierTrackingUrl: trackingUrl,
                 trackingUrl,
-                courierCreatedAt: new Date(),
+                courierCreatedAt: now,
                 courierResponseMetadata: sanitizedMetadata,
             },
             include: {
@@ -605,8 +621,7 @@ let PathaoService = PathaoService_1 = class PathaoService {
                 data: {
                     orderId: order.id,
                     status: order.status,
-                    title: 'Pathao Sandbox Parcel Created',
-                    description: `Consignment #${parcelResponse.consignment_id} dispatched via Pathao Courier (Sandbox).`,
+                    description: `Consignment #${parcelResponse.consignment_id} dispatched via Pathao Courier (Status: ${courierStatus}, Raw: "${courierStatusRaw || 'N/A'}").`,
                 },
             });
         }
@@ -648,8 +663,11 @@ let PathaoService = PathaoService_1 = class PathaoService {
             select: {
                 id: true,
                 orderNumber: true,
+                status: true,
+                paymentStatus: true,
                 courierConsignmentId: true,
                 courierStatus: true,
+                courierStatusRaw: true,
                 courierResponseMetadata: true,
             },
         });
@@ -661,17 +679,43 @@ let PathaoService = PathaoService_1 = class PathaoService {
         }
         const trackingInfo = await this.trackOrder(order.courierConsignmentId);
         const now = new Date();
+        const statusExtraction = extractPathaoStatus(trackingInfo, this.logger);
+        const normalizedStatus = statusExtraction.normalizedStatus;
+        const rawStatus = statusExtraction.rawStatus;
+        this.logger.log(`[Pathao Status Sync] Order #${order.orderNumber} (Consignment #${order.courierConsignmentId}) -> Raw: "${rawStatus}", Normalized: ${normalizedStatus}`);
+        if (normalizedStatus === CourierStatus.UNKNOWN) {
+            this.logger.warn(`Unknown Pathao courier status received: "${rawStatus}" for order #${order.orderNumber} (Consignment #${order.courierConsignmentId})`);
+        }
         const existingMeta = order.courierResponseMetadata || {};
         const updatedMeta = {
             ...existingMeta,
             lastSyncedAt: now.toISOString(),
-            lastStatus: trackingInfo.order_status,
+            lastStatus: normalizedStatus,
+            lastStatusRaw: rawStatus,
             historyCount: trackingInfo.history?.length || 0,
         };
+        const statusChanged = order.courierStatus !== normalizedStatus || order.courierStatusRaw !== rawStatus;
+        if (statusChanged) {
+            try {
+                await this.prisma.orderTrackingEvent.create({
+                    data: {
+                        orderId: order.id,
+                        status: order.status,
+                        description: `Pathao status synced: ${normalizedStatus} (Provider: "${rawStatus || 'N/A'}").`,
+                    },
+                });
+            }
+            catch (trackErr) {
+                this.logger.warn(`Could not append tracking event: ${trackErr?.message}`);
+            }
+        }
         await this.prisma.order.update({
             where: { id: order.id },
             data: {
-                courierStatus: trackingInfo.order_status,
+                courierStatus: normalizedStatus,
+                courierStatusRaw: rawStatus,
+                courierLastSyncedAt: now,
+                courierStatusUpdatedAt: trackingInfo.updated_at ? new Date(trackingInfo.updated_at) : now,
                 courierResponseMetadata: updatedMeta,
             },
         });
@@ -679,9 +723,98 @@ let PathaoService = PathaoService_1 = class PathaoService {
             orderId: order.id,
             orderNumber: order.orderNumber,
             courierConsignmentId: order.courierConsignmentId,
-            courierStatus: trackingInfo.order_status,
+            courierStatus: normalizedStatus,
+            courierStatusRaw: rawStatus,
             lastSyncedAt: now.toISOString(),
             trackingInfo,
+        };
+    }
+    async processWebhook(payload) {
+        if (!payload || typeof payload !== 'object') {
+            throw new BadRequestException('Invalid Pathao webhook payload.');
+        }
+        const consignmentId = String(payload.consignment_id || payload.consignmentId || '').trim();
+        const merchantOrderId = String(payload.merchant_order_id || payload.merchantOrderId || '').trim();
+        if (!consignmentId && !merchantOrderId) {
+            this.logger.warn('[Pathao Webhook] Webhook received missing consignment_id and merchant_order_id.');
+            throw new BadRequestException('Webhook missing consignment_id and merchant_order_id.');
+        }
+        const order = await this.prisma.order.findFirst({
+            where: {
+                OR: [
+                    ...(consignmentId ? [{ courierConsignmentId: consignmentId }] : []),
+                    ...(merchantOrderId ? [{ orderNumber: merchantOrderId }] : []),
+                ],
+            },
+            select: {
+                id: true,
+                orderNumber: true,
+                status: true,
+                paymentStatus: true,
+                courierConsignmentId: true,
+                courierStatus: true,
+                courierStatusRaw: true,
+                courierResponseMetadata: true,
+            },
+        });
+        if (!order) {
+            this.logger.warn(`[Pathao Webhook] Received webhook for unlinked order (consignment: "${consignmentId}", merchant: "${merchantOrderId}")`);
+            return {
+                success: false,
+                message: 'Order not found in database for provided consignment/merchant ID',
+                consignmentId,
+            };
+        }
+        const statusExtraction = extractPathaoStatus(payload, this.logger);
+        const normalizedStatus = statusExtraction.normalizedStatus;
+        const rawStatus = statusExtraction.rawStatus;
+        const now = new Date();
+        this.logger.log(`[Pathao Webhook] Order #${order.orderNumber} (Consignment #${consignmentId || order.courierConsignmentId}) -> Raw: "${rawStatus}", Normalized: ${normalizedStatus}`);
+        if (normalizedStatus === CourierStatus.UNKNOWN) {
+            this.logger.warn(`Unknown Pathao courier status received via webhook: "${rawStatus}" for order #${order.orderNumber}. Safe fallback applied: No automated order mutations.`);
+        }
+        const existingMeta = order.courierResponseMetadata || {};
+        const updatedMeta = {
+            ...existingMeta,
+            lastSyncedAt: now.toISOString(),
+            lastStatus: normalizedStatus,
+            lastStatusRaw: rawStatus,
+            lastWebhookReceivedAt: now.toISOString(),
+            lastWebhookPayload: payload,
+        };
+        const statusChanged = order.courierStatus !== normalizedStatus || order.courierStatusRaw !== rawStatus;
+        if (statusChanged) {
+            try {
+                await this.prisma.orderTrackingEvent.create({
+                    data: {
+                        orderId: order.id,
+                        status: order.status,
+                        description: `Pathao webhook update: ${normalizedStatus} (Provider: "${rawStatus || 'N/A'}").`,
+                    },
+                });
+            }
+            catch (trackErr) {
+                this.logger.warn(`Could not append tracking event: ${trackErr?.message}`);
+            }
+        }
+        await this.prisma.order.update({
+            where: { id: order.id },
+            data: {
+                courierStatus: normalizedStatus,
+                courierStatusRaw: rawStatus,
+                courierLastSyncedAt: now,
+                courierStatusUpdatedAt: payload.updated_at ? new Date(String(payload.updated_at)) : now,
+                courierResponseMetadata: updatedMeta,
+            },
+        });
+        return {
+            success: true,
+            message: 'Pathao webhook processed successfully',
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            consignmentId: order.courierConsignmentId || consignmentId,
+            courierStatus: normalizedStatus,
+            courierStatusRaw: rawStatus,
         };
     }
 };

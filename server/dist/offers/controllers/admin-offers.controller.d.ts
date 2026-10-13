@@ -40,9 +40,9 @@ export declare class AdminOffersController {
             status: "ACTIVE" | "SCHEDULED" | "EXPIRED" | "INACTIVE";
             products: {
                 name: string;
+                price: import("@prisma/client/runtime/library").Decimal;
                 id: string;
                 slug: string;
-                price: import("@prisma/client/runtime/library").Decimal;
                 sku: string;
             }[];
             categories: {

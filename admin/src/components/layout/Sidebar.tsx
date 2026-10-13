@@ -17,6 +17,7 @@ import {
   Ticket,
   MessageSquare,
   BarChart3,
+  LineChart,
   UserCog,
   Activity,
   Settings,
@@ -60,6 +61,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: 'ANALYTICS',
     items: [
       { name: 'Reports', href: '/reports', icon: BarChart3, permissionKey: 'reports' },
+      { name: 'User Analytics', href: '/analytics', icon: LineChart, permissionKey: 'reports' },
     ],
   },
   {

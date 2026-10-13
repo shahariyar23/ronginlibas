@@ -7,13 +7,21 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { BadRequestException, ConflictException, Injectable, NotFoundException, } from '@nestjs/common';
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var InventoryService_1;
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException, Optional, } from '@nestjs/common';
 import { InventoryTransactionType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
-let InventoryService = class InventoryService {
+import { WishlistService } from '../../wishlist/wishlist.service.js';
+let InventoryService = InventoryService_1 = class InventoryService {
     prisma;
-    constructor(prisma) {
+    wishlistService;
+    logger = new Logger(InventoryService_1.name);
+    constructor(prisma, wishlistService) {
         this.prisma = prisma;
+        this.wishlistService = wishlistService;
     }
     async getInventoryList(query) {
         const page = query.page || 1;
@@ -129,7 +137,7 @@ let InventoryService = class InventoryService {
         };
     }
     async adjustStock(dto, userId) {
-        return this.prisma.$transaction(async (transaction) => {
+        const result = await this.prisma.$transaction(async (transaction) => {
             const variant = await transaction.productVariant.findUnique({
                 where: { id: dto.variantId },
             });
@@ -194,8 +202,24 @@ let InventoryService = class InventoryService {
             return {
                 variant: updatedVariant,
                 transaction: history,
+                wasRestocked: previousStock <= 0 && newStock > 0,
             };
         });
+        if (result.wasRestocked && this.wishlistService) {
+            this.wishlistService
+                .notifyWishlistCustomersBackInStock(result.variant.productId, {
+                size: result.variant.size,
+                color: result.variant.color,
+                stock: result.variant.stock,
+            })
+                .catch((err) => {
+                this.logger.warn(`Failed to dispatch restock notification for product ${result.variant.productId}: ${err?.message}`);
+            });
+        }
+        return {
+            variant: result.variant,
+            transaction: result.transaction,
+        };
     }
     async getTransactionHistory(variantId) {
         const records = await this.prisma.inventoryTransaction.findMany({
@@ -236,9 +260,11 @@ let InventoryService = class InventoryService {
         });
     }
 };
-InventoryService = __decorate([
+InventoryService = InventoryService_1 = __decorate([
     Injectable(),
-    __metadata("design:paramtypes", [PrismaService])
+    __param(1, Optional()),
+    __metadata("design:paramtypes", [PrismaService,
+        WishlistService])
 ], InventoryService);
 export { InventoryService };
 //# sourceMappingURL=inventory.service.js.map
