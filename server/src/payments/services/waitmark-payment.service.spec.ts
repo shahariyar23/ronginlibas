@@ -37,6 +37,14 @@ describe('WaitmarkPaymentService', () => {
         findFirst: vi.fn(),
         findUnique: vi.fn(),
         update: vi.fn(),
+        delete: vi.fn(),
+      },
+      productVariant: {
+        findUnique: vi.fn(),
+        updateMany: vi.fn(),
+      },
+      inventoryTransaction: {
+        create: vi.fn(),
       },
       payment: {
         create: vi.fn(),
@@ -95,7 +103,7 @@ describe('WaitmarkPaymentService', () => {
       expect(result.orderNumber).toBe('#RL100200');
       expect(result.amount).toBe(2500);
       expect(result.currency).toBe('BDT');
-      expect(result.paymentAttemptId).toContain('WMPAY-RL100200-');
+      expect(result.paymentAttemptId).toContain('RL100200');
       expect(result.checkoutUrl).toContain('https://pay.waitmark.com/checkout?');
       expect(result.checkoutUrl).toContain('public_key=pk_test_waitmark_libas_2026');
       expect(result.checkoutUrl).toContain('amount=2500.00');
@@ -390,21 +398,10 @@ describe('WaitmarkPaymentService', () => {
       await expect(
         service.processWebhook(Buffer.from(payloadStr), validSig),
       ).rejects.toThrow(BadRequestException);
-      expect(mockPrisma.payment.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'pmt-1' },
-          data: expect.objectContaining({ status: PaymentStatus.FAILED }),
-        }),
-      );
-      expect(mockPrisma.order.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'ord-123' },
-          data: expect.objectContaining({ paymentStatus: PaymentStatus.FAILED }),
-        }),
-      );
+      expect(mockPrisma.order.delete).toHaveBeenCalled();
     });
 
-    it('handles explicit failed status by marking payment and order as FAILED', async () => {
+    it('handles explicit failed status by deleting order and releasing reserved stock', async () => {
       const payloadStr = JSON.stringify({ ...validPayload, status: 'failed' });
       const validSig = computeSignature(payloadStr);
 
@@ -415,26 +412,26 @@ describe('WaitmarkPaymentService', () => {
         amount: '2500.00',
         currency: 'BDT',
         status: PaymentStatus.PENDING,
-        order: { id: 'ord-123', orderNumber: '#RL100200', status: OrderStatus.PENDING },
+        order: {
+          id: 'ord-123',
+          orderNumber: '#RL100200',
+          status: OrderStatus.PENDING,
+          items: [{ variantId: 'var-1', quantity: 1 }],
+        },
       };
 
       mockPrisma.payment.findUnique.mockResolvedValue(existingPayment);
       mockPrisma.payment.findFirst.mockResolvedValue(null);
       mockPrisma.order.findFirst.mockResolvedValue(null);
+      mockPrisma.productVariant.findUnique.mockResolvedValue({ id: 'var-1', stock: 10 });
+      mockPrisma.productVariant.updateMany.mockResolvedValue({ count: 1 });
 
       const result = await service.processWebhook(Buffer.from(payloadStr), validSig);
 
       expect(result.success).toBe(false);
-      expect(mockPrisma.payment.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'pmt-1' },
-          data: expect.objectContaining({ status: PaymentStatus.FAILED }),
-        }),
-      );
-      expect(mockPrisma.order.update).toHaveBeenCalledWith(
+      expect(mockPrisma.order.delete).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'ord-123' },
-          data: expect.objectContaining({ paymentStatus: PaymentStatus.FAILED }),
         }),
       );
     });

@@ -234,6 +234,20 @@ function adaptBackendOrder(o: any): AdminOrder {
       o.manualDiscountAmount !== undefined && o.manualDiscountAmount !== null
         ? Number(o.manualDiscountAmount)
         : undefined,
+    payments: Array.isArray(o.payments)
+      ? o.payments.map((p: any) => ({
+          id: p.id,
+          provider: p.provider,
+          providerOrderId: p.providerOrderId,
+          providerTransactionId: p.providerTransactionId,
+          amount: Number(p.amount) || 0,
+          currency: p.currency || 'BDT',
+          status: p.status,
+          failureReason: p.failureReason,
+          paidAt: p.paidAt,
+          createdAt: p.createdAt,
+        }))
+      : [],
   };
 }
 

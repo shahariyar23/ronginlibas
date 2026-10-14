@@ -83,15 +83,58 @@ export class PaymentsController {
   async waitmarkRedirect(
     @Query('order_id') orderId?: string,
     @Query('trx_id') trxId?: string,
+    @Query('status') status?: string,
     @Res() res?: Response,
   ) {
     const frontendUrl =
       this.configService.get<string>('WEB_FRONTEND_URL') || 'http://localhost:3000';
+
+    const cleanStatus = status?.trim().toLowerCase();
+    const isExplicitFailure =
+      cleanStatus &&
+      ['failed', 'cancelled', 'cancel', 'declined', 'rejected', 'expired', 'error'].includes(
+        cleanStatus,
+      );
+
+    if (orderId && isExplicitFailure) {
+      try {
+        await this.waitmarkService.handleFailedPayment(
+          orderId,
+          `Gateway browser redirect reported status: ${status}`,
+        );
+      } catch (err: any) {
+        // Log and proceed to redirect
+      }
+    }
+
     const redirectUrl = `${frontendUrl.replace(/\/+$/, '')}/payment/result?orderId=${encodeURIComponent(
       orderId || '',
-    )}${trxId ? `&trx_id=${encodeURIComponent(trxId)}` : ''}`;
+    )}${trxId ? `&trx_id=${encodeURIComponent(trxId)}` : ''}${
+      cleanStatus ? `&status=${encodeURIComponent(cleanStatus)}` : ''
+    }`;
 
     return res ? res.redirect(redirectUrl) : { redirectUrl };
+  }
+
+  @Post('waitmark/cancel')
+  @UseGuards(OptionalCustomerAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cancel/Delete an unpaid Waitmark Pay order and restore inventory stock' })
+  async cancelWaitmarkPayment(
+    @Body('orderId') orderId: string,
+    @CurrentUser() _requester?: any,
+  ) {
+    if (!orderId) {
+      return { success: false, message: 'orderId is required' };
+    }
+    const result = await this.waitmarkService.handleFailedPayment(
+      orderId,
+      'Payment cancelled by customer at checkout / result page',
+    );
+    return {
+      success: true,
+      message: result.message,
+    };
   }
 
   @Get('status/:orderId')

@@ -34,6 +34,14 @@ export interface StorefrontOfferProduct {
   isBestSeller: boolean;
   fabric?: string;
   fabricOrigin?: string;
+  variants?: Array<{
+    id: string;
+    size: string;
+    color?: string;
+    stock: number;
+    price?: number;
+    isActive: boolean;
+  }>;
 }
 
 @Injectable()
@@ -234,6 +242,14 @@ export class OffersService {
         isBestSeller: prod.isBestSeller,
         fabric: prod.fabric ?? undefined,
         fabricOrigin: prod.fabricOrigin ?? undefined,
+        variants: prod.variants.map((v) => ({
+          id: v.id,
+          size: v.size,
+          color: v.color ?? undefined,
+          stock: Math.max(0, v.stock),
+          price: v.priceOverride ? Number(v.priceOverride) : regularPrice,
+          isActive: v.isActive,
+        })),
       });
     }
 

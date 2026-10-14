@@ -14,7 +14,7 @@ import {
   ShoppingBag,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getPaymentStatusApi, initiateWaitmarkPaymentApi, OrderPaymentStatusResult } from '@/lib/api';
+import { getPaymentStatusApi, initiateWaitmarkPaymentApi, cancelOrderApi, OrderPaymentStatusResult } from '@/lib/api';
 import { toast } from 'sonner';
 import { analytics } from '@/lib/analytics/client';
 import { useCart } from '@/context/CartContext';
@@ -27,9 +27,25 @@ function PaymentResultContent() {
   const trxId = searchParams.get('trx_id') || '';
   const phone = searchParams.get('phone') || '';
   const trackingToken = searchParams.get('trackingToken') || '';
+  const statusParam = (searchParams.get('status') || '').trim().toLowerCase();
+  const isFailedParam = ['failed', 'cancelled', 'cancel', 'declined', 'rejected', 'error'].includes(statusParam);
 
-  const [statusData, setStatusData] = useState<OrderPaymentStatusResult | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [statusData, setStatusData] = useState<OrderPaymentStatusResult | null>(
+    isFailedParam
+      ? {
+          orderId,
+          orderNumber: orderId,
+          paymentStatus: 'FAILED',
+          orderStatus: 'CANCELLED',
+          totalAmount: 0,
+          paidAmount: 0,
+          paymentReference: trxId || null,
+          paymentMethod: 'WAITMARK_PAY',
+          payments: [],
+        }
+      : null,
+  );
+  const [loading, setLoading] = useState(!isFailedParam);
   const [pollCount, setPollCount] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -58,17 +74,28 @@ function PaymentResultContent() {
         setErrorMessage(null);
       }
     } catch (err: any) {
-      if (isManual) {
-        toast.error(err?.message || 'Failed to refresh payment status');
+      if (isFailedParam) {
+        // If query param explicitly stated failed/cancelled, keep clean failed UI
+        setErrorMessage(null);
+      } else {
+        if (isManual) {
+          toast.error(err?.message || 'Failed to refresh payment status');
+        }
+        setErrorMessage(err?.message || 'Could not verify payment status.');
       }
-      setErrorMessage(err?.message || 'Could not verify payment status.');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (!orderId) {
+    if (!orderId || isFailedParam) {
+      if (orderId && isFailedParam) {
+        void cancelOrderApi(orderId, {
+          phone: phone || undefined,
+          trackingToken: trackingToken || undefined,
+        }).catch(() => {});
+      }
       setLoading(false);
       return;
     }
@@ -83,8 +110,8 @@ function PaymentResultContent() {
           return prev;
         }
 
-        // If already paid or confirmed, stop polling
-        if (statusData?.paymentStatus === 'PAID') {
+        // If already paid, failed, or confirmed, stop polling
+        if (statusData?.paymentStatus === 'PAID' || statusData?.paymentStatus === 'FAILED') {
           clearInterval(interval);
           return prev;
         }
@@ -95,7 +122,7 @@ function PaymentResultContent() {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [orderId, statusData?.paymentStatus]);
+  }, [orderId, statusData?.paymentStatus, isFailedParam]);
 
   const handleRetryPayment = async () => {
     const targetOrderId = statusData?.orderNumber || orderId;
@@ -139,7 +166,7 @@ function PaymentResultContent() {
   };
 
   const isPaid = statusData?.paymentStatus === 'PAID';
-  const isFailed = statusData?.paymentStatus === 'FAILED';
+  const isFailed = statusData?.paymentStatus === 'FAILED' || isFailedParam;
   const isPending = !isPaid && !isFailed;
 
   // Track verified purchase conversion once payment is confirmed by backend as PAID
@@ -262,7 +289,7 @@ function PaymentResultContent() {
                 Payment Unsuccessful
               </span>
               <p className="text-xs text-[#525b55] pt-1">
-                The payment attempt could not be completed or was cancelled at the gateway.
+                The payment attempt could not be completed or was cancelled at the gateway. The order has been cancelled and any reserved stock was restored to inventory.
               </p>
             </div>
 
@@ -274,36 +301,26 @@ function PaymentResultContent() {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#69726d]">Amount Due</span>
-                <span className="font-bold text-[#073a2d]">
-                  ৳{Number(statusData?.totalAmount || 0).toLocaleString()} BDT
+                <span className="text-[#69726d]">Status</span>
+                <span className="font-bold text-red-600">
+                  CANCELLED / RELEASED
                 </span>
               </div>
             </div>
 
             <div className="pt-2 flex flex-col gap-2">
-              <Button
-                onClick={handleRetryPayment}
-                disabled={isRetrying || isRestoring}
-                className="w-full bg-[#073a2d] hover:bg-[#0d4d3b] text-[#fbf9f2] font-sans text-xs uppercase tracking-wider font-bold py-3.5"
-              >
-                <CreditCard className="w-4 h-4 mr-2" />
-                {isRetrying ? 'Preparing Checkout...' : 'Retry Payment with Waitmark'}
-              </Button>
-              <Button
-                onClick={handleRestoreCart}
-                disabled={isRetrying || isRestoring}
-                variant="outline"
-                className="w-full border-[#c79a45] text-[#073a2d] hover:bg-[#fbf9f2] text-xs font-sans uppercase font-bold py-3.5"
-              >
-                <ShoppingBag className="w-4 h-4 mr-2 text-[#c79a45]" />
-                {isRestoring ? 'Restoring Items...' : 'Restore Items to Cart'}
-              </Button>
               <Link
                 href="/cart"
-                className="text-xs font-sans text-[#69726d] hover:underline py-2"
+                className="w-full inline-flex items-center justify-center gap-2 bg-[#073a2d] hover:bg-[#0d4d3b] text-[#fbf9f2] font-sans text-xs uppercase tracking-wider font-bold py-3.5"
               >
-                Return to Cart
+                <ShoppingBag className="w-4 h-4 mr-1 text-[#c79a45]" />
+                <span>Return to Cart / Reorder</span>
+              </Link>
+              <Link
+                href="/shop"
+                className="text-xs font-sans text-[#073a2d] hover:underline py-2"
+              >
+                Continue Browsing Collection
               </Link>
             </div>
           </div>

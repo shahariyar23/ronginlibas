@@ -7,8 +7,8 @@ export declare class AdminAuditController {
         message: string;
         data: {
             items: {
-                id: string;
                 createdAt: Date;
+                id: string;
                 summary: string;
                 module: string;
                 action: string;

@@ -17,8 +17,8 @@ export declare class AdminReviewsController {
         message: string;
         data: {
             status: import("@prisma/client").$Enums.ReviewStatus;
-            id: string;
             createdAt: Date;
+            id: string;
             updatedAt: Date;
             customerId: string;
             images: string[];

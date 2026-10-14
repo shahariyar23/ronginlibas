@@ -23,8 +23,8 @@ export declare class AuditService {
     private readonly prisma;
     constructor(prisma: PrismaService);
     record(entry: AdminAuditEntry): Promise<{
-        id: string;
         createdAt: Date;
+        id: string;
         summary: string;
         module: string;
         action: string;
@@ -40,8 +40,8 @@ export declare class AuditService {
     }>;
     findAll(query: AuditQueryDto): Promise<{
         items: {
-            id: string;
             createdAt: Date;
+            id: string;
             summary: string;
             module: string;
             action: string;

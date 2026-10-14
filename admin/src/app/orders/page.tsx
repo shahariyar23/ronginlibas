@@ -29,6 +29,8 @@ import {
   Plus,
   ExternalLink,
   RefreshCw,
+  Copy,
+  Check,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -90,12 +92,67 @@ function OrdersPageContent() {
   const [activeTab, setActiveTab] = useState<string>('ALL');
   const [search, setSearch] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('ALL');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('ALL');
   const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState<AdminOrder | null>(null);
   const [receiptMode, setReceiptMode] = useState<'PARCEL_SLIP' | 'DOSSIER'>('PARCEL_SLIP');
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [targetStatus, setTargetStatus] = useState<string | null>(null);
   const [showFlowGuide, setShowFlowGuide] = useState(false);
+  const [isSyncingPayment, setIsSyncingPayment] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const handleCopy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    toast.success('Copied to clipboard');
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const handleSyncPayment = async (orderId: string) => {
+    setIsSyncingPayment(true);
+    try {
+      const res = await adminApi.orders.getPaymentStatus(orderId);
+      if (res && res.data) {
+        toast.success(`Gateway Status: ${res.data.paymentStatus || 'CHECKED'}`);
+        await refreshData();
+        const updated = await adminApi.orders.getById(orderId);
+        if (updated && updated.data) {
+          setSelectedOrderForInvoice((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  paymentStatus: updated.data.paymentStatus,
+                  paidAmount:
+                    updated.data.paidAmount !== null && updated.data.paidAmount !== undefined
+                      ? Number(updated.data.paidAmount)
+                      : prev.paidAmount,
+                  paymentReference: updated.data.paymentReference || prev.paymentReference,
+                  payments: Array.isArray(updated.data.payments)
+                    ? updated.data.payments.map((p: any) => ({
+                        id: p.id,
+                        provider: p.provider,
+                        providerOrderId: p.providerOrderId,
+                        providerTransactionId: p.providerTransactionId,
+                        amount: Number(p.amount) || 0,
+                        currency: p.currency || 'BDT',
+                        status: p.status,
+                        failureReason: p.failureReason,
+                        paidAt: p.paidAt,
+                        createdAt: p.createdAt,
+                      }))
+                    : prev.payments,
+                }
+              : null,
+          );
+        }
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to check payment status with gateway');
+    } finally {
+      setIsSyncingPayment(false);
+    }
+  };
 
   // Pathao Courier Sandbox States
   const [isBookingPathao, setIsBookingPathao] = useState(false);
@@ -182,9 +239,13 @@ function OrdersPageContent() {
     const matchesSearch =
       order.id.toLowerCase().includes(search.toLowerCase()) ||
       order.customerName.toLowerCase().includes(search.toLowerCase()) ||
-      order.phone.includes(search);
+      order.phone.includes(search) ||
+      Boolean(order.paymentReference && order.paymentReference.toLowerCase().includes(search.toLowerCase()));
     const matchesPayment = paymentFilter === 'ALL' || order.paymentMethod === paymentFilter;
-    return matchesFocusedOrder && matchesTab && matchesSearch && matchesPayment;
+    const matchesPaymentStatus =
+      paymentStatusFilter === 'ALL' ||
+      (order.paymentStatus || 'PENDING') === paymentStatusFilter;
+    return matchesFocusedOrder && matchesTab && matchesSearch && matchesPayment && matchesPaymentStatus;
   });
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -192,7 +253,7 @@ function OrdersPageContent() {
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, search, paymentFilter]);
+  }, [activeTab, search, paymentFilter, paymentStatusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
   const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
@@ -407,6 +468,21 @@ function OrdersPageContent() {
             </select>
           </div>
 
+          {/* Payment Status filter */}
+          <div className="flex items-center gap-1.5 bg-[#fbf9f2] border border-[#deddd3] px-2.5 py-1 text-xs">
+            <ShieldCheck className="w-3.5 h-3.5 text-[#073a2d]" />
+            <select
+              value={paymentStatusFilter}
+              onChange={(e) => setPaymentStatusFilter(e.target.value)}
+              className="bg-transparent text-xs py-1 text-[#404945] focus:outline-hidden cursor-pointer"
+            >
+              <option value="ALL">All Payment Statuses</option>
+              <option value="PAID">PAID (Settled)</option>
+              <option value="PENDING">UNPAID (Pending)</option>
+              <option value="FAILED">FAILED</option>
+            </select>
+          </div>
+
           <button
             onClick={() => window.print()}
             className="p-2 border border-[#deddd3] bg-[#fbf9f2] hover:bg-[#e4e2dc] text-[#404945]"
@@ -500,15 +576,43 @@ function OrdersPageContent() {
                       ৳{order.amount.toLocaleString()}
                     </td>
                     <td className="py-3.5 px-4">
-                      <span
-                        className={`px-2 py-0.5 text-[10px] font-mono font-bold border ${
-                          order.paymentMethod === 'WAITMARK_PAY'
-                            ? 'bg-purple-50 text-purple-800 border-purple-200'
-                            : 'bg-[#f0eee7] text-[#404945] border-[#deddd3]'
-                        }`}
-                      >
-                        {order.paymentMethod === 'WAITMARK_PAY' ? 'WAITMARK PAY' : order.paymentMethod}
-                      </span>
+                      <div className="flex flex-col gap-1 items-start">
+                        <span
+                          className={`px-2 py-0.5 text-[10px] font-mono font-bold border ${
+                            order.paymentMethod === 'WAITMARK_PAY'
+                              ? 'bg-purple-50 text-purple-800 border-purple-200'
+                              : 'bg-[#f0eee7] text-[#404945] border-[#deddd3]'
+                          }`}
+                        >
+                          {order.paymentMethod === 'WAITMARK_PAY' ? 'WAITMARK PAY' : order.paymentMethod}
+                        </span>
+                        <div>
+                          {order.paymentStatus === 'PAID' ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                              PAID
+                            </span>
+                          ) : order.paymentStatus === 'FAILED' ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200">
+                              <AlertCircle className="w-2.5 h-2.5 text-rose-600" />
+                              FAILED
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200">
+                              <Clock className="w-2.5 h-2.5 text-amber-600" />
+                              UNPAID
+                            </span>
+                          )}
+                        </div>
+                        {order.paymentReference && (
+                          <span
+                            className="font-mono text-[9px] text-[#555e5a] truncate max-w-[130px] bg-[#f0eee7] px-1 py-0.2"
+                            title={`Transaction: ${order.paymentReference}`}
+                          >
+                            Trx: {order.paymentReference}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3.5 px-4">
                       <span
@@ -961,6 +1065,239 @@ function OrdersPageContent() {
                       )}
                     </div>
                   </div>
+                </div>
+
+                {/* Payment & Gateway Settlement Dossier */}
+                <div className="bg-[#fbf9f2] border border-[#deddd3] p-4 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#deddd3]/60 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-[#073a2d]" />
+                      <span className="text-xs uppercase font-bold tracking-wider text-[#1b1c18]">
+                        Payment & Gateway Settlement Dossier
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleSyncPayment(selectedOrderForInvoice.orderNumber || selectedOrderForInvoice.id)}
+                        disabled={isSyncingPayment}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#deddd3] hover:border-[#073a2d] text-[10px] font-bold uppercase tracking-wider text-[#073a2d] transition-colors disabled:opacity-50 cursor-pointer"
+                        title="Query Waitmark Gateway live status for this order"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${isSyncingPayment ? 'animate-spin' : ''}`} />
+                        <span>{isSyncingPayment ? 'Syncing...' : 'Check Gateway Status'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Payment Settlement Status Banner */}
+                  {selectedOrderForInvoice.paymentStatus === 'PAID' ? (
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xs flex items-start gap-3">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                      <div className="space-y-0.5 flex-1">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="font-bold text-xs uppercase tracking-wider text-emerald-800">
+                            Payment Settled & Verified (PAID)
+                          </span>
+                          <span className="font-mono text-xs font-bold bg-white px-2 py-0.5 border border-emerald-300 text-emerald-700">
+                            ৳{(selectedOrderForInvoice.paidAmount || selectedOrderForInvoice.amount).toLocaleString()} BDT
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-emerald-700">
+                          Customer successfully completed payment via {selectedOrderForInvoice.paymentMethod === 'WAITMARK_PAY' ? 'Waitmark Pay Gateway' : selectedOrderForInvoice.paymentMethod}.
+                        </p>
+                      </div>
+                    </div>
+                  ) : selectedOrderForInvoice.paymentStatus === 'FAILED' ? (
+                    <div className="p-3 bg-rose-50 border border-rose-200 text-rose-900 rounded-xs flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+                      <div className="space-y-0.5 flex-1">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="font-bold text-xs uppercase tracking-wider text-rose-800">
+                            Payment Failed or Declined
+                          </span>
+                          <span className="font-mono text-xs font-bold bg-white px-2 py-0.5 border border-rose-300 text-rose-700">
+                            Due: ৳{selectedOrderForInvoice.amount.toLocaleString()} BDT
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-rose-700">
+                          The gateway reported that this payment was not completed or failed. The customer may retry or request another payment method.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xs flex items-start gap-3">
+                      <Clock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div className="space-y-0.5 flex-1">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="font-bold text-xs uppercase tracking-wider text-amber-800">
+                            Awaiting Customer Payment (UNPAID)
+                          </span>
+                          <span className="font-mono text-xs font-bold bg-white px-2 py-0.5 border border-amber-300 text-amber-700">
+                            Due: ৳{selectedOrderForInvoice.amount.toLocaleString()} BDT
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-amber-700">
+                          {selectedOrderForInvoice.paymentMethod === 'WAITMARK_PAY'
+                            ? 'Customer selected Waitmark Pay. No completed payment has been confirmed by the gateway yet.'
+                            : 'Order placed with Cash on Delivery (COD). Payment to be collected upon courier delivery.'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 4-Metric Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+                    <div className="bg-white p-2.5 border border-[#deddd3]">
+                      <span className="text-[9px] uppercase font-bold text-[#717975] block">Payment Channel</span>
+                      <span className="font-mono text-xs font-bold text-[#073a2d]">
+                        {selectedOrderForInvoice.paymentMethod === 'WAITMARK_PAY' ? 'Waitmark Pay' : selectedOrderForInvoice.paymentMethod}
+                      </span>
+                    </div>
+
+                    <div className="bg-white p-2.5 border border-[#deddd3]">
+                      <span className="text-[9px] uppercase font-bold text-[#717975] block">Payment Status</span>
+                      <span
+                        className={`text-xs font-bold uppercase ${
+                          selectedOrderForInvoice.paymentStatus === 'PAID'
+                            ? 'text-emerald-700'
+                            : selectedOrderForInvoice.paymentStatus === 'FAILED'
+                            ? 'text-rose-700'
+                            : 'text-amber-700'
+                        }`}
+                      >
+                        {selectedOrderForInvoice.paymentStatus || 'PENDING'}
+                      </span>
+                    </div>
+
+                    <div className="bg-white p-2.5 border border-[#deddd3]">
+                      <span className="text-[9px] uppercase font-bold text-[#717975] block">Total Payable</span>
+                      <span className="font-serif text-xs font-bold text-[#1b1c18]">
+                        ৳{selectedOrderForInvoice.amount.toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="bg-white p-2.5 border border-[#deddd3]">
+                      <span className="text-[9px] uppercase font-bold text-[#717975] block">Verified Paid</span>
+                      <span className="font-serif text-xs font-bold text-emerald-800">
+                        ৳{(selectedOrderForInvoice.paidAmount || (selectedOrderForInvoice.paymentStatus === 'PAID' ? selectedOrderForInvoice.amount : 0)).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Gateway Identifiers: TrxID & Attempt ID */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    <div className="bg-white p-2.5 border border-[#deddd3] flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <span className="text-[9px] uppercase font-bold text-[#717975] block">
+                          Verified TrxID (Transaction ID)
+                        </span>
+                        <span className="font-mono text-xs font-bold text-[#073a2d] truncate block">
+                          {selectedOrderForInvoice.paymentReference ||
+                            selectedOrderForInvoice.payments?.find((p) => p.providerTransactionId)?.providerTransactionId ||
+                            '— (Not captured)'}
+                        </span>
+                      </div>
+                      {(selectedOrderForInvoice.paymentReference ||
+                        selectedOrderForInvoice.payments?.find((p) => p.providerTransactionId)?.providerTransactionId) && (
+                        <button
+                          onClick={() =>
+                            handleCopy(
+                              selectedOrderForInvoice.paymentReference ||
+                                selectedOrderForInvoice.payments?.find((p) => p.providerTransactionId)?.providerTransactionId ||
+                                '',
+                              'trxId',
+                            )
+                          }
+                          className="p-1 hover:bg-[#f0eee7] text-[#717975] hover:text-[#073a2d] cursor-pointer"
+                          title="Copy Transaction ID"
+                        >
+                          {copiedKey === 'trxId' ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="bg-white p-2.5 border border-[#deddd3] flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <span className="text-[9px] uppercase font-bold text-[#717975] block">
+                          Waitmark Attempt Reference
+                        </span>
+                        <span className="font-mono text-xs font-bold text-[#404945] truncate block">
+                          {selectedOrderForInvoice.payments?.[0]?.providerOrderId ||
+                            `WMPAY-${(selectedOrderForInvoice.orderNumber || selectedOrderForInvoice.id).replace(/[^A-Za-z0-9]/g, '')}`}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() =>
+                          handleCopy(
+                            selectedOrderForInvoice.payments?.[0]?.providerOrderId ||
+                              `WMPAY-${(selectedOrderForInvoice.orderNumber || selectedOrderForInvoice.id).replace(/[^A-Za-z0-9]/g, '')}`,
+                            'attemptId',
+                          )
+                        }
+                        className="p-1 hover:bg-[#f0eee7] text-[#717975] hover:text-[#073a2d] cursor-pointer"
+                        title="Copy Attempt Reference"
+                      >
+                        {copiedKey === 'attemptId' ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Payment Attempts History (Multi-Attempt Audit Log) */}
+                  {selectedOrderForInvoice.payments && selectedOrderForInvoice.payments.length > 0 && (
+                    <div className="pt-2 border-t border-[#deddd3]/60">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#717975] block mb-1.5">
+                        Payment Gateway Attempts History ({selectedOrderForInvoice.payments.length})
+                      </span>
+                      <div className="bg-white border border-[#deddd3] divide-y divide-[#f0eee7] max-h-40 overflow-y-auto">
+                        {selectedOrderForInvoice.payments.map((pmt, pIdx) => (
+                          <div key={pmt.id || pIdx} className="p-2 flex items-center justify-between text-xs gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-[11px] font-semibold text-[#1b1c18] truncate">
+                                  {pmt.providerOrderId}
+                                </span>
+                                <span
+                                  className={`px-1.5 py-0.2 text-[9px] font-bold uppercase rounded-xs border ${
+                                    pmt.status === 'PAID'
+                                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                      : pmt.status === 'FAILED'
+                                      ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                                  }`}
+                                >
+                                  {pmt.status}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-[#717975] flex items-center gap-2 mt-0.5">
+                                <span>{new Date(pmt.createdAt).toLocaleString()}</span>
+                                {pmt.providerTransactionId && (
+                                  <span className="font-mono text-[#073a2d] font-bold">
+                                    Trx: {pmt.providerTransactionId}
+                                  </span>
+                                )}
+                                {pmt.failureReason && (
+                                  <span className="text-rose-600 italic truncate max-w-[200px]">
+                                    ({pmt.failureReason})
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-right flex-shrink-0 font-serif font-bold text-xs text-[#1b1c18]">
+                              ৳{pmt.amount.toLocaleString()}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Consignment Items Table with Real Photos */}

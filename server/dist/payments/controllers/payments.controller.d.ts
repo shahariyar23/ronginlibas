@@ -33,8 +33,12 @@ export declare class PaymentsController {
         message: string;
         idempotent: boolean | undefined;
     }>;
-    waitmarkRedirect(orderId?: string, trxId?: string, res?: Response): Promise<void | {
+    waitmarkRedirect(orderId?: string, trxId?: string, status?: string, res?: Response): Promise<void | {
         redirectUrl: string;
+    }>;
+    cancelWaitmarkPayment(orderId: string, _requester?: any): Promise<{
+        success: boolean;
+        message: string;
     }>;
     getPaymentStatus(orderId: string, requester?: any, phone?: string, trackingToken?: string): Promise<{
         success: boolean;

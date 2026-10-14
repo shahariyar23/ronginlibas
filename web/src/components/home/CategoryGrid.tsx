@@ -1,9 +1,50 @@
 import React from 'react';
 import Link from 'next/link';
-import { CATEGORIES } from '@/data/categories';
+import { CATEGORIES, CategoryItem } from '@/data/categories';
 import { ArrowRight } from 'lucide-react';
+import type { StorefrontCategory } from '@/lib/api';
 
-export const CategoryGrid: React.FC = () => {
+interface CategoryGridProps {
+  categories?: StorefrontCategory[];
+}
+
+export const CategoryGrid: React.FC<CategoryGridProps> = ({ categories }) => {
+  // If backend categories exist, build display items. Otherwise fall back to static CATEGORIES.
+  const displayItems: CategoryItem[] = React.useMemo(() => {
+    if (!categories || categories.length === 0) {
+      return CATEGORIES;
+    }
+
+    // Filter active categories and sort by sortOrder ascending
+    const active = categories
+      .filter((c) => c.isActive !== false)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+    if (active.length === 0) {
+      return CATEGORIES;
+    }
+
+    return active.map((cat, idx) => {
+      // Find static fallback match by slug or id
+      const staticMatch = CATEGORIES.find(
+        (c) => c.id.toLowerCase() === cat.slug.toLowerCase() || c.name.toLowerCase() === cat.name.toLowerCase()
+      );
+
+      return {
+        id: cat.id || cat.slug,
+        name: cat.name,
+        sub: staticMatch?.sub || 'Curated Collection',
+        desc: cat.description || staticMatch?.desc || 'Handcrafted luxury menswear tailored with precision.',
+        tag: idx === 0 ? (staticMatch?.tag || 'Signature') : staticMatch?.tag,
+        image:
+          cat.image && cat.image.trim() !== ''
+            ? cat.image
+            : staticMatch?.image || CATEGORIES[idx % CATEGORIES.length].image,
+        path: `/shop?category=${encodeURIComponent(cat.slug)}`,
+      };
+    });
+  }, [categories]);
+
   return (
     <section id="categories" className="w-full py-10 sm:py-24 bg-[#fbf9f2] scroll-mt-20">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
@@ -29,9 +70,9 @@ export const CategoryGrid: React.FC = () => {
           </Link>
         </div>
 
-        {/* 6 Grid Cards */}
+        {/* Dynamic Category Grid Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-8">
-          {CATEGORIES.map((cat) => (
+          {displayItems.map((cat) => (
             <div
               key={cat.id}
               className="group relative bg-[#f5f4ed] border border-[#deddd3] overflow-hidden transition-all duration-500 hover:shadow-xl flex flex-col"
@@ -41,6 +82,7 @@ export const CategoryGrid: React.FC = () => {
                   src={cat.image}
                   alt={cat.name}
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  loading="lazy"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#00231a]/90 via-black/30 to-transparent opacity-85 group-hover:opacity-95 transition-opacity" />
 
@@ -76,3 +118,4 @@ export const CategoryGrid: React.FC = () => {
     </section>
   );
 };
+

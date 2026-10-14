@@ -10,10 +10,11 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CategoriesService } from '../services/categories.service.js';
 import { CreateCategoryDto } from '../dto/create-category.dto.js';
+import { UpdateCategoryDto } from '../dto/update-category.dto.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
@@ -52,6 +53,35 @@ let AdminCategoriesController = class AdminCategoriesController {
             data,
         };
     }
+    async update(id, dto, actor) {
+        const data = await this.categoriesService.update(id, dto);
+        await this.auditService.record({
+            actor,
+            module: 'categories',
+            action: 'CATEGORY_UPDATED',
+            entityType: 'category',
+            entityId: data.id,
+            entityLabel: data.name,
+            summary: `Updated category ${data.name}`,
+            after: data,
+        });
+        return {
+            message: 'Category updated successfully',
+            data,
+        };
+    }
+    async delete(id, actor) {
+        const result = await this.categoriesService.remove(id);
+        await this.auditService.record({
+            actor,
+            module: 'categories',
+            action: 'CATEGORY_DELETED',
+            entityType: 'category',
+            entityId: id,
+            summary: `Deleted category ${id}`,
+        });
+        return result;
+    }
 };
 __decorate([
     Get(),
@@ -69,6 +99,25 @@ __decorate([
     __metadata("design:paramtypes", [CreateCategoryDto, Object]),
     __metadata("design:returntype", Promise)
 ], AdminCategoriesController.prototype, "create", null);
+__decorate([
+    Put(':id'),
+    ApiOperation({ summary: 'Update an existing category' }),
+    __param(0, Param('id')),
+    __param(1, Body()),
+    __param(2, CurrentUser()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, UpdateCategoryDto, Object]),
+    __metadata("design:returntype", Promise)
+], AdminCategoriesController.prototype, "update", null);
+__decorate([
+    Delete(':id'),
+    ApiOperation({ summary: 'Delete a category' }),
+    __param(0, Param('id')),
+    __param(1, CurrentUser()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], AdminCategoriesController.prototype, "delete", null);
 AdminCategoriesController = __decorate([
     ApiTags('Admin - Categories'),
     ApiBearerAuth(),

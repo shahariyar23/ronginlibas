@@ -43,8 +43,8 @@ export declare class ProductReviewsController {
             reason: string;
             existingReview: {
                 status: import("@prisma/client").$Enums.ReviewStatus;
-                id: string;
                 createdAt: Date;
+                id: string;
                 rating: number;
             };
             orderNumber?: undefined;
@@ -64,8 +64,8 @@ export declare class ProductReviewsController {
         message: string;
         data: {
             status: import("@prisma/client").$Enums.ReviewStatus;
-            id: string;
             createdAt: Date;
+            id: string;
             images: string[];
             productId: string;
             rating: number;

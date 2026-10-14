@@ -11,8 +11,8 @@ export declare class ReviewsService {
     }>;
     create(dto: CreateReviewDto, customerId: string): Promise<{
         status: import("@prisma/client").$Enums.ReviewStatus;
-        id: string;
         createdAt: Date;
+        id: string;
         images: string[];
         productId: string;
         rating: number;
@@ -52,8 +52,8 @@ export declare class ReviewsService {
         reason: string;
         existingReview: {
             status: import("@prisma/client").$Enums.ReviewStatus;
-            id: string;
             createdAt: Date;
+            id: string;
             rating: number;
         };
         orderNumber?: undefined;
@@ -98,8 +98,8 @@ export declare class ReviewsService {
     }[]>;
     createForProduct(productId: string, dto: Pick<CreateReviewDto, 'rating' | 'comment' | 'images'>, customerId: string): Promise<{
         status: import("@prisma/client").$Enums.ReviewStatus;
-        id: string;
         createdAt: Date;
+        id: string;
         images: string[];
         productId: string;
         rating: number;
@@ -118,16 +118,16 @@ export declare class ReviewsService {
         deleted: boolean;
     }>;
     vote(reviewId: string, customerId: string, helpful: boolean): Promise<{
-        id: string;
         createdAt: Date;
+        id: string;
         customerId: string;
         reviewId: string;
         helpful: boolean;
     }>;
     updateStatus(id: string, status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'HIDDEN'): Promise<{
         status: import("@prisma/client").$Enums.ReviewStatus;
-        id: string;
         createdAt: Date;
+        id: string;
         updatedAt: Date;
         customerId: string;
         images: string[];

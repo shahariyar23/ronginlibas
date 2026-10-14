@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Metadata } from 'next';
-import { getProducts } from '@/lib/api';
+import { getProducts, getStorefrontCategories } from '@/lib/api';
 import { HomeContent } from './HomeContent';
 import {
   SITE_CONFIG,
@@ -36,7 +36,10 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const products = await getProducts({ limit: 100 }).catch(() => []);
+  const [products, categories] = await Promise.all([
+    getProducts({ limit: 100 }).catch(() => []),
+    getStorefrontCategories().catch(() => []),
+  ]);
   const organizationJsonLd = generateOrganizationJsonLd();
   const websiteJsonLd = generateWebSiteJsonLd();
 
@@ -53,7 +56,7 @@ export default async function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
       />
-      <HomeContent initialProducts={products} />
+      <HomeContent initialProducts={products} categories={categories} />
     </>
   );
 }

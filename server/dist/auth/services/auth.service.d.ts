@@ -57,6 +57,30 @@ export declare class AuthService {
             type: "customer" | "admin";
         };
     }>;
+    loginWithGoogle(credential: string): Promise<{
+        isNewCustomer: boolean;
+        isProfileComplete: boolean;
+        accessToken: string;
+        refreshToken: string;
+        tokenType: string;
+        expiresIn: string;
+        user: {
+            id: string;
+            email: string | undefined;
+            role: string;
+            type: "customer" | "admin";
+        };
+    }>;
+    linkGoogleAccount(customerId: string, credential: string): Promise<{
+        createdAt: Date;
+        id: string;
+        provider: import("@prisma/client").$Enums.AuthProvider;
+        providerEmail: string | null;
+    } | {
+        linked: boolean;
+        provider: "GOOGLE";
+        message: string;
+    }>;
     linkSocialAccount(customerId: string, dto: SocialLoginDto): Promise<{
         linked: boolean;
         provider: import("@prisma/client").$Enums.AuthProvider;
@@ -68,8 +92,8 @@ export declare class AuthService {
         message: string;
     }>;
     getCustomerIdentities(customerId: string): Promise<{
-        id: string;
         createdAt: Date;
+        id: string;
         provider: import("@prisma/client").$Enums.AuthProvider;
         providerEmail: string | null;
     }[]>;

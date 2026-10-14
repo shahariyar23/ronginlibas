@@ -23,8 +23,8 @@ export declare class CartController {
                     slug: string;
                     image: {
                         url: string;
-                        altText: string | null;
                         isPrimary: boolean;
+                        altText: string | null;
                     };
                 };
                 variant: {
@@ -65,8 +65,8 @@ export declare class CartController {
                     slug: string;
                     image: {
                         url: string;
-                        altText: string | null;
                         isPrimary: boolean;
+                        altText: string | null;
                     };
                 };
                 variant: {
@@ -107,8 +107,8 @@ export declare class CartController {
                     slug: string;
                     image: {
                         url: string;
-                        altText: string | null;
                         isPrimary: boolean;
+                        altText: string | null;
                     };
                 };
                 variant: {
@@ -149,8 +149,8 @@ export declare class CartController {
                     slug: string;
                     image: {
                         url: string;
-                        altText: string | null;
                         isPrimary: boolean;
+                        altText: string | null;
                     };
                 };
                 variant: {
@@ -191,8 +191,8 @@ export declare class CartController {
                     slug: string;
                     image: {
                         url: string;
-                        altText: string | null;
                         isPrimary: boolean;
+                        altText: string | null;
                     };
                 };
                 variant: {
@@ -233,8 +233,8 @@ export declare class CartController {
                     slug: string;
                     image: {
                         url: string;
-                        altText: string | null;
                         isPrimary: boolean;
+                        altText: string | null;
                     };
                 };
                 variant: {
@@ -258,16 +258,16 @@ export declare class CartController {
     saveContact(customerId: string | undefined, dto: CartContactDto): Promise<{
         message: string;
         data: {
+            createdAt: Date;
             id: string;
+            updatedAt: Date;
             customerId: string | null;
-            guestId: string | null;
+            guestName: string | null;
             guestEmail: string | null;
             guestPhone: string | null;
-            guestName: string | null;
+            guestId: string | null;
             lastReminderSentAt: Date | null;
             reminderCount: number;
-            createdAt: Date;
-            updatedAt: Date;
         } | null;
     }>;
     restoreOrder(customerId: string | undefined, dto: RestoreCartFromOrderDto): Promise<{
@@ -290,8 +290,8 @@ export declare class CartController {
                     slug: string;
                     image: {
                         url: string;
-                        altText: string | null;
                         isPrimary: boolean;
+                        altText: string | null;
                     };
                 };
                 variant: {
@@ -336,8 +336,8 @@ export declare class CartMergeController {
                     slug: string;
                     image: {
                         url: string;
-                        altText: string | null;
                         isPrimary: boolean;
+                        altText: string | null;
                     };
                 };
                 variant: {

@@ -55,10 +55,30 @@ let PaymentsController = class PaymentsController {
             idempotent: result.idempotent,
         };
     }
-    async waitmarkRedirect(orderId, trxId, res) {
+    async waitmarkRedirect(orderId, trxId, status, res) {
         const frontendUrl = this.configService.get('WEB_FRONTEND_URL') || 'http://localhost:3000';
-        const redirectUrl = `${frontendUrl.replace(/\/+$/, '')}/payment/result?orderId=${encodeURIComponent(orderId || '')}${trxId ? `&trx_id=${encodeURIComponent(trxId)}` : ''}`;
+        const cleanStatus = status?.trim().toLowerCase();
+        const isExplicitFailure = cleanStatus &&
+            ['failed', 'cancelled', 'cancel', 'declined', 'rejected', 'expired', 'error'].includes(cleanStatus);
+        if (orderId && isExplicitFailure) {
+            try {
+                await this.waitmarkService.handleFailedPayment(orderId, `Gateway browser redirect reported status: ${status}`);
+            }
+            catch (err) {
+            }
+        }
+        const redirectUrl = `${frontendUrl.replace(/\/+$/, '')}/payment/result?orderId=${encodeURIComponent(orderId || '')}${trxId ? `&trx_id=${encodeURIComponent(trxId)}` : ''}${cleanStatus ? `&status=${encodeURIComponent(cleanStatus)}` : ''}`;
         return res ? res.redirect(redirectUrl) : { redirectUrl };
+    }
+    async cancelWaitmarkPayment(orderId, _requester) {
+        if (!orderId) {
+            return { success: false, message: 'orderId is required' };
+        }
+        const result = await this.waitmarkService.handleFailedPayment(orderId, 'Payment cancelled by customer at checkout / result page');
+        return {
+            success: true,
+            message: result.message,
+        };
     }
     async getPaymentStatus(orderId, requester, phone, trackingToken) {
         const data = await this.waitmarkService.getPaymentStatus(orderId, requester, phone, trackingToken);
@@ -120,11 +140,23 @@ __decorate([
     ApiOperation({ summary: 'Handle potential browser redirect from Waitmark Pay' }),
     __param(0, Query('order_id')),
     __param(1, Query('trx_id')),
-    __param(2, Res()),
+    __param(2, Query('status')),
+    __param(3, Res()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:paramtypes", [String, String, String, Object]),
     __metadata("design:returntype", Promise)
 ], PaymentsController.prototype, "waitmarkRedirect", null);
+__decorate([
+    Post('waitmark/cancel'),
+    UseGuards(OptionalCustomerAuthGuard),
+    ApiBearerAuth(),
+    ApiOperation({ summary: 'Cancel/Delete an unpaid Waitmark Pay order and restore inventory stock' }),
+    __param(0, Body('orderId')),
+    __param(1, CurrentUser()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "cancelWaitmarkPayment", null);
 __decorate([
     Get('status/:orderId'),
     UseGuards(OptionalCustomerAuthGuard),

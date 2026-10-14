@@ -6,6 +6,7 @@ import { LoginDto } from '../dto/login.dto.js';
 import { RegisterCustomerDto } from '../dto/register.dto.js';
 import { RefreshTokenDto } from '../dto/refresh-token.dto.js';
 import { SocialLoginDto } from '../dto/social-login.dto.js';
+import { GoogleLoginDto } from '../dto/google-login.dto.js';
 import { ChangePasswordDto, ForgotPasswordDto, ResetPasswordDto } from '../dto/password-reset.dto.js';
 export declare class AuthController {
     private readonly authService;
@@ -127,6 +128,35 @@ export declare class AuthController {
         message: string;
         data: unknown;
     }>;
+    googleLogin(dto: GoogleLoginDto, response: Response): Promise<{
+        message: string;
+        data: {
+            isNewCustomer: boolean;
+            isProfileComplete: boolean;
+            accessToken: string;
+            tokenType: string;
+            expiresIn: string;
+            user: {
+                id: string;
+                email: string | undefined;
+                role: string;
+                type: "customer" | "admin";
+            };
+        };
+    }>;
+    linkGoogle(customerId: string, dto: GoogleLoginDto): Promise<{
+        message: string;
+        data: {
+            createdAt: Date;
+            id: string;
+            provider: import("@prisma/client").$Enums.AuthProvider;
+            providerEmail: string | null;
+        } | {
+            linked: boolean;
+            provider: "GOOGLE";
+            message: string;
+        };
+    }>;
     socialLogin(dto: SocialLoginDto, response: Response): Promise<{
         message: string;
         data: {
@@ -162,8 +192,8 @@ export declare class AuthController {
     getIdentities(customerId: string): Promise<{
         message: string;
         data: {
-            id: string;
             createdAt: Date;
+            id: string;
             provider: import("@prisma/client").$Enums.AuthProvider;
             providerEmail: string | null;
         }[];

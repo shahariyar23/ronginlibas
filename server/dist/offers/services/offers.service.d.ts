@@ -37,6 +37,14 @@ export interface StorefrontOfferProduct {
     isBestSeller: boolean;
     fabric?: string;
     fabricOrigin?: string;
+    variants?: Array<{
+        id: string;
+        size: string;
+        color?: string;
+        stock: number;
+        price?: number;
+        isActive: boolean;
+    }>;
 }
 export declare class OffersService {
     private readonly prisma;
@@ -156,9 +164,9 @@ export declare class OffersService {
         }[];
         description: string | null;
         name: string;
+        createdAt: Date;
         id: string;
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
         slug: string;
         couponCode: string | null;
@@ -186,9 +194,9 @@ export declare class OffersService {
     } & {
         description: string | null;
         name: string;
+        createdAt: Date;
         id: string;
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
         slug: string;
         couponCode: string | null;
@@ -219,9 +227,9 @@ export declare class OffersService {
     } & {
         description: string | null;
         name: string;
+        createdAt: Date;
         id: string;
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
         slug: string;
         couponCode: string | null;

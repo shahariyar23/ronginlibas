@@ -20,6 +20,7 @@ import { LoginDto } from '../dto/login.dto.js';
 import { RegisterCustomerDto } from '../dto/register.dto.js';
 import { RefreshTokenDto } from '../dto/refresh-token.dto.js';
 import { SocialLoginDto } from '../dto/social-login.dto.js';
+import { GoogleLoginDto } from '../dto/google-login.dto.js';
 import { ChangePasswordDto, ForgotPasswordDto, ResetPasswordDto, } from '../dto/password-reset.dto.js';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
@@ -94,6 +95,16 @@ let AuthController = class AuthController {
     }
     async getMe(user) {
         return { message: 'Session retrieved successfully', data: user };
+    }
+    async googleLogin(dto, response) {
+        const tokens = await this.authService.loginWithGoogle(dto.credential);
+        this.setRefreshCookie(response, tokens.refreshToken);
+        const { refreshToken: _refreshToken, ...data } = tokens;
+        return { message: 'Customer authenticated successfully via Google', data };
+    }
+    async linkGoogle(customerId, dto) {
+        const identity = await this.authService.linkGoogleAccount(customerId, dto.credential);
+        return { message: 'Google account linked successfully', data: identity };
     }
     async socialLogin(dto, response) {
         const tokens = await this.authService.socialLogin(dto);
@@ -257,6 +268,28 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "getMe", null);
+__decorate([
+    Public(),
+    Post('google'),
+    Throttle({ default: { limit: 10, ttl: 60_000 } }),
+    ApiOperation({ summary: 'Authenticate customer using direct Google Identity Services (GIS) ID token' }),
+    __param(0, Body()),
+    __param(1, Res({ passthrough: true })),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [GoogleLoginDto, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "googleLogin", null);
+__decorate([
+    Post('google/link'),
+    UseGuards(CustomerAuthGuard),
+    ApiBearerAuth(),
+    ApiOperation({ summary: 'Link Google account using Google Identity Services (GIS) ID token' }),
+    __param(0, CurrentUser('id')),
+    __param(1, Body()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, GoogleLoginDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "linkGoogle", null);
 __decorate([
     Public(),
     Post('social'),

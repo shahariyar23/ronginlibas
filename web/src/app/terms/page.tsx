@@ -180,24 +180,56 @@ export default function TermsOfServicePage() {
           </section>
 
           {/* 7. Returns, Exchanges & Cancellations */}
-          <section className="bg-white p-6 sm:p-8 border border-[#deddd3] space-y-3">
+          <section className="bg-white p-6 sm:p-8 border border-[#deddd3] space-y-4">
             <h2 className="font-serif text-xl sm:text-2xl text-[#073a2d] font-normal border-b border-[#f0eee7] pb-3">
-              7. Returns, Exchanges &amp; Order Cancellation
+              7. Returns, Exchanges &amp; Order Cancellation Policy
             </h2>
             <p>
-              We want every patron to be thoroughly pleased with their heirloom garment. We offer a <strong>1-Day Exchange Policy</strong> from the date of recorded courier delivery:
+              We want every patron to be thoroughly pleased with their heirloom garment. We provide clear guidelines regarding our <strong>6-Hour Limited Cancellation Window</strong> and <strong>1-Day Exchange Policy</strong>:
             </p>
-            <ul className="list-disc pl-5 space-y-1.5 text-xs">
-              <li>
-                Garments must be unworn, unwashed, unaltered, and returned in their original packaging with all atelier brand tags intact.
-              </li>
-              <li>
-                Size exchanges are accommodated subject to available atelier stock.
-              </li>
-              <li>
-                Orders may be cancelled free of charge at any time prior to courier dispatch by contacting our concierge team. Once dispatched, return courier shipping costs may apply for non-defective cancellations.
-              </li>
-            </ul>
+
+            <div className="bg-[#fbf9f2] border border-[#deddd3] p-4 rounded-md space-y-2 text-xs">
+              <h3 className="font-sans font-bold text-[#073a2d] uppercase tracking-wider text-[11px]">
+                6-Hour Self-Cancellation Window &amp; Conditions
+              </h3>
+              <ul className="list-disc pl-5 space-y-1.5 text-[#37413d]">
+                <li>
+                  <strong>Time Limit:</strong> Patrons may self-cancel any standard order directly from their account or order tracking page within <strong>6 hours</strong> of order placement.
+                </li>
+                <li>
+                  <strong>Pending Status Requirement:</strong> Self-cancellation is strictly available while the order is in <strong>PENDING</strong> status. Once an order is confirmed, packed, processing, or handed over to our logistics courier, the online cancellation window is closed.
+                </li>
+                <li>
+                  <strong>Inventory Restoration:</strong> Upon successful cancellation, all reserved artisan garments and variant quantities are immediately restored to active inventory.
+                </li>
+                <li>
+                  <strong>Dual Email Notifications:</strong> When an order is cancelled, a formal cancellation receipt is automatically emailed to the patron, and an immediate high-priority alert is dispatched to our atelier administration and dispatch team.
+                </li>
+                <li>
+                  <strong>Payment &amp; Refund Handling:</strong> Cash on Delivery (COD) orders are cancelled with zero financial liability. For prepaid online transactions (bKash, Nagad, Card), patrons should contact our Concierge to verify transaction details and coordinate the refund back to the original source according to banking clearance cycles.
+                </li>
+                <li>
+                  <strong>Bespoke Tailoring Exemption:</strong> Custom-tailored panjabis with personalized measurements cannot be cancelled once atelier fabric cutting has commenced.
+                </li>
+              </ul>
+            </div>
+
+            <div className="space-y-2 text-xs pt-2">
+              <h3 className="font-sans font-bold text-[#073a2d] uppercase tracking-wider text-[11px]">
+                1-Day Exchange Policy (Post-Delivery)
+              </h3>
+              <ul className="list-disc pl-5 space-y-1.5 text-[#37413d]">
+                <li>
+                  Garments must be unworn, unwashed, unaltered, and returned in their original packaging with all atelier brand tags intact.
+                </li>
+                <li>
+                  Size exchanges are accommodated subject to available atelier stock within 24 hours of recorded courier delivery.
+                </li>
+                <li>
+                  For inquiries or assistance beyond the 6-hour window, patrons are encouraged to contact our WhatsApp Concierge at <strong>+880 1916-664011</strong>.
+                </li>
+              </ul>
+            </div>
           </section>
 
           {/* 8. Client Reviews & Community Conduct */}

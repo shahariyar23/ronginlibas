@@ -193,8 +193,8 @@ export declare class AdminAnalyticsController {
             phone: string | null;
             firstName: string;
             lastName: string | null;
-            id: string;
             createdAt: Date;
+            id: string;
         };
         totalEvents: number;
         page: number;
@@ -207,8 +207,8 @@ export declare class AdminAnalyticsController {
             orderNumber: string;
             totalAmount: import("@prisma/client/runtime/library").Decimal;
             status: import("@prisma/client").$Enums.OrderStatus;
-            id: string;
             createdAt: Date;
+            id: string;
         }[];
         timeline: {
             id: string;

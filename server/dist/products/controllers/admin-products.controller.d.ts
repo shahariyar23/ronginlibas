@@ -17,9 +17,9 @@ export declare class AdminProductsController {
             category: {
                 description: string | null;
                 name: string;
+                createdAt: Date;
                 id: string;
                 isActive: boolean;
-                createdAt: Date;
                 updatedAt: Date;
                 slug: string;
                 seoTitle: string | null;
@@ -31,9 +31,9 @@ export declare class AdminProductsController {
             variants: {
                 size: string;
                 color: string;
+                createdAt: Date;
                 id: string;
                 isActive: boolean;
-                createdAt: Date;
                 updatedAt: Date;
                 measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
@@ -45,8 +45,8 @@ export declare class AdminProductsController {
             }[];
             images: {
                 url: string;
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 sortOrder: number;
                 isPrimary: boolean;
@@ -58,9 +58,9 @@ export declare class AdminProductsController {
             description: string | null;
             name: string;
             price: import("@prisma/client/runtime/library").Decimal;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
             tags: string[];
@@ -92,9 +92,9 @@ export declare class AdminProductsController {
             variants: {
                 size: string;
                 color: string;
+                createdAt: Date;
                 id: string;
                 isActive: boolean;
-                createdAt: Date;
                 updatedAt: Date;
                 measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
@@ -106,8 +106,8 @@ export declare class AdminProductsController {
             }[];
             images: {
                 url: string;
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 sortOrder: number;
                 isPrimary: boolean;
@@ -119,9 +119,9 @@ export declare class AdminProductsController {
             description: string | null;
             name: string;
             price: import("@prisma/client/runtime/library").Decimal;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
             tags: string[];
@@ -153,9 +153,9 @@ export declare class AdminProductsController {
             category: {
                 description: string | null;
                 name: string;
+                createdAt: Date;
                 id: string;
                 isActive: boolean;
-                createdAt: Date;
                 updatedAt: Date;
                 slug: string;
                 seoTitle: string | null;
@@ -167,9 +167,9 @@ export declare class AdminProductsController {
             variants: {
                 size: string;
                 color: string;
+                createdAt: Date;
                 id: string;
                 isActive: boolean;
-                createdAt: Date;
                 updatedAt: Date;
                 measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
@@ -181,8 +181,8 @@ export declare class AdminProductsController {
             }[];
             images: {
                 url: string;
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 sortOrder: number;
                 isPrimary: boolean;
@@ -194,9 +194,9 @@ export declare class AdminProductsController {
             description: string | null;
             name: string;
             price: import("@prisma/client/runtime/library").Decimal;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
             tags: string[];
@@ -225,9 +225,9 @@ export declare class AdminProductsController {
             category: {
                 description: string | null;
                 name: string;
+                createdAt: Date;
                 id: string;
                 isActive: boolean;
-                createdAt: Date;
                 updatedAt: Date;
                 slug: string;
                 seoTitle: string | null;
@@ -239,9 +239,9 @@ export declare class AdminProductsController {
             variants: {
                 size: string;
                 color: string;
+                createdAt: Date;
                 id: string;
                 isActive: boolean;
-                createdAt: Date;
                 updatedAt: Date;
                 measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
@@ -253,8 +253,8 @@ export declare class AdminProductsController {
             }[];
             images: {
                 url: string;
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 sortOrder: number;
                 isPrimary: boolean;
@@ -265,9 +265,9 @@ export declare class AdminProductsController {
             description: string | null;
             name: string;
             price: import("@prisma/client/runtime/library").Decimal;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
             tags: string[];
@@ -299,9 +299,9 @@ export declare class AdminProductsController {
             category: {
                 description: string | null;
                 name: string;
+                createdAt: Date;
                 id: string;
                 isActive: boolean;
-                createdAt: Date;
                 updatedAt: Date;
                 slug: string;
                 seoTitle: string | null;
@@ -313,9 +313,9 @@ export declare class AdminProductsController {
             variants: {
                 size: string;
                 color: string;
+                createdAt: Date;
                 id: string;
                 isActive: boolean;
-                createdAt: Date;
                 updatedAt: Date;
                 measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
@@ -327,8 +327,8 @@ export declare class AdminProductsController {
             }[];
             images: {
                 url: string;
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 sortOrder: number;
                 isPrimary: boolean;
@@ -340,9 +340,9 @@ export declare class AdminProductsController {
             description: string | null;
             name: string;
             price: import("@prisma/client/runtime/library").Decimal;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
             tags: string[];
@@ -374,9 +374,9 @@ export declare class AdminProductsController {
             category: {
                 description: string | null;
                 name: string;
+                createdAt: Date;
                 id: string;
                 isActive: boolean;
-                createdAt: Date;
                 updatedAt: Date;
                 slug: string;
                 seoTitle: string | null;
@@ -388,9 +388,9 @@ export declare class AdminProductsController {
             variants: {
                 size: string;
                 color: string;
+                createdAt: Date;
                 id: string;
                 isActive: boolean;
-                createdAt: Date;
                 updatedAt: Date;
                 measurements: import("@prisma/client/runtime/library").JsonValue | null;
                 sku: string;
@@ -402,8 +402,8 @@ export declare class AdminProductsController {
             }[];
             images: {
                 url: string;
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 sortOrder: number;
                 isPrimary: boolean;
@@ -415,9 +415,9 @@ export declare class AdminProductsController {
             description: string | null;
             name: string;
             price: import("@prisma/client/runtime/library").Decimal;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
             tags: string[];

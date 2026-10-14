@@ -104,7 +104,7 @@ export const CartDrawer: React.FC = () => {
     <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-md p-0 flex flex-col bg-[#fbf9f2] border-l border-[#deddd3] text-[#1b1c18]"
+        className="w-full sm:max-w-md p-0 flex flex-col bg-[#fbf9f2] border-l border-[#deddd3] text-[#1b1c18] !w-full !max-w-full sm:!max-w-md h-full"
         data-clarity-mask="true"
       >
         {/* Header */}

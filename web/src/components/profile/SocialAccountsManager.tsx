@@ -1,35 +1,66 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Link2, Loader2, Unlink } from 'lucide-react';
+import { Loader2, Unlink } from 'lucide-react';
 import { toast } from 'sonner';
+import { renderGisButton } from '@/lib/gis';
 
 export const SocialAccountsManager: React.FC = () => {
-  const { socialIdentities, linkSocial, unlinkSocial } = useAuth();
-  const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+  const { socialIdentities, linkGoogle, unlinkSocial } = useAuth();
+  const [isUnlinking, setIsUnlinking] = useState(false);
+  const [isLinking, setIsLinking] = useState(false);
+  const googleLinkContainerRef = useRef<HTMLDivElement>(null);
 
   const googleIdentity = socialIdentities.find((i) => i.provider === 'GOOGLE');
+  const isConnected = Boolean(googleIdentity);
 
-  const handleLink = async () => {
-    if (loadingProvider) return;
-    setLoadingProvider('link-google');
-    try {
-      await linkSocial('google');
-    } finally {
-      setLoadingProvider(null);
-    }
-  };
+  useEffect(() => {
+    if (isConnected || !googleLinkContainerRef.current) return;
+    let isMounted = true;
+
+    const initLinkButton = async () => {
+      try {
+        if (!googleLinkContainerRef.current) return;
+        await renderGisButton(googleLinkContainerRef.current, {
+          onSuccess: async (credential) => {
+            if (!isMounted) return;
+            setIsLinking(true);
+            try {
+              await linkGoogle(credential);
+            } finally {
+              if (isMounted) setIsLinking(false);
+            }
+          },
+          onError: (err) => {
+            toast.error(err.message || 'Google account linking failed.');
+          },
+          text: 'signin_with',
+          size: 'medium',
+          theme: 'outline',
+          shape: 'rectangular',
+          width: 170,
+        });
+      } catch (err: any) {
+        console.warn('Could not initialize Google linking button:', err);
+      }
+    };
+
+    void initLinkButton();
+    return () => {
+      isMounted = false;
+    };
+  }, [isConnected, linkGoogle]);
 
   const handleUnlink = async () => {
-    if (loadingProvider) return;
-    setLoadingProvider('unlink-google');
+    if (isUnlinking) return;
+    setIsUnlinking(true);
     try {
       await unlinkSocial('GOOGLE');
     } finally {
-      setLoadingProvider(null);
+      setIsUnlinking(false);
     }
   };
 
@@ -78,11 +109,6 @@ export const SocialAccountsManager: React.FC = () => {
 
       <div className="grid grid-cols-1 gap-3 max-w-xl">
         {providers.map((p) => {
-          const isConnected = Boolean(p.identity);
-          const isLinking = loadingProvider === `link-${p.key}`;
-          const isUnlinking = loadingProvider === `unlink-${p.enumKey}`;
-          const isLoading = isLinking || isUnlinking;
-
           return (
             <div
               key={p.key}
@@ -118,19 +144,19 @@ export const SocialAccountsManager: React.FC = () => {
                     {isConnected
                       ? p.identity?.providerEmail
                         ? `Connected with ${p.identity.providerEmail}`
-                        : 'Connected via social account'
-                      : `Sign in quickly with your verified ${p.name} account`}
+                        : 'Connected via Google account'
+                      : `Link your verified ${p.name} account`}
                   </p>
                 </div>
               </div>
 
-              <div className="sm:shrink-0 flex items-center justify-end">
+              <div className="sm:shrink-0 flex items-center justify-end min-h-[36px]">
                 {isConnected ? (
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    disabled={isLoading}
+                    disabled={isUnlinking}
                     onClick={() => handleUnlink()}
                     className="font-sans text-[11px] uppercase tracking-wider text-[#ba1a1a] border-[#deddd3] hover:bg-[#ba1a1a]/10 hover:border-[#ba1a1a]/30 h-9 px-3 gap-1.5 cursor-pointer"
                   >
@@ -142,20 +168,16 @@ export const SocialAccountsManager: React.FC = () => {
                     <span>Disconnect</span>
                   </Button>
                 ) : (
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={isLoading}
-                    onClick={() => handleLink()}
-                    className="bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-[11px] uppercase tracking-wider h-9 px-3 gap-1.5 cursor-pointer"
-                  >
+                  <div className="flex items-center justify-end min-h-[36px]">
                     {isLinking ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <div className="flex items-center gap-1.5 text-xs text-[#073a2d] font-sans px-2">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Linking...</span>
+                      </div>
                     ) : (
-                      <Link2 className="w-3.5 h-3.5" />
+                      <div ref={googleLinkContainerRef} className="flex justify-end" />
                     )}
-                    <span>Connect</span>
-                  </Button>
+                  </div>
                 )}
               </div>
             </div>

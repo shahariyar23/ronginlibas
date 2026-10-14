@@ -14,9 +14,9 @@ export declare class InventoryService {
         variant: {
             size: string;
             color: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             measurements: Prisma.JsonValue | null;
             sku: string;
@@ -29,8 +29,8 @@ export declare class InventoryService {
         transaction: {
             type: import("@prisma/client").$Enums.InventoryTransactionType;
             userId: string | null;
-            id: string;
             createdAt: Date;
+            id: string;
             quantityChange: number;
             previousStock: number;
             newStock: number;

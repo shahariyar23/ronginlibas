@@ -2,6 +2,7 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { ProductsService } from '../../products/services/products.service.js';
 import { ProductQueryDto } from '../../products/dto/product-query.dto.js';
 import { CreateCategoryDto } from '../dto/create-category.dto.js';
+import { UpdateCategoryDto } from '../dto/update-category.dto.js';
 export declare class CategoriesService {
     private readonly prisma;
     private readonly productsService;
@@ -48,9 +49,9 @@ export declare class CategoriesService {
     create(dto: CreateCategoryDto): Promise<{
         description: string | null;
         name: string;
+        createdAt: Date;
         id: string;
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
         slug: string;
         seoTitle: string | null;
@@ -58,5 +59,23 @@ export declare class CategoriesService {
         sortOrder: number;
         image: string | null;
         parentId: string | null;
+    }>;
+    update(id: string, dto: UpdateCategoryDto): Promise<{
+        description: string | null;
+        name: string;
+        createdAt: Date;
+        id: string;
+        isActive: boolean;
+        updatedAt: Date;
+        slug: string;
+        seoTitle: string | null;
+        metaDescription: string | null;
+        sortOrder: number;
+        image: string | null;
+        parentId: string | null;
+    }>;
+    remove(id: string): Promise<{
+        success: boolean;
+        message: string;
     }>;
 }

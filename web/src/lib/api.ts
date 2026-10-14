@@ -904,11 +904,18 @@ export async function getOffersPageData(query: OffersQuery = {}): Promise<Storef
 
   return {
     ...raw,
-    products: (raw.products ?? []).map((p: any) => ({
-      ...mapProduct(p),
-      originalPrice: p.originalPrice ?? (p.compareAtPrice ? Number(p.compareAtPrice) : undefined),
-      badge: p.badge || (p.discountPercentage ? `${p.discountPercentage}% OFF` : undefined),
-    })),
+    products: (raw.products ?? []).map((p: any) => {
+      const mapped = mapProduct(p);
+      const inStock = p.inStock !== undefined ? Boolean(p.inStock) : mapped.inStock;
+      const stockCount = p.stockCount !== undefined ? Number(p.stockCount) : mapped.stockCount;
+      return {
+        ...mapped,
+        inStock,
+        stockCount,
+        originalPrice: p.originalPrice ?? (p.compareAtPrice ? Number(p.compareAtPrice) : undefined),
+        badge: p.badge || (p.discountPercentage ? `${p.discountPercentage}% OFF` : undefined),
+      };
+    }),
   };
 }
 
@@ -929,6 +936,38 @@ export interface SocialAuthResponse {
     role: string;
     type: 'customer';
   };
+}
+
+export interface GoogleAuthResponse {
+  accessToken: string;
+  user: {
+    id: string;
+    email: string | null;
+    firstName: string;
+    lastName: string | null;
+    role: string;
+    type: 'customer';
+  };
+  isNewCustomer?: boolean;
+  isProfileComplete?: boolean;
+}
+
+export async function loginWithGoogleApi(
+  credential: string,
+): Promise<GoogleAuthResponse> {
+  return apiRequest<GoogleAuthResponse>('/auth/google', {
+    method: 'POST',
+    body: JSON.stringify({ credential }),
+  });
+}
+
+export async function linkGoogleAccountApi(
+  credential: string,
+): Promise<SocialIdentity> {
+  return apiRequest<SocialIdentity>('/auth/google/link', {
+    method: 'POST',
+    body: JSON.stringify({ credential }),
+  });
 }
 
 export async function loginWithSocialToken(

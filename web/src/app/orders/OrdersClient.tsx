@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
-import { apiRequest, getProduct, initiateWaitmarkPaymentApi } from '@/lib/api';
+import { apiRequest, getProduct, initiateWaitmarkPaymentApi, cancelOrderApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +28,7 @@ import {
   RefreshCw,
   ShoppingBag,
   ExternalLink,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { OrderTrackingStepper } from '@/components/orders/OrderTrackingStepper';
@@ -196,6 +197,51 @@ export const OrdersClient: React.FC = () => {
       }
     } finally {
       setRestoringOrderNumber(null);
+    }
+  };
+
+  const [cancellingOrderNumber, setCancellingOrderNumber] = useState<string | null>(null);
+
+  const isOrderCancellable = (order: OrderRecord) => {
+    if (order.status !== 'PENDING') return false;
+    if (order.paymentStatus === 'PAID') return false;
+    const orderTime = new Date(order.createdAt).getTime();
+    if (Number.isNaN(orderTime)) return false;
+    const sixHoursMs = 6 * 60 * 60 * 1000;
+    return Date.now() - orderTime <= sixHoursMs;
+  };
+
+  const getCancelTimeRemaining = (orderCreatedAt: string) => {
+    const orderTime = new Date(orderCreatedAt).getTime();
+    if (Number.isNaN(orderTime)) return null;
+    const sixHoursMs = 6 * 60 * 60 * 1000;
+    const remainingMs = sixHoursMs - (Date.now() - orderTime);
+    if (remainingMs <= 0) return null;
+    const hours = Math.floor(remainingMs / (60 * 60 * 1000));
+    const mins = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
+    return hours > 0 ? `${hours}h ${mins}m left` : `${mins}m left`;
+  };
+
+  const handleCancelOrder = async (orderNumber: string) => {
+    if (cancellingOrderNumber) return;
+    const confirmed = window.confirm(
+      `Are you sure you want to cancel Order ${orderNumber}? Any reserved artisan inventory will be restored to stock, and cancellation notices will be dispatched to your email and the atelier administration.`,
+    );
+    if (!confirmed) return;
+
+    setCancellingOrderNumber(orderNumber);
+    try {
+      await cancelOrderApi(orderNumber);
+      toast.success(`Order ${orderNumber} cancelled successfully. Confirmation dispatched.`);
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.orderNumber === orderNumber ? { ...o, status: 'CANCELLED' } : o,
+        ),
+      );
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to cancel order.');
+    } finally {
+      setCancellingOrderNumber(null);
     }
   };
 
@@ -776,7 +822,7 @@ export const OrdersClient: React.FC = () => {
                               size="sm"
                               variant="outline"
                               onClick={() => void handleRestoreToCart(order.orderNumber)}
-                              disabled={Boolean(payingOrderNumber || restoringOrderNumber)}
+                              disabled={Boolean(payingOrderNumber || restoringOrderNumber || cancellingOrderNumber)}
                               className="border-[#c79a45] text-[#073a2d] hover:bg-[#fdfbf6] font-semibold text-xs h-9 sm:h-8 justify-center cursor-pointer"
                             >
                               <ShoppingBag className="mr-1.5 h-3.5 w-3.5 text-[#c79a45]" />
@@ -784,6 +830,25 @@ export const OrdersClient: React.FC = () => {
                             </Button>
                           </>
                         )}
+
+                      {/* 6-Hour Patron Cancellation Action */}
+                      {isOrderCancellable(order) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void handleCancelOrder(order.orderNumber)}
+                          disabled={Boolean(payingOrderNumber || restoringOrderNumber || cancellingOrderNumber)}
+                          title={`Cancelable within 6h while PENDING (${getCancelTimeRemaining(order.createdAt) || 'Eligible'})`}
+                          className="border-red-300 text-red-600 hover:bg-red-50 font-semibold text-xs h-9 sm:h-8 justify-center cursor-pointer"
+                        >
+                          <X className="mr-1 h-3.5 w-3.5 text-red-500" />
+                          <span>
+                            {cancellingOrderNumber === order.orderNumber
+                              ? 'Cancelling...'
+                              : 'Cancel Order'}
+                          </span>
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"

@@ -17,7 +17,7 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { OrdersService } from '../../orders/services/orders.service.js';
 import { Ga4MeasurementProtocolService } from '../../analytics/services/ga4-measurement-protocol.service.js';
 import { OrderStatus, PaymentStatus, PaymentMethod } from '@prisma/client';
-import { randomBytes, createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 let WaitmarkPaymentService = WaitmarkPaymentService_1 = class WaitmarkPaymentService {
     prisma;
     configService;
@@ -120,28 +120,76 @@ let WaitmarkPaymentService = WaitmarkPaymentService_1 = class WaitmarkPaymentSer
             throw new BadRequestException('Payable amount for this order is zero.');
         }
         const sanitizedOrderRef = order.orderNumber.replace(/[^A-Za-z0-9]/g, '');
-        const entropy = randomBytes(2).toString('hex').toUpperCase();
-        const paymentAttemptId = `WMPAY-${sanitizedOrderRef}-${Date.now().toString().slice(-6)}-${entropy}`;
-        await this.prisma.payment.create({
-            data: {
+        const existingPending = await this.prisma.payment.findFirst({
+            where: {
                 orderId: order.id,
-                provider: 'WAITMARK_PAY',
-                providerOrderId: paymentAttemptId,
-                amount: payableAmount,
-                currency: 'BDT',
                 status: PaymentStatus.PENDING,
             },
+            orderBy: { createdAt: 'desc' },
         });
+        let paymentAttemptId;
+        if (existingPending) {
+            if (existingPending.providerOrderId.startsWith('WMPAY-')) {
+                const conflict = await this.prisma.payment.findFirst({
+                    where: {
+                        providerOrderId: sanitizedOrderRef,
+                        id: { not: existingPending.id },
+                    },
+                });
+                paymentAttemptId = conflict
+                    ? `${sanitizedOrderRef}-${Date.now().toString().slice(-4)}`
+                    : sanitizedOrderRef;
+                await this.prisma.payment.update({
+                    where: { id: existingPending.id },
+                    data: {
+                        providerOrderId: paymentAttemptId,
+                        amount: payableAmount,
+                    },
+                });
+            }
+            else {
+                paymentAttemptId = existingPending.providerOrderId;
+                await this.prisma.payment.update({
+                    where: { id: existingPending.id },
+                    data: {
+                        amount: payableAmount,
+                    },
+                });
+            }
+        }
+        else {
+            const conflict = await this.prisma.payment.findUnique({
+                where: { providerOrderId: sanitizedOrderRef },
+            });
+            paymentAttemptId = conflict
+                ? `${sanitizedOrderRef}-${Date.now().toString().slice(-4)}`
+                : sanitizedOrderRef;
+            await this.prisma.payment.create({
+                data: {
+                    orderId: order.id,
+                    provider: 'WAITMARK_PAY',
+                    providerOrderId: paymentAttemptId,
+                    amount: payableAmount,
+                    currency: 'BDT',
+                    status: PaymentStatus.PENDING,
+                },
+            });
+        }
         if (order.paymentStatus === PaymentStatus.FAILED) {
             await this.prisma.order.update({
                 where: { id: order.id },
                 data: { paymentStatus: PaymentStatus.PENDING },
             });
         }
-        this.logger.log(`[Waitmark Pay] Created payment attempt ${paymentAttemptId} for order ${order.orderNumber} (Amount: ৳${payableAmount})`);
+        this.logger.log(`[Waitmark Pay] Prepared payment attempt ${paymentAttemptId} for order ${order.orderNumber} (Amount: ৳${payableAmount})`);
         const gatewayBaseUrl = this.getCheckoutUrl();
         const successUrl = this.getSuccessUrl();
-        const checkoutUrl = `${gatewayBaseUrl}?public_key=${encodeURIComponent(publicKey)}&amount=${encodeURIComponent(payableAmount.toFixed(2))}&order_id=${encodeURIComponent(paymentAttemptId)}&success_url=${encodeURIComponent(successUrl)}`;
+        const backendUrl = this.configService.get('BACKEND_URL')?.trim() ||
+            `http://localhost:${this.configService.get('PORT') || 4000}`;
+        const cleanBackendUrl = backendUrl.replace(/\/+$/, '');
+        const cancelUrl = `${cleanBackendUrl}/api/v1/payments/waitmark/webhook?status=cancelled&order_id=${encodeURIComponent(paymentAttemptId)}`;
+        const failUrl = `${cleanBackendUrl}/api/v1/payments/waitmark/webhook?status=failed&order_id=${encodeURIComponent(paymentAttemptId)}`;
+        const checkoutUrl = `${gatewayBaseUrl}?public_key=${encodeURIComponent(publicKey)}&amount=${encodeURIComponent(payableAmount.toFixed(2))}&order_id=${encodeURIComponent(paymentAttemptId)}&success_url=${encodeURIComponent(successUrl)}&cancel_url=${encodeURIComponent(cancelUrl)}&fail_url=${encodeURIComponent(failUrl)}`;
         return {
             checkoutUrl,
             paymentAttemptId,
@@ -149,6 +197,72 @@ let WaitmarkPaymentService = WaitmarkPaymentService_1 = class WaitmarkPaymentSer
             orderNumber: order.orderNumber,
             amount: payableAmount,
             currency: 'BDT',
+        };
+    }
+    async handleFailedPayment(orderId, reason = 'Payment failed / cancelled', existingOrder) {
+        if (this.ordersService && typeof this.ordersService.deleteUnpaidOrFailedOrder === 'function') {
+            const res = await this.ordersService.deleteUnpaidOrFailedOrder(orderId, reason);
+            return { success: true, message: res.message };
+        }
+        const order = existingOrder ||
+            (await this.prisma.order.findFirst({
+                where: {
+                    OR: [
+                        { id: orderId },
+                        { orderNumber: orderId },
+                        { payments: { some: { providerOrderId: orderId } } },
+                    ],
+                },
+                include: { items: true },
+            }));
+        if (!order)
+            return { success: true, message: 'Order not found or already deleted' };
+        if (order.paymentStatus === PaymentStatus.PAID) {
+            return { success: false, message: 'Cannot delete already paid order' };
+        }
+        await this.prisma.$transaction(async (tx) => {
+            if (Array.isArray(order.items)) {
+                for (const item of order.items) {
+                    if (!item.variantId)
+                        continue;
+                    const variant = await tx.productVariant?.findUnique?.({
+                        where: { id: item.variantId },
+                        select: { id: true, stock: true },
+                    });
+                    if (variant) {
+                        await tx.productVariant?.updateMany?.({
+                            where: { id: variant.id, stock: variant.stock },
+                            data: { stock: variant.stock + item.quantity },
+                        });
+                        await tx.inventoryTransaction?.create?.({
+                            data: {
+                                variantId: variant.id,
+                                quantityChange: item.quantity,
+                                previousStock: variant.stock,
+                                newStock: variant.stock + item.quantity,
+                                type: 'RETURN',
+                                note: `Restored stock from failed payment order ${order.orderNumber}`,
+                            },
+                        });
+                    }
+                }
+            }
+            if (typeof tx.order?.delete === 'function') {
+                await tx.order.delete({
+                    where: { id: order.id },
+                });
+            }
+            else if (typeof tx.order?.update === 'function') {
+                await tx.order.update({
+                    where: { id: order.id },
+                    data: { status: OrderStatus.CANCELLED, paymentStatus: PaymentStatus.FAILED },
+                });
+            }
+        });
+        this.logger.log(`[Waitmark Pay] Order ${order.orderNumber} deleted and reserved stock released (${reason})`);
+        return {
+            success: true,
+            message: `Order ${order.orderNumber} deleted and inventory stock restored`,
         };
     }
     async processWebhook(rawBody, signatureHeader) {
@@ -196,7 +310,7 @@ let WaitmarkPaymentService = WaitmarkPaymentService_1 = class WaitmarkPaymentSer
             throw new BadRequestException('Incomplete webhook payload fields');
         }
         this.logger.log(`[Waitmark Webhook] Received verified IPN for order_id: ${providerOrderId}, trx_id: ${trx_id}, status: ${status}, amount: ${amount}`);
-        const payment = await this.prisma.payment.findUnique({
+        let payment = await this.prisma.payment.findUnique({
             where: { providerOrderId },
             include: {
                 order: {
@@ -207,6 +321,27 @@ let WaitmarkPaymentService = WaitmarkPaymentService_1 = class WaitmarkPaymentSer
                 },
             },
         });
+        if (!payment) {
+            payment = await this.prisma.payment.findFirst({
+                where: {
+                    OR: [
+                        { order: { orderNumber: providerOrderId } },
+                        { order: { orderNumber: `#${providerOrderId}` } },
+                        { order: { orderNumber: { contains: providerOrderId } } },
+                        { orderId: providerOrderId },
+                    ],
+                },
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    order: {
+                        include: {
+                            customer: true,
+                            items: true,
+                        },
+                    },
+                },
+            });
+        }
         if (!payment) {
             this.logger.error(`Waitmark webhook payment attempt not found for order_id: ${providerOrderId}`);
             throw new NotFoundException(`Payment record not found for provider order ID: ${providerOrderId}`);
@@ -257,10 +392,7 @@ let WaitmarkPaymentService = WaitmarkPaymentService_1 = class WaitmarkPaymentSer
                     rawWebhookPayload: payload,
                 },
             });
-            await this.prisma.order.update({
-                where: { id: payment.orderId },
-                data: { paymentStatus: PaymentStatus.FAILED },
-            });
+            await this.handleFailedPayment(payment.orderId, `Currency mismatch: expected ${payment.currency}, received ${currency}`, payment.order);
             throw new BadRequestException('Payment currency mismatch');
         }
         const webhookAmount = Number(amount);
@@ -276,30 +408,28 @@ let WaitmarkPaymentService = WaitmarkPaymentService_1 = class WaitmarkPaymentSer
                     rawWebhookPayload: payload,
                 },
             });
-            await this.prisma.order.update({
-                where: { id: payment.orderId },
-                data: { paymentStatus: PaymentStatus.FAILED },
-            });
+            await this.handleFailedPayment(payment.orderId, `Amount mismatch: expected ${expectedAmount}, received ${webhookAmount}`, payment.order);
             throw new BadRequestException('Payment amount mismatch between order and gateway');
         }
         if (status.toLowerCase() !== 'completed') {
             const isExplicitFailure = ['failed', 'cancelled', 'declined', 'rejected', 'expired'].includes(status.toLowerCase());
             this.logger.warn(`Waitmark webhook reported non-completed status: "${status}" for ${providerOrderId}`);
+            if (isExplicitFailure) {
+                await this.handleFailedPayment(payment.orderId, `Gateway reported status: ${status}`, payment.order);
+                return {
+                    success: false,
+                    message: `Payment failed (${status}). Order deleted and inventory stock restored.`,
+                };
+            }
             await this.prisma.payment.update({
                 where: { id: payment.id },
                 data: {
-                    status: isExplicitFailure ? PaymentStatus.FAILED : PaymentStatus.PENDING,
+                    status: PaymentStatus.PENDING,
                     failureReason: `Gateway reported status: ${status}`,
                     providerTransactionId: trx_id,
                     rawWebhookPayload: payload,
                 },
             });
-            if (isExplicitFailure) {
-                await this.prisma.order.update({
-                    where: { id: payment.orderId },
-                    data: { paymentStatus: PaymentStatus.FAILED },
-                });
-            }
             return {
                 success: false,
                 message: `Payment status received as ${status}`,
@@ -405,7 +535,17 @@ let WaitmarkPaymentService = WaitmarkPaymentService_1 = class WaitmarkPaymentSer
             },
         });
         if (!order) {
-            throw new NotFoundException(`Order "${orderId}" not found`);
+            return {
+                orderId,
+                orderNumber: orderId,
+                paymentStatus: PaymentStatus.FAILED,
+                orderStatus: OrderStatus.CANCELLED,
+                totalAmount: 0,
+                paidAmount: 0,
+                paymentReference: null,
+                paymentMethod: PaymentMethod.WAITMARK_PAY,
+                payments: [],
+            };
         }
         if (!isAdmin) {
             if (order.customerId) {
