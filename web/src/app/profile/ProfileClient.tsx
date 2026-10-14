@@ -42,6 +42,7 @@ import {
   Plus,
   Trash2,
   Edit2,
+  ArrowRight,
 } from 'lucide-react';
 import { SocialAccountsManager } from '@/components/profile/SocialAccountsManager';
 import { AccountDeletionSection } from '@/components/profile/AccountDeletionSection';
@@ -557,6 +558,7 @@ export const ProfileClient: React.FC = () => {
         },
       });
       toast.success('Patron details saved successfully.');
+      await loadAddresses();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not save patron details.');
     } finally {
@@ -920,11 +922,141 @@ export const ProfileClient: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Section 2: Delivery Residence */}
+                  {/* Section 2: Saved Delivery Addresses Book */}
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-[#f0eee7] gap-2">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-[#073a2d]" />
+                        <h3 className="font-serif text-lg text-[#073a2d]">
+                          Saved Delivery Addresses
+                        </h3>
+                        <Badge className="bg-[#f0eee7] text-[#073a2d] text-[10px] px-2 py-0.5 rounded-full font-bold ml-1">
+                          {savedAddresses.length}/5
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('addresses')}
+                          className="font-sans text-[11px] uppercase tracking-wider text-[#073a2d] hover:text-[#c79a45] font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>Manage All</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                        <Button
+                          type="button"
+                          onClick={handleOpenAddAddress}
+                          disabled={savedAddresses.length >= 5}
+                          className="bg-[#073a2d] hover:bg-[#0d4d3b] text-white text-[10px] uppercase tracking-wider px-3 h-8 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add Address</span>
+                        </Button>
+                      </div>
+                    </div>
+
+                    {isAddressesLoading ? (
+                      <div className="p-6 bg-[#fbf9f2] border border-[#deddd3] flex items-center justify-center gap-2 text-xs text-[#717975]">
+                        <Loader2 className="w-4 h-4 animate-spin text-[#073a2d]" />
+                        <span>Loading saved addresses...</span>
+                      </div>
+                    ) : savedAddresses.length === 0 ? (
+                      <div className="p-5 bg-[#fbf9f2] border border-dashed border-[#deddd3] flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-[#f0eee7] flex items-center justify-center shrink-0 text-[#c79a45]">
+                            <MapPin className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="font-sans text-xs font-semibold text-[#073a2d]">
+                              No saved addresses in address book
+                            </p>
+                            <p className="font-sans text-[11px] text-[#69726d]">
+                              Save up to 5 verified delivery addresses for swift 1-click checkout on all orders.
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={handleOpenAddAddress}
+                          className="bg-[#073a2d] hover:bg-[#0d4d3b] text-white text-xs uppercase tracking-wider px-4 h-8 shrink-0"
+                        >
+                          <Plus className="w-3.5 h-3.5 mr-1" />
+                          Add Address
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                        {savedAddresses.map((addr) => (
+                          <div
+                            key={addr.id}
+                            className={`p-4 border transition-all relative flex flex-col justify-between bg-white ${
+                              addr.isDefault
+                                ? 'border-[#073a2d] ring-1 ring-[#073a2d] bg-[#fbf9f2]/30'
+                                : 'border-[#deddd3] hover:border-[#c79a45]'
+                            }`}
+                          >
+                            <div>
+                              <div className="flex items-center justify-between gap-2 mb-1.5">
+                                <span className="font-serif font-bold text-[#073a2d] text-xs">
+                                  {addr.fullName || name || 'Delivery Address'}
+                                </span>
+                                {addr.isDefault ? (
+                                  <Badge className="bg-[#073a2d] text-[#fbf9f2] text-[8.5px] font-sans px-1.5 py-0.5 uppercase tracking-wider font-bold">
+                                    DEFAULT
+                                  </Badge>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSetDefaultAddress(addr.id)}
+                                    className="text-[10px] text-[#c79a45] hover:underline font-semibold cursor-pointer"
+                                  >
+                                    Set Default
+                                  </button>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-[#404945] font-sans leading-relaxed">
+                                {addr.addressLine1}
+                                {addr.area ? `, ${addr.area}` : ''}
+                                <br />
+                                {addr.city}, {addr.division}
+                                {addr.postalCode ? ` - ${addr.postalCode}` : ''}
+                              </p>
+                              {addr.phone && (
+                                <p className="text-[10px] text-[#717975] font-mono mt-1">
+                                  📞 {addr.phone}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center justify-end gap-2 pt-2.5 mt-2.5 border-t border-[#f0eee7]">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditAddress(addr)}
+                                className="text-[11px] text-[#073a2d] hover:text-[#c79a45] font-semibold flex items-center gap-1 cursor-pointer"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                                <span>Edit</span>
+                              </button>
+                              <span className="text-[#deddd3]">•</span>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteAddress(addr.id)}
+                                className="text-[11px] text-[#ba1a1a] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                <span>Remove</span>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Section 3: Primary Residence & Regional Settings */}
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 pb-2 border-b border-[#f0eee7]">
                       <MapPin className="w-4 h-4 text-[#073a2d]" />
-                      <h3 className="font-serif text-lg text-[#073a2d]">Delivery Residence</h3>
+                      <h3 className="font-serif text-lg text-[#073a2d]">Primary Delivery Residence</h3>
                     </div>
 
                     <div className="space-y-4">

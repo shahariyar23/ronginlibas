@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useAuth } from '@/context/AuthContext';
@@ -27,6 +27,11 @@ import {
   LogOut,
   LogIn,
   Loader2,
+  MapPin,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  Layers,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -269,6 +274,7 @@ function MobileNavLinks({
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [collectionsExpanded, setCollectionsExpanded] = useState(false);
 
   const isShop = pathname === '/shop';
   const gender = searchParams?.get('gender')?.toUpperCase();
@@ -279,11 +285,11 @@ function MobileNavLinks({
 
   const isMenActive = isShop && gender === 'MEN';
   const isWomanActive = isShop && gender === 'WOMEN';
-  const isNewArrivalActive = isShop && isNewArrival;
+  const isNewArrivalActive = pathname === '/collections/new-arrivals' || (isShop && isNewArrival);
   const isBestSellerActive = pathname === '/collections/bestsellers' || (isShop && isBestSeller);
   const isOffersActive = pathname === '/offers' || (isShop && isOffers);
   const isCollectionsActive =
-    isShop &&
+    (pathname === '/shop' || pathname.startsWith('/categories/')) &&
     !isMenActive &&
     !isWomanActive &&
     !isNewArrivalActive &&
@@ -291,98 +297,188 @@ function MobileNavLinks({
     !isOffersActive;
 
   return (
-    <>
-      <Link
-        href="/shop?gender=MEN"
-        onClick={onClose}
-        className={`flex items-center justify-between py-2 border-b border-[#f0eee7] font-semibold transition-colors ${
-          isMenActive ? 'text-[#073a2d] font-bold pl-2 border-l-2 border-l-[#073a2d] bg-[#eae8e1]/40' : 'text-[#404945]'
-        }`}
-      >
-        <span>MEN</span>
-        <ArrowRight className={`w-4 h-4 ${isMenActive ? 'text-[#073a2d]' : 'text-[#c79a45]'}`} />
-      </Link>
-      <Link
-        href="/shop?newArrival=true"
-        onClick={onClose}
-        className={`flex items-center justify-between py-2 border-b border-[#f0eee7] font-semibold transition-colors ${
-          isNewArrivalActive ? 'text-[#073a2d] font-bold pl-2 border-l-2 border-l-[#073a2d] bg-[#eae8e1]/40' : 'text-[#404945]'
-        }`}
-      >
-        <span>NEW ARRIVALS</span>
-        <ArrowRight className={`w-4 h-4 ${isNewArrivalActive ? 'text-[#073a2d]' : 'text-[#c79a45]'}`} />
-      </Link>
-      <Link
-        href="/shop"
-        onClick={onClose}
-        className={`flex items-center justify-between py-2 border-b border-[#f0eee7] font-semibold transition-colors ${
-          isCollectionsActive ? 'text-[#073a2d] font-bold pl-2 border-l-2 border-l-[#073a2d] bg-[#eae8e1]/40' : 'text-[#404945]'
-        }`}
-      >
-        <span>COLLECTIONS</span>
-        <ArrowRight className={`w-4 h-4 ${isCollectionsActive ? 'text-[#073a2d]' : 'text-[#c79a45]'}`} />
-      </Link>
-      {visibleCategories.map((category) => (
+    <div className="space-y-1.5">
+      <div className="text-[10px] font-sans font-bold uppercase tracking-widest text-[#717975] px-1">
+        Atelier Wardrobe
+      </div>
+
+      <div className="bg-white rounded-xl border border-[#deddd3] overflow-hidden shadow-xs divide-y divide-[#f0eee7]">
+        {/* MEN */}
         <Link
-          key={category.id}
-          href={`/categories/${encodeURIComponent(category.slug)}`}
+          href="/shop?gender=MEN"
           onClick={onClose}
-          className="flex items-center justify-between py-2 pl-4 border-b border-[#f0eee7] text-sm font-medium text-[#404945] hover:text-[#073a2d]"
-        >
-          <span>{category.name}</span>
-          <ArrowRight className="w-4 h-4 text-[#c79a45]" />
-        </Link>
-      ))}
-      <Link
-        href="/shop?bestSeller=true"
-        onClick={onClose}
-        className={`flex items-center justify-between py-2 border-b border-[#f0eee7] font-semibold transition-colors ${
-          isBestSellerActive ? 'text-[#073a2d] font-bold pl-2 border-l-2 border-l-[#073a2d] bg-[#eae8e1]/40' : 'text-[#404945]'
-        }`}
-      >
-        <span>BEST SELLERS</span>
-        <ArrowRight className={`w-4 h-4 ${isBestSellerActive ? 'text-[#073a2d]' : 'text-[#c79a45]'}`} />
-      </Link>
-      <Link
-        href="/offers"
-        onClick={onClose}
-        className={`flex items-center justify-between py-2 border-b border-[#f0eee7] font-semibold transition-colors ${
-          isOffersActive ? 'text-[#c79a45] font-bold pl-2 border-l-2 border-l-[#c79a45] bg-[#eae8e1]/40' : 'text-[#404945] hover:text-[#c79a45]'
-        }`}
-      >
-        <span>OFFERS</span>
-        <ArrowRight className={`w-4 h-4 ${isOffersActive ? 'text-[#c79a45]' : 'text-[#c79a45]'}`} />
-      </Link>
-      {womenAvailable ? (
-        <Link
-          href="/shop?gender=WOMEN"
-          onClick={onClose}
-          className={`flex items-center justify-between py-2 border-b border-[#f0eee7] font-semibold transition-colors ${
-            isWomanActive ? 'text-[#073a2d] font-bold pl-2 border-l-2 border-l-[#073a2d] bg-[#eae8e1]/40' : 'text-[#404945]'
+          className={`flex items-center justify-between p-3.5 transition-colors ${
+            isMenActive
+              ? 'bg-[#073a2d]/5 text-[#073a2d] font-bold'
+              : 'text-[#1b1c18] hover:bg-[#fbf9f2]'
           }`}
         >
-          <span>WOMAN</span>
-          <ArrowRight className={`w-4 h-4 ${isWomanActive ? 'text-[#073a2d]' : 'text-[#c79a45]'}`} />
-        </Link>
-      ) : (
-        <div className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-semibold">
-          <span className="text-[#404945]/60 font-semibold">WOMAN</span>
-          <span className="bg-[#eae8e1] text-[#073a2d] text-[10px] px-2 py-0.5 font-semibold uppercase tracking-wider rounded-xs">
-            Soon
+          <div className="flex items-center gap-2.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#073a2d]" />
+            <span className="text-xs font-bold font-sans uppercase tracking-wider">Men</span>
+          </div>
+          <span className="text-[10px] uppercase font-bold tracking-wider text-[#717975] bg-[#f5f4ed] px-2 py-0.5 rounded-full">
+            Panjabi & Polos
           </span>
+        </Link>
+
+        {/* NEW ARRIVALS */}
+        <Link
+          href="/collections/new-arrivals"
+          onClick={onClose}
+          className={`flex items-center justify-between p-3.5 transition-colors ${
+            isNewArrivalActive
+              ? 'bg-[#073a2d]/5 text-[#073a2d] font-bold'
+              : 'text-[#1b1c18] hover:bg-[#fbf9f2]'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#c79a45]" />
+            <span className="text-xs font-bold font-sans uppercase tracking-wider">New Arrivals</span>
+          </div>
+          <span className="text-[10px] uppercase font-bold tracking-wider text-[#c79a45] bg-[#c79a45]/10 px-2 py-0.5 rounded-full border border-[#c79a45]/20">
+            Fresh Drop
+          </span>
+        </Link>
+
+        {/* COLLECTIONS ACCORDION */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setCollectionsExpanded((prev) => !prev)}
+            className={`w-full flex items-center justify-between p-3.5 transition-colors cursor-pointer ${
+              isCollectionsActive
+                ? 'bg-[#073a2d]/5 text-[#073a2d] font-bold'
+                : 'text-[#1b1c18] hover:bg-[#fbf9f2]'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#717975]" />
+              <span className="text-xs font-bold font-sans uppercase tracking-wider">Collections</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-[#717975] bg-[#f5f4ed] px-2 py-0.5 rounded-full">
+                {visibleCategories.length} Categories
+              </span>
+              <ChevronDown
+                className={`w-4 h-4 text-[#717975] transition-transform duration-200 ${
+                  collectionsExpanded ? 'rotate-180 text-[#073a2d]' : ''
+                }`}
+              />
+            </div>
+          </button>
+
+          {collectionsExpanded && (
+            <div className="bg-[#fbf9f2] border-t border-[#f0eee7] px-3 py-2 space-y-1">
+              <Link
+                href="/shop"
+                onClick={onClose}
+                className="flex items-center justify-between py-2 px-3 rounded-lg text-xs font-semibold text-[#073a2d] hover:bg-white transition-colors"
+              >
+                <span>View All Collections</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#c79a45]" />
+              </Link>
+              {visibleCategories.map((category) => (
+                <Link
+                  key={category.id}
+                  href={`/categories/${encodeURIComponent(category.slug)}`}
+                  onClick={onClose}
+                  className="flex items-center justify-between py-2 px-3 rounded-lg text-xs font-medium text-[#404945] hover:text-[#073a2d] hover:bg-white transition-colors"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="text-[#c79a45] text-xs leading-none">•</span>
+                    <span>{category.name}</span>
+                  </span>
+                  <ArrowRight className="w-3 h-3 text-[#deddd3]" />
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
-      )}
-    </>
+
+        {/* BEST SELLERS */}
+        <Link
+          href="/collections/bestsellers"
+          onClick={onClose}
+          className={`flex items-center justify-between p-3.5 transition-colors ${
+            isBestSellerActive
+              ? 'bg-[#073a2d]/5 text-[#073a2d] font-bold'
+              : 'text-[#1b1c18] hover:bg-[#fbf9f2]'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#073a2d]" />
+            <span className="text-xs font-bold font-sans uppercase tracking-wider">Best Sellers</span>
+          </div>
+          <span className="text-[10px] uppercase font-bold tracking-wider text-[#073a2d] bg-[#073a2d]/10 px-2 py-0.5 rounded-full">
+            Iconic
+          </span>
+        </Link>
+
+        {/* OFFERS */}
+        <Link
+          href="/offers"
+          onClick={onClose}
+          className={`flex items-center justify-between p-3.5 transition-colors ${
+            isOffersActive
+              ? 'bg-[#c79a45]/10 text-[#c79a45] font-bold'
+              : 'text-[#1b1c18] hover:bg-[#fbf9f2]'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#c79a45]" />
+            <span className="text-xs font-bold font-sans uppercase tracking-wider text-[#c79a45]">
+              Offers & Promotions
+            </span>
+          </div>
+          <span className="text-[10px] uppercase font-bold tracking-wider text-white bg-[#c79a45] px-2 py-0.5 rounded-full">
+            Sale
+          </span>
+        </Link>
+
+        {/* WOMAN */}
+        {womenAvailable ? (
+          <Link
+            href="/shop?gender=WOMEN"
+            onClick={onClose}
+            className={`flex items-center justify-between p-3.5 transition-colors ${
+              isWomanActive
+                ? 'bg-[#073a2d]/5 text-[#073a2d] font-bold'
+                : 'text-[#1b1c18] hover:bg-[#fbf9f2]'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#073a2d]" />
+              <span className="text-xs font-bold font-sans uppercase tracking-wider">Woman</span>
+            </div>
+            <ArrowRight className="w-3.5 h-3.5 text-[#c79a45]" />
+          </Link>
+        ) : (
+          <div className="flex items-center justify-between p-3.5 text-[#717975]/60 bg-[#fbf9f2]/50">
+            <div className="flex items-center gap-2.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#deddd3]" />
+              <span className="text-xs font-medium font-sans uppercase tracking-wider">Woman Collection</span>
+            </div>
+            <span className="bg-[#eae8e1] text-[#717975] text-[10px] px-2 py-0.5 font-bold uppercase tracking-wider rounded-full">
+              Soon
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
 export const Header: React.FC = () => {
+  const router = useRouter();
   const { totalCount, setIsCartOpen } = useCart();
   const { wishlist } = useWishlist();
   const { user, isLoggedIn, logout } = useAuth();
   const { settings, categories, womenAvailable } = useStorefront();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
   const [readIds, setReadIds] = useState<string[]>(() => {
     try {
@@ -680,6 +776,21 @@ export const Header: React.FC = () => {
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             {/* Wishlist & Cart Container */}
             <div className="flex items-center gap-1.5 sm:gap-2.5">
+              {/* 0. Search Icon Trigger Button */}
+              <button
+                type="button"
+                onClick={() => setIsSearchOpen(!isSearchOpen)}
+                className={`relative w-8.5 h-8.5 sm:w-10 sm:h-10 rounded-full border transition-all duration-300 shadow-xs hover:shadow-md flex items-center justify-center cursor-pointer group ${
+                  isSearchOpen
+                    ? 'bg-[#073a2d] text-[#c79a45] border-[#073a2d]'
+                    : 'bg-white hover:bg-[#fbf9f2] border-[#deddd3] hover:border-[#c79a45] text-[#1b1c18] hover:text-[#073a2d]'
+                }`}
+                aria-label="Search Collection"
+                title="Search Collection"
+              >
+                <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5 transition-transform duration-300 group-hover:scale-110" />
+              </button>
+
               {/* 1. Wishlist Icon Button */}
               <Link
                 href="/shop?wishlist=true"
@@ -926,6 +1037,17 @@ export const Header: React.FC = () => {
                       </span>
                       <ArrowRight className="w-3 h-3 text-[#c79a45]" />
                     </Link>
+                    <Link
+                      href="/profile?tab=addresses"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-[#404945] hover:text-[#073a2d] hover:bg-white rounded transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <MapPin className="w-3.5 h-3.5 text-[#073a2d]" />
+                        <span>Saved Addresses</span>
+                      </span>
+                      <ArrowRight className="w-3 h-3 text-[#c79a45]" />
+                    </Link>
                     <button
                       type="button"
                       disabled={isLoggingOut}
@@ -957,176 +1079,282 @@ export const Header: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Expandable Header Search Dropdown Overlay */}
+        {isSearchOpen && (
+          <div className="border-t border-[#deddd3] bg-[#fbf9f2] py-3.5 px-3 sm:px-6 shadow-xl animate-in fade-in slide-in-from-top-1 duration-150">
+            <div className="max-w-3xl mx-auto flex items-center gap-3">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (headerSearchQuery.trim()) {
+                    router.push(`/shop?q=${encodeURIComponent(headerSearchQuery.trim())}`);
+                    setIsSearchOpen(false);
+                  }
+                }}
+                className="flex-1 flex items-center bg-white border-2 border-[#073a2d] h-11 sm:h-12 px-3 sm:px-4 shadow-xs focus-within:ring-2 focus-within:ring-[#073a2d]/20 transition-all overflow-hidden"
+                role="search"
+              >
+                <Search className="w-5 h-5 text-[#073a2d] mr-3 shrink-0" />
+                <input
+                  type="text"
+                  autoFocus
+                  value={headerSearchQuery}
+                  onChange={(e) => setHeaderSearchQuery(e.target.value)}
+                  placeholder="Search panjabis, shirts, polos, collections..."
+                  className="w-full bg-transparent text-sm sm:text-base font-sans outline-none text-[#1b1c18] placeholder:text-[#69726d]"
+                />
+                {headerSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setHeaderSearchQuery('')}
+                    className="p-1.5 text-[#717975] hover:text-[#ba1a1a] mr-2 transition-colors cursor-pointer"
+                    title="Clear search"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  className="bg-[#073a2d] hover:bg-[#0c4e3b] text-white px-4 sm:px-5 h-8 sm:h-9 text-xs uppercase font-bold tracking-wider transition-colors shrink-0 cursor-pointer flex items-center justify-center"
+                >
+                  Search
+                </button>
+              </form>
+              <button
+                type="button"
+                onClick={() => setIsSearchOpen(false)}
+                className="p-2 text-[#717975] hover:text-[#ba1a1a] hover:bg-white rounded transition-colors cursor-pointer shrink-0"
+                title="Close search"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Mobile Off-Canvas Menu */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <div className="fixed inset-y-0 left-0 flex h-dvh max-h-dvh w-4/5 max-w-sm flex-col overflow-hidden border-r border-[#deddd3] bg-[#fbf9f2] p-6 z-10 shadow-2xl">
-            <div className="flex min-h-0 flex-1 flex-col">
-              <div className="flex items-center justify-between pb-6 border-b border-[#deddd3]">
-                <Logo className="h-9 w-auto" />
-                <button
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="p-1 text-[#717975] hover:text-[#1b1c18]"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
 
-              <nav className="mt-6 min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1 font-serif text-lg font-bold text-[#073a2d]">
+          {/* Drawer Container */}
+          <div className="fixed inset-y-0 left-0 flex h-dvh max-h-dvh w-[88vw] sm:w-[380px] max-w-full flex-col overflow-hidden border-r border-[#deddd3] bg-[#fbf9f2] z-10 shadow-2xl transition-transform duration-300">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#deddd3] bg-white/80 backdrop-blur-xs shrink-0">
+              <Logo className="h-8 w-auto" />
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-1.5 rounded-full text-[#717975] hover:text-[#073a2d] hover:bg-[#eae8e1] transition-colors cursor-pointer"
+                aria-label="Close menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
+              {/* Patron Sanctuary Card */}
+              {isLoggedIn ? (
+                <div className="p-3.5 rounded-xl bg-white border border-[#deddd3] shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#073a2d] text-[#c79a45] flex items-center justify-center font-bold font-serif text-base border border-[#c79a45]/30">
+                        {user?.name ? user.name.charAt(0).toUpperCase() : 'P'}
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#c79a45]">
+                          Atelier Patron
+                        </div>
+                        <div className="text-sm font-semibold text-[#073a2d] truncate max-w-[150px]">
+                          {user?.name || 'Valued Member'}
+                        </div>
+                      </div>
+                    </div>
+                    <Link
+                      href="/profile"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="text-xs font-bold text-[#073a2d] hover:text-[#c79a45] px-2.5 py-1 rounded-md bg-[#fbf9f2] border border-[#deddd3] transition-colors"
+                    >
+                      Profile
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3.5 rounded-xl bg-gradient-to-br from-[#073a2d] to-[#0c4c3b] text-white shadow-xs">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#c79a45]">
+                      Atelier Sanctuary
+                    </span>
+                    <Sparkles className="w-3.5 h-3.5 text-[#c79a45]" />
+                  </div>
+                  <p className="text-xs text-white/80 font-sans mb-3 leading-relaxed">
+                    Sign in for bespoke tailoring, consignment tracking & saved wardrobe.
+                  </p>
+                  <Link
+                    href="/login"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 bg-[#c79a45] hover:bg-[#b58b3c] text-[#073a2d] font-bold text-xs uppercase tracking-wider rounded-md transition-colors shadow-xs"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span>Sign In / Register</span>
+                  </Link>
+                </div>
+              )}
+
+              {/* Dual Action Stat Cards: Cart & Wishlist */}
+              <div className="grid grid-cols-2 gap-2.5">
                 <button
+                  type="button"
                   onClick={() => {
                     setMobileMenuOpen(false);
                     setIsCartOpen(true);
                   }}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-left w-full cursor-pointer font-bold"
+                  className="flex flex-col p-3 rounded-xl bg-white border border-[#deddd3] hover:border-[#073a2d]/40 transition-all text-left shadow-xs group cursor-pointer"
                 >
-                  <span className="flex items-center gap-2.5 font-sans text-sm font-bold uppercase tracking-wider">
-                    <ShoppingCart className="w-4 h-4 text-[#073a2d]" />
-                    <span>Shopping Cart</span>
+                  <div className="flex items-center justify-between w-full mb-1">
+                    <div className="w-7 h-7 rounded-lg bg-[#073a2d]/10 flex items-center justify-center text-[#073a2d] group-hover:bg-[#073a2d] group-hover:text-white transition-colors">
+                      <ShoppingCart className="w-3.5 h-3.5" />
+                    </div>
+                    <Badge variant="outline" className="text-[10px] bg-[#fbf9f2] text-[#073a2d] border-[#deddd3] font-bold px-1.5 py-0">
+                      {totalCount}
+                    </Badge>
+                  </div>
+                  <span className="text-[11px] font-sans font-bold uppercase tracking-wider text-[#717975] group-hover:text-[#073a2d]">
+                    Bag
                   </span>
-                  <Badge variant="outline" className="text-xs bg-[#f5f4ed] text-[#073a2d] rounded-full px-2.5 py-0.5 border-[#deddd3] font-bold">
-                    {totalCount} items
-                  </Badge>
+                  <span className="text-xs font-semibold text-[#073a2d]">
+                    {totalCount} {totalCount === 1 ? 'item' : 'items'}
+                  </span>
                 </button>
+
                 <Link
                   href="/shop?wishlist=true"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 border-b border-[#f0eee7] text-left w-full cursor-pointer font-bold"
+                  className="flex flex-col p-3 rounded-xl bg-white border border-[#deddd3] hover:border-[#c79a45]/60 transition-all text-left shadow-xs group"
                 >
-                  <span className="flex items-center gap-2.5 font-sans text-sm font-bold uppercase tracking-wider">
-                    <Heart className="w-4 h-4 text-[#073a2d]" />
-                    <span>Saved Wishlist</span>
+                  <div className="flex items-center justify-between w-full mb-1">
+                    <div className="w-7 h-7 rounded-lg bg-[#c79a45]/15 flex items-center justify-center text-[#c79a45] group-hover:bg-[#c79a45] group-hover:text-white transition-colors">
+                      <Heart className="w-3.5 h-3.5" />
+                    </div>
+                    <Badge variant="outline" className="text-[10px] bg-[#fbf9f2] text-[#c79a45] border-[#c79a45]/30 font-bold px-1.5 py-0">
+                      {wishlist.length}
+                    </Badge>
+                  </div>
+                  <span className="text-[11px] font-sans font-bold uppercase tracking-wider text-[#717975] group-hover:text-[#c79a45]">
+                    Wishlist
                   </span>
-                  <Badge variant="outline" className="text-xs bg-[#f5f4ed] text-[#073a2d] rounded-full px-2.5 py-0.5 border-[#deddd3] font-bold">
+                  <span className="text-xs font-semibold text-[#073a2d]">
                     {wishlist.length} saved
-                  </Badge>
+                  </span>
                 </Link>
-                {isLoggedIn && (
-                  <>
-                    <Link
-                      href="/track-order"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center justify-between border-b border-[#f0eee7] py-2 text-sm font-sans font-bold uppercase tracking-wider text-[#073a2d]"
-                    >
-                      <span className="flex items-center gap-2 font-bold">
-                        <Truck className="h-4 w-4 text-[#c79a45]" />
-                        <span>Track Consignment</span>
-                      </span>
-                      <Badge className="bg-[#073a2d] text-[10px] font-bold text-white">Active</Badge>
-                    </Link>
-                    <Link
-                      href="/orders"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center justify-between border-b border-[#f0eee7] py-2 text-sm font-sans font-bold uppercase tracking-wider text-[#073a2d]"
-                    >
-                      <span className="flex items-center gap-2 font-bold">
-                        <Clock className="h-4 w-4 text-[#717975]" />
-                        <span>Order History</span>
-                      </span>
-                      <ArrowRight className="h-4 w-4 text-[#c79a45]" />
-                    </Link>
-                  </>
-                )}
+              </div>
 
-                {/* Dynamic Mobile Nav Links */}
-                <Suspense
-                  fallback={
-                    <>
-                      <Link
-                        href="/shop?gender=MEN"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-semibold"
-                      >
-                        <span className="font-semibold">MEN</span>
-                        <ArrowRight className="w-4 h-4 text-[#c79a45]" />
-                      </Link>
-                      <Link
-                        href="/shop?newArrival=true"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-semibold"
-                      >
-                        <span className="font-semibold">NEW ARRIVALS</span>
-                        <ArrowRight className="w-4 h-4 text-[#c79a45]" />
-                      </Link>
-                      <Link
-                        href="/shop"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-semibold"
-                      >
-                        <span className="font-semibold">COLLECTIONS</span>
-                        <ArrowRight className="w-4 h-4 text-[#c79a45]" />
-                      </Link>
-                      <Link
-                        href="/shop?bestSeller=true"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-semibold"
-                      >
-                        <span className="font-semibold">BEST SELLERS</span>
-                        <ArrowRight className="w-4 h-4 text-[#c79a45]" />
-                      </Link>
-                      <Link
-                        href="/offers"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center justify-between py-2 border-b border-[#f0eee7] font-semibold"
-                      >
-                        <span className="font-semibold">OFFERS</span>
-                        <ArrowRight className="w-4 h-4 text-[#c79a45]" />
-                      </Link>
-                    </>
-                  }
-                >
-                  <MobileNavLinks
-                    visibleCategories={visibleCategories}
-                    womenAvailable={womenAvailable}
-                    onClose={() => setMobileMenuOpen(false)}
-                  />
-                </Suspense>
-              </nav>
+              {/* Navigation Links */}
+              <Suspense
+                fallback={
+                  <div className="py-4 text-center text-xs text-[#717975]">
+                    Loading Atelier Wardrobe...
+                  </div>
+                }
+              >
+                <MobileNavLinks
+                  visibleCategories={visibleCategories}
+                  womenAvailable={womenAvailable}
+                  onClose={() => setMobileMenuOpen(false)}
+                />
+              </Suspense>
+
+              {/* Client Services & Consignment Tracking */}
+              <div className="space-y-1.5 pt-1">
+                <div className="text-[10px] font-sans font-bold uppercase tracking-widest text-[#717975] px-1">
+                  Client Services
+                </div>
+                <div className="bg-white rounded-xl border border-[#deddd3] divide-y divide-[#f0eee7] overflow-hidden shadow-xs">
+                  <Link
+                    href="/track-order"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-between p-3 hover:bg-[#fbf9f2] transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-[#073a2d]/5 flex items-center justify-center text-[#073a2d]">
+                        <Truck className="w-3.5 h-3.5 text-[#c79a45]" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold font-sans uppercase tracking-wider text-[#073a2d]">
+                          Track Consignment
+                        </div>
+                        <div className="text-[10px] text-[#717975]">Live Courier Tracking</div>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-3.5 h-3.5 text-[#deddd3]" />
+                  </Link>
+
+                  <Link
+                    href="/orders"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-between p-3 hover:bg-[#fbf9f2] transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-[#073a2d]/5 flex items-center justify-center text-[#073a2d]">
+                        <Clock className="w-3.5 h-3.5 text-[#717975]" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold font-sans uppercase tracking-wider text-[#073a2d]">
+                          Order History
+                        </div>
+                        <div className="text-[10px] text-[#717975]">Invoices & Purchases</div>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-3.5 h-3.5 text-[#deddd3]" />
+                  </Link>
+
+                  {isLoggedIn && (
+                    <Link
+                      href="/profile?tab=addresses"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center justify-between p-3 hover:bg-[#fbf9f2] transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-[#073a2d]/5 flex items-center justify-center text-[#073a2d]">
+                          <MapPin className="w-3.5 h-3.5 text-[#717975]" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold font-sans uppercase tracking-wider text-[#073a2d]">
+                            Saved Addresses
+                          </div>
+                          <div className="text-[10px] text-[#717975]">Delivery Locations</div>
+                        </div>
+                      </div>
+                      <ArrowRight className="w-3.5 h-3.5 text-[#deddd3]" />
+                    </Link>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <div className="shrink-0 space-y-3 border-t border-[#deddd3] pt-4">
+            {/* Footer / Concierge Action */}
+            <div className="shrink-0 p-4 border-t border-[#deddd3] bg-white space-y-2.5">
               {settings?.whatsappOrderEnabled && whatsappUrl && (
                 <a
                   href={whatsappUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-[#073a2d] text-[#fbf9f2] text-xs font-sans uppercase tracking-widest font-bold hover:bg-[#0d4d3b] transition-colors"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[#073a2d] hover:bg-[#0c4c3b] text-[#fbf9f2] text-xs font-sans uppercase tracking-widest font-bold transition-all shadow-xs"
                 >
-                  <PhoneCall className="w-4 h-4 text-[#c79a45]" />
+                  <PhoneCall className="w-3.5 h-3.5 text-[#c79a45]" />
                   <span>WhatsApp Atelier ({settings.whatsapp})</span>
                 </a>
               )}
-              <p className="text-[11px] text-center text-[#69726d] font-sans">
-                Complimentary sizing advice & custom orders
-              </p>
-              <Link
-                href={isLoggedIn ? "/profile" : "/login"}
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-between border-t border-[#deddd3] pt-3 text-sm font-sans font-bold uppercase tracking-wider text-[#073a2d]"
-              >
-                <span className="flex items-center gap-2">
-                  {isLoggedIn ? (
-                    <User className="h-4 w-4 text-[#717975]" />
-                  ) : (
-                    <LogIn className="h-4 w-4 text-[#c79a45]" />
-                  )}
-                  <span>{isLoggedIn ? (user?.name || 'Patron Profile') : 'Sign In / Join Atelier'}</span>
-                </span>
-                <span className="flex items-center gap-2">
-                  {isLoggedIn && unreadCount > 0 && (
-                    <span className="rounded-full bg-[#ba1a1a] px-1.5 py-0.5 text-[10px] font-bold text-white">
-                      {unreadCount}
-                    </span>
-                  )}
-                  <ArrowRight className="h-4 w-4 text-[#c79a45]" />
-                </span>
-              </Link>
+              <div className="flex items-center justify-between text-[10px] text-[#717975] font-sans px-1">
+                <span>Direct Master Tailor Advisory</span>
+                <span className="text-[#c79a45] font-semibold">Dhaka Atelier</span>
+              </div>
             </div>
           </div>
         </div>

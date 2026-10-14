@@ -4,13 +4,13 @@ import { ArrowRight, ArrowDown } from 'lucide-react';
 
 export const HeroBanner: React.FC = () => {
   return (
-    <section className="relative w-full min-h-[640px] sm:min-h-[720px] lg:min-h-[820px] flex items-center overflow-hidden bg-[#00231a]">
+    <section className="relative w-full min-h-[calc(100vh-92px)] min-h-[calc(100dvh-92px)] sm:min-h-[calc(100vh-108px)] sm:min-h-[calc(100dvh-108px)] sm:h-[calc(100vh-108px)] sm:h-[calc(100dvh-108px)] flex items-center overflow-hidden bg-[#00231a]">
       {/* 1. Full-bleed editorial background image from Stitch */}
       <div className="absolute inset-0 z-0">
         <img
           src="/hero-model.jpg"
           alt="Rongin Libas Sartorial Menswear Campaign"
-          className="w-full h-full object-cover object-[75%_center] sm:object-[center_35%] lg:object-[80%_center]"
+          className="w-full h-full object-cover object-[75%_top] sm:object-[80%_top] lg:object-[82%_top]"
         />
         {/* Cinematic gradient veil: heavy dark emerald on left for text readability, atmospheric fade to right */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#00231a] via-[#00231a]/90 sm:via-[#00231a]/80 md:via-[#00231a]/70 lg:via-[#00231a]/60 to-transparent" />
@@ -19,7 +19,7 @@ export const HeroBanner: React.FC = () => {
       </div>
 
       {/* 2. Main Hero Content Canvas */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-20 lg:py-24 flex flex-col justify-between min-h-[560px] sm:min-h-[720px] lg:min-h-[820px]">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 flex flex-col justify-between h-full min-h-[calc(100vh-92px)] min-h-[calc(100dvh-92px)] sm:min-h-[calc(100vh-108px)] sm:min-h-[calc(100dvh-108px)]">
         {/* Top/Center Main Copy Section */}
         <div className="max-w-2xl pt-4 sm:pt-10">
           {/* Pill Badge */}

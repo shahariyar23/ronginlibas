@@ -14,10 +14,10 @@ export declare class UsersService {
         lastName: string;
         role: import("@prisma/client").$Enums.Role;
         mustChangePassword: boolean;
+        createdAt: Date;
         id: string;
         permissions: string[];
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
     }>;
     findAll(): Promise<{
@@ -26,10 +26,10 @@ export declare class UsersService {
         lastName: string;
         role: import("@prisma/client").$Enums.Role;
         mustChangePassword: boolean;
+        createdAt: Date;
         id: string;
         permissions: string[];
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
     }[]>;
     findById(id: string): Promise<{
@@ -38,10 +38,10 @@ export declare class UsersService {
         lastName: string;
         role: import("@prisma/client").$Enums.Role;
         mustChangePassword: boolean;
+        createdAt: Date;
         id: string;
         permissions: string[];
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
     }>;
     update(id: string, dto: UpdateUserDto, currentUserId?: string): Promise<{
@@ -50,10 +50,10 @@ export declare class UsersService {
         lastName: string;
         role: import("@prisma/client").$Enums.Role;
         mustChangePassword: boolean;
+        createdAt: Date;
         id: string;
         permissions: string[];
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
     }>;
     delete(id: string, currentUserId: string): Promise<{

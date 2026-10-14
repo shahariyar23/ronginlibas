@@ -24,9 +24,9 @@ export declare class VisitorSessionService {
     recordConsent(visitorId: string, dto: UpdateConsentDto, ip?: string): Promise<{
         analyticsConsent: boolean;
         marketingConsent: boolean;
+        createdAt: Date;
         version: string;
         id: string;
-        createdAt: Date;
         updatedAt: Date;
         ipHash: string | null;
         visitorId: string;

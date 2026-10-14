@@ -11,9 +11,9 @@ export declare class AdminCouponsController {
             value: import("@prisma/client/runtime/library").Decimal;
             type: import("@prisma/client").$Enums.CouponType;
             description: string | null;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             code: string;
             minimumOrderAmount: import("@prisma/client/runtime/library").Decimal;
@@ -30,9 +30,9 @@ export declare class AdminCouponsController {
             value: import("@prisma/client/runtime/library").Decimal;
             type: import("@prisma/client").$Enums.CouponType;
             description: string | null;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             code: string;
             minimumOrderAmount: import("@prisma/client/runtime/library").Decimal;
@@ -49,9 +49,9 @@ export declare class AdminCouponsController {
             value: import("@prisma/client/runtime/library").Decimal;
             type: import("@prisma/client").$Enums.CouponType;
             description: string | null;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             code: string;
             minimumOrderAmount: import("@prisma/client/runtime/library").Decimal;
@@ -68,9 +68,9 @@ export declare class AdminCouponsController {
             value: import("@prisma/client/runtime/library").Decimal;
             type: import("@prisma/client").$Enums.CouponType;
             description: string | null;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             code: string;
             minimumOrderAmount: import("@prisma/client/runtime/library").Decimal;

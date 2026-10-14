@@ -6,17 +6,13 @@ import {
   apiRequest,
   getAccessToken,
   setAccessToken,
-  loginWithSocialToken,
-  linkSocialAccountApi,
+  loginWithGoogleApi,
+  linkGoogleAccountApi,
   unlinkSocialAccountApi,
   getSocialIdentitiesApi,
   deleteMyAccountApi,
   type SocialIdentity,
 } from '@/lib/api';
-import {
-  authenticateWithFirebaseProvider,
-  linkFirebaseProvider,
-} from '@/lib/firebase';
 import { analytics } from '@/lib/analytics/client';
 
 export interface PatronUser {
@@ -90,6 +86,8 @@ interface AuthContextType {
   socialIdentities: SocialIdentity[];
   login: (email: string, password?: string) => Promise<boolean>;
   register: (data: Partial<PatronUser>, password?: string, termsAccepted?: boolean) => Promise<boolean>;
+  loginWithGoogle: (credential: string) => Promise<boolean>;
+  linkGoogle: (credential: string) => Promise<boolean>;
   loginWithSocial: (provider?: 'google') => Promise<boolean>;
   linkSocial: (provider?: 'google') => Promise<boolean>;
   unlinkSocial: (provider?: 'GOOGLE') => Promise<boolean>;
@@ -252,10 +250,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const loginWithSocial = async (provider: 'google' = 'google') => {
+  const loginWithGoogle = async (credential: string) => {
     try {
-      const socialResult = await authenticateWithFirebaseProvider(provider);
-      const session = await loginWithSocialToken(socialResult.idToken, socialResult.fullName);
+      const session = await loginWithGoogleApi(credential);
       setAccessToken(session.accessToken);
       const profile = await loadCustomerProfile();
       setUser(profile);
@@ -264,23 +261,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       analytics.trackAuthEvent('login', typeof window !== 'undefined' ? window.location.pathname : '/login');
       toast.success('Welcome to Rongin Libas via Google');
       return true;
-    } catch (error: any) {
-      toast.error(error instanceof Error ? error.message : 'Social authentication failed.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Google authentication failed.');
       return false;
     }
   };
 
-  const linkSocial = async (provider: 'google' = 'google') => {
+  const linkGoogle = async (credential: string) => {
     try {
-      const socialResult = await linkFirebaseProvider(provider);
-      await linkSocialAccountApi(socialResult.idToken, socialResult.fullName);
+      await linkGoogleAccountApi(credential);
       await refreshSocialIdentities();
       toast.success('Google account linked successfully.');
       return true;
-    } catch (error: any) {
-      toast.error(error instanceof Error ? error.message : 'Could not link social account.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not link Google account.');
       return false;
     }
+  };
+
+  const loginWithSocial = async (_provider: 'google' = 'google') => {
+    toast.error('Please sign in using the Google button.');
+    return false;
+  };
+
+  const linkSocial = async (_provider: 'google' = 'google') => {
+    toast.error('Please link your account using the Google button.');
+    return false;
   };
 
   const unlinkSocial = async (provider: 'GOOGLE' = 'GOOGLE') => {
@@ -447,6 +453,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         socialIdentities,
         login,
         register,
+        loginWithGoogle,
+        linkGoogle,
         loginWithSocial,
         linkSocial,
         unlinkSocial,

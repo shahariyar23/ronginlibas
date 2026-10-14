@@ -51,6 +51,10 @@ export declare class WaitmarkPaymentService {
         role?: string;
         type?: string;
     } | string): Promise<WaitmarkInitiateResponse>;
+    handleFailedPayment(orderId: string, reason?: string, existingOrder?: any): Promise<{
+        success: boolean;
+        message: string;
+    }>;
     processWebhook(rawBody: Buffer | string, signatureHeader?: string): Promise<{
         success: boolean;
         message: string;

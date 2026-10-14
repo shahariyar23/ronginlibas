@@ -15,9 +15,9 @@ export declare class CollectionsService implements OnModuleInit {
     } & {
         description: string | null;
         name: string;
+        createdAt: Date;
         id: string;
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
         slug: string;
         seoTitle: string | null;
@@ -46,9 +46,9 @@ export declare class CollectionsService implements OnModuleInit {
     } & {
         description: string | null;
         name: string;
+        createdAt: Date;
         id: string;
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
         slug: string;
         seoTitle: string | null;
@@ -92,9 +92,9 @@ export declare class CollectionsService implements OnModuleInit {
     } & {
         description: string | null;
         name: string;
+        createdAt: Date;
         id: string;
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
         slug: string;
         seoTitle: string | null;
@@ -110,9 +110,9 @@ export declare class CollectionsService implements OnModuleInit {
     } & {
         description: string | null;
         name: string;
+        createdAt: Date;
         id: string;
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
         slug: string;
         seoTitle: string | null;
@@ -128,9 +128,9 @@ export declare class CollectionsService implements OnModuleInit {
     } & {
         description: string | null;
         name: string;
+        createdAt: Date;
         id: string;
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
         slug: string;
         seoTitle: string | null;
@@ -142,9 +142,9 @@ export declare class CollectionsService implements OnModuleInit {
     delete(id: string): Promise<{
         description: string | null;
         name: string;
+        createdAt: Date;
         id: string;
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
         slug: string;
         seoTitle: string | null;

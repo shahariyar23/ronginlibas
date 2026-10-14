@@ -55,9 +55,9 @@ export declare class ProductsService {
         category: {
             description: string | null;
             name: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             slug: string;
             seoTitle: string | null;
@@ -73,8 +73,8 @@ export declare class ProductsService {
             };
         } & {
             status: import("@prisma/client").$Enums.ReviewStatus;
-            id: string;
             createdAt: Date;
+            id: string;
             updatedAt: Date;
             customerId: string;
             images: string[];
@@ -87,9 +87,9 @@ export declare class ProductsService {
         variants: {
             size: string;
             color: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             measurements: Prisma.JsonValue | null;
             sku: string;
@@ -101,8 +101,8 @@ export declare class ProductsService {
         }[];
         images: {
             url: string;
-            id: string;
             createdAt: Date;
+            id: string;
             updatedAt: Date;
             sortOrder: number;
             isPrimary: boolean;
@@ -117,9 +117,9 @@ export declare class ProductsService {
         description: string | null;
         name: string;
         price: Prisma.Decimal;
+        createdAt: Date;
         id: string;
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         tags: string[];
@@ -154,9 +154,9 @@ export declare class ProductsService {
         category: {
             description: string | null;
             name: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             slug: string;
             seoTitle: string | null;
@@ -172,8 +172,8 @@ export declare class ProductsService {
             };
         } & {
             status: import("@prisma/client").$Enums.ReviewStatus;
-            id: string;
             createdAt: Date;
+            id: string;
             updatedAt: Date;
             customerId: string;
             images: string[];
@@ -186,9 +186,9 @@ export declare class ProductsService {
         variants: {
             size: string;
             color: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             measurements: Prisma.JsonValue | null;
             sku: string;
@@ -200,8 +200,8 @@ export declare class ProductsService {
         }[];
         images: {
             url: string;
-            id: string;
             createdAt: Date;
+            id: string;
             updatedAt: Date;
             sortOrder: number;
             isPrimary: boolean;
@@ -215,9 +215,9 @@ export declare class ProductsService {
         description: string | null;
         name: string;
         price: Prisma.Decimal;
+        createdAt: Date;
         id: string;
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         tags: string[];
@@ -249,9 +249,9 @@ export declare class ProductsService {
         category: {
             description: string | null;
             name: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             slug: string;
             seoTitle: string | null;
@@ -263,9 +263,9 @@ export declare class ProductsService {
         variants: {
             size: string;
             color: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             measurements: Prisma.JsonValue | null;
             sku: string;
@@ -277,8 +277,8 @@ export declare class ProductsService {
         }[];
         images: {
             url: string;
-            id: string;
             createdAt: Date;
+            id: string;
             updatedAt: Date;
             sortOrder: number;
             isPrimary: boolean;
@@ -290,9 +290,9 @@ export declare class ProductsService {
         description: string | null;
         name: string;
         price: Prisma.Decimal;
+        createdAt: Date;
         id: string;
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         tags: string[];
@@ -329,9 +329,9 @@ export declare class ProductsService {
         variants: {
             size: string;
             color: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             measurements: Prisma.JsonValue | null;
             sku: string;
@@ -343,8 +343,8 @@ export declare class ProductsService {
         }[];
         images: {
             url: string;
-            id: string;
             createdAt: Date;
+            id: string;
             updatedAt: Date;
             sortOrder: number;
             isPrimary: boolean;
@@ -359,9 +359,9 @@ export declare class ProductsService {
         description: string | null;
         name: string;
         price: Prisma.Decimal;
+        createdAt: Date;
         id: string;
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         tags: string[];
@@ -396,9 +396,9 @@ export declare class ProductsService {
         variants: {
             size: string;
             color: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             measurements: Prisma.JsonValue | null;
             sku: string;
@@ -410,8 +410,8 @@ export declare class ProductsService {
         }[];
         images: {
             url: string;
-            id: string;
             createdAt: Date;
+            id: string;
             updatedAt: Date;
             sortOrder: number;
             isPrimary: boolean;
@@ -423,9 +423,9 @@ export declare class ProductsService {
         description: string | null;
         name: string;
         price: Prisma.Decimal;
+        createdAt: Date;
         id: string;
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         tags: string[];
@@ -454,9 +454,9 @@ export declare class ProductsService {
         category: {
             description: string | null;
             name: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             slug: string;
             seoTitle: string | null;
@@ -468,9 +468,9 @@ export declare class ProductsService {
         variants: {
             size: string;
             color: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             measurements: Prisma.JsonValue | null;
             sku: string;
@@ -482,8 +482,8 @@ export declare class ProductsService {
         }[];
         images: {
             url: string;
-            id: string;
             createdAt: Date;
+            id: string;
             updatedAt: Date;
             sortOrder: number;
             isPrimary: boolean;
@@ -495,9 +495,9 @@ export declare class ProductsService {
         description: string | null;
         name: string;
         price: Prisma.Decimal;
+        createdAt: Date;
         id: string;
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         tags: string[];
@@ -526,9 +526,9 @@ export declare class ProductsService {
         category: {
             description: string | null;
             name: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             slug: string;
             seoTitle: string | null;
@@ -540,9 +540,9 @@ export declare class ProductsService {
         variants: {
             size: string;
             color: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             measurements: Prisma.JsonValue | null;
             sku: string;
@@ -554,8 +554,8 @@ export declare class ProductsService {
         }[];
         images: {
             url: string;
-            id: string;
             createdAt: Date;
+            id: string;
             updatedAt: Date;
             sortOrder: number;
             isPrimary: boolean;
@@ -566,9 +566,9 @@ export declare class ProductsService {
         description: string | null;
         name: string;
         price: Prisma.Decimal;
+        createdAt: Date;
         id: string;
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         tags: string[];
@@ -599,9 +599,9 @@ export declare class ProductsService {
             category: {
                 description: string | null;
                 name: string;
+                createdAt: Date;
                 id: string;
                 isActive: boolean;
-                createdAt: Date;
                 updatedAt: Date;
                 slug: string;
                 seoTitle: string | null;
@@ -613,9 +613,9 @@ export declare class ProductsService {
             variants: {
                 size: string;
                 color: string;
+                createdAt: Date;
                 id: string;
                 isActive: boolean;
-                createdAt: Date;
                 updatedAt: Date;
                 measurements: Prisma.JsonValue | null;
                 sku: string;
@@ -627,8 +627,8 @@ export declare class ProductsService {
             }[];
             images: {
                 url: string;
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 sortOrder: number;
                 isPrimary: boolean;
@@ -640,9 +640,9 @@ export declare class ProductsService {
             description: string | null;
             name: string;
             price: Prisma.Decimal;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
             tags: string[];
@@ -674,9 +674,9 @@ export declare class ProductsService {
             category: {
                 description: string | null;
                 name: string;
+                createdAt: Date;
                 id: string;
                 isActive: boolean;
-                createdAt: Date;
                 updatedAt: Date;
                 slug: string;
                 seoTitle: string | null;
@@ -688,9 +688,9 @@ export declare class ProductsService {
             variants: {
                 size: string;
                 color: string;
+                createdAt: Date;
                 id: string;
                 isActive: boolean;
-                createdAt: Date;
                 updatedAt: Date;
                 measurements: Prisma.JsonValue | null;
                 sku: string;
@@ -702,8 +702,8 @@ export declare class ProductsService {
             }[];
             images: {
                 url: string;
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 sortOrder: number;
                 isPrimary: boolean;
@@ -715,9 +715,9 @@ export declare class ProductsService {
             description: string | null;
             name: string;
             price: Prisma.Decimal;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
             tags: string[];

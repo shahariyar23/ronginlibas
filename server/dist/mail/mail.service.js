@@ -11,7 +11,7 @@ var MailService_1;
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import nodemailer from 'nodemailer';
-import { renderPasswordResetEmail, renderPasswordResetSuccessEmail, renderWelcomeEmail, renderAccountBannedEmail, renderStaffWelcomeEmail, renderOrderConfirmationEmail, renderOrderStatusUpdateEmail, renderOrderEditEmail, renderAbandonedCartReminderEmail, renderBackInStockEmail, } from './templates/index.js';
+import { renderPasswordResetEmail, renderPasswordResetSuccessEmail, renderWelcomeEmail, renderAccountBannedEmail, renderStaffWelcomeEmail, renderOrderConfirmationEmail, renderOrderStatusUpdateEmail, renderOrderEditEmail, renderAbandonedCartReminderEmail, renderBackInStockEmail, renderAdminOrderCancellationAlertEmail, } from './templates/index.js';
 let MailService = MailService_1 = class MailService {
     configService;
     logger = new Logger(MailService_1.name);
@@ -434,6 +434,56 @@ let MailService = MailService_1 = class MailService {
         }
         catch (error) {
             this.logger.warn(`Failed to dispatch back-in-stock notification to ${params.email}: ${error.message}`);
+            return false;
+        }
+        finally {
+            transporter.close();
+        }
+    }
+    getAdminAlertEmail() {
+        return (this.configService.get('ADMIN_ALERT_EMAIL') ||
+            this.configService.get('SMTP_ADMIN_EMAIL') ||
+            this.configService.get('SMTP_USER') ||
+            'admin@ronginlibas.com');
+    }
+    async sendAdminOrderCancellationAlertEmail(params) {
+        const transporter = this.getTransporter();
+        if (!transporter)
+            return false;
+        const recipient = params.adminEmail || this.getAdminAlertEmail();
+        const adminUrl = this.getAdminUrl();
+        const adminOrderUrl = `${adminUrl}/orders?search=${encodeURIComponent(params.orderNumber)}`;
+        const webUrl = this.getWebUrl();
+        const from = this.getFromAddress('orders');
+        const { subject, html, text } = renderAdminOrderCancellationAlertEmail({
+            orderNumber: params.orderNumber,
+            customerName: params.customerName,
+            customerPhone: params.customerPhone,
+            customerEmail: params.customerEmail,
+            createdAt: params.createdAt,
+            cancelledAt: params.cancelledAt,
+            orderAgeText: params.orderAgeText,
+            paymentMethod: params.paymentMethod,
+            paymentStatus: params.paymentStatus,
+            totalAmount: params.totalAmount,
+            items: params.items,
+            adminNotes: params.adminNotes,
+            adminOrderUrl,
+            webUrl,
+        });
+        try {
+            const info = await transporter.sendMail({
+                from,
+                to: recipient,
+                subject,
+                html,
+                text,
+            });
+            this.logger.log(`Admin order cancellation alert dispatched to ${recipient} for ${params.orderNumber} (Message ID: ${info.messageId})`);
+            return true;
+        }
+        catch (error) {
+            this.logger.warn(`Failed to dispatch admin order cancellation alert to ${recipient} for ${params.orderNumber}: ${error.message}`);
             return false;
         }
         finally {

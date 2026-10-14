@@ -9,3 +9,4 @@ export * from './order-status-update.template.js';
 export * from './order-edit.template.js';
 export * from './abandoned-cart-reminder.template.js';
 export * from './back-in-stock.template.js';
+export * from './admin-order-cancellation-alert.template.js';

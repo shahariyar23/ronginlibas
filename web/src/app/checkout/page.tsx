@@ -11,6 +11,7 @@ import {
   getCustomerAddresses,
   CustomerAddress,
   initiateWaitmarkPaymentApi,
+  cancelOrderApi,
 } from '@/lib/api';
 import { analytics } from '@/lib/analytics/client';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -173,6 +174,41 @@ export default function CheckoutPage() {
     },
     [user],
   );
+
+  React.useEffect(() => {
+    const handlePageShow = async () => {
+      // Check if user returned from gateway via window.history.back() or cross icon
+      const pendingOrderId = sessionStorage.getItem('rl_last_order_id');
+      const pendingPhone = sessionStorage.getItem('rl_last_phone') || '';
+      const pendingTrackingToken = sessionStorage.getItem('rl_last_tracking_token') || '';
+
+      if (pendingOrderId) {
+        sessionStorage.removeItem('rl_last_order_id');
+        sessionStorage.removeItem('rl_last_order_uuid');
+        sessionStorage.removeItem('rl_last_phone');
+        sessionStorage.removeItem('rl_last_tracking_token');
+        setIsRedirectingToGateway(false);
+        setIsSubmitting(false);
+
+        try {
+          await cancelOrderApi(pendingOrderId, {
+            phone: pendingPhone,
+            trackingToken: pendingTrackingToken || undefined,
+          });
+          toast.info('Payment was cancelled or closed. Your bag has been kept intact.');
+        } catch {
+          // ignore
+        }
+      }
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    void handlePageShow();
+
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow);
+    };
+  }, []);
 
   React.useEffect(() => {
     if (!user) {
@@ -564,8 +600,44 @@ export default function CheckoutPage() {
             } catch {
               // ignore
             }
-            void clearCart(false);
 
+            // Attempt to open in a dedicated popup window to watch window closure
+            const width = 520;
+            const height = 750;
+            const left = Math.max(0, window.screenX + (window.outerWidth - width) / 2);
+            const top = Math.max(0, window.screenY + (window.outerHeight - height) / 2);
+            let paymentWindow: Window | null = null;
+            try {
+              paymentWindow = window.open(
+                targetCheckoutUrl,
+                'WaitmarkPayWindow',
+                `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`,
+              );
+            } catch {
+              paymentWindow = null;
+            }
+
+            if (paymentWindow && !paymentWindow.closed) {
+              const checkClosedInterval = setInterval(async () => {
+                if (paymentWindow && paymentWindow.closed) {
+                  clearInterval(checkClosedInterval);
+                  setIsRedirectingToGateway(false);
+                  setIsSubmitting(false);
+                  try {
+                    await cancelOrderApi(order.orderNumber, {
+                      phone: formData.phone.replace(/\s/g, ''),
+                      trackingToken: order.guestTrackingToken || undefined,
+                    });
+                    toast.info('Payment was cancelled or closed. Your bag has been kept intact.');
+                  } catch {
+                    // ignore
+                  }
+                }
+              }, 1000);
+              return;
+            }
+
+            // Fallback for pop-up blockers or mobile
             try {
               window.location.href = targetCheckoutUrl;
             } catch {
@@ -575,12 +647,19 @@ export default function CheckoutPage() {
           }
         } catch (paymentErr: any) {
           setIsRedirectingToGateway(false);
+          try {
+            await cancelOrderApi(order.orderNumber, {
+              phone: formData.phone.replace(/\s/g, ''),
+              trackingToken: order.guestTrackingToken || undefined,
+            });
+          } catch {
+            // ignore
+          }
           toast.error(
             paymentErr?.message ||
-              'Payment session could not be opened automatically. You can complete payment from your order confirmation.',
+              'Payment session could not be opened automatically. Please select another payment method or try again.',
           );
-          setOrderConfirmed(true);
-          void clearCart(false);
+          setIsSubmitting(false);
           return;
         }
       }
@@ -1329,6 +1408,28 @@ export default function CheckoutPage() {
                   <span>Proceed to Payment Now (৳{effectiveGrandTotal.toLocaleString()})</span>
                   <ArrowRight className="w-4 h-4" />
                 </a>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={async () => {
+                    setIsRedirectingToGateway(false);
+                    setIsSubmitting(false);
+                    if (orderId) {
+                      try {
+                        await cancelOrderApi(orderId, {
+                          phone: formData.phone.replace(/\s/g, ''),
+                          trackingToken: trackingToken || undefined,
+                        });
+                        toast.info('Payment cancelled. Your bag has been kept intact.');
+                      } catch {
+                        // ignore
+                      }
+                    }
+                  }}
+                  className="w-full border-red-300 text-red-700 hover:bg-red-50 text-xs font-semibold h-11 transition-colors cursor-pointer"
+                >
+                  Cancel Payment & Return to Bag
+                </Button>
                 <p className="text-[11px] text-[#717975]">
                   If your browser didn't redirect automatically, click the button above.
                 </p>

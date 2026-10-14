@@ -694,6 +694,7 @@ describe('OrdersService.createByAdmin', () => {
         },
         order: {
           update: vi.fn().mockResolvedValue({ ...expiredOrder, status: OrderStatus.CANCELLED }),
+          delete: vi.fn().mockResolvedValue(expiredOrder),
         },
         orderTrackingEvent: {
           create: vi.fn().mockResolvedValue({ id: 'evt-timeout' }),
@@ -724,15 +725,9 @@ describe('OrdersService.createByAdmin', () => {
           type: 'RETURN',
         }),
       });
-      expect(tx.order.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'ord-expired-1' },
-          data: expect.objectContaining({
-            status: OrderStatus.CANCELLED,
-            paymentStatus: 'FAILED',
-          }),
-        }),
-      );
+      expect(tx.order.delete).toHaveBeenCalledWith({
+        where: { id: 'ord-expired-1' },
+      });
     });
 
     it('rejects explicit cancellation of an already PAID order', async () => {

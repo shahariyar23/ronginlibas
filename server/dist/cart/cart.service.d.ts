@@ -27,8 +27,8 @@ export declare class CartService {
                 slug: string;
                 image: {
                     url: string;
-                    altText: string | null;
                     isPrimary: boolean;
+                    altText: string | null;
                 };
             };
             variant: {
@@ -66,8 +66,8 @@ export declare class CartService {
                 slug: string;
                 image: {
                     url: string;
-                    altText: string | null;
                     isPrimary: boolean;
+                    altText: string | null;
                 };
             };
             variant: {
@@ -105,8 +105,8 @@ export declare class CartService {
                 slug: string;
                 image: {
                     url: string;
-                    altText: string | null;
                     isPrimary: boolean;
+                    altText: string | null;
                 };
             };
             variant: {
@@ -144,8 +144,8 @@ export declare class CartService {
                 slug: string;
                 image: {
                     url: string;
-                    altText: string | null;
                     isPrimary: boolean;
+                    altText: string | null;
                 };
             };
             variant: {
@@ -183,8 +183,8 @@ export declare class CartService {
                 slug: string;
                 image: {
                     url: string;
-                    altText: string | null;
                     isPrimary: boolean;
+                    altText: string | null;
                 };
             };
             variant: {
@@ -222,8 +222,8 @@ export declare class CartService {
                 slug: string;
                 image: {
                     url: string;
-                    altText: string | null;
                     isPrimary: boolean;
+                    altText: string | null;
                 };
             };
             variant: {
@@ -261,8 +261,8 @@ export declare class CartService {
                 slug: string;
                 image: {
                     url: string;
-                    altText: string | null;
                     isPrimary: boolean;
+                    altText: string | null;
                 };
             };
             variant: {
@@ -287,16 +287,16 @@ export declare class CartService {
         phone?: string;
         name?: string;
     }): Promise<{
+        createdAt: Date;
         id: string;
+        updatedAt: Date;
         customerId: string | null;
-        guestId: string | null;
+        guestName: string | null;
         guestEmail: string | null;
         guestPhone: string | null;
-        guestName: string | null;
+        guestId: string | null;
         lastReminderSentAt: Date | null;
         reminderCount: number;
-        createdAt: Date;
-        updatedAt: Date;
     } | null>;
     restoreOrderToCart(customerId: string | undefined, cartId: string | undefined, orderId: string, phone?: string, trackingToken?: string): Promise<{
         cartId: string | null;
@@ -316,8 +316,8 @@ export declare class CartService {
                 slug: string;
                 image: {
                     url: string;
-                    altText: string | null;
                     isPrimary: boolean;
+                    altText: string | null;
                 };
             };
             variant: {

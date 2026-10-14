@@ -11,9 +11,9 @@ export declare class CollectionsController {
         } & {
             description: string | null;
             name: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             slug: string;
             seoTitle: string | null;
@@ -60,9 +60,9 @@ export declare class CollectionsController {
         } & {
             description: string | null;
             name: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             slug: string;
             seoTitle: string | null;

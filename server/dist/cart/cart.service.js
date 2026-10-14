@@ -324,21 +324,20 @@ let CartService = class CartService {
                         },
                     });
                 }
-                await tx.order.update({
-                    where: { id: order.id },
-                    data: {
-                        status: 'CANCELLED',
-                        paymentStatus: 'FAILED',
-                    },
-                });
-                await tx.orderTrackingEvent.create({
-                    data: {
-                        orderId: order.id,
-                        status: 'CANCELLED',
-                        description: 'Order cancelled and items restored to cart for checkout.',
-                        customerVisible: true,
-                    },
-                });
+                if (typeof tx.order.delete === 'function') {
+                    await tx.order.delete({
+                        where: { id: order.id },
+                    });
+                }
+                else if (typeof tx.order.update === 'function') {
+                    await tx.order.update({
+                        where: { id: order.id },
+                        data: {
+                            status: 'CANCELLED',
+                            paymentStatus: 'FAILED',
+                        },
+                    });
+                }
             });
         }
         for (const item of order.items) {

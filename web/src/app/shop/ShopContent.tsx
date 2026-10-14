@@ -740,16 +740,18 @@ export const ShopContent: React.FC<ShopContentProps> = ({
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           {/* Mobile view (< sm): Clean two-row mobile-first toolbar */}
           <div className="flex flex-col gap-2.5 sm:hidden">
-            {/* Row 1: Full-width search bar */}
+            {/* Row 1: Full-width prominent search bar */}
             <form
               onSubmit={(event) => {
                 event.preventDefault();
                 updateQuery({ q: searchDraft.trim() || null });
               }}
-              className="flex items-center border border-[#deddd3] bg-white h-9 px-3 w-full shadow-2xs"
+              className="flex items-center bg-white border-2 border-[#073a2d]/40 focus-within:border-[#073a2d] focus-within:ring-2 focus-within:ring-[#073a2d]/20 h-11 w-full shadow-xs transition-all overflow-hidden"
               role="search"
             >
-              <Search className="h-3.5 w-3.5 text-[#717975] shrink-0 mr-2" />
+              <div className="pl-3.5 pr-2 text-[#073a2d] shrink-0">
+                <Search className="h-4 w-4" />
+              </div>
               <input
                 value={searchDraft}
                 onChange={(event) =>
@@ -758,9 +760,9 @@ export const ShopContent: React.FC<ShopContentProps> = ({
                     value: event.target.value,
                   })
                 }
-                placeholder="Search collection..."
+                placeholder="Search panjabis, shirts, polos..."
                 aria-label="Search collection"
-                className="w-full bg-transparent text-xs outline-none placeholder:text-[#9ea6a1]"
+                className="w-full bg-transparent pr-2 text-sm font-sans outline-none placeholder:text-[#69726d] text-[#1b1c18]"
               />
               {searchDraft && (
                 <button
@@ -769,11 +771,17 @@ export const ShopContent: React.FC<ShopContentProps> = ({
                     setSearchEdit({ query: initialQueryFromUrl, value: '' });
                     updateQuery({ q: null });
                   }}
-                  className="p-1 text-[#717975] hover:text-[#1b1c18]"
+                  className="p-1.5 text-[#717975] hover:text-[#ba1a1a] shrink-0 mr-1"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-4 h-4" />
                 </button>
               )}
+              <button
+                type="submit"
+                className="h-full px-3.5 bg-[#073a2d] hover:bg-[#0c4e3b] text-white font-sans text-xs font-bold uppercase tracking-wider shrink-0 transition-colors"
+              >
+                Search
+              </button>
             </form>
 
             {/* Row 2: Filter Button & Sort Dropdown side by side */}
@@ -918,15 +926,19 @@ export const ShopContent: React.FC<ShopContentProps> = ({
             )}
 
             {/* Right Layout & Sorting */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 lg:gap-4">
+              {/* Prominent High-Visibility Search Bar */}
               <form
                 onSubmit={(event) => {
                   event.preventDefault();
                   updateQuery({ q: searchDraft.trim() || null });
                 }}
-                className="flex items-center border border-[#deddd3] bg-white"
+                className="relative flex items-center bg-white border-2 border-[#073a2d]/40 hover:border-[#073a2d] focus-within:border-[#073a2d] focus-within:ring-2 focus-within:ring-[#073a2d]/20 h-10 sm:h-11 w-64 md:w-80 lg:w-[380px] shadow-xs hover:shadow-sm transition-all overflow-hidden"
                 role="search"
               >
+                <div className="pl-3.5 pr-2 text-[#073a2d] shrink-0">
+                  <Search className="h-4 w-4" />
+                </div>
                 <input
                   value={searchDraft}
                   onChange={(event) =>
@@ -935,21 +947,39 @@ export const ShopContent: React.FC<ShopContentProps> = ({
                       value: event.target.value,
                     })
                   }
-                  placeholder="Search products"
+                  placeholder="Search panjabis, shirts, polos..."
                   aria-label="Search products"
-                  className="w-28 sm:w-40 bg-transparent px-2 py-1.5 text-xs outline-none"
+                  className="w-full bg-transparent pr-2 text-xs sm:text-sm font-sans text-[#1b1c18] placeholder:text-[#69726d] outline-none"
                 />
-                <button type="submit" aria-label="Submit product search" className="px-2 text-[#073a2d]">
-                  <Search className="h-4 w-4" />
+                {searchDraft && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchEdit({ query: initialQueryFromUrl, value: '' });
+                      updateQuery({ q: null });
+                    }}
+                    className="p-1.5 text-[#717975] hover:text-[#ba1a1a] shrink-0 mr-1 transition-colors cursor-pointer"
+                    title="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  aria-label="Submit product search"
+                  className="h-full px-4 bg-[#073a2d] hover:bg-[#0c4e3b] text-white font-sans text-[11px] sm:text-xs font-bold uppercase tracking-wider shrink-0 transition-colors flex items-center justify-center cursor-pointer"
+                >
+                  Search
                 </button>
               </form>
+
               {/* Sorting Dropdown */}
               <div className="flex items-center gap-2">
                 <span className="text-xs font-sans text-[#717975] hidden sm:inline">Sort:</span>
                 <select
                   value={sortBy}
                   onChange={(e) => updateQuery({ sort: e.target.value === 'featured' ? null : e.target.value })}
-                  className="bg-white border border-[#deddd3] text-xs font-sans px-3 py-1.5 text-[#1b1c18] focus:outline-none focus:border-[#073a2d]"
+                  className="bg-white border-2 border-[#deddd3] hover:border-[#073a2d]/40 focus:border-[#073a2d] h-10 sm:h-11 text-xs font-sans px-3 text-[#1b1c18] focus:outline-none transition-colors shadow-xs"
                 >
                   <option value="featured">Featured Atelier Pieces</option>
                   <option value="price-low">Price: Low to High</option>
@@ -960,17 +990,17 @@ export const ShopContent: React.FC<ShopContentProps> = ({
               </div>
 
               {/* Layout Toggle */}
-              <div className="hidden md:flex items-center border border-[#deddd3] bg-white">
+              <div className="hidden md:flex items-center border-2 border-[#deddd3] bg-white h-10 sm:h-11 shadow-xs">
                 <button
                   onClick={() => setGridCols(3)}
-                  className={`p-1.5 ${gridCols === 3 ? 'bg-[#073a2d] text-white' : 'text-[#717975] hover:text-black'}`}
+                  className={`h-full px-2.5 flex items-center justify-center transition-colors ${gridCols === 3 ? 'bg-[#073a2d] text-white' : 'text-[#717975] hover:text-black'}`}
                   title="3 Columns"
                 >
                   <LayoutGrid className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setGridCols(4)}
-                  className={`p-1.5 ${gridCols === 4 ? 'bg-[#073a2d] text-white' : 'text-[#717975] hover:text-black'}`}
+                  className={`h-full px-2.5 flex items-center justify-center transition-colors ${gridCols === 4 ? 'bg-[#073a2d] text-white' : 'text-[#717975] hover:text-black'}`}
                   title="4 Columns"
                 >
                   <Grid3X3 className="w-4 h-4" />

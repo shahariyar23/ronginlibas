@@ -106,6 +106,69 @@ let CategoriesService = class CategoriesService {
             throw error;
         }
     }
+    async update(id, dto) {
+        const existing = await this.prisma.category.findUnique({
+            where: { id },
+        });
+        if (!existing) {
+            throw new NotFoundException(`Category not found: ${id}`);
+        }
+        let slug = dto.slug;
+        if (dto.name && !slug) {
+            slug = dto.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+        }
+        if (slug && slug !== existing.slug) {
+            const conflict = await this.prisma.category.findUnique({
+                where: { slug },
+                select: { id: true },
+            });
+            if (conflict && conflict.id !== id) {
+                throw new ConflictException(`Category with slug "${slug}" already exists`);
+            }
+        }
+        try {
+            return await this.prisma.category.update({
+                where: { id },
+                data: {
+                    name: dto.name !== undefined ? dto.name : undefined,
+                    slug: slug !== undefined ? slug : undefined,
+                    description: dto.description !== undefined ? dto.description : undefined,
+                    image: dto.image !== undefined ? dto.image : undefined,
+                    parentId: dto.parentId !== undefined ? dto.parentId : undefined,
+                    sortOrder: dto.sortOrder !== undefined ? dto.sortOrder : undefined,
+                    isActive: dto.isActive !== undefined ? dto.isActive : undefined,
+                },
+            });
+        }
+        catch (error) {
+            if (isUniqueConstraintError(error)) {
+                throw new ConflictException('A category with this slug already exists');
+            }
+            throw error;
+        }
+    }
+    async remove(id) {
+        const existing = await this.prisma.category.findUnique({
+            where: { id },
+            include: {
+                _count: { select: { products: true, children: true } },
+            },
+        });
+        if (!existing) {
+            throw new NotFoundException(`Category not found: ${id}`);
+        }
+        if (existing._count.products > 0) {
+            throw new ConflictException(`Cannot delete category "${existing.name}" because ${existing._count.products} products belong to it. Please reassign the products first or mark this category as inactive.`);
+        }
+        if (existing._count.children > 0) {
+            throw new ConflictException(`Cannot delete category "${existing.name}" because it has ${existing._count.children} subcategories. Please remove subcategories first.`);
+        }
+        await this.prisma.category.delete({ where: { id } });
+        return {
+            success: true,
+            message: `Category "${existing.name}" deleted successfully`,
+        };
+    }
 };
 CategoriesService = __decorate([
     Injectable(),

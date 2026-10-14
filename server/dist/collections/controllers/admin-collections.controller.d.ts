@@ -15,9 +15,9 @@ export declare class AdminCollectionsController {
         } & {
             description: string | null;
             name: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             slug: string;
             seoTitle: string | null;
@@ -49,9 +49,9 @@ export declare class AdminCollectionsController {
         } & {
             description: string | null;
             name: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             slug: string;
             seoTitle: string | null;
@@ -70,9 +70,9 @@ export declare class AdminCollectionsController {
         } & {
             description: string | null;
             name: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             slug: string;
             seoTitle: string | null;
@@ -91,9 +91,9 @@ export declare class AdminCollectionsController {
         } & {
             description: string | null;
             name: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             slug: string;
             seoTitle: string | null;
@@ -108,9 +108,9 @@ export declare class AdminCollectionsController {
         data: {
             description: string | null;
             name: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             slug: string;
             seoTitle: string | null;

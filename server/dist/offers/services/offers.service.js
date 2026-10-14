@@ -172,6 +172,14 @@ let OffersService = OffersService_1 = class OffersService {
                 isBestSeller: prod.isBestSeller,
                 fabric: prod.fabric ?? undefined,
                 fabricOrigin: prod.fabricOrigin ?? undefined,
+                variants: prod.variants.map((v) => ({
+                    id: v.id,
+                    size: v.size,
+                    color: v.color ?? undefined,
+                    stock: Math.max(0, v.stock),
+                    price: v.priceOverride ? Number(v.priceOverride) : regularPrice,
+                    isActive: v.isActive,
+                })),
             });
         }
         const categoryCountMap = new Map();

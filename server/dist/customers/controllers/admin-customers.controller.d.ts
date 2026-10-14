@@ -47,8 +47,8 @@ export declare class AdminCustomersController {
                 area: string | null;
                 postalCode: string | null;
                 deliveryInstructions: string | null;
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 customerId: string;
                 isDefault: boolean;
@@ -108,8 +108,8 @@ export declare class AdminCustomersController {
                     productName: string;
                     size: string | null;
                     color: string | null;
-                    id: string;
                     createdAt: Date;
+                    id: string;
                     variantId: string | null;
                     sku: string;
                     productId: string | null;
@@ -134,8 +134,8 @@ export declare class AdminCustomersController {
                 estimatedDelivery: Date | null;
                 adminNotes: string | null;
                 status: import("@prisma/client").$Enums.OrderStatus;
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 customerId: string | null;
                 guestName: string | null;
@@ -172,8 +172,8 @@ export declare class AdminCustomersController {
                 };
             } & {
                 status: import("@prisma/client").$Enums.ReviewStatus;
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 customerId: string;
                 images: string[];
@@ -207,10 +207,10 @@ export declare class AdminCustomersController {
             preferredSize: string | null;
             preferredFit: string | null;
             marketingConsent: boolean;
+            createdAt: Date;
             id: string;
             passwordHash: string | null;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             refreshTokenHash: string | null;
             photoUrl: string | null;
@@ -240,10 +240,10 @@ export declare class AdminCustomersController {
             preferredSize: string | null;
             preferredFit: string | null;
             marketingConsent: boolean;
+            createdAt: Date;
             id: string;
             passwordHash: string | null;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             refreshTokenHash: string | null;
             photoUrl: string | null;
@@ -266,10 +266,10 @@ export declare class AdminCustomersController {
             preferredSize: string | null;
             preferredFit: string | null;
             marketingConsent: boolean;
+            createdAt: Date;
             id: string;
             passwordHash: string | null;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             refreshTokenHash: string | null;
             photoUrl: string | null;
@@ -292,10 +292,10 @@ export declare class AdminCustomersController {
             preferredSize: string | null;
             preferredFit: string | null;
             marketingConsent: boolean;
+            createdAt: Date;
             id: string;
             passwordHash: string | null;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             refreshTokenHash: string | null;
             photoUrl: string | null;

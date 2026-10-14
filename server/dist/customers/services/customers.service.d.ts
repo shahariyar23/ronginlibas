@@ -41,8 +41,8 @@ export declare class CustomersService {
             area: string | null;
             postalCode: string | null;
             deliveryInstructions: string | null;
-            id: string;
             createdAt: Date;
+            id: string;
             updatedAt: Date;
             customerId: string;
             isDefault: boolean;
@@ -87,8 +87,8 @@ export declare class CustomersService {
                 productName: string;
                 size: string | null;
                 color: string | null;
-                id: string;
                 createdAt: Date;
+                id: string;
                 variantId: string | null;
                 sku: string;
                 productId: string | null;
@@ -113,8 +113,8 @@ export declare class CustomersService {
             estimatedDelivery: Date | null;
             adminNotes: string | null;
             status: import("@prisma/client").$Enums.OrderStatus;
-            id: string;
             createdAt: Date;
+            id: string;
             updatedAt: Date;
             customerId: string | null;
             guestName: string | null;
@@ -151,8 +151,8 @@ export declare class CustomersService {
             };
         } & {
             status: import("@prisma/client").$Enums.ReviewStatus;
-            id: string;
             createdAt: Date;
+            id: string;
             updatedAt: Date;
             customerId: string;
             images: string[];
@@ -186,10 +186,10 @@ export declare class CustomersService {
         preferredSize: string | null;
         preferredFit: string | null;
         marketingConsent: boolean;
+        createdAt: Date;
         id: string;
         passwordHash: string | null;
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
         refreshTokenHash: string | null;
         photoUrl: string | null;
@@ -209,8 +209,8 @@ export declare class CustomersService {
         preferredSize: string | null;
         preferredFit: string | null;
         marketingConsent: boolean;
-        id: string;
         createdAt: Date;
+        id: string;
         secondaryPhone: string | null;
         dateOfBirth: Date | null;
         addresses: {
@@ -302,8 +302,8 @@ export declare class CustomersService {
         area: string | null;
         postalCode: string | null;
         deliveryInstructions: string | null;
-        id: string;
         createdAt: Date;
+        id: string;
         updatedAt: Date;
         isDefault: boolean;
     }[]>;
@@ -318,8 +318,8 @@ export declare class CustomersService {
         area: string | null;
         postalCode: string | null;
         deliveryInstructions: string | null;
-        id: string;
         createdAt: Date;
+        id: string;
         updatedAt: Date;
         isDefault: boolean;
     }>;
@@ -334,8 +334,8 @@ export declare class CustomersService {
         area: string | null;
         postalCode: string | null;
         deliveryInstructions: string | null;
-        id: string;
         createdAt: Date;
+        id: string;
         updatedAt: Date;
         isDefault: boolean;
     }>;
@@ -350,8 +350,8 @@ export declare class CustomersService {
         area: string | null;
         postalCode: string | null;
         deliveryInstructions: string | null;
-        id: string;
         createdAt: Date;
+        id: string;
         updatedAt: Date;
         isDefault: boolean;
     }>;
@@ -413,10 +413,10 @@ export declare class CustomersService {
             preferredSize: string | null;
             preferredFit: string | null;
             marketingConsent: boolean;
+            createdAt: Date;
             id: string;
             passwordHash: string | null;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             refreshTokenHash: string | null;
             photoUrl: string | null;
@@ -439,10 +439,10 @@ export declare class CustomersService {
             preferredSize: string | null;
             preferredFit: string | null;
             marketingConsent: boolean;
+            createdAt: Date;
             id: string;
             passwordHash: string | null;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             refreshTokenHash: string | null;
             photoUrl: string | null;
@@ -465,10 +465,10 @@ export declare class CustomersService {
             preferredSize: string | null;
             preferredFit: string | null;
             marketingConsent: boolean;
+            createdAt: Date;
             id: string;
             passwordHash: string | null;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             refreshTokenHash: string | null;
             photoUrl: string | null;

@@ -10,12 +10,14 @@ import { CraftStory } from '@/components/home/CraftStory';
 import { InstagramFeed } from '@/components/home/InstagramFeed';
 import { Newsletter } from '@/components/home/Newsletter';
 import type { Product } from '@/types';
+import type { StorefrontCategory } from '@/lib/api';
 
 interface HomeContentProps {
   initialProducts: Product[];
+  categories?: StorefrontCategory[];
 }
 
-export function HomeContent({ initialProducts }: HomeContentProps) {
+export function HomeContent({ initialProducts, categories }: HomeContentProps) {
   const [products] = useState<Product[]>(initialProducts);
 
   const newArrivals = products.filter((product) => product.isNewArrival);
@@ -38,7 +40,7 @@ export function HomeContent({ initialProducts }: HomeContentProps) {
       <TrustBadges />
 
       {/* 3. Shop by Category */}
-      <CategoryGrid />
+      <CategoryGrid categories={categories} />
 
       {/* 4. New Arrivals */}
       <ProductGridSection

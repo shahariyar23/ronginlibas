@@ -52,9 +52,9 @@ export declare class AdminOffersController {
             }[];
             description: string | null;
             name: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             slug: string;
             couponCode: string | null;
@@ -85,9 +85,9 @@ export declare class AdminOffersController {
         } & {
             description: string | null;
             name: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             slug: string;
             couponCode: string | null;
@@ -121,9 +121,9 @@ export declare class AdminOffersController {
         } & {
             description: string | null;
             name: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             slug: string;
             couponCode: string | null;

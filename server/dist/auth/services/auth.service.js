@@ -14,9 +14,11 @@ import { JwtService } from '@nestjs/jwt';
 import { createHash, randomBytes } from 'node:crypto';
 import bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { AuthProvider } from '@prisma/client';
 import { UserRole } from '../../common/constants/roles.constant.js';
 import { MailService } from '../../mail/mail.service.js';
 import { FirebaseAdminService } from './firebase-admin.service.js';
+import { OAuth2Client } from 'google-auth-library';
 let AuthService = AuthService_1 = class AuthService {
     prisma;
     jwtService;
@@ -207,6 +209,209 @@ let AuthService = AuthService_1 = class AuthService {
             isNewCustomer: true,
             isProfileComplete: false,
         };
+    }
+    async loginWithGoogle(credential) {
+        if (!credential || typeof credential !== 'string' || !credential.trim()) {
+            throw new BadRequestException('Google credential token is required');
+        }
+        const googleClientId = this.configService.get('GOOGLE_CLIENT_ID') ||
+            process.env.GOOGLE_CLIENT_ID;
+        if (!googleClientId) {
+            this.logger.error('GOOGLE_CLIENT_ID is not configured on the backend server');
+            throw new ServiceUnavailableException('Google authentication is currently unavailable');
+        }
+        let payload;
+        try {
+            const client = new OAuth2Client(googleClientId);
+            const ticket = await client.verifyIdToken({
+                idToken: credential.trim(),
+                audience: googleClientId,
+            });
+            payload = ticket.getPayload();
+        }
+        catch (err) {
+            this.logger.warn(`Google token verification failed: ${err?.message || 'unknown error'}`);
+            throw new UnauthorizedException('Invalid or expired Google credential');
+        }
+        if (!payload || !payload.sub) {
+            throw new UnauthorizedException('Google ID token is missing required subject identifier');
+        }
+        const providerUserId = payload.sub;
+        const email = payload.email ? payload.email.toLowerCase().trim() : null;
+        const emailVerified = Boolean(payload.email_verified);
+        const picture = payload.picture || null;
+        const rawName = (payload.name || '').trim();
+        const nameParts = rawName ? rawName.split(/\s+/) : [];
+        const firstName = payload.given_name?.trim() || nameParts[0] || 'Patron';
+        const lastName = payload.family_name?.trim() || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : null);
+        const existingIdentity = await this.prisma.authIdentity.findUnique({
+            where: {
+                provider_providerUserId: {
+                    provider: AuthProvider.GOOGLE,
+                    providerUserId,
+                },
+            },
+            include: {
+                customer: true,
+            },
+        });
+        if (existingIdentity) {
+            const customer = existingIdentity.customer;
+            if (!customer || !customer.isActive) {
+                if (customer?.banReason) {
+                    throw new UnauthorizedException(`Your account has been suspended by the shop administration. Reason: ${customer.banReason}`);
+                }
+                throw new UnauthorizedException('Your account is currently inactive. Please contact support.');
+            }
+            if (picture && !customer.photoUrl) {
+                await this.prisma.customer.update({
+                    where: { id: customer.id },
+                    data: { photoUrl: picture },
+                });
+            }
+            const session = await this.issueCustomerSession(customer.id, customer.email ?? undefined);
+            return {
+                ...session,
+                isNewCustomer: false,
+                isProfileComplete: Boolean(customer.phone),
+            };
+        }
+        if (email && emailVerified) {
+            const existingCustomer = await this.prisma.customer.findUnique({
+                where: { email },
+            });
+            if (existingCustomer) {
+                if (!existingCustomer.isActive) {
+                    if (existingCustomer.banReason) {
+                        throw new UnauthorizedException(`Your account has been suspended by the shop administration. Reason: ${existingCustomer.banReason}`);
+                    }
+                    throw new UnauthorizedException('Your account is currently inactive. Please contact support.');
+                }
+                await this.prisma.authIdentity.create({
+                    data: {
+                        customerId: existingCustomer.id,
+                        provider: AuthProvider.GOOGLE,
+                        providerUserId,
+                        providerEmail: email,
+                    },
+                });
+                if (picture && !existingCustomer.photoUrl) {
+                    await this.prisma.customer.update({
+                        where: { id: existingCustomer.id },
+                        data: { photoUrl: picture },
+                    });
+                }
+                const session = await this.issueCustomerSession(existingCustomer.id, existingCustomer.email ?? undefined);
+                return {
+                    ...session,
+                    isNewCustomer: false,
+                    isProfileComplete: Boolean(existingCustomer.phone),
+                };
+            }
+        }
+        const newCustomer = await this.prisma.customer.create({
+            data: {
+                firstName,
+                lastName,
+                email,
+                photoUrl: picture,
+                phone: null,
+                isActive: true,
+                identities: {
+                    create: {
+                        provider: AuthProvider.GOOGLE,
+                        providerUserId,
+                        providerEmail: email,
+                    },
+                },
+            },
+        });
+        if (newCustomer.email) {
+            this.mailService
+                .sendWelcomeEmail(newCustomer.email, newCustomer.firstName)
+                .catch((err) => {
+                this.logger.warn(`Failed to dispatch welcome email to ${newCustomer.email}: ${err?.message}`);
+            });
+        }
+        const session = await this.issueCustomerSession(newCustomer.id, newCustomer.email ?? undefined);
+        return {
+            ...session,
+            isNewCustomer: true,
+            isProfileComplete: false,
+        };
+    }
+    async linkGoogleAccount(customerId, credential) {
+        if (!credential || typeof credential !== 'string' || !credential.trim()) {
+            throw new BadRequestException('Google credential token is required');
+        }
+        const googleClientId = this.configService.get('GOOGLE_CLIENT_ID') ||
+            process.env.GOOGLE_CLIENT_ID;
+        if (!googleClientId) {
+            throw new ServiceUnavailableException('Google authentication is not configured');
+        }
+        let payload;
+        try {
+            const client = new OAuth2Client(googleClientId);
+            const ticket = await client.verifyIdToken({
+                idToken: credential.trim(),
+                audience: googleClientId,
+            });
+            payload = ticket.getPayload();
+        }
+        catch (err) {
+            this.logger.warn(`Google token verification failed during linking: ${err?.message || 'unknown error'}`);
+            throw new UnauthorizedException('Invalid or expired Google credential');
+        }
+        if (!payload || !payload.sub) {
+            throw new UnauthorizedException('Google ID token is missing required subject identifier');
+        }
+        const providerUserId = payload.sub;
+        const email = payload.email ? payload.email.toLowerCase().trim() : null;
+        const existingIdentity = await this.prisma.authIdentity.findUnique({
+            where: {
+                provider_providerUserId: {
+                    provider: AuthProvider.GOOGLE,
+                    providerUserId,
+                },
+            },
+        });
+        if (existingIdentity) {
+            if (existingIdentity.customerId === customerId) {
+                return {
+                    linked: true,
+                    provider: AuthProvider.GOOGLE,
+                    message: 'Google is already linked to your patron profile.',
+                };
+            }
+            throw new ConflictException('This Google account is already linked to another Rongin Libas customer profile.');
+        }
+        const identity = await this.prisma.authIdentity.create({
+            data: {
+                customerId,
+                provider: AuthProvider.GOOGLE,
+                providerUserId,
+                providerEmail: email,
+            },
+            select: {
+                id: true,
+                provider: true,
+                providerEmail: true,
+                createdAt: true,
+            },
+        });
+        if (payload.picture) {
+            const customer = await this.prisma.customer.findUnique({
+                where: { id: customerId },
+                select: { photoUrl: true },
+            });
+            if (customer && !customer.photoUrl) {
+                await this.prisma.customer.update({
+                    where: { id: customerId },
+                    data: { photoUrl: payload.picture },
+                });
+            }
+        }
+        return identity;
     }
     async linkSocialAccount(customerId, dto) {
         const profile = await this.firebaseAdminService.verifyIdToken(dto.idToken);

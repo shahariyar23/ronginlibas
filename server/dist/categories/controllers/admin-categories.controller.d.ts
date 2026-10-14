@@ -1,5 +1,6 @@
 import { CategoriesService } from '../services/categories.service.js';
 import { CreateCategoryDto } from '../dto/create-category.dto.js';
+import { UpdateCategoryDto } from '../dto/update-category.dto.js';
 import { AuditService, type AdminAuditActor } from '../../audit/audit.service.js';
 export declare class AdminCategoriesController {
     private readonly categoriesService;
@@ -33,9 +34,9 @@ export declare class AdminCategoriesController {
         data: {
             description: string | null;
             name: string;
+            createdAt: Date;
             id: string;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             slug: string;
             seoTitle: string | null;
@@ -44,5 +45,26 @@ export declare class AdminCategoriesController {
             image: string | null;
             parentId: string | null;
         };
+    }>;
+    update(id: string, dto: UpdateCategoryDto, actor: AdminAuditActor): Promise<{
+        message: string;
+        data: {
+            description: string | null;
+            name: string;
+            createdAt: Date;
+            id: string;
+            isActive: boolean;
+            updatedAt: Date;
+            slug: string;
+            seoTitle: string | null;
+            metaDescription: string | null;
+            sortOrder: number;
+            image: string | null;
+            parentId: string | null;
+        };
+    }>;
+    delete(id: string, actor: AdminAuditActor): Promise<{
+        success: boolean;
+        message: string;
     }>;
 }

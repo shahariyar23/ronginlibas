@@ -19,6 +19,7 @@ import { UserRole } from '../../common/constants/roles.constant.js';
 import { MailService } from '../../mail/mail.service.js';
 import { FirebaseAdminService } from './firebase-admin.service.js';
 import { SocialLoginDto } from '../dto/social-login.dto.js';
+import { OAuth2Client } from 'google-auth-library';
 
 interface AuthPayload {
   sub: string;
@@ -260,6 +261,266 @@ export class AuthService {
       isNewCustomer: true,
       isProfileComplete: false,
     };
+  }
+
+  /**
+   * Direct Google Identity Services (GIS) ID Token verification & login/registration.
+   * Verifies the ID token with Google's public keys via OAuth2Client.verifyIdToken.
+   * Uses Google sub (subject) as the primary providerUserId.
+   * Safely links by verified email if an existing customer with matching email is found.
+   * Otherwise registers a new customer.
+   */
+  async loginWithGoogle(credential: string) {
+    if (!credential || typeof credential !== 'string' || !credential.trim()) {
+      throw new BadRequestException('Google credential token is required');
+    }
+
+    const googleClientId =
+      this.configService.get<string>('GOOGLE_CLIENT_ID') ||
+      process.env.GOOGLE_CLIENT_ID;
+
+    if (!googleClientId) {
+      this.logger.error('GOOGLE_CLIENT_ID is not configured on the backend server');
+      throw new ServiceUnavailableException('Google authentication is currently unavailable');
+    }
+
+    let payload;
+    try {
+      const client = new OAuth2Client(googleClientId);
+      const ticket = await client.verifyIdToken({
+        idToken: credential.trim(),
+        audience: googleClientId,
+      });
+      payload = ticket.getPayload();
+    } catch (err: any) {
+      this.logger.warn(`Google token verification failed: ${err?.message || 'unknown error'}`);
+      throw new UnauthorizedException('Invalid or expired Google credential');
+    }
+
+    if (!payload || !payload.sub) {
+      throw new UnauthorizedException('Google ID token is missing required subject identifier');
+    }
+
+    const providerUserId = payload.sub;
+    const email = payload.email ? payload.email.toLowerCase().trim() : null;
+    const emailVerified = Boolean(payload.email_verified);
+    const picture = payload.picture || null;
+    const rawName = (payload.name || '').trim();
+    const nameParts = rawName ? rawName.split(/\s+/) : [];
+    const firstName = payload.given_name?.trim() || nameParts[0] || 'Patron';
+    const lastName = payload.family_name?.trim() || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : null);
+
+    // 1. Check existing AuthIdentity for provider = GOOGLE and providerUserId = payload.sub
+    const existingIdentity = await this.prisma.authIdentity.findUnique({
+      where: {
+        provider_providerUserId: {
+          provider: AuthProvider.GOOGLE,
+          providerUserId,
+        },
+      },
+      include: {
+        customer: true,
+      },
+    });
+
+    if (existingIdentity) {
+      const customer = existingIdentity.customer;
+      if (!customer || !customer.isActive) {
+        if (customer?.banReason) {
+          throw new UnauthorizedException(
+            `Your account has been suspended by the shop administration. Reason: ${customer.banReason}`,
+          );
+        }
+        throw new UnauthorizedException('Your account is currently inactive. Please contact support.');
+      }
+
+      // Update customer photoUrl if newly provided and not already set
+      if (picture && !customer.photoUrl) {
+        await this.prisma.customer.update({
+          where: { id: customer.id },
+          data: { photoUrl: picture },
+        });
+      }
+
+      const session = await this.issueCustomerSession(customer.id, customer.email ?? undefined);
+      return {
+        ...session,
+        isNewCustomer: false,
+        isProfileComplete: Boolean(customer.phone),
+      };
+    }
+
+    // 2. Safe account linking: if verified email matches an existing customer
+    if (email && emailVerified) {
+      const existingCustomer = await this.prisma.customer.findUnique({
+        where: { email },
+      });
+
+      if (existingCustomer) {
+        if (!existingCustomer.isActive) {
+          if (existingCustomer.banReason) {
+            throw new UnauthorizedException(
+              `Your account has been suspended by the shop administration. Reason: ${existingCustomer.banReason}`,
+            );
+          }
+          throw new UnauthorizedException('Your account is currently inactive. Please contact support.');
+        }
+
+        // Link Google AuthIdentity to this existing verified customer
+        await this.prisma.authIdentity.create({
+          data: {
+            customerId: existingCustomer.id,
+            provider: AuthProvider.GOOGLE,
+            providerUserId,
+            providerEmail: email,
+          },
+        });
+
+        if (picture && !existingCustomer.photoUrl) {
+          await this.prisma.customer.update({
+            where: { id: existingCustomer.id },
+            data: { photoUrl: picture },
+          });
+        }
+
+        const session = await this.issueCustomerSession(
+          existingCustomer.id,
+          existingCustomer.email ?? undefined,
+        );
+        return {
+          ...session,
+          isNewCustomer: false,
+          isProfileComplete: Boolean(existingCustomer.phone),
+        };
+      }
+    }
+
+    // 3. New Customer registration via Google GIS
+    const newCustomer = await this.prisma.customer.create({
+      data: {
+        firstName,
+        lastName,
+        email,
+        photoUrl: picture,
+        phone: null,
+        isActive: true,
+        identities: {
+          create: {
+            provider: AuthProvider.GOOGLE,
+            providerUserId,
+            providerEmail: email,
+          },
+        },
+      },
+    });
+
+    if (newCustomer.email) {
+      this.mailService
+        .sendWelcomeEmail(newCustomer.email, newCustomer.firstName)
+        .catch((err: any) => {
+          this.logger.warn(`Failed to dispatch welcome email to ${newCustomer.email}: ${err?.message}`);
+        });
+    }
+
+    const session = await this.issueCustomerSession(
+      newCustomer.id,
+      newCustomer.email ?? undefined,
+    );
+    return {
+      ...session,
+      isNewCustomer: true,
+      isProfileComplete: false,
+    };
+  }
+
+  /**
+   * Link Google GIS credential to the authenticated customer account
+   */
+  async linkGoogleAccount(customerId: string, credential: string) {
+    if (!credential || typeof credential !== 'string' || !credential.trim()) {
+      throw new BadRequestException('Google credential token is required');
+    }
+
+    const googleClientId =
+      this.configService.get<string>('GOOGLE_CLIENT_ID') ||
+      process.env.GOOGLE_CLIENT_ID;
+
+    if (!googleClientId) {
+      throw new ServiceUnavailableException('Google authentication is not configured');
+    }
+
+    let payload;
+    try {
+      const client = new OAuth2Client(googleClientId);
+      const ticket = await client.verifyIdToken({
+        idToken: credential.trim(),
+        audience: googleClientId,
+      });
+      payload = ticket.getPayload();
+    } catch (err: any) {
+      this.logger.warn(`Google token verification failed during linking: ${err?.message || 'unknown error'}`);
+      throw new UnauthorizedException('Invalid or expired Google credential');
+    }
+
+    if (!payload || !payload.sub) {
+      throw new UnauthorizedException('Google ID token is missing required subject identifier');
+    }
+
+    const providerUserId = payload.sub;
+    const email = payload.email ? payload.email.toLowerCase().trim() : null;
+
+    // Check if this Google identity is already connected to any customer
+    const existingIdentity = await this.prisma.authIdentity.findUnique({
+      where: {
+        provider_providerUserId: {
+          provider: AuthProvider.GOOGLE,
+          providerUserId,
+        },
+      },
+    });
+
+    if (existingIdentity) {
+      if (existingIdentity.customerId === customerId) {
+        return {
+          linked: true,
+          provider: AuthProvider.GOOGLE,
+          message: 'Google is already linked to your patron profile.',
+        };
+      }
+      throw new ConflictException(
+        'This Google account is already linked to another Rongin Libas customer profile.',
+      );
+    }
+
+    const identity = await this.prisma.authIdentity.create({
+      data: {
+        customerId,
+        provider: AuthProvider.GOOGLE,
+        providerUserId,
+        providerEmail: email,
+      },
+      select: {
+        id: true,
+        provider: true,
+        providerEmail: true,
+        createdAt: true,
+      },
+    });
+
+    if (payload.picture) {
+      const customer = await this.prisma.customer.findUnique({
+        where: { id: customerId },
+        select: { photoUrl: true },
+      });
+      if (customer && !customer.photoUrl) {
+        await this.prisma.customer.update({
+          where: { id: customerId },
+          data: { photoUrl: payload.picture },
+        });
+      }
+    }
+
+    return identity;
   }
 
   async linkSocialAccount(customerId: string, dto: SocialLoginDto) {

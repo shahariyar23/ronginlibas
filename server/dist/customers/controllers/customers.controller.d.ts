@@ -15,8 +15,8 @@ export declare class CustomersController {
             preferredSize: string | null;
             preferredFit: string | null;
             marketingConsent: boolean;
-            id: string;
             createdAt: Date;
+            id: string;
             secondaryPhone: string | null;
             dateOfBirth: Date | null;
             addresses: {
@@ -117,8 +117,8 @@ export declare class CustomersController {
             area: string | null;
             postalCode: string | null;
             deliveryInstructions: string | null;
-            id: string;
             createdAt: Date;
+            id: string;
             updatedAt: Date;
             isDefault: boolean;
         }[];
@@ -136,8 +136,8 @@ export declare class CustomersController {
             area: string | null;
             postalCode: string | null;
             deliveryInstructions: string | null;
-            id: string;
             createdAt: Date;
+            id: string;
             updatedAt: Date;
             isDefault: boolean;
         };
@@ -155,8 +155,8 @@ export declare class CustomersController {
             area: string | null;
             postalCode: string | null;
             deliveryInstructions: string | null;
-            id: string;
             createdAt: Date;
+            id: string;
             updatedAt: Date;
             isDefault: boolean;
         };
@@ -174,8 +174,8 @@ export declare class CustomersController {
             area: string | null;
             postalCode: string | null;
             deliveryInstructions: string | null;
-            id: string;
             createdAt: Date;
+            id: string;
             updatedAt: Date;
             isDefault: boolean;
         };

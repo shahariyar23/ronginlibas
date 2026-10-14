@@ -13,6 +13,7 @@ import {
   renderOrderEditEmail,
   renderAbandonedCartReminderEmail,
   renderBackInStockEmail,
+  renderAdminOrderCancellationAlertEmail,
   type CartReminderItem,
   type OrderConfirmationItem,
   type OrderConfirmationAddress,
@@ -579,6 +580,92 @@ export class MailService {
     } catch (error) {
       this.logger.warn(
         `Failed to dispatch back-in-stock notification to ${params.email}: ${(error as Error).message}`
+      );
+      return false;
+    } finally {
+      transporter.close();
+    }
+  }
+
+  /**
+   * Get store admin notification email address
+   */
+  getAdminAlertEmail(): string {
+    return (
+      this.configService.get<string>('ADMIN_ALERT_EMAIL') ||
+      this.configService.get<string>('SMTP_ADMIN_EMAIL') ||
+      this.configService.get<string>('SMTP_USER') ||
+      'admin@ronginlibas.com'
+    );
+  }
+
+  /**
+   * Dispatch urgent Order Cancellation alert email to store administration
+   */
+  async sendAdminOrderCancellationAlertEmail(params: {
+    orderNumber: string;
+    customerName?: string | null;
+    customerPhone?: string | null;
+    customerEmail?: string | null;
+    createdAt: Date | string;
+    cancelledAt: Date | string;
+    orderAgeText: string;
+    paymentMethod: string;
+    paymentStatus: string;
+    totalAmount: number | string;
+    items: Array<{
+      productName: string;
+      variantName?: string | null;
+      size?: string | null;
+      color?: string | null;
+      quantity: number;
+      unitPrice: number | string;
+      subtotal: number | string;
+    }>;
+    adminNotes?: string | null;
+    adminEmail?: string;
+  }): Promise<boolean> {
+    const transporter = this.getTransporter();
+    if (!transporter) return false;
+
+    const recipient = params.adminEmail || this.getAdminAlertEmail();
+    const adminUrl = this.getAdminUrl();
+    const adminOrderUrl = `${adminUrl}/orders?search=${encodeURIComponent(params.orderNumber)}`;
+    const webUrl = this.getWebUrl();
+    const from = this.getFromAddress('orders');
+
+    const { subject, html, text } = renderAdminOrderCancellationAlertEmail({
+      orderNumber: params.orderNumber,
+      customerName: params.customerName,
+      customerPhone: params.customerPhone,
+      customerEmail: params.customerEmail,
+      createdAt: params.createdAt,
+      cancelledAt: params.cancelledAt,
+      orderAgeText: params.orderAgeText,
+      paymentMethod: params.paymentMethod,
+      paymentStatus: params.paymentStatus,
+      totalAmount: params.totalAmount,
+      items: params.items,
+      adminNotes: params.adminNotes,
+      adminOrderUrl,
+      webUrl,
+    });
+
+    try {
+      const info = await transporter.sendMail({
+        from,
+        to: recipient,
+        subject,
+        html,
+        text,
+      });
+      this.logger.log(
+        `Admin order cancellation alert dispatched to ${recipient} for ${params.orderNumber} (Message ID: ${info.messageId})`
+      );
+      return true;
+    } catch (error) {
+      this.logger.warn(
+        `Failed to dispatch admin order cancellation alert to ${recipient} for ${params.orderNumber}: ${(error as Error).message}`
       );
       return false;
     } finally {

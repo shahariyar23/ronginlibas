@@ -789,6 +789,8 @@ export const adminApi = {
         method: 'POST',
         body: JSON.stringify(payload),
       }),
+    getPaymentStatus: (orderId: string) =>
+      request<any>(`/payments/status/${encodeURIComponent(orderId.trim())}`),
   },
 
   // Abandoned Carts
@@ -862,10 +864,36 @@ export const adminApi = {
   // Categories
   categories: {
     getAll: () => request<any[]>('/admin/categories'),
-    create: (data: { name: string; description?: string; image?: string; sortOrder?: number }) =>
+    create: (data: {
+      name: string;
+      slug?: string;
+      description?: string;
+      image?: string;
+      sortOrder?: number;
+      isActive?: boolean;
+    }) =>
       request<any>('/admin/categories', {
         method: 'POST',
         body: JSON.stringify(data),
+      }),
+    update: (
+      id: string,
+      data: {
+        name?: string;
+        slug?: string;
+        description?: string;
+        image?: string;
+        sortOrder?: number;
+        isActive?: boolean;
+      },
+    ) =>
+      request<any>(`/admin/categories/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      request<any>(`/admin/categories/${id}`, {
+        method: 'DELETE',
       }),
   },
 

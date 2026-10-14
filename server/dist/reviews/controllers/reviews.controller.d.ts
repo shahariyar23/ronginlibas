@@ -71,8 +71,8 @@ export declare class ReviewsController {
     vote(reviewId: string, customerId: string, dto: ReviewVoteDto): Promise<{
         message: string;
         data: {
-            id: string;
             createdAt: Date;
+            id: string;
             customerId: string;
             reviewId: string;
             helpful: boolean;

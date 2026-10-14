@@ -133,6 +133,19 @@ export interface AdminOrderAddress {
   deliveryInstructions?: string;
 }
 
+export interface AdminPaymentAttempt {
+  id: string;
+  provider: string;
+  providerOrderId: string;
+  providerTransactionId?: string | null;
+  amount: number;
+  currency: string;
+  status: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED';
+  failureReason?: string | null;
+  paidAt?: string | null;
+  createdAt: string;
+}
+
 export interface AdminOrder {
   id: string;
   orderNumber?: string;
@@ -174,6 +187,7 @@ export interface AdminOrder {
   paymentReference?: string;
   paidAmount?: number;
   manualDiscountAmount?: number;
+  payments?: AdminPaymentAttempt[];
 }
 
 export interface InventoryItem {

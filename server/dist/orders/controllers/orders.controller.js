@@ -136,7 +136,7 @@ __decorate([
 ], OrdersController.prototype, "getOrder", null);
 __decorate([
     Post(':orderNumber/cancel'),
-    ApiOperation({ summary: 'Cancel an unpaid order and release reserved stock' }),
+    ApiOperation({ summary: 'Cancel order by patron within 6-hour window while in PENDING status' }),
     __param(0, Param('orderNumber')),
     __param(1, CurrentUser('id')),
     __param(2, Body()),

@@ -101,6 +101,7 @@ const customerOrderDetailSelect = {
 
 const orderAccessSelect = {
   ...customerOrderDetailSelect,
+  adminNotes: true,
   customerId: true,
   guestName: true,
   guestEmail: true,
@@ -128,6 +129,11 @@ export class OrdersService {
   ) {}
 
   async findAll(query: OrderQueryDto): Promise<PaginatedResult<any>> {
+    try {
+      await this.cancelExpiredUnpaidOrders(2);
+    } catch (e: any) {
+      this.logger.warn(`Failed to auto-clean expired unpaid orders: ${e?.message}`);
+    }
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const where: Prisma.OrderWhereInput = {};
@@ -182,6 +188,21 @@ export class OrdersService {
           createdAt: true,
           updatedAt: true,
           customer: { select: { firstName: true, lastName: true, email: true, phone: true } },
+          payments: {
+            select: {
+              id: true,
+              provider: true,
+              providerOrderId: true,
+              providerTransactionId: true,
+              amount: true,
+              currency: true,
+              status: true,
+              failureReason: true,
+              paidAt: true,
+              createdAt: true,
+            },
+            orderBy: { createdAt: 'desc' },
+          },
           items: {
             select: {
               id: true,
@@ -231,6 +252,9 @@ export class OrdersService {
             variant: true,
           },
         },
+        payments: {
+          orderBy: { createdAt: 'desc' },
+        },
         trackingEvents: { orderBy: { createdAt: 'asc' } },
       },
     });
@@ -240,9 +264,53 @@ export class OrdersService {
   }
 
   async findCustomerOrders(customerId: string, query: OrderQueryDto) {
+    try {
+      // Auto-clean any uncompleted WAITMARK_PAY orders for this customer so they never linger as pending orders
+      const uncompletedOrders = await this.prisma.order.findMany({
+        where: {
+          customerId,
+          paymentMethod: PaymentMethod.WAITMARK_PAY,
+          paymentStatus: { in: [PaymentStatus.PENDING, PaymentStatus.FAILED] },
+          status: { not: OrderStatus.CANCELLED },
+        },
+        include: { items: true },
+      });
+
+      for (const uncompleted of uncompletedOrders) {
+        try {
+          await this.prisma.$transaction(async (tx) => {
+            await this.releaseOrderStockInTx(
+              tx,
+              uncompleted,
+              'Customer checked orders without completed online payment - stock released:',
+            );
+            await tx.order.delete({ where: { id: uncompleted.id } });
+          });
+          this.logger.log(
+            `[Orders] Auto-cleaned abandoned online payment order ${uncompleted.orderNumber} for customer ${customerId}`,
+          );
+        } catch (cleanErr: any) {
+          this.logger.warn(
+            `Failed to auto-clean uncompleted order ${uncompleted.orderNumber}: ${cleanErr?.message}`,
+          );
+        }
+      }
+
+      await this.cancelExpiredUnpaidOrders(2);
+    } catch (e: any) {
+      this.logger.warn(`Failed to auto-clean expired unpaid orders: ${e?.message}`);
+    }
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
-    const where: Prisma.OrderWhereInput = { customerId };
+    const where: Prisma.OrderWhereInput = {
+      customerId,
+      NOT: {
+        AND: [
+          { paymentMethod: PaymentMethod.WAITMARK_PAY },
+          { paymentStatus: { in: [PaymentStatus.PENDING, PaymentStatus.FAILED] } },
+        ],
+      },
+    };
     const [items, total] = await Promise.all([
       this.prisma.order.findMany({
         where,
@@ -304,14 +372,14 @@ export class OrdersService {
   }
 
   /**
-   * Releases reserved stock and cancels unpaid online orders exceeding the timeout window.
+   * Releases reserved stock and deletes unpaid online orders exceeding the timeout window.
    */
-  async cancelExpiredUnpaidOrders(timeoutMinutes = 30): Promise<number> {
+  async cancelExpiredUnpaidOrders(timeoutMinutes = 2): Promise<number> {
     const cutoff = new Date(Date.now() - timeoutMinutes * 60 * 1000);
     const expiredOrders = await this.prisma.order.findMany({
       where: {
         paymentMethod: PaymentMethod.WAITMARK_PAY,
-        status: OrderStatus.PENDING,
+        status: { not: OrderStatus.CANCELLED },
         paymentStatus: { in: [PaymentStatus.PENDING, PaymentStatus.FAILED] },
         createdAt: { lt: cutoff },
       },
@@ -330,26 +398,13 @@ export class OrdersService {
             `Payment timeout (${timeoutMinutes}m) stock release:`,
           );
 
-          await tx.order.update({
+          await tx.order.delete({
             where: { id: order.id },
-            data: {
-              status: OrderStatus.CANCELLED,
-              paymentStatus: PaymentStatus.FAILED,
-            },
-          });
-
-          await tx.orderTrackingEvent.create({
-            data: {
-              orderId: order.id,
-              status: OrderStatus.CANCELLED,
-              description: `Order cancelled and inventory released due to payment timeout (${timeoutMinutes} minutes).`,
-              customerVisible: true,
-            },
           });
         });
         cancelledCount++;
         this.logger.log(
-          `[Inventory] Released reserved stock for expired unpaid order ${order.orderNumber}`,
+          `[Inventory] Released reserved stock and deleted expired unpaid order ${order.orderNumber}`,
         );
       } catch (err: any) {
         this.logger.error(
@@ -361,48 +416,213 @@ export class OrdersService {
   }
 
   /**
-   * Explicitly cancel an unpaid order by customer, releasing reserved stock.
+   * Deletes an unpaid or payment-failed order and releases its reserved inventory stock.
    */
-  async cancelUnpaidOrder(
+  async deleteUnpaidOrFailedOrder(orderId: string, reason: string = 'Payment failed / cancelled') {
+    const order = await this.prisma.order.findFirst({
+      where: {
+        OR: [
+          { id: orderId },
+          { orderNumber: orderId },
+          { orderNumber: this.normalizeOrderNumber(orderId) },
+        ],
+      },
+      include: {
+        items: true,
+      },
+    });
+
+    if (!order) {
+      return { success: true, message: 'Order not found or already deleted' };
+    }
+
+    if (order.paymentStatus === PaymentStatus.PAID) {
+      throw new BadRequestException('Cannot delete an already paid order.');
+    }
+
+    if (['SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(order.status)) {
+      throw new BadRequestException('Cannot delete an order that has already been shipped.');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Release reserved stock back to product variants and record inventory transaction
+      await this.releaseOrderStockInTx(tx, order, reason);
+
+      // 2. Cascade delete order (removes items, tracking events, and payment attempts)
+      await tx.order.delete({
+        where: { id: order.id },
+      });
+    });
+
+    this.logger.log(
+      `[Orders] Unpaid/failed order ${order.orderNumber} deleted and stock released (${reason})`,
+    );
+
+    return {
+      success: true,
+      orderNumber: order.orderNumber,
+      message: `Order ${order.orderNumber} deleted and inventory stock restored`,
+    };
+  }
+
+  /**
+   * Explicitly cancel an order by customer within limited conditions:
+   * 1. Must not be already PAID online (paid orders require concierge review for gateway refund).
+   * 2. Must be in PENDING status (not confirmed, processing, or dispatched).
+   * 3. Must be within 6 hours of placement.
+   * Updates order status to CANCELLED, restores inventory, creates tracking event,
+   * and dispatches email notifications to both Customer and Store Administration.
+   */
+  async cancelCustomerOrder(
     orderId: string,
     customerId?: string,
     phone?: string,
     trackingToken?: string,
   ) {
     const order = await this.findOrderForAccess(orderId, customerId, phone, trackingToken);
-    if (order.paymentStatus === PaymentStatus.PAID) {
-      throw new BadRequestException('Cannot cancel an already paid order.');
-    }
+
     if (order.status === OrderStatus.CANCELLED) {
       return order;
     }
-    if (['SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(order.status)) {
-      throw new BadRequestException('Cannot cancel order after shipment.');
+
+    if (order.paymentStatus === PaymentStatus.PAID) {
+      throw new BadRequestException(
+        'Cannot cancel an already paid order online. Please contact our atelier concierge for refund assistance.',
+      );
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      await this.releaseOrderStockInTx(tx, order as any, 'Customer unpaid cancellation:');
+    // Condition 1: Must be in PENDING status
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException(
+        `Only orders with PENDING status can be cancelled. Order #${order.orderNumber} is currently ${order.status}. Once confirmed, packed, or dispatched, please contact our atelier concierge.`,
+      );
+    }
 
+    // Condition 2: Limited time - Must be within 6 hours of placement
+    const CANCELLATION_WINDOW_HOURS = 6;
+    const orderAgeMs = Date.now() - new Date(order.createdAt).getTime();
+    const maxAllowedMs = CANCELLATION_WINDOW_HOURS * 60 * 60 * 1000;
+    const elapsedMinutes = Math.floor(orderAgeMs / (60 * 1000));
+    const elapsedHours = (orderAgeMs / (60 * 60 * 1000)).toFixed(1);
+
+    if (orderAgeMs > maxAllowedMs) {
+      throw new BadRequestException(
+        `The 6-hour cancellation window for Order #${order.orderNumber} has expired (placed ${elapsedHours} hours ago). Orders can only be self-cancelled within 6 hours of placement while in PENDING status. Please contact our concierge team for assistance.`,
+      );
+    }
+
+    const orderAgeText =
+      elapsedMinutes < 60
+        ? `${elapsedMinutes}m after placement`
+        : `${elapsedHours}h after placement`;
+
+    const cancellationNote = `Cancelled by patron within 6-hour window (${orderAgeText}) on ${new Date().toISOString()}`;
+
+    const updatedOrder = await this.prisma.$transaction(async (tx) => {
+      // 1. Release reserved stock back to active inventory and record transaction
+      await this.releaseOrderStockInTx(
+        tx,
+        order as any,
+        `Customer cancellation within 6h: #${order.orderNumber}`,
+      );
+
+      // 2. Update order to CANCELLED (preserve order record, do not delete!)
       const updated = await tx.order.update({
         where: { id: order.id },
         data: {
           status: OrderStatus.CANCELLED,
-          paymentStatus: PaymentStatus.FAILED,
+          adminNotes: [order.adminNotes, cancellationNote].filter(Boolean).join(' | '),
         },
-        select: customerOrderDetailSelect,
+        include: {
+          items: true,
+          customer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+            },
+          },
+        },
       });
 
+      // 3. Log OrderTrackingEvent
       await tx.orderTrackingEvent.create({
         data: {
           orderId: order.id,
           status: OrderStatus.CANCELLED,
-          description: 'Order cancelled and reserved stock released.',
-          customerVisible: true,
+          description: `Order cancelled by patron within the 6-hour policy window. Reserved artisan inventory has been restored.`,
         },
       });
 
       return updated;
     });
+
+    // 4. Dispatch Email to Customer
+    this.dispatchOrderStatusOrEditNotification(
+      updatedOrder,
+      OrderStatus.PENDING,
+      true,
+      ['Order cancelled by patron within 6-hour policy window'],
+    ).catch((err) => {
+      this.logger.warn(
+        `Failed to dispatch customer cancellation email for ${order.orderNumber}: ${err.message}`,
+      );
+    });
+
+    // 5. Dispatch Email to Store Administration
+    if (this.mailService) {
+      const shipping = (order.shippingAddress as any) || {};
+      const customerName =
+        order.customer
+          ? `${order.customer.firstName} ${order.customer.lastName || ''}`.trim()
+          : order.guestName || shipping.fullName || 'Patron';
+      const customerPhone =
+        order.customer?.phone || order.guestPhone || shipping.phone || null;
+      const customerEmail =
+        order.customer?.email || order.guestEmail || shipping.email || null;
+
+      this.mailService
+        .sendAdminOrderCancellationAlertEmail({
+          orderNumber: order.orderNumber,
+          customerName,
+          customerPhone,
+          customerEmail,
+          createdAt: order.createdAt,
+          cancelledAt: new Date(),
+          orderAgeText,
+          paymentMethod: order.paymentMethod,
+          paymentStatus: order.paymentStatus,
+          totalAmount: Number(order.totalAmount),
+          items: (order.items || []).map((item: any) => ({
+            productName: item.productName,
+            variantName: item.variantName,
+            size: item.size,
+            color: item.color,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            subtotal: item.subtotal,
+          })),
+          adminNotes: cancellationNote,
+        })
+        .catch((err) => {
+          this.logger.warn(
+            `Failed to dispatch admin cancellation alert for ${order.orderNumber}: ${err.message}`,
+          );
+        });
+    }
+
+    return updatedOrder;
+  }
+
+  async cancelUnpaidOrder(
+    orderId: string,
+    customerId?: string,
+    phone?: string,
+    trackingToken?: string,
+  ) {
+    return this.cancelCustomerOrder(orderId, customerId, phone, trackingToken);
   }
 
   async updateStatus(id: string, dto: UpdateOrderStatusDto) {

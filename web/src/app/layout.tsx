@@ -11,6 +11,7 @@ import { AnalyticsProvider } from '@/components/analytics/AnalyticsProvider';
 import { ConsentBanner } from '@/components/analytics/ConsentBanner';
 import { Toaster } from '@/components/ui/sonner';
 import { Suspense } from 'react';
+import Script from 'next/script';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://ronginlibas.com'),
@@ -71,6 +72,10 @@ export default function RootLayout({
             </AnalyticsProvider>
           </Suspense>
         </StorefrontProvider>
+        <Script
+          src="https://accounts.google.com/gsi/client"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );

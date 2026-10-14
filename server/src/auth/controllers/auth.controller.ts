@@ -20,6 +20,7 @@ import { LoginDto } from '../dto/login.dto.js';
 import { RegisterCustomerDto } from '../dto/register.dto.js';
 import { RefreshTokenDto } from '../dto/refresh-token.dto.js';
 import { SocialLoginDto } from '../dto/social-login.dto.js';
+import { GoogleLoginDto } from '../dto/google-login.dto.js';
 import {
   ChangePasswordDto,
   ForgotPasswordDto,
@@ -176,6 +177,32 @@ export class AuthController {
   @ApiOperation({ summary: 'Retrieve the current authenticated session identity' })
   async getMe(@CurrentUser() user: unknown) {
     return { message: 'Session retrieved successfully', data: user };
+  }
+
+  @Public()
+  @Post('google')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Authenticate customer using direct Google Identity Services (GIS) ID token' })
+  async googleLogin(
+    @Body() dto: GoogleLoginDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const tokens = await this.authService.loginWithGoogle(dto.credential);
+    this.setRefreshCookie(response, tokens.refreshToken);
+    const { refreshToken: _refreshToken, ...data } = tokens;
+    return { message: 'Customer authenticated successfully via Google', data };
+  }
+
+  @Post('google/link')
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Link Google account using Google Identity Services (GIS) ID token' })
+  async linkGoogle(
+    @CurrentUser('id') customerId: string,
+    @Body() dto: GoogleLoginDto,
+  ) {
+    const identity = await this.authService.linkGoogleAccount(customerId, dto.credential);
+    return { message: 'Google account linked successfully', data: identity };
   }
 
   @Public()

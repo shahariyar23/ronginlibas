@@ -131,7 +131,7 @@ export class OrdersController {
   }
 
   @Post(':orderNumber/cancel')
-  @ApiOperation({ summary: 'Cancel an unpaid order and release reserved stock' })
+  @ApiOperation({ summary: 'Cancel order by patron within 6-hour window while in PENDING status' })
   async cancelOrder(
     @Param('orderNumber') orderNumber: string,
     @CurrentUser('id') customerId: string | undefined,

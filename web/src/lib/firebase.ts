@@ -93,7 +93,8 @@ export function mapFirebaseError(error: any): string {
 }
 
 /**
- * Execute social authentication via Firebase Popup (with graceful fallback handling)
+ * @deprecated Google authentication has been migrated directly to Google Identity Services (GIS).
+ * Use loginWithGoogle() and renderGisButton() instead of Firebase Auth.
  */
 export async function authenticateWithFirebaseProvider(
   providerType: 'google' = 'google'
