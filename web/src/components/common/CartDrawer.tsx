@@ -161,14 +161,14 @@ export const CartDrawer: React.FC = () => {
                 Discover our curated heritage panjabis, mercerized knitwear, and architectural menswear.
               </p>
               <Link
-                href="/shop"
+                href="/men"
                 onClick={() => setIsCartOpen(false)}
                 className={cn(
                   buttonVariants({ variant: 'default' }),
                   'bg-[#073a2d] hover:bg-[#0d4d3b] text-[#fbf9f2] font-sans uppercase tracking-[0.15em] text-xs h-11 px-8 inline-flex items-center justify-center'
                 )}
               >
-                Explore Collection
+                Explore Men&apos;s Collection
               </Link>
             </div>
           ) : (
@@ -185,13 +185,17 @@ export const CartDrawer: React.FC = () => {
                     className="flex gap-4 p-3 bg-white border border-[#deddd3] relative group"
                   >
                     {/* Image */}
-                    <div className="relative w-20 h-26 bg-[#f5f4ed] overflow-hidden flex-shrink-0">
+                    <Link
+                      href={`/products/${item.product.slug}`}
+                      onClick={() => setIsCartOpen(false)}
+                      className="relative w-20 h-26 bg-[#f5f4ed] overflow-hidden flex-shrink-0 block"
+                    >
                       <img
                         src={item.product.images[0]}
                         alt={item.product.name}
                         className="w-full h-full object-cover"
                       />
-                    </div>
+                    </Link>
 
                     {/* Info */}
                     <div className="flex-1 flex flex-col justify-between py-0.5">
@@ -215,9 +219,15 @@ export const CartDrawer: React.FC = () => {
                             )}
                           </button>
                         </div>
-                        <h4 className="font-serif text-sm font-semibold text-[#073a2d] line-clamp-1 mt-0.5">
-                          {item.product.name}
-                        </h4>
+                        <Link
+                          href={`/products/${item.product.slug}`}
+                          onClick={() => setIsCartOpen(false)}
+                          className="hover:text-[#c79a45] transition-colors block"
+                        >
+                          <h4 className="font-serif text-sm font-semibold text-[#073a2d] line-clamp-1 mt-0.5">
+                            {item.product.name}
+                          </h4>
+                        </Link>
                         <p className="text-xs text-[#69726d] mt-1 flex items-center gap-2">
                           <span>Size: <strong className="text-[#1b1c18]">{item.selectedSize}</strong></span>
                           <span className="text-[#deddd3]">•</span>

@@ -10,6 +10,7 @@ import { Heart, ShoppingCart, Loader2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { analytics } from '@/lib/analytics/client';
+import { getOptimizedImageUrl, getCloudinarySrcSet, getNaturalAltText } from '@/lib/images';
 
 interface ProductCardProps {
   product: Product;
@@ -68,8 +69,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     }
   };
 
-  const currentImage =
+  const currentRawImage =
     isHovered && product.images.length > 1 ? product.images[1] : product.images[0];
+  const optimizedImage = getOptimizedImageUrl(currentRawImage, { preset: 'card' });
+  const cardSrcSet = getCloudinarySrcSet(currentRawImage, [320, 480, 640, 800]);
+
+  const naturalAlt = getNaturalAltText(product.name, {
+    color: selectedColor,
+    category: product.categoryLabel,
+    viewIndex: isHovered && product.images.length > 1 ? 1 : 0,
+    totalViews: product.images.length,
+    customAlt: isHovered ? product.imageDetails?.[1]?.altText : product.imageDetails?.[0]?.altText,
+  });
 
   return (
     <div
@@ -84,12 +95,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#f5f4ed]">
         <Link href={`/products/${product.slug}`} className="block w-full h-full">
           <img
-            src={currentImage}
-            alt={
-              (isHovered && product.imageDetails?.[1]?.altText) ||
-              product.imageDetails?.[0]?.altText ||
-              `${product.name} - ${product.categoryLabel} by Rongin Libas`
-            }
+            src={optimizedImage || currentRawImage}
+            srcSet={cardSrcSet || undefined}
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            alt={naturalAlt}
             loading="lazy"
             decoding="async"
             className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
@@ -165,9 +174,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           {isOutOfStock ? (
             <Link
               href={`/products/${product.slug}`}
+              aria-label={`View details for ${product.name}`}
               className="w-full bg-[#1b1c18]/90 hover:bg-[#1b1c18] text-[#fbf9f2] font-sans text-xs uppercase tracking-widest h-10 shadow-md flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
             >
-              <span>View Details</span>
+              <span>View Product Details</span>
             </Link>
           ) : showSizePicker ? (
             <div className="bg-[#073a2d] text-white p-2.5 border border-[#c79a45]/40 shadow-xl space-y-1.5 animate-in fade-in">
@@ -220,9 +230,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       {/* Card Info */}
       <div className="p-2.5 sm:p-4 flex flex-col flex-1 justify-between bg-white border-t border-[#f0eee7]">
         <div>
-          <span className="font-sans text-[9px] sm:text-[10px] uppercase tracking-wider text-[#717975] block truncate">
-            {product.categoryLabel}
-          </span>
+          {product.category ? (
+            <Link
+              href={`/men/${encodeURIComponent(product.category)}`}
+              className="font-sans text-[9px] sm:text-[10px] uppercase tracking-wider text-[#717975] hover:text-[#073a2d] transition-colors block truncate"
+            >
+              {product.categoryLabel}
+            </Link>
+          ) : (
+            <span className="font-sans text-[9px] sm:text-[10px] uppercase tracking-wider text-[#717975] block truncate">
+              {product.categoryLabel}
+            </span>
+          )}
           <Link
             href={`/products/${product.slug}`}
             onClick={() =>

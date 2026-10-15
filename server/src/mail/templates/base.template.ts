@@ -14,7 +14,7 @@ export function renderBaseEmailTemplate(options: BaseEmailOptions): string {
   const { title, previewText, contentHtml, webUrl = process.env.WEB_FRONTEND_URL || 'http://localhost:3000' } = options;
   const normalizedWebUrl = (webUrl || 'http://localhost:3000').replace(/\/$/, '');
   const currentYear = new Date().getFullYear();
-  const logoUrl = 'https://res.cloudinary.com/zuk7ltez/image/upload/v1791652814/branding/rongin_libas_official_logo.png';
+  const logoUrl = `${normalizedWebUrl}/logo.svg`;
 
   return `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">

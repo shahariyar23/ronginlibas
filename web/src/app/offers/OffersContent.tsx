@@ -596,10 +596,10 @@ export function OffersContent() {
                 </p>
                 <div className="mt-6 flex justify-center gap-3">
                   <Link
-                    href="/shop"
+                    href="/men"
                     className="inline-flex items-center gap-2 bg-[#073a2d] hover:bg-[#0d4d3b] text-[#fbf9f2] px-6 py-2.5 text-xs font-bold uppercase tracking-widest"
                   >
-                    <span>Shop All Products</span>
+                    <span>Explore Men&apos;s Collection</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>

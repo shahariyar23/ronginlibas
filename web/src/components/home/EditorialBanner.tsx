@@ -29,7 +29,7 @@ export const EditorialBanner: React.FC = () => {
             </p>
             <div className="pt-2 flex flex-wrap gap-4">
               <Link
-                href="/shop?category=polos"
+                href="/men/polos"
                 className={cn(
                   buttonVariants({ variant: 'default' }),
                   'h-12 px-8 bg-[#c79a45] hover:bg-[#b08535] text-[#073a2d] font-sans font-bold uppercase tracking-wider text-xs inline-flex items-center justify-center'
@@ -38,7 +38,7 @@ export const EditorialBanner: React.FC = () => {
                 Shop Everyday Polos
               </Link>
               <Link
-                href="/shop?category=panjabi"
+                href="/men/panjabi"
                 className={cn(
                   buttonVariants({ variant: 'outline' }),
                   'h-12 px-8 bg-transparent text-[#fbf9f2] border-white/40 hover:border-white font-sans uppercase tracking-wider text-xs inline-flex items-center justify-center gap-2'

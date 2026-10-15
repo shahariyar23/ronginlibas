@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { SITE_CONFIG } from '@/lib/seo';
+import { CANONICAL_BASE_URL } from '@/lib/seo';
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -8,10 +8,15 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: '*',
         allow: [
           '/',
+          '/men',
+          '/men/',
           '/products/',
-          '/categories/',
           '/collections/',
-          '/shop',
+          '/offers',
+          '/terms',
+          '/privacy',
+          '/data-deletion',
+          '/shop', // Crawlable so Google sees canonical & noindex directives
           '/assets/',
           '/_next/',
           '/logo.svg',
@@ -21,9 +26,12 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [
           '/admin',
           '/admin/',
+          '/account',
+          '/account/',
           '/checkout',
           '/checkout/',
           '/cart',
+          '/cart/',
           '/login',
           '/register',
           '/forgot-password',
@@ -33,11 +41,13 @@ export default function robots(): MetadataRoute.Robots {
           '/orders',
           '/orders/',
           '/track-order',
+          '/track-order/',
+          '/private/',
+          '/internal/',
           '/api/',
         ],
       },
     ],
-    sitemap: `${SITE_CONFIG.url}/sitemap.xml`,
-    host: SITE_CONFIG.url,
+    sitemap: `${CANONICAL_BASE_URL}/sitemap.xml`,
   };
 }

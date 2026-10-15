@@ -1,13 +1,14 @@
 import React, { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getProducts, getCollection, getCollections } from '@/lib/api';
+import { getCollection, getShopProducts, parseProductListQuery } from '@/lib/api';
 import { ShopContent, ForceFilter } from '@/app/shop/ShopContent';
 import { LogoLoader } from '@/components/common/LogoLoader';
-import { SITE_CONFIG, generateBreadcrumbJsonLd } from '@/lib/seo';
+import { SITE_CONFIG, generateBreadcrumbJsonLd, getCanonicalUrl, getFacetedRobotsDirectives, isFacetedOrFilteredQuery } from '@/lib/seo';
 
 interface CollectionPageProps {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export const dynamic = 'force-dynamic';
@@ -51,7 +52,7 @@ const FALLBACK_DEFINITIONS: Record<
   },
 };
 
-export async function generateMetadata({ params }: CollectionPageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: CollectionPageProps): Promise<Metadata> {
   const { slug } = await params;
   const dbCollection = await getCollection(slug).catch(() => null);
   const fallback = FALLBACK_DEFINITIONS[slug];
@@ -63,6 +64,9 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
     };
   }
 
+  const rawParams = searchParams ? await searchParams : {};
+  const isFaceted = isFacetedOrFilteredQuery(rawParams);
+
   const titleText = dbCollection?.seoTitle || dbCollection?.name || fallback?.title || 'Collection';
   const taglineText = dbCollection?.tagline || fallback?.tagline || 'ATELIER COLLECTION';
   const descriptionText =
@@ -72,7 +76,7 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
     'Curated artisanal apparel collection.';
 
   const title = `${titleText} | Rongin Libas — ${taglineText}`;
-  const canonical = `${SITE_CONFIG.url}/collections/${slug}`;
+  const canonical = getCanonicalUrl(`/collections/${slug}`);
   const imageUrl = dbCollection?.image || `${SITE_CONFIG.url}/hero-model.jpg`;
 
   return {
@@ -81,15 +85,7 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
     alternates: {
       canonical,
     },
-    robots: {
-      index: true,
-      follow: true,
-      googleBot: {
-        index: true,
-        follow: true,
-        'max-image-preview': 'large',
-      },
-    },
+    robots: getFacetedRobotsDirectives(isFaceted),
     openGraph: {
       title,
       description: descriptionText,
@@ -107,12 +103,10 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
   };
 }
 
-export default async function CollectionPage({ params }: CollectionPageProps) {
+export default async function CollectionPage({ params, searchParams }: CollectionPageProps) {
   const { slug } = await params;
-  const [dbCollection, allCollections] = await Promise.all([
-    getCollection(slug).catch(() => null),
-    getCollections().catch(() => []),
-  ]);
+  const rawParams = searchParams ? await searchParams : {};
+  const dbCollection = await getCollection(slug).catch(() => null);
 
   const fallback = FALLBACK_DEFINITIONS[slug];
 
@@ -124,26 +118,19 @@ export default async function CollectionPage({ params }: CollectionPageProps) {
   const tagline = dbCollection?.tagline || fallback?.tagline || 'ATELIER COLLECTION';
   const description = dbCollection?.description || fallback?.description || 'Curated luxury apparel collection.';
 
-  // Build dynamic switcher from DB collections if available, else fallback
-  const switcher =
-    allCollections.length > 0
-      ? allCollections.map((col) => ({
-          slug: col.slug,
-          title: col.name,
-          isCurrent: col.slug === slug,
-        }))
-      : Object.entries(FALLBACK_DEFINITIONS).map(([colSlug, def]) => ({
-          slug: colSlug,
-          title: def.title,
-          isCurrent: colSlug === slug,
-        }));
-
   // Force filter for legacy flags if standard slug, or collection filter
   const forceFilter: ForceFilter = {
     newArrival: slug === 'new-arrivals',
     bestSeller: slug === 'bestsellers',
     featured: slug === 'featured',
+    collection: !['new-arrivals', 'bestsellers', 'featured'].includes(slug) ? slug : undefined,
   };
+
+  const collectionQuery = parseProductListQuery(rawParams, forceFilter);
+  const shopResult = await getShopProducts(collectionQuery).catch(() => null);
+
+  const initialProducts = shopResult?.items ?? [];
+  const initialPageMeta = shopResult?.meta;
 
   const collectionJsonLd = {
     '@context': 'https://schema.org',
@@ -151,10 +138,19 @@ export default async function CollectionPage({ params }: CollectionPageProps) {
     name: title,
     description,
     url: `${SITE_CONFIG.url}/collections/${slug}`,
+    mainEntity: {
+      '@type': 'ItemList',
+      itemListElement: initialProducts.map((product, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        url: `${SITE_CONFIG.url}/products/${product.slug}`,
+        name: product.name,
+      })),
+    },
   };
 
   const breadcrumbJsonLd = generateBreadcrumbJsonLd([
-    { name: 'Collections', url: '/shop' },
+    { name: "Men's Collection", url: '/men' },
     { name: title, url: `/collections/${slug}` },
   ]);
 
@@ -172,15 +168,17 @@ export default async function CollectionPage({ params }: CollectionPageProps) {
 
       <Suspense fallback={<LogoLoader />}>
         <ShopContent
+          key={`/collections/${slug}`}
           basePath={`/collections/${slug}`}
           collectionConfig={{
             slug,
             title,
             tagline,
             description,
-            switcher,
           }}
           forceFilter={forceFilter}
+          initialProducts={shopResult ? initialProducts : undefined}
+          initialPageMeta={initialPageMeta}
         />
       </Suspense>
     </div>

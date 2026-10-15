@@ -44,7 +44,7 @@ export const ProductGridSection: React.FC<ProductGridSectionProps> = ({
             href={viewAllLink}
             className="font-sans text-xs uppercase tracking-widest text-[#073a2d] hover:text-[#0d4d3b] flex items-center gap-1.5 group font-semibold self-start sm:self-auto"
           >
-            <span>VIEW ALL</span>
+            <span>EXPLORE {title}</span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-[#c79a45]" />
           </Link>
         </div>

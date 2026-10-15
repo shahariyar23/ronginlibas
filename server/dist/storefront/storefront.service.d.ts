@@ -13,7 +13,9 @@ export declare class StorefrontService {
         categories: {
             description: string | null;
             name: string;
+            createdAt: Date;
             id: string;
+            updatedAt: Date;
             _count: {
                 products: number;
             };

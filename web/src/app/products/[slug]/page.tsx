@@ -79,8 +79,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const productJsonLd = generateProductJsonLd(product, initialReviews);
   const breadcrumbJsonLd = generateBreadcrumbJsonLd([
     {
+      name: 'Men',
+      url: '/men',
+    },
+    {
       name: product.categoryLabel || 'Collection',
-      url: `/categories/${product.category || 'all'}`,
+      url: `/men/${product.category || 'panjabi'}`,
     },
     {
       name: product.name,

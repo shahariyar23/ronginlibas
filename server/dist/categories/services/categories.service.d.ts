@@ -10,7 +10,9 @@ export declare class CategoriesService {
     findAll(isAdmin?: boolean): Promise<{
         description: string | null;
         name: string;
+        createdAt: Date;
         id: string;
+        updatedAt: Date;
         _count: {
             products: number;
         };

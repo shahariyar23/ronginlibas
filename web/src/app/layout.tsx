@@ -41,6 +41,9 @@ export const metadata: Metadata = {
     images: [{ url: '/logo.svg' }],
     type: 'website',
   },
+  alternates: {
+    canonical: 'https://ronginlibas.com',
+  },
 };
 
 export default function RootLayout({

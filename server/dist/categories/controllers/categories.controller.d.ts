@@ -8,7 +8,9 @@ export declare class CategoriesController {
         data: {
             description: string | null;
             name: string;
+            createdAt: Date;
             id: string;
+            updatedAt: Date;
             _count: {
                 products: number;
             };
