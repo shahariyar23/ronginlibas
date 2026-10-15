@@ -76,7 +76,7 @@ function NavigationLinks({
   const isOffers =
     searchParams?.get('offers') === 'true' || searchParams?.get('hasDiscount') === 'true';
 
-  const isMenActive = isShop && gender === 'MEN';
+  const isMenActive = pathname === '/men' || pathname.startsWith('/men/') || (isShop && gender === 'MEN');
   const isWomanActive = isShop && gender === 'WOMEN';
   const isNewArrivalActive = isShop && isNewArrival;
   const isBestSellerActive = pathname === '/collections/bestsellers' || (isShop && isBestSeller);
@@ -93,7 +93,7 @@ function NavigationLinks({
     <nav className="hidden lg:flex items-center gap-7 xl:gap-8 font-sans text-[13.5px] tracking-[0.12em] uppercase font-semibold">
       {/* MEN */}
       <Link
-        href="/shop?gender=MEN"
+        href="/men"
         className={`transition-colors py-2 relative group font-semibold ${
           isMenActive ? 'text-[#073a2d] font-bold' : 'text-[#404945] hover:text-[#073a2d]'
         }`}
@@ -124,7 +124,7 @@ function NavigationLinks({
       {/* COLLECTIONS */}
       <div className="relative group">
         <Link
-          href="/shop"
+          href="/men"
           className={`transition-colors py-2 relative group font-semibold ${
             isCollectionsActive ? 'text-[#073a2d] font-bold' : 'text-[#404945] hover:text-[#073a2d]'
           }`}
@@ -141,7 +141,7 @@ function NavigationLinks({
             {visibleCategories.map((category) => (
               <Link
                 key={category.id}
-                href={`/categories/${encodeURIComponent(category.slug)}`}
+                href={`/men/${encodeURIComponent(category.slug)}`}
                 className="block px-4 py-2 text-xs tracking-normal text-[#404945] hover:bg-white hover:text-[#073a2d]"
               >
                 {category.name}
@@ -217,14 +217,14 @@ function NavigationFallback({
 }) {
   return (
     <nav className="hidden lg:flex items-center gap-7 xl:gap-8 font-sans text-[13.5px] tracking-[0.12em] uppercase font-semibold text-[#404945]">
-      <Link href="/shop?gender=MEN" className="hover:text-[#073a2d] transition-colors py-2 relative group font-semibold">
+      <Link href="/men" className="hover:text-[#073a2d] transition-colors py-2 relative group font-semibold">
         <span>MEN</span>
       </Link>
-      <Link href="/shop?newArrival=true" className="hover:text-[#073a2d] transition-colors py-2 relative group font-semibold">
+      <Link href="/collections/new-arrivals" className="hover:text-[#073a2d] transition-colors py-2 relative group font-semibold">
         <span>NEW ARRIVALS</span>
       </Link>
       <div className="relative group">
-        <Link href="/shop" className="hover:text-[#073a2d] transition-colors py-2 relative group font-semibold">
+        <Link href="/men" className="hover:text-[#073a2d] transition-colors py-2 relative group font-semibold">
           <span>COLLECTIONS</span>
         </Link>
         {visibleCategories.length > 0 && (
@@ -232,7 +232,7 @@ function NavigationFallback({
             {visibleCategories.map((category) => (
               <Link
                 key={category.id}
-                href={`/categories/${encodeURIComponent(category.slug)}`}
+                href={`/men/${encodeURIComponent(category.slug)}`}
                 className="block px-4 py-2 text-xs tracking-normal text-[#404945] hover:bg-white hover:text-[#073a2d]"
               >
                 {category.name}
@@ -241,10 +241,10 @@ function NavigationFallback({
           </div>
         )}
       </div>
-      <Link href="/shop?bestSeller=true" className="hover:text-[#073a2d] transition-colors py-2 relative group font-semibold">
+      <Link href="/collections/bestsellers" className="hover:text-[#073a2d] transition-colors py-2 relative group font-semibold">
         <span>BEST SELLERS</span>
       </Link>
-      <Link href="/shop?offers=true" className="hover:text-[#073a2d] transition-colors py-2 relative group font-semibold">
+      <Link href="/offers" className="hover:text-[#073a2d] transition-colors py-2 relative group font-semibold">
         <span>OFFERS</span>
       </Link>
       {womenAvailable ? (
@@ -283,13 +283,13 @@ function MobileNavLinks({
   const isOffers =
     searchParams?.get('offers') === 'true' || searchParams?.get('hasDiscount') === 'true';
 
-  const isMenActive = isShop && gender === 'MEN';
+  const isMenActive = pathname === '/men' || pathname.startsWith('/men/') || (isShop && gender === 'MEN');
   const isWomanActive = isShop && gender === 'WOMEN';
   const isNewArrivalActive = pathname === '/collections/new-arrivals' || (isShop && isNewArrival);
   const isBestSellerActive = pathname === '/collections/bestsellers' || (isShop && isBestSeller);
   const isOffersActive = pathname === '/offers' || (isShop && isOffers);
   const isCollectionsActive =
-    (pathname === '/shop' || pathname.startsWith('/categories/')) &&
+    (pathname === '/shop' || pathname.startsWith('/categories/') || (pathname.startsWith('/men/') && pathname !== '/men')) &&
     !isMenActive &&
     !isWomanActive &&
     !isNewArrivalActive &&
@@ -305,7 +305,7 @@ function MobileNavLinks({
       <div className="bg-white rounded-xl border border-[#deddd3] overflow-hidden shadow-xs divide-y divide-[#f0eee7]">
         {/* MEN */}
         <Link
-          href="/shop?gender=MEN"
+          href="/men"
           onClick={onClose}
           className={`flex items-center justify-between p-3.5 transition-colors ${
             isMenActive
@@ -318,7 +318,7 @@ function MobileNavLinks({
             <span className="text-xs font-bold font-sans uppercase tracking-wider">Men</span>
           </div>
           <span className="text-[10px] uppercase font-bold tracking-wider text-[#717975] bg-[#f5f4ed] px-2 py-0.5 rounded-full">
-            Panjabi & Polos
+            Panjabi &amp; Polos
           </span>
         </Link>
 
@@ -371,17 +371,17 @@ function MobileNavLinks({
           {collectionsExpanded && (
             <div className="bg-[#fbf9f2] border-t border-[#f0eee7] px-3 py-2 space-y-1">
               <Link
-                href="/shop"
+                href="/men"
                 onClick={onClose}
                 className="flex items-center justify-between py-2 px-3 rounded-lg text-xs font-semibold text-[#073a2d] hover:bg-white transition-colors"
               >
-                <span>View All Collections</span>
+                <span>Explore All Men&apos;s Categories</span>
                 <ArrowRight className="w-3.5 h-3.5 text-[#c79a45]" />
               </Link>
               {visibleCategories.map((category) => (
                 <Link
                   key={category.id}
-                  href={`/categories/${encodeURIComponent(category.slug)}`}
+                  href={`/men/${encodeURIComponent(category.slug)}`}
                   onClick={onClose}
                   className="flex items-center justify-between py-2 px-3 rounded-lg text-xs font-medium text-[#404945] hover:text-[#073a2d] hover:bg-white transition-colors"
                 >

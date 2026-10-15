@@ -814,11 +814,11 @@ export default function CheckoutPage() {
         {/* Header Breadcrumb */}
         <div className="mb-6 sm:mb-8">
           <Link
-            href="/shop"
+            href="/men"
             className="inline-flex items-center gap-1.5 text-xs font-sans uppercase tracking-widest text-[#717975] hover:text-[#073a2d] transition-colors mb-2 sm:mb-3"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Continue Shopping</span>
+            <span>Continue Shopping Men&apos;s Collection</span>
           </Link>
           <h1 className="font-serif text-2xl sm:text-5xl font-normal text-[#073a2d]">
             Your Shopping Cart & Checkout
@@ -835,13 +835,13 @@ export default function CheckoutPage() {
               Please select pieces from our Panjabi, Shirt, or Polo collection to initiate checkout.
             </p>
             <Link
-              href="/shop"
+              href="/men"
               className={cn(
                 buttonVariants({ variant: 'default' }),
                 'bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-widest px-8 h-10 inline-flex items-center justify-center'
               )}
             >
-              Browse Atelier
+              Browse Men&apos;s Atelier
             </Link>
           </div>
         ) : (
@@ -857,7 +857,7 @@ export default function CheckoutPage() {
                     </span>
                     <span>Review Cart Items ({items.length})</span>
                   </h3>
-                  <Link href="/shop" className="text-xs font-sans text-[#c79a45] hover:underline font-semibold">
+                  <Link href="/men" className="text-xs font-sans text-[#c79a45] hover:underline font-semibold">
                     + Add More Items
                   </Link>
                 </div>

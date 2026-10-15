@@ -11,7 +11,9 @@ export declare class StorefrontController {
             categories: {
                 description: string | null;
                 name: string;
+                createdAt: Date;
                 id: string;
+                updatedAt: Date;
                 _count: {
                     products: number;
                 };

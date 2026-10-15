@@ -9,13 +9,14 @@ export function LogoLoader() {
     >
       <Image
         src="/logo.svg"
-        alt=""
-        aria-hidden="true"
+        alt="Rongin Libas Logo"
+        title="Rongin Libas — Cloth Your Identity"
         width={96}
         height={72}
         className="logo-loader-breathe h-20 w-24 object-contain sm:h-24 sm:w-32"
+        priority
       />
-      <span className="sr-only">Loading...</span>
+      <span className="sr-only">Loading Rongin Libas...</span>
     </div>
   );
 }

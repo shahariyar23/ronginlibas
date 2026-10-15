@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { OrderTrackingStepper } from '@/components/orders/OrderTrackingStepper';
+import { CancelOrderModal } from '@/components/orders/CancelOrderModal';
 import { LogoLoader } from '@/components/common/LogoLoader';
 
 interface OrderProductSummary {
@@ -201,6 +202,7 @@ export const OrdersClient: React.FC = () => {
   };
 
   const [cancellingOrderNumber, setCancellingOrderNumber] = useState<string | null>(null);
+  const [orderToCancel, setOrderToCancel] = useState<OrderRecord | null>(null);
 
   const isOrderCancellable = (order: OrderRecord) => {
     if (order.status !== 'PENDING') return false;
@@ -222,12 +224,9 @@ export const OrdersClient: React.FC = () => {
     return hours > 0 ? `${hours}h ${mins}m left` : `${mins}m left`;
   };
 
-  const handleCancelOrder = async (orderNumber: string) => {
-    if (cancellingOrderNumber) return;
-    const confirmed = window.confirm(
-      `Are you sure you want to cancel Order ${orderNumber}? Any reserved artisan inventory will be restored to stock, and cancellation notices will be dispatched to your email and the atelier administration.`,
-    );
-    if (!confirmed) return;
+  const handleConfirmCancel = async () => {
+    if (!orderToCancel || cancellingOrderNumber) return;
+    const orderNumber = orderToCancel.orderNumber;
 
     setCancellingOrderNumber(orderNumber);
     try {
@@ -238,6 +237,7 @@ export const OrdersClient: React.FC = () => {
           o.orderNumber === orderNumber ? { ...o, status: 'CANCELLED' } : o,
         ),
       );
+      setOrderToCancel(null);
     } catch (err: any) {
       toast.error(err?.message || 'Failed to cancel order.');
     } finally {
@@ -382,10 +382,10 @@ export const OrdersClient: React.FC = () => {
               <span>Login First</span>
             </Link>
             <Link
-              href="/shop"
+              href="/men"
               className="w-full inline-flex items-center justify-center gap-2 bg-[#f5f4ed] hover:bg-[#eae8e1] text-[#073a2d] font-sans text-xs uppercase tracking-wider py-3 px-6 font-semibold transition-all cursor-pointer"
             >
-              <span>Explore Collection</span>
+              <span>Explore Men&apos;s Collection</span>
             </Link>
           </div>
         </div>
@@ -447,8 +447,8 @@ export const OrdersClient: React.FC = () => {
             <Package className="mx-auto h-10 w-10 text-[#c79a45]" />
             <h2 className="font-serif text-xl text-[#073a2d]">No matching orders</h2>
             <p className="text-xs sm:text-sm text-[#69726d]">Orders placed with this account will appear here.</p>
-            <Link href="/shop" className="inline-block text-xs sm:text-sm font-semibold text-[#073a2d] underline">
-              Browse the collection
+            <Link href="/men" className="inline-block text-xs sm:text-sm font-semibold text-[#073a2d] underline">
+              Browse the men&apos;s collection
             </Link>
           </div>
         ) : (
@@ -692,7 +692,7 @@ export const OrdersClient: React.FC = () => {
                             <div className="min-w-0 flex-1">
                               {productSlug ? (
                                 <Link
-                                  href={`/product/${encodeURIComponent(productSlug)}`}
+                                  href={`/products/${encodeURIComponent(productSlug)}`}
                                   className="font-serif font-semibold text-sm sm:text-base text-[#073a2d] hover:text-[#c79a45] transition-colors line-clamp-1 block"
                                 >
                                   {itemName}
@@ -836,7 +836,7 @@ export const OrdersClient: React.FC = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => void handleCancelOrder(order.orderNumber)}
+                          onClick={() => setOrderToCancel(order)}
                           disabled={Boolean(payingOrderNumber || restoringOrderNumber || cancellingOrderNumber)}
                           title={`Cancelable within 6h while PENDING (${getCancelTimeRemaining(order.createdAt) || 'Eligible'})`}
                           className="border-red-300 text-red-600 hover:bg-red-50 font-semibold text-xs h-9 sm:h-8 justify-center cursor-pointer"
@@ -941,7 +941,7 @@ export const OrdersClient: React.FC = () => {
                                   <div className="space-y-1">
                                     {productSlug ? (
                                       <Link
-                                        href={`/product/${encodeURIComponent(productSlug)}`}
+                                        href={`/products/${encodeURIComponent(productSlug)}`}
                                         className="font-serif font-bold text-base text-[#073a2d] hover:text-[#c79a45] transition-colors inline-flex items-center gap-1.5"
                                       >
                                         <span>{itemName}</span>
@@ -1169,6 +1169,24 @@ export const OrdersClient: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Bespoke Cancel Order Confirmation Dialog */}
+      <CancelOrderModal
+        isOpen={Boolean(orderToCancel)}
+        order={orderToCancel}
+        onClose={() => {
+          if (!cancellingOrderNumber) {
+            setOrderToCancel(null);
+          }
+        }}
+        onConfirm={handleConfirmCancel}
+        isCancelling={Boolean(
+          cancellingOrderNumber &&
+          orderToCancel &&
+          cancellingOrderNumber === orderToCancel.orderNumber
+        )}
+        timeRemaining={orderToCancel ? getCancelTimeRemaining(orderToCancel.createdAt) : null}
+      />
     </main>
   );
 };

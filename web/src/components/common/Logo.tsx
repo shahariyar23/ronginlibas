@@ -31,6 +31,7 @@ export const Logo: React.FC<LogoProps> = ({
           <img
             src="/logo.svg"
             alt="Rongin Libas Emblem"
+            title="Rongin Libas — Cloth Your Identity"
             className={`${className} object-contain`}
           />
         </div>

@@ -271,10 +271,10 @@ function PaymentResultContent() {
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
-                href="/shop"
+                href="/men"
                 className="text-xs font-sans text-[#073a2d] hover:underline py-2"
               >
-                Continue Browsing Collection
+                Continue Browsing Men&apos;s Collection
               </Link>
             </div>
           </div>
@@ -317,10 +317,10 @@ function PaymentResultContent() {
                 <span>Return to Cart / Reorder</span>
               </Link>
               <Link
-                href="/shop"
+                href="/men"
                 className="text-xs font-sans text-[#073a2d] hover:underline py-2"
               >
-                Continue Browsing Collection
+                Continue Browsing Men&apos;s Collection
               </Link>
             </div>
           </div>

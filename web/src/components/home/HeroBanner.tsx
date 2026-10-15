@@ -49,13 +49,13 @@ export const HeroBanner: React.FC = () => {
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-8 mb-8 sm:mb-10">
             <Link
-              href="/shop"
+              href="/men"
               className="h-11 sm:h-12 px-8 sm:px-9 bg-white hover:bg-[#fbf9f2] text-[#073a2d] font-sans font-bold uppercase tracking-[0.16em] text-xs shadow-lg transition-all rounded-none inline-flex items-center justify-center hover:scale-[1.02] active:scale-[0.98]"
             >
               SHOP MEN
             </Link>
             <Link
-              href="/shop?filter=new"
+              href="/collections/new-arrivals"
               className="font-sans text-xs uppercase tracking-[0.16em] font-bold text-white hover:text-[#c79a45] transition-colors inline-flex items-center justify-center sm:justify-start gap-2 group py-2"
             >
               <span>EXPLORE NEW ARRIVALS</span>

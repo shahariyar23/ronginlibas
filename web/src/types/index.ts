@@ -39,6 +39,10 @@ export interface Product {
   canonicalUrl?: string;
   redirectTargetSlug?: string;
   isRedirect?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  isActive?: boolean;
+  deletedAt?: string | Date | null;
   imageDetails?: {
     url: string;
     altText?: string | null;

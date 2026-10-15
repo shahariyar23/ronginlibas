@@ -208,6 +208,10 @@ interface ApiProduct {
   canonicalUrl?: string | null;
   redirectTargetSlug?: string;
   isRedirect?: boolean;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+  isActive?: boolean;
+  deletedAt?: string | Date | null;
 }
 
 const categoryAliases: Record<string, Product['category']> = {
@@ -394,6 +398,10 @@ export function mapProduct(source: ApiProduct): Product {
     isNewArrival: source.isNewArrival,
     isBestSeller,
     featured: source.isFeatured,
+    createdAt: source.createdAt ? new Date(source.createdAt).toISOString() : undefined,
+    updatedAt: source.updatedAt ? new Date(source.updatedAt).toISOString() : undefined,
+    isActive: source.isActive,
+    deletedAt: source.deletedAt ? new Date(source.deletedAt).toISOString() : null,
     variants,
   };
 }
@@ -446,6 +454,8 @@ export interface StorefrontCategory {
   isActive?: boolean;
   image?: string | null;
   sortOrder?: number;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
   _count?: { products: number };
 }
 
@@ -499,6 +509,95 @@ export function buildProductQuery(query: ProductListQuery = {}) {
     }
   });
   return params;
+}
+
+export function parseProductListQuery(
+  rawParams?: Record<string, string | string[] | undefined> | URLSearchParams | null,
+  overrides?: Partial<ProductListQuery>,
+): ProductListQuery {
+  const getParam = (key: string): string | undefined => {
+    if (!rawParams) return undefined;
+    if (rawParams instanceof URLSearchParams) {
+      return rawParams.get(key) || undefined;
+    }
+    const val = rawParams[key];
+    if (Array.isArray(val)) return val[0];
+    return val || undefined;
+  };
+
+  const getAllParam = (key: string): string[] => {
+    if (!rawParams) return [];
+    if (rawParams instanceof URLSearchParams) {
+      return rawParams.getAll(key);
+    }
+    const val = rawParams[key];
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    return [val];
+  };
+
+  const initialFilterFromUrl = getParam('filter') || '';
+  const initialQueryFromUrl = getParam('q') || getParam('search') || '';
+  const genderParam = getParam('gender');
+  const selectedGender =
+    genderParam === 'MEN' || genderParam === 'WOMEN' || genderParam === 'UNISEX'
+      ? genderParam
+      : undefined;
+
+  const rawSort = getParam('sort') || (overrides?.bestSeller ? 'best-selling' : 'featured');
+  const sortBy =
+    rawSort === 'price-asc'
+      ? 'price-low'
+      : rawSort === 'price-desc'
+        ? 'price-high'
+        : rawSort;
+
+  const page = Math.max(1, Number(getParam('page')) || 1);
+  const selectedCategory = getParam('category');
+  const selectedSizes = getAllParam('size');
+  const selectedColors = getAllParam('color');
+  const selectedFabrics = getAllParam('fabric');
+  const selectedFabricOrigins = getAllParam('fabricOrigin');
+  const selectedFits = getAllParam('fit');
+  const inStockOnly = getParam('inStock') === 'true';
+
+  const newArrivalSelected = getParam('newArrival') === 'true' || initialFilterFromUrl === 'new';
+  const bestSellerSelected = getParam('bestSeller') === 'true' || initialFilterFromUrl === 'bestseller';
+  const offersSelected =
+    getParam('offers') === 'true' ||
+    initialFilterFromUrl === 'offers' ||
+    initialFilterFromUrl === 'sale';
+
+  const query: ProductListQuery = {
+    page,
+    limit: overrides?.limit ?? 12,
+    sort: overrides?.sort ?? sortBy,
+    gender: overrides?.gender ?? selectedGender,
+    category: overrides?.category || (selectedCategory && selectedCategory !== 'all' ? selectedCategory : undefined),
+    collection: overrides?.collection,
+    size: overrides?.size ?? (selectedSizes.length ? selectedSizes : undefined),
+    color: overrides?.color ?? (selectedColors.length ? selectedColors : undefined),
+    fabric: overrides?.fabric ?? (selectedFabrics.length ? selectedFabrics : undefined),
+    fabricOrigin: overrides?.fabricOrigin ?? (selectedFabricOrigins.length ? selectedFabricOrigins : undefined),
+    fit: overrides?.fit ?? (selectedFits.length ? selectedFits : undefined),
+    search: overrides?.search ?? (initialQueryFromUrl || undefined),
+    inStock: overrides?.inStock ?? (inStockOnly ? true : undefined),
+  };
+
+  const minPrice = getParam('minPrice');
+  if (overrides?.minPrice !== undefined) query.minPrice = overrides.minPrice;
+  else if (minPrice !== undefined && minPrice !== '') query.minPrice = Number(minPrice);
+
+  const maxPrice = getParam('maxPrice');
+  if (overrides?.maxPrice !== undefined) query.maxPrice = overrides.maxPrice;
+  else if (maxPrice !== undefined && maxPrice !== '') query.maxPrice = Number(maxPrice);
+
+  if (overrides?.newArrival || newArrivalSelected) query.newArrival = true;
+  if (overrides?.bestSeller || bestSellerSelected) query.bestSeller = true;
+  if (overrides?.featured) query.featured = true;
+  if (offersSelected || overrides?.onSale) query.onSale = true;
+
+  return query;
 }
 
 export async function getShopProducts(query: ProductListQuery = {}): Promise<ShopProductsResponse> {
@@ -571,6 +670,8 @@ export interface StorefrontCollection {
   sortOrder: number;
   seoTitle?: string | null;
   metaDescription?: string | null;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
   products?: Product[];
 }
 

@@ -9,6 +9,7 @@ import { useWishlist } from '@/context/WishlistContext';
 import { useAuth } from '@/context/AuthContext';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { analytics } from '@/lib/analytics/client';
+import { getOptimizedImageUrl, getNaturalAltText } from '@/lib/images';
 import {
   getProduct,
   getRelatedProducts,
@@ -640,11 +641,14 @@ const ProductDetailView: React.FC<{
               Home
             </Link>
             <span className="text-[#deddd3]">/</span>
-            <Link href={`/shop?gender=${product.gender || 'MEN'}`} className="hover:text-[#073a2d] transition-colors">
+            <Link
+              href={product.gender === 'WOMEN' ? '/shop?gender=WOMEN' : product.gender === 'UNISEX' ? '/shop?gender=UNISEX' : '/men'}
+              className="hover:text-[#073a2d] transition-colors"
+            >
               {product.gender === 'WOMEN' ? 'Women' : product.gender === 'UNISEX' ? 'Unisex' : 'Men'}
             </Link>
             <span className="text-[#deddd3]">/</span>
-            <Link href={`/categories/${product.category}`} className="hover:text-[#073a2d] transition-colors">
+            <Link href={`/men/${product.category}`} className="hover:text-[#073a2d] transition-colors">
               {product.categoryLabel}
             </Link>
             <span className="text-[#deddd3]">/</span>
@@ -653,7 +657,7 @@ const ProductDetailView: React.FC<{
 
           <div className="hidden sm:flex items-center gap-2 bg-[#f0eee7] px-3 py-1 text-[#073a2d] font-sans text-[11px] font-semibold border border-[#deddd3]">
             <Crown className="w-3.5 h-3.5 text-[#c79a45]" />
-            <span>Atelier Ref: {activeSku} • {product.categoryLabel} Collection</span>
+            <span>Atelier Ref: {activeSku} • <Link href={`/men/${encodeURIComponent(product.category)}`} className="underline underline-offset-2 hover:text-[#c79a45] transition-colors">{product.categoryLabel}</Link> Collection</span>
           </div>
         </div>
 
@@ -663,19 +667,34 @@ const ProductDetailView: React.FC<{
           <div className="lg:col-span-7 flex flex-col-reverse md:flex-row gap-3 sm:gap-4">
             {/* Vertical Thumbnail Strip */}
             <div className="flex md:flex-col gap-2.5 sm:gap-3 overflow-x-auto md:overflow-visible shrink-0 pb-2 md:pb-0">
-              {product.images.map((img, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setActiveImageIndex(idx)}
-                  className={`relative w-16 h-22 sm:w-20 sm:h-28 bg-[#f5f4ed] overflow-hidden border transition-all cursor-pointer ${
-                    activeImageIndex === idx
-                      ? 'border-[#073a2d] ring-1 ring-[#073a2d] opacity-100 shadow-xs'
-                      : 'border-[#deddd3] opacity-70 hover:opacity-100'
-                  }`}
-                >
-                  <img src={img} alt={`${product.name} - view ${idx + 1}`} className="w-full h-full object-cover object-top" />
-                </button>
-              ))}
+              {product.images.map((img, idx) => {
+                const thumbUrl = getOptimizedImageUrl(img, { preset: 'thumbnail' });
+                const thumbAlt = getNaturalAltText(product.name, {
+                  color: selectedColor,
+                  viewIndex: idx,
+                  totalViews: product.images.length,
+                  customAlt: product.imageDetails?.[idx]?.altText,
+                });
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveImageIndex(idx)}
+                    className={`relative w-16 h-22 sm:w-20 sm:h-28 bg-[#f5f4ed] overflow-hidden border transition-all cursor-pointer ${
+                      activeImageIndex === idx
+                        ? 'border-[#073a2d] ring-1 ring-[#073a2d] opacity-100 shadow-xs'
+                        : 'border-[#deddd3] opacity-70 hover:opacity-100'
+                    }`}
+                  >
+                    <img
+                      src={thumbUrl}
+                      alt={thumbAlt}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover object-top"
+                    />
+                  </button>
+                );
+              })}
             </div>
 
             {/* Main Interactive Zoom Canvas */}
@@ -688,14 +707,20 @@ const ProductDetailView: React.FC<{
                   </span>
                 )}
                 {product.isBestSeller && !product.badge?.includes('Best Seller') && (
-                  <span className="bg-[#c79a45] text-[#073a2d] font-sans text-[10px] uppercase px-2.5 py-1 tracking-wider shadow-sm font-bold">
-                    Best Seller
-                  </span>
+                  <Link
+                    href="/collections/bestsellers"
+                    className="bg-[#c79a45] hover:bg-[#b08535] text-[#073a2d] font-sans text-[10px] uppercase px-2.5 py-1 tracking-wider shadow-sm font-bold transition-colors block"
+                  >
+                    Best Seller Collection
+                  </Link>
                 )}
                 {product.isNewArrival && !product.badge?.includes('New') && (
-                  <span className="bg-white/95 text-[#073a2d] border border-[#deddd3] font-sans text-[10px] uppercase px-2.5 py-1 tracking-wider shadow-sm font-bold">
-                    New Arrival
-                  </span>
+                  <Link
+                    href="/collections/new-arrivals"
+                    className="bg-white/95 hover:bg-white text-[#073a2d] border border-[#deddd3] font-sans text-[10px] uppercase px-2.5 py-1 tracking-wider shadow-sm font-bold transition-colors block"
+                  >
+                    New Arrival Collection
+                  </Link>
                 )}
                 {product.isExpressAvailable && (
                   <span className="bg-[#073a2d] text-[#c79a45] border border-[#c79a45]/40 font-sans text-[9px] uppercase px-2.5 py-1 tracking-widest font-bold flex items-center gap-1 shadow-xs">
@@ -735,22 +760,41 @@ const ProductDetailView: React.FC<{
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}
               >
-                <img
-                  src={product.images[activeImageIndex] || product.images[0]}
-                  alt={product.name}
-                  className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
-                />
+                {(() => {
+                  const activeRaw = product.images[activeImageIndex] || product.images[0];
+                  const activeDetailUrl = getOptimizedImageUrl(activeRaw, { preset: 'detail' });
+                  const activeZoomUrl = getOptimizedImageUrl(activeRaw, { preset: 'zoom' });
+                  const activeAlt = getNaturalAltText(product.name, {
+                    color: selectedColor,
+                    viewIndex: activeImageIndex,
+                    totalViews: product.images.length,
+                    customAlt: product.imageDetails?.[activeImageIndex]?.altText,
+                  });
 
-                {/* Magnifier lens result */}
-                <div
-                  className="absolute inset-0 pointer-events-none transition-opacity duration-150"
-                  style={{
-                    ...zoomStyle,
-                    backgroundImage: `url(${product.images[activeImageIndex] || product.images[0]})`,
-                    backgroundSize: '250%',
-                    backgroundRepeat: 'no-repeat',
-                  }}
-                />
+                  return (
+                    <>
+                      <img
+                        src={activeDetailUrl}
+                        alt={activeAlt}
+                        loading={activeImageIndex === 0 ? 'eager' : 'lazy'}
+                        fetchPriority={activeImageIndex === 0 ? 'high' : 'auto'}
+                        decoding="async"
+                        className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                      />
+
+                      {/* Magnifier lens result */}
+                      <div
+                        className="absolute inset-0 pointer-events-none transition-opacity duration-150"
+                        style={{
+                          ...zoomStyle,
+                          backgroundImage: `url(${activeZoomUrl})`,
+                          backgroundSize: '250%',
+                          backgroundRepeat: 'no-repeat',
+                        }}
+                      />
+                    </>
+                  );
+                })()}
 
                 {/* Center Section Out of Stock Banner */}
                 {isCurrentVariantOutOfStock && (
@@ -1816,10 +1860,10 @@ const ProductDetailView: React.FC<{
               </h2>
             </div>
             <Link
-              href="/shop"
+              href={product.gender === 'WOMEN' ? '/shop?gender=WOMEN' : `/men/${encodeURIComponent(product.category)}`}
               className="font-sans text-xs uppercase tracking-wider text-[#073a2d] hover:text-[#c79a45] font-bold underline underline-offset-4"
             >
-              All products &rarr;
+              Explore all {product.categoryLabel} &rarr;
             </Link>
           </div>
 

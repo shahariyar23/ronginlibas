@@ -40,7 +40,7 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({ categories }) => {
           cat.image && cat.image.trim() !== ''
             ? cat.image
             : staticMatch?.image || CATEGORIES[idx % CATEGORIES.length].image,
-        path: `/shop?category=${encodeURIComponent(cat.slug)}`,
+        path: `/men/${encodeURIComponent(cat.slug)}`,
       };
     });
   }, [categories]);
@@ -62,10 +62,10 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({ categories }) => {
             </p>
           </div>
           <Link
-            href="/shop"
+            href="/men"
             className="font-sans text-xs uppercase tracking-widest text-[#073a2d] hover:text-[#0d4d3b] flex items-center gap-1.5 group font-semibold self-start sm:self-auto"
           >
-            <span>VIEW FULL CATALOGUE</span>
+            <span>EXPLORE ALL MENSWEAR</span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-[#c79a45]" />
           </Link>
         </div>
@@ -96,9 +96,11 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({ categories }) => {
                   <p className="font-sans text-[9px] sm:text-[11px] uppercase tracking-widest text-[#c79a45] mb-0.5 sm:mb-1 font-medium">
                     {cat.sub}
                   </p>
-                  <h3 className="font-serif text-sm sm:text-2xl font-normal mb-0.5 sm:mb-1 leading-tight">
-                    {cat.name}
-                  </h3>
+                  <Link href={cat.path} className="hover:text-[#c79a45] transition-colors block">
+                    <h3 className="font-serif text-sm sm:text-2xl font-normal mb-0.5 sm:mb-1 leading-tight">
+                      {cat.name}
+                    </h3>
+                  </Link>
                   <p className="hidden sm:block font-sans text-xs text-[#c0c8c3] line-clamp-1 mb-4 font-light">
                     {cat.desc}
                   </p>
@@ -106,7 +108,7 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({ categories }) => {
                     href={cat.path}
                     className="inline-flex items-center gap-1.5 sm:gap-2 font-sans text-[10px] sm:text-xs uppercase tracking-wider text-[#fbf9f2] hover:text-[#c79a45] transition-colors font-semibold"
                   >
-                    <span>Shop {cat.name}</span>
+                    <span>Shop Men&apos;s {cat.name}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>

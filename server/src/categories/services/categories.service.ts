@@ -32,6 +32,8 @@ export class CategoriesService {
         image: true,
         parentId: true,
         sortOrder: true,
+        updatedAt: true,
+        createdAt: true,
         children: {
           where: { isActive: true },
           select: { id: true, name: true, slug: true, description: true, image: true, sortOrder: true },

@@ -1,9 +1,17 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { Product } from '@/types';
-import { colorHex, getProductFilters, getShopProducts, ProductFilters, ProductListQuery } from '@/lib/api';
+import {
+  colorHex,
+  getProductFilters,
+  getShopProducts,
+  parseProductListQuery,
+  PaginationMeta,
+  ProductFilters,
+  ProductListQuery,
+} from '@/lib/api';
 import { getWhatsAppUrl, useStorefront } from '@/context/StorefrontContext';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { LogoLoader } from '@/components/common/LogoLoader';
@@ -51,6 +59,7 @@ export interface ForceFilter {
   bestSeller?: boolean;
   featured?: boolean;
   category?: string;
+  collection?: string;
 }
 
 export interface ShopContentProps {
@@ -58,6 +67,8 @@ export interface ShopContentProps {
   collectionConfig?: CollectionConfig;
   categoryConfig?: CategoryConfig;
   forceFilter?: ForceFilter;
+  initialProducts?: Product[];
+  initialPageMeta?: PaginationMeta;
 }
 
 export const ShopContent: React.FC<ShopContentProps> = ({
@@ -65,15 +76,25 @@ export const ShopContent: React.FC<ShopContentProps> = ({
   collectionConfig,
   categoryConfig,
   forceFilter,
+  initialProducts,
+  initialPageMeta,
 }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { settings } = useStorefront();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(initialProducts || []);
   const [filters, setFilters] = useState<ProductFilters | null>(null);
-  const [pageMeta, setPageMeta] = useState({ page: 1, limit: 12, total: 0, totalPages: 1, hasNext: false, hasPrevious: false });
-  const [isLoading, setIsLoading] = useState(true);
-  const [completedRequestKey, setCompletedRequestKey] = useState('');
+  const [pageMeta, setPageMeta] = useState<PaginationMeta>(
+    initialPageMeta || {
+      page: 1,
+      limit: 12,
+      total: initialProducts ? initialProducts.length : 0,
+      totalPages: initialProducts ? Math.max(1, Math.ceil(initialProducts.length / 12)) : 1,
+      hasNext: false,
+      hasPrevious: false,
+    },
+  );
+  const [isLoading, setIsLoading] = useState(!initialProducts);
   const [loadError, setLoadError] = useState('');
   const [retryKey, setRetryKey] = useState(0);
   const [searchEdit, setSearchEdit] = useState<{ query: string; value: string } | null>(null);
@@ -147,40 +168,20 @@ export const ShopContent: React.FC<ShopContentProps> = ({
     router.push(`${basePath}${nextQuery ? `?${nextQuery}` : ''}`, { scroll: false });
   };
 
-  const productQuery = useMemo<ProductListQuery>(() => {
-    const query: ProductListQuery = {
-      page,
-      limit: 12,
-      sort: sortBy,
-      gender: selectedGender,
-      category: forceFilter?.category || (selectedCategory !== 'all' ? selectedCategory : undefined),
-      size: selectedSizes.length ? selectedSizes : undefined,
-      color: selectedColors.length ? selectedColors : undefined,
-      fabric: selectedFabrics.length ? selectedFabrics : undefined,
-      fabricOrigin: selectedFabricOrigins.length ? selectedFabricOrigins : undefined,
-      fit: selectedFits.length ? selectedFits : undefined,
-      search: initialQueryFromUrl || undefined,
-      inStock: inStockOnly ? true : undefined,
-    };
-    if (urlParams.has('minPrice')) query.minPrice = Number(urlParams.get('minPrice'));
-    if (urlParams.has('maxPrice')) query.maxPrice = Number(urlParams.get('maxPrice'));
-    if (forceFilter?.newArrival || newArrivalSelected) query.newArrival = true;
-    if (forceFilter?.bestSeller || bestSellerSelected) query.bestSeller = true;
-    if (forceFilter?.featured) query.featured = true;
-    if (offersSelected) query.onSale = true;
-    return query;
-  }, [
-    page, sortBy, selectedCategory, selectedGender, selectedSizes, selectedColors,
-    selectedFabrics, selectedFabricOrigins, selectedFits,
-    initialQueryFromUrl, inStockOnly, urlParams,
-    newArrivalSelected, bestSellerSelected, offersSelected,
-    forceFilter,
-  ]);
+  const productQuery = useMemo<ProductListQuery>(
+    () => parseProductListQuery(urlParams, forceFilter),
+    [urlParams, forceFilter],
+  );
   const requestKey = JSON.stringify(productQuery);
+  const isFirstMount = useRef(Boolean(initialProducts));
+  const [completedRequestKey, setCompletedRequestKey] = useState(
+    initialProducts ? requestKey : '',
+  );
 
   const filterQuery = useMemo<ProductListQuery>(
     () => ({
       category: forceFilter?.category || (selectedCategory !== 'all' ? selectedCategory : undefined),
+      collection: forceFilter?.collection || undefined,
       size: selectedSizes.length ? selectedSizes : undefined,
       color: selectedColors.length ? selectedColors : undefined,
       fabric: selectedFabrics.length ? selectedFabrics : undefined,
@@ -200,10 +201,15 @@ export const ShopContent: React.FC<ShopContentProps> = ({
   const retryProducts = () => {
     setLoadError('');
     setIsLoading(true);
+    setCompletedRequestKey('');
     setRetryKey((value) => value + 1);
   };
 
   useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
     let active = true;
     getShopProducts(productQuery)
       .then((result) => {
@@ -241,7 +247,7 @@ export const ShopContent: React.FC<ShopContentProps> = ({
     return () => { active = false; };
   }, [filterQuery]);
 
-  const isRefreshing = !isLoading && completedRequestKey !== requestKey;
+  const isRefreshing = !isLoading && completedRequestKey !== '' && completedRequestKey !== requestKey;
 
   const toggleQueryValue = (key: string, value: string) => {
     const current = searchParams.getAll(key);
@@ -373,20 +379,43 @@ export const ShopContent: React.FC<ShopContentProps> = ({
           Category
         </h4>
         <div className="space-y-1.5">
-          {categories.map((cat) => (
-            <button
-              key={cat.slug}
-              onClick={() => updateQuery({ category: cat.slug === 'all' ? null : cat.slug })}
-              className={`w-full text-left py-1.5 px-2.5 transition-colors flex items-center justify-between ${
-                selectedCategory === cat.slug
-                  ? 'bg-[#073a2d] text-white font-semibold'
-                  : 'text-[#404945] hover:bg-[#f0eee7]'
-              }`}
-            >
-              <span>{cat.name} <span className="opacity-70">({cat.count})</span></span>
-              {selectedCategory === cat.slug && <span className="text-[10px]">●</span>}
-            </button>
-          ))}
+          {categories.map((cat) => {
+            const isMenRoute = basePath.startsWith('/men');
+            const targetHref = cat.slug === 'all' ? '/men' : `/men/${cat.slug}`;
+            const isActive = selectedCategory === cat.slug;
+
+            if (isMenRoute) {
+              return (
+                <Link
+                  key={cat.slug}
+                  href={targetHref}
+                  className={`w-full text-left py-1.5 px-2.5 transition-colors flex items-center justify-between ${
+                    isActive
+                      ? 'bg-[#073a2d] text-white font-semibold'
+                      : 'text-[#404945] hover:bg-[#f0eee7]'
+                  }`}
+                >
+                  <span>{cat.name} <span className="opacity-70">({cat.count})</span></span>
+                  {isActive && <span className="text-[10px]">●</span>}
+                </Link>
+              );
+            }
+
+            return (
+              <button
+                key={cat.slug}
+                onClick={() => updateQuery({ category: cat.slug === 'all' ? null : cat.slug })}
+                className={`w-full text-left py-1.5 px-2.5 transition-colors flex items-center justify-between ${
+                  isActive
+                    ? 'bg-[#073a2d] text-white font-semibold'
+                    : 'text-[#404945] hover:bg-[#f0eee7]'
+                }`}
+              >
+                <span>{cat.name} <span className="opacity-70">({cat.count})</span></span>
+                {isActive && <span className="text-[10px]">●</span>}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -599,32 +628,32 @@ export const ShopContent: React.FC<ShopContentProps> = ({
                 Home
               </Link>
               <span>/</span>
-              <Link href="/shop" className="hover:text-[#073a2d]">
-                Collections
+              <Link href="/men" className="hover:text-[#073a2d]">
+                Men
               </Link>
               <span>/</span>
               <span className="text-[#073a2d] font-semibold">{collectionConfig.title}</span>
             </nav>
           ) : categoryConfig ? (
-            <nav className="flex items-center gap-2 text-[11px] font-sans uppercase tracking-widest text-[#717975] mb-3">
+            <nav aria-label="Breadcrumbs" className="flex items-center gap-2 text-[11px] font-sans uppercase tracking-widest text-[#717975] mb-3">
               <Link href="/" className="hover:text-[#073a2d]">
                 Home
               </Link>
               <span>/</span>
-              <Link href="/shop" className="hover:text-[#073a2d]">
-                Categories
+              <Link href="/men" className="hover:text-[#073a2d]">
+                Men
               </Link>
               <span>/</span>
               <span className="text-[#073a2d] font-semibold">{categoryConfig.name}</span>
             </nav>
           ) : (
-            <nav className="flex items-center gap-2 text-[11px] font-sans uppercase tracking-widest text-[#717975] mb-3">
+            <nav aria-label="Breadcrumbs" className="flex items-center gap-2 text-[11px] font-sans uppercase tracking-widest text-[#717975] mb-3">
               <Link href="/" className="hover:text-[#073a2d]">
                 Home
               </Link>
               <span>/</span>
               <Link
-                href={`/shop?gender=${selectedGender || 'MEN'}`}
+                href={selectedGender === 'WOMEN' ? '/shop?gender=WOMEN' : selectedGender === 'UNISEX' ? '/shop?gender=UNISEX' : '/men'}
                 className="hover:text-[#073a2d]"
               >
                 {selectedGender === 'WOMEN' ? 'Women' : selectedGender === 'UNISEX' ? 'Unisex' : 'Men'}
@@ -661,23 +690,18 @@ export const ShopContent: React.FC<ShopContentProps> = ({
               <p className="font-sans text-xs sm:text-sm text-[#69726d] max-w-2xl font-light">
                 {collectionConfig.description}
               </p>
-              {collectionConfig.switcher && collectionConfig.switcher.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2 mt-6">
-                  {collectionConfig.switcher.map((item) => (
-                    <Link
-                      key={item.slug}
-                      href={`/collections/${item.slug}`}
-                      className={`text-xs font-sans uppercase tracking-wider px-3.5 py-1.5 transition-all ${
-                        item.isCurrent
-                          ? 'bg-[#073a2d] text-white font-semibold'
-                          : 'bg-white border border-[#deddd3] text-[#404945] hover:border-[#073a2d] hover:text-[#073a2d]'
-                      }`}
-                    >
-                      {item.title}
-                    </Link>
-                  ))}
-                </div>
-              )}
+              <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-[#deddd3]/60 text-xs text-[#717975] font-sans">
+                <span className="font-semibold uppercase tracking-wider text-[#073a2d]">Explore Categories:</span>
+                <Link href="/men/panjabi" className="hover:text-[#073a2d] hover:underline">Panjabi</Link>
+                <span>•</span>
+                <Link href="/men/shirts" className="hover:text-[#073a2d] hover:underline">Shirts</Link>
+                <span>•</span>
+                <Link href="/men/polos" className="hover:text-[#073a2d] hover:underline">Polos</Link>
+                <span>•</span>
+                <Link href="/men/t-shirts" className="hover:text-[#073a2d] hover:underline">T-Shirts</Link>
+                <span>•</span>
+                <Link href="/men/trousers" className="hover:text-[#073a2d] hover:underline">Trousers</Link>
+              </div>
             </>
           ) : categoryConfig ? (
             <>
@@ -697,7 +721,7 @@ export const ShopContent: React.FC<ShopContentProps> = ({
                   {categoryConfig.siblingCategories.map((c) => (
                     <Link
                       key={c.id}
-                      href={`/categories/${c.slug}`}
+                      href={`/men/${c.slug}`}
                       className={`text-xs font-sans uppercase tracking-wider px-3.5 py-1.5 transition-all ${
                         c.slug === categoryConfig.slug
                           ? 'bg-[#073a2d] text-white font-semibold'
@@ -709,6 +733,14 @@ export const ShopContent: React.FC<ShopContentProps> = ({
                   ))}
                 </div>
               )}
+              <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-[#deddd3]/60 text-xs text-[#717975] font-sans">
+                <span className="font-semibold uppercase tracking-wider text-[#073a2d]">Featured Curations:</span>
+                <Link href="/collections/new-arrivals" className="hover:text-[#073a2d] hover:underline">New Loom Drops</Link>
+                <span>•</span>
+                <Link href="/collections/bestsellers" className="hover:text-[#073a2d] hover:underline">Best Sellers</Link>
+                <span>•</span>
+                <Link href="/offers" className="hover:text-[#073a2d] hover:underline">Special Offers</Link>
+              </div>
             </>
           ) : (
             <>
@@ -730,6 +762,41 @@ export const ShopContent: React.FC<ShopContentProps> = ({
               <p className="font-sans text-xs sm:text-sm text-[#69726d] max-w-2xl font-light">
                 Handcrafted Bengal panjabis, Egyptian long-staple cotton shirts, and modern architectural bottom wear designed for tropical ease and aristocratic presence.
               </p>
+              {basePath.startsWith('/men') && (
+                <>
+                  <div className="flex flex-wrap items-center gap-2 mt-6">
+                    <Link
+                      href="/men"
+                      className="text-xs font-sans uppercase tracking-wider px-3.5 py-1.5 transition-all bg-[#073a2d] text-white font-semibold"
+                    >
+                      All Menswear
+                    </Link>
+                    {[
+                      { slug: 'panjabi', name: 'Panjabi' },
+                      { slug: 'shirts', name: 'Shirts' },
+                      { slug: 'polos', name: 'Polos' },
+                      { slug: 't-shirts', name: 'T-Shirts' },
+                      { slug: 'trousers', name: 'Trousers' },
+                    ].map((c) => (
+                      <Link
+                        key={c.slug}
+                        href={`/men/${c.slug}`}
+                        className="text-xs font-sans uppercase tracking-wider px-3.5 py-1.5 transition-all bg-white border border-[#deddd3] text-[#404945] hover:border-[#073a2d] hover:text-[#073a2d]"
+                      >
+                        {c.name}
+                      </Link>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-[#deddd3]/60 text-xs text-[#717975] font-sans">
+                    <span className="font-semibold uppercase tracking-wider text-[#073a2d]">Featured Curations:</span>
+                    <Link href="/collections/new-arrivals" className="hover:text-[#073a2d] hover:underline">New Loom Drops</Link>
+                    <span>•</span>
+                    <Link href="/collections/bestsellers" className="hover:text-[#073a2d] hover:underline">Timeless Best Sellers</Link>
+                    <span>•</span>
+                    <Link href="/offers" className="hover:text-[#073a2d] hover:underline">Curated Offers</Link>
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>
@@ -1031,9 +1098,9 @@ export const ShopContent: React.FC<ShopContentProps> = ({
                   Try Again
                 </Button>
               </div>
-            ) : isLoading ? (
+            ) : isLoading && products.length === 0 ? (
               <LogoLoader />
-            ) : pageMeta.total === 0 ? (
+            ) : pageMeta.total === 0 && products.length === 0 ? (
               <div className="p-16 bg-white border border-[#deddd3] text-center space-y-4">
                 <h3 className="font-serif text-2xl text-[#073a2d]">
                   No Sartorial Pieces Matched Your Criteria

@@ -69,33 +69,48 @@ export const Footer: React.FC = () => {
             </h4>
             <ul className="space-y-3 font-sans text-xs text-[#c0c8c3]">
               <li>
-                <Link href="/shop?category=panjabi" className="hover:text-[#c79a45] transition-colors">
+                <Link href="/men" className="hover:text-[#c79a45] transition-colors font-semibold text-[#fbf9f2]">
+                  Men&apos;s Collection
+                </Link>
+              </li>
+              <li>
+                <Link href="/men/panjabi" className="hover:text-[#c79a45] transition-colors">
                   Imperial Panjabi
                 </Link>
               </li>
               <li>
-                <Link href="/shop?category=shirts" className="hover:text-[#c79a45] transition-colors">
+                <Link href="/men/shirts" className="hover:text-[#c79a45] transition-colors">
                   Egyptian Cotton Shirts
                 </Link>
               </li>
               <li>
-                <Link href="/shop?category=polos" className="hover:text-[#c79a45] transition-colors">
+                <Link href="/men/polos" className="hover:text-[#c79a45] transition-colors">
                   Mercerized Polos
                 </Link>
               </li>
               <li>
-                <Link href="/shop?category=t-shirts" className="hover:text-[#c79a45] transition-colors">
+                <Link href="/men/t-shirts" className="hover:text-[#c79a45] transition-colors">
                   Heavyweight T-Shirts
                 </Link>
               </li>
               <li>
-                <Link href="/shop?category=trousers" className="hover:text-[#c79a45] transition-colors">
-                  Gurkha & Pleated Trousers
+                <Link href="/men/trousers" className="hover:text-[#c79a45] transition-colors">
+                  Gurkha &amp; Pleated Trousers
                 </Link>
               </li>
               <li>
-                <Link href="/shop?filter=new" className="text-[#c79a45] hover:underline">
-                  Eid &apos;25 Preview
+                <Link href="/collections/new-arrivals" className="text-[#c79a45] hover:underline">
+                  New Loom Drops
+                </Link>
+              </li>
+              <li>
+                <Link href="/collections/bestsellers" className="hover:text-[#c79a45] transition-colors">
+                  Iconic Best Sellers
+                </Link>
+              </li>
+              <li>
+                <Link href="/offers" className="hover:text-[#c79a45] transition-colors">
+                  Exclusive Offers
                 </Link>
               </li>
             </ul>
@@ -108,8 +123,8 @@ export const Footer: React.FC = () => {
             </h4>
             <ul className="space-y-3 font-sans text-xs text-[#c0c8c3]">
               <li>
-                <Link href="/shop" className="hover:text-[#c79a45] transition-colors">
-                  Bespoke Sizing & Matrix
+                <Link href="/terms" className="hover:text-[#c79a45] transition-colors">
+                  Bespoke Sizing &amp; Fitting Terms
                 </Link>
               </li>
               <li>
@@ -119,7 +134,7 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <Link href="/orders" className="hover:text-[#c79a45] transition-colors">
-                  Order History & Invoices
+                  Order History &amp; Invoices
                 </Link>
               </li>
               <li>
@@ -134,7 +149,7 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <Link href="/terms" className="hover:text-[#c79a45] transition-colors">
-                  Delivery & Shipping Terms
+                  Delivery &amp; Shipping Terms
                 </Link>
               </li>
             </ul>
