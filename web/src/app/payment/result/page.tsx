@@ -14,7 +14,14 @@ import {
   ShoppingBag,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getPaymentStatusApi, initiateWaitmarkPaymentApi, cancelOrderApi, OrderPaymentStatusResult } from '@/lib/api';
+import {
+  getPaymentStatusApi,
+  initiateUddoktaPaymentApi,
+  initiateWaitmarkPaymentApi,
+  verifyUddoktaPaymentApi,
+  cancelOrderApi,
+  OrderPaymentStatusResult,
+} from '@/lib/api';
 import { toast } from 'sonner';
 import { analytics } from '@/lib/analytics/client';
 import { useCart } from '@/context/CartContext';
@@ -25,6 +32,7 @@ function PaymentResultContent() {
 
   const orderId = searchParams.get('orderId') || '';
   const trxId = searchParams.get('trx_id') || '';
+  const invoiceId = searchParams.get('invoice_id') || searchParams.get('invoiceId') || '';
   const phone = searchParams.get('phone') || '';
   const trackingToken = searchParams.get('trackingToken') || '';
   const statusParam = (searchParams.get('status') || '').trim().toLowerCase();
@@ -89,18 +97,48 @@ function PaymentResultContent() {
   };
 
   useEffect(() => {
-    if (!orderId || isFailedParam) {
-      if (orderId && isFailedParam) {
-        void cancelOrderApi(orderId, {
-          phone: phone || undefined,
-          trackingToken: trackingToken || undefined,
-        }).catch(() => {});
-      }
+    if (!orderId && !invoiceId) {
       setLoading(false);
       return;
     }
 
-    void fetchStatus();
+    if (orderId && isFailedParam) {
+      void cancelOrderApi(orderId, {
+        phone: phone || undefined,
+        trackingToken: trackingToken || undefined,
+      }).catch(() => {});
+      setLoading(false);
+      return;
+    }
+
+    // If returning from UddoktaPay with invoice_id, trigger authoritative backend verification first
+    if (invoiceId) {
+      void verifyUddoktaPaymentApi({ invoiceId, orderId: orderId || undefined })
+        .then((res: any) => {
+          const verifyData = res?.data || res;
+          if (verifyData?.isPaid) {
+            setStatusData({
+              orderId: verifyData.orderId || orderId,
+              orderNumber: verifyData.orderNumber || orderId,
+              paymentStatus: 'PAID',
+              orderStatus: 'CONFIRMED',
+              totalAmount: Number(verifyData.amount || 0),
+              paidAmount: Number(verifyData.amount || 0),
+              paymentReference: verifyData.transactionId || null,
+              paymentMethod: 'UDDOKTAPAY',
+              payments: [],
+            });
+          }
+        })
+        .catch(() => {
+          // Non-blocking, fallback to regular fetchStatus
+        })
+        .finally(() => {
+          void fetchStatus();
+        });
+    } else {
+      void fetchStatus();
+    }
 
     // Auto-poll if payment is still pending verification
     const interval = setInterval(() => {
@@ -122,23 +160,31 @@ function PaymentResultContent() {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [orderId, statusData?.paymentStatus, isFailedParam]);
+  }, [orderId, invoiceId, statusData?.paymentStatus, isFailedParam]);
 
   const handleRetryPayment = async () => {
     const targetOrderId = statusData?.orderNumber || orderId;
     if (!targetOrderId) return;
     setIsRetrying(true);
     try {
-      const res = await initiateWaitmarkPaymentApi({
-        orderId: targetOrderId,
-        phone: phone || undefined,
-        trackingToken: trackingToken || undefined,
-      });
+      const isWaitmark = statusData?.paymentMethod === 'WAITMARK_PAY';
+      const res = isWaitmark
+        ? await initiateWaitmarkPaymentApi({
+            orderId: targetOrderId,
+            phone: phone || undefined,
+            trackingToken: trackingToken || undefined,
+          })
+        : await initiateUddoktaPaymentApi({
+            orderId: targetOrderId,
+            phone: phone || undefined,
+            trackingToken: trackingToken || undefined,
+          });
 
       const checkoutUrl = (res as any)?.checkoutUrl || (res as any)?.data?.checkoutUrl;
 
       if (checkoutUrl) {
-        toast.info('Redirecting to Waitmark Pay secure gateway...');
+        const gatewayLabel = isWaitmark ? 'Waitmark Pay' : 'UddoktaPay';
+        toast.info(`Redirecting to ${gatewayLabel} secure gateway...`);
         window.location.assign(checkoutUrl);
       }
     } catch (err: any) {
@@ -215,7 +261,7 @@ function PaymentResultContent() {
               <RefreshCw className="w-7 h-7 text-[#073a2d]" />
             </div>
             <p className="text-xs font-sans text-[#69726d]">
-              Connecting to atelier ledger and verifying transaction with Waitmark Pay...
+              Connecting to atelier ledger and verifying transaction with payment gateway...
             </p>
           </div>
         ) : isPaid ? (
@@ -242,7 +288,13 @@ function PaymentResultContent() {
               </div>
               <div className="flex justify-between border-b border-[#deddd3] pb-2">
                 <span className="text-[#69726d]">Payment Method</span>
-                <span className="font-semibold text-[#073a2d]">Waitmark Pay</span>
+                <span className="font-semibold text-[#073a2d]">
+                  {statusData?.paymentMethod === 'UDDOKTAPAY'
+                    ? 'UddoktaPay'
+                    : statusData?.paymentMethod === 'WAITMARK_PAY'
+                    ? 'Waitmark Pay'
+                    : statusData?.paymentMethod || 'Online Gateway'}
+                </span>
               </div>
               <div className="flex justify-between border-b border-[#deddd3] pb-2">
                 <span className="text-[#69726d]">Paid Amount</span>
@@ -335,7 +387,7 @@ function PaymentResultContent() {
                 Verification in Progress
               </span>
               <p className="text-xs text-[#525b55] pt-1">
-                We are confirming your payment authorization with Waitmark Pay. This usually takes just a few moments.
+                We are confirming your payment authorization with the payment gateway. This usually takes just a few moments.
               </p>
             </div>
 
@@ -370,7 +422,11 @@ function PaymentResultContent() {
                 className="w-full bg-[#073a2d] hover:bg-[#0d4d3b] text-white text-xs font-sans uppercase font-bold py-3"
               >
                 <CreditCard className="w-3.5 h-3.5 mr-2" />
-                {isRetrying ? 'Initiating...' : 'Pay with Waitmark Pay'}
+                {isRetrying
+                  ? 'Initiating...'
+                  : statusData?.paymentMethod === 'WAITMARK_PAY'
+                  ? 'Pay with Waitmark Pay'
+                  : 'Pay with UddoktaPay'}
               </Button>
               {pollCount >= MAX_POLLS && (
                 <Button
@@ -390,7 +446,7 @@ function PaymentResultContent() {
         {/* Security Assurance */}
         <div className="pt-4 border-t border-[#deddd3] flex items-center justify-center gap-1.5 text-[11px] font-sans text-[#717975]">
           <ShieldCheck className="w-3.5 h-3.5 text-[#073a2d]" />
-          <span>256-Bit Encrypted Waitmark Pay Transaction</span>
+          <span>256-Bit Encrypted Secure Online Transaction</span>
         </div>
       </div>
     </div>

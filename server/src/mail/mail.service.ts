@@ -60,17 +60,53 @@ export class MailService {
   }
 
   private getWebUrl(): string {
-    return (
+    const isProduction =
+      this.configService.get<string>('app.nodeEnv') === 'production' ||
+      process.env.NODE_ENV === 'production';
+
+    const configured =
       this.configService.get<string>('app.webFrontendUrl') ||
-      'http://localhost:3000'
-    ).replace(/\/$/, '');
+      this.configService.get<string>('WEB_FRONTEND_URL') ||
+      this.configService.get<string>('FRONTEND_URL') ||
+      this.configService.get<string>('APP_URL') ||
+      this.configService.get<string>('NEXT_PUBLIC_APP_URL') ||
+      process.env.WEB_FRONTEND_URL ||
+      process.env.FRONTEND_URL ||
+      process.env.APP_URL;
+
+    if (configured && configured.trim()) {
+      const cleanUrl = configured.trim().replace(/\/$/, '');
+      // Guard: if running in production and the URL was mistakenly left as localhost, fallback to official domain
+      if (isProduction && (cleanUrl.includes('localhost') || cleanUrl.includes('127.0.0.1'))) {
+        return 'https://ronginlibas.com';
+      }
+      return cleanUrl;
+    }
+
+    return isProduction ? 'https://ronginlibas.com' : 'http://localhost:3000';
   }
 
   private getAdminUrl(): string {
-    return (
+    const isProduction =
+      this.configService.get<string>('app.nodeEnv') === 'production' ||
+      process.env.NODE_ENV === 'production';
+
+    const configured =
       this.configService.get<string>('app.adminFrontendUrl') ||
-      'http://localhost:3001'
-    ).replace(/\/$/, '');
+      this.configService.get<string>('ADMIN_FRONTEND_URL') ||
+      this.configService.get<string>('ADMIN_URL') ||
+      process.env.ADMIN_FRONTEND_URL ||
+      process.env.ADMIN_URL;
+
+    if (configured && configured.trim()) {
+      const cleanUrl = configured.trim().replace(/\/$/, '');
+      if (isProduction && (cleanUrl.includes('localhost') || cleanUrl.includes('127.0.0.1'))) {
+        return 'https://admin.ronginlibas.com';
+      }
+      return cleanUrl;
+    }
+
+    return isProduction ? 'https://admin.ronginlibas.com' : 'http://localhost:3001';
   }
 
   /**

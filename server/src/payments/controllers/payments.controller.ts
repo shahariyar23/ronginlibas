@@ -15,9 +15,13 @@ import type { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { PaymentsService } from '../services/payments.service.js';
 import { WaitmarkPaymentService } from '../services/waitmark-payment.service.js';
+import { UddoktaPaymentService } from '../services/uddokta-payment.service.js';
 import { Public } from '../../common/decorators/public.decorator.js';
-import { CreatePaymentDto, VerifyPaymentDto } from '../dto/payment-request.dto.js';
+import { CreatePaymentDto } from '../dto/payment-request.dto.js';
+import { VerifyPaymentDto, VerifyUddoktaPaymentDto } from '../dto/verify-payment.dto.js';
 import { InitiateWaitmarkPaymentDto } from '../dto/initiate-waitmark-payment.dto.js';
+import { InitiateUddoktaPaymentDto } from '../dto/initiate-uddokta-payment.dto.js';
+import { UddoktaWebhookPayloadDto } from '../dto/payment-webhook.dto.js';
 import { OptionalCustomerAuthGuard } from '../../auth/guards/optional-customer-auth.guard.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 
@@ -28,6 +32,7 @@ export class PaymentsController {
   constructor(
     private readonly paymentsService: PaymentsService,
     private readonly waitmarkService: WaitmarkPaymentService,
+    private readonly uddoktaService: UddoktaPaymentService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -40,6 +45,137 @@ export class PaymentsController {
       data,
     };
   }
+
+  // ==========================================
+  // UDDOKTAPAY HOSTED PAYMENT GATEWAY ENDPOINTS
+  // ==========================================
+
+  @Post('uddoktapay/initiate')
+  @UseGuards(OptionalCustomerAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Initiate UddoktaPay hosted payment session for an order' })
+  async initiateUddokta(
+    @Body() dto: InitiateUddoktaPaymentDto,
+    @CurrentUser() requester?: any,
+  ) {
+    const data = await this.uddoktaService.initiatePayment(dto, requester);
+    return {
+      success: true,
+      message: 'UddoktaPay checkout session created successfully',
+      data,
+    };
+  }
+
+  @Post('uddoktapay/verify')
+  @ApiOperation({ summary: 'Verify UddoktaPay payment server-side via invoice ID' })
+  async verifyUddokta(@Body() dto: VerifyUddoktaPaymentDto) {
+    const data = await this.uddoktaService.verifyPayment(dto.invoiceId, dto.orderId);
+    return {
+      success: true,
+      message: data.message,
+      data,
+    };
+  }
+
+  @Post('uddoktapay/webhook')
+  @ApiOperation({ summary: 'Receive and verify official UddoktaPay IPN webhook' })
+  async uddoktaWebhook(
+    @Req() req: Request,
+    @Body() body: UddoktaWebhookPayloadDto,
+  ) {
+    const result = await this.uddoktaService.processWebhook(req.headers, body);
+    return {
+      success: true,
+      message: result.message,
+      idempotent: result.idempotent,
+    };
+  }
+
+  @Get('uddoktapay/redirect')
+  @ApiOperation({ summary: 'Handle customer return redirect from UddoktaPay hosted checkout' })
+  async uddoktaRedirect(
+    @Query('invoice_id') invoiceId?: string,
+    @Query('order_id') orderId?: string,
+    @Res() res?: Response,
+  ) {
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') ||
+      this.configService.get<string>('WEB_FRONTEND_URL') ||
+      'http://localhost:3000';
+
+    let resolvedOrderId = orderId;
+
+    if (invoiceId) {
+      try {
+        const verifyRes = await this.uddoktaService.verifyPayment(invoiceId, orderId);
+        if (verifyRes.orderNumber) {
+          resolvedOrderId = verifyRes.orderNumber;
+        }
+      } catch {
+        // Safe: non-blocking on redirect, frontend will query authoritative status
+      }
+    }
+
+    const redirectUrl = `${frontendUrl.replace(/\/+$/, '')}/payment/result?orderId=${encodeURIComponent(
+      resolvedOrderId || orderId || '',
+    )}${invoiceId ? `&invoice_id=${encodeURIComponent(invoiceId)}` : ''}`;
+
+    return res ? res.redirect(redirectUrl) : { redirectUrl };
+  }
+
+  @Get('uddoktapay/cancel')
+  @ApiOperation({ summary: 'Handle customer cancellation redirect from UddoktaPay checkout' })
+  async uddoktaCancelRedirect(
+    @Query('order_id') orderId?: string,
+    @Res() res?: Response,
+  ) {
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') ||
+      this.configService.get<string>('WEB_FRONTEND_URL') ||
+      'http://localhost:3000';
+
+    if (orderId) {
+      try {
+        await this.uddoktaService.handleFailedPayment(
+          orderId,
+          'Payment cancelled by customer at UddoktaPay checkout',
+        );
+      } catch {
+        // Safe non-blocking
+      }
+    }
+
+    const redirectUrl = `${frontendUrl.replace(/\/+$/, '')}/payment/result?orderId=${encodeURIComponent(
+      orderId || '',
+    )}&status=cancelled`;
+
+    return res ? res.redirect(redirectUrl) : { redirectUrl };
+  }
+
+  @Post('uddoktapay/cancel')
+  @UseGuards(OptionalCustomerAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cancel/Delete an unpaid UddoktaPay order and restore inventory stock' })
+  async cancelUddoktaPayment(
+    @Body('orderId') orderId: string,
+    @CurrentUser() _requester?: any,
+  ) {
+    if (!orderId) {
+      return { success: false, message: 'orderId is required' };
+    }
+    const result = await this.uddoktaService.handleFailedPayment(
+      orderId,
+      'Payment cancelled by customer at checkout / result page',
+    );
+    return {
+      success: true,
+      message: result.message,
+    };
+  }
+
+  // ==========================================
+  // WAITMARK PAY PAYMENT GATEWAY ENDPOINTS
+  // ==========================================
 
   @Post('waitmark/initiate')
   @UseGuards(OptionalCustomerAuthGuard)
@@ -87,7 +223,9 @@ export class PaymentsController {
     @Res() res?: Response,
   ) {
     const frontendUrl =
-      this.configService.get<string>('WEB_FRONTEND_URL') || 'http://localhost:3000';
+      this.configService.get<string>('WEB_FRONTEND_URL') ||
+      this.configService.get<string>('FRONTEND_URL') ||
+      'http://localhost:3000';
 
     const cleanStatus = status?.trim().toLowerCase();
     const isExplicitFailure =
@@ -137,6 +275,10 @@ export class PaymentsController {
     };
   }
 
+  // ==========================================
+  // SHARED & LEGACY PAYMENT ENDPOINTS
+  // ==========================================
+
   @Get('status/:orderId')
   @UseGuards(OptionalCustomerAuthGuard)
   @ApiBearerAuth()
@@ -171,7 +313,7 @@ export class PaymentsController {
       message: 'Payment session requested',
       data: await this.paymentsService.createPayment(
         dto.orderNumber,
-        dto.provider,
+        dto.provider as any,
         customerId,
         dto.phone,
         dto.trackingToken,
@@ -181,7 +323,14 @@ export class PaymentsController {
 
   @Post('verify')
   @ApiOperation({ summary: 'Verify a payment through its configured gateway provider' })
-  async verify(@Body() _dto: VerifyPaymentDto) {
+  async verify(@Body() dto: VerifyPaymentDto) {
+    if (dto.invoiceId) {
+      const data = await this.uddoktaService.verifyPayment(dto.invoiceId, dto.orderId);
+      return {
+        message: data.message,
+        data,
+      };
+    }
     return {
       message: 'Payment verification requested',
       data: await this.paymentsService.verifyPayment(),
@@ -190,7 +339,20 @@ export class PaymentsController {
 
   @Post('webhook/:provider')
   @ApiOperation({ summary: 'Receive a signed gateway payment webhook' })
-  async webhook(@Param('provider') _provider: string, @Body() _body: unknown) {
+  async webhook(
+    @Param('provider') provider: string,
+    @Req() req: Request,
+    @Body() body: any,
+  ) {
+    const cleanProvider = (provider || '').trim().toLowerCase();
+    if (cleanProvider === 'uddoktapay') {
+      const result = await this.uddoktaService.processWebhook(req.headers, body);
+      return {
+        success: true,
+        message: result.message,
+        idempotent: result.idempotent,
+      };
+    }
     return {
       message: 'Payment webhook received',
       data: await this.paymentsService.handleWebhook(),

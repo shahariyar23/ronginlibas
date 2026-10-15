@@ -21,7 +21,7 @@ export declare class AdminOffersController {
             startDate: string;
             expiryDate: string;
             isActive: boolean;
-            status: "ACTIVE" | "SCHEDULED" | "EXPIRED" | "INACTIVE";
+            status: "ACTIVE" | "EXPIRED" | "SCHEDULED" | "INACTIVE";
             badgeText: string | null;
             couponCode: string | null;
             priority: number;
@@ -37,7 +37,7 @@ export declare class AdminOffersController {
             discountValue: number;
             startDate: string;
             expiryDate: string;
-            status: "ACTIVE" | "SCHEDULED" | "EXPIRED" | "INACTIVE";
+            status: "ACTIVE" | "EXPIRED" | "SCHEDULED" | "INACTIVE";
             products: {
                 name: string;
                 price: import("@prisma/client/runtime/library").Decimal;

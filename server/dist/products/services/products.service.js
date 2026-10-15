@@ -70,10 +70,12 @@ let ProductsService = ProductsService_1 = class ProductsService {
                         where: { status: 'APPROVED' },
                         select: { rating: true },
                     },
-                    orderItems: {
-                        where: { order: { status: { not: 'CANCELLED' } } },
-                        select: { quantity: true },
-                    },
+                    orderItems: isBestSellingSort
+                        ? {
+                            where: { order: { status: { not: 'CANCELLED' } } },
+                            select: { quantity: true },
+                        }
+                        : false,
                 },
                 orderBy,
             }),

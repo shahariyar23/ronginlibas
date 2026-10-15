@@ -526,6 +526,7 @@ let WaitmarkPaymentService = WaitmarkPaymentService_1 = class WaitmarkPaymentSer
                     { id: orderId },
                     { orderNumber: orderId },
                     { payments: { some: { providerOrderId: orderId } } },
+                    { payments: { some: { providerInvoiceId: orderId } } },
                 ],
             },
             include: {

@@ -49,6 +49,7 @@ enum PaymentMethod {
   NAGAD
   CARD
   WAITMARK_PAY
+  UDDOKTAPAY
 }
 
 enum CouponType {
@@ -521,6 +522,7 @@ model Payment {
   order                 Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   provider              String        @default("WAITMARK_PAY")
   providerOrderId       String        @unique
+  providerInvoiceId     String?
   providerTransactionId String?
   amount                Decimal       @db.Decimal(10, 2)
   currency              String        @default("BDT")
@@ -533,6 +535,7 @@ model Payment {
 
   @@index([orderId, createdAt])
   @@index([provider, status])
+  @@index([providerInvoiceId])
   @@index([providerTransactionId])
   @@map("payments")
 }

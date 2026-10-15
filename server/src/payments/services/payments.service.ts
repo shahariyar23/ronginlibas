@@ -2,6 +2,7 @@ import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OrdersService } from '../../orders/services/orders.service.js';
 import { WaitmarkPaymentService } from './waitmark-payment.service.js';
+import { UddoktaPaymentService } from './uddokta-payment.service.js';
 
 export interface PaymentGatewayProvider {
   initiatePayment(orderNumber: string, amount: number): Promise<{ redirectUrl: string }>;
@@ -14,9 +15,11 @@ export class PaymentsService {
     private readonly configService: ConfigService,
     private readonly ordersService: OrdersService,
     private readonly waitmarkService: WaitmarkPaymentService,
+    private readonly uddoktaService: UddoktaPaymentService,
   ) {}
 
   async getAvailableMethods() {
+    const uddoktaConfigured = this.uddoktaService.isConfigured();
     const waitmarkConfigured = this.waitmarkService.isConfigured();
     const bkashConfigured = Boolean(
       this.configService.get<string>('BKASH_APP_KEY') &&
@@ -32,6 +35,12 @@ export class PaymentsService {
     );
     return [
       { id: 'COD', name: 'Cash on Delivery', isEnabled: true },
+      {
+        id: 'UDDOKTAPAY',
+        name: 'UddoktaPay (Cards, Mobile Banking & Net Banking)',
+        isEnabled: uddoktaConfigured,
+        credentialsConfigured: uddoktaConfigured,
+      },
       {
         id: 'WAITMARK_PAY',
         name: 'Waitmark Pay (Cards, Mobile Banking & Wallets)',

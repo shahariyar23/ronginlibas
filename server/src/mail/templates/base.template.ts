@@ -11,8 +11,23 @@ export interface BaseEmailOptions {
 }
 
 export function renderBaseEmailTemplate(options: BaseEmailOptions): string {
-  const { title, previewText, contentHtml, webUrl = process.env.WEB_FRONTEND_URL || 'http://localhost:3000' } = options;
-  const normalizedWebUrl = (webUrl || 'http://localhost:3000').replace(/\/$/, '');
+  const isProduction = process.env.NODE_ENV === 'production';
+  const defaultWebUrl = isProduction ? 'https://ronginlibas.com' : 'http://localhost:3000';
+
+  let rawWebUrl =
+    options.webUrl ||
+    process.env.WEB_FRONTEND_URL ||
+    process.env.FRONTEND_URL ||
+    process.env.APP_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    defaultWebUrl;
+
+  if (isProduction && (rawWebUrl.includes('localhost') || rawWebUrl.includes('127.0.0.1'))) {
+    rawWebUrl = 'https://ronginlibas.com';
+  }
+
+  const { title, previewText, contentHtml } = options;
+  const normalizedWebUrl = rawWebUrl.trim().replace(/\/$/, '');
   const currentYear = new Date().getFullYear();
   const logoUrl = `${normalizedWebUrl}/logo.svg`;
 

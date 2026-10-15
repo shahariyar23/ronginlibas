@@ -71,13 +71,20 @@ export function proxy(request: NextRequest) {
     shouldRedirect = true;
   }
 
-  // 3. Semantic Category Route Consolidation (/categories/:slug -> /men/:slug)
-  if (targetPath.startsWith('/categories/')) {
+  // 3. Semantic Category Route Consolidation (/categories or /categories/:slug -> /men or /men/:slug)
+  if (targetPath === '/categories') {
+    targetPath = '/men';
+    shouldRedirect = true;
+  } else if (targetPath.startsWith('/categories/')) {
     const categorySlug = targetPath.replace(/^\/categories\//, '').split('/')[0];
-    if (categorySlug) {
-      targetPath = `/men/${categorySlug}`;
-      shouldRedirect = true;
-    }
+    targetPath = categorySlug ? `/men/${categorySlug}` : '/men';
+    shouldRedirect = true;
+  }
+
+  // 3b. Product Root Consolidation (/product or /products -> /shop)
+  if (targetPath === '/product' || targetPath === '/products') {
+    targetPath = '/shop';
+    shouldRedirect = true;
   }
 
   // 4. Legacy Facet/Query Parameter Canonical Redirects

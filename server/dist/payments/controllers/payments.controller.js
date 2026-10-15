@@ -15,18 +15,24 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { PaymentsService } from '../services/payments.service.js';
 import { WaitmarkPaymentService } from '../services/waitmark-payment.service.js';
+import { UddoktaPaymentService } from '../services/uddokta-payment.service.js';
 import { Public } from '../../common/decorators/public.decorator.js';
-import { CreatePaymentDto, VerifyPaymentDto } from '../dto/payment-request.dto.js';
+import { CreatePaymentDto } from '../dto/payment-request.dto.js';
+import { VerifyPaymentDto, VerifyUddoktaPaymentDto } from '../dto/verify-payment.dto.js';
 import { InitiateWaitmarkPaymentDto } from '../dto/initiate-waitmark-payment.dto.js';
+import { InitiateUddoktaPaymentDto } from '../dto/initiate-uddokta-payment.dto.js';
+import { UddoktaWebhookPayloadDto } from '../dto/payment-webhook.dto.js';
 import { OptionalCustomerAuthGuard } from '../../auth/guards/optional-customer-auth.guard.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 let PaymentsController = class PaymentsController {
     paymentsService;
     waitmarkService;
+    uddoktaService;
     configService;
-    constructor(paymentsService, waitmarkService, configService) {
+    constructor(paymentsService, waitmarkService, uddoktaService, configService) {
         this.paymentsService = paymentsService;
         this.waitmarkService = waitmarkService;
+        this.uddoktaService = uddoktaService;
         this.configService = configService;
     }
     async getMethods() {
@@ -34,6 +40,72 @@ let PaymentsController = class PaymentsController {
         return {
             message: 'Payment methods retrieved successfully',
             data,
+        };
+    }
+    async initiateUddokta(dto, requester) {
+        const data = await this.uddoktaService.initiatePayment(dto, requester);
+        return {
+            success: true,
+            message: 'UddoktaPay checkout session created successfully',
+            data,
+        };
+    }
+    async verifyUddokta(dto) {
+        const data = await this.uddoktaService.verifyPayment(dto.invoiceId, dto.orderId);
+        return {
+            success: true,
+            message: data.message,
+            data,
+        };
+    }
+    async uddoktaWebhook(req, body) {
+        const result = await this.uddoktaService.processWebhook(req.headers, body);
+        return {
+            success: true,
+            message: result.message,
+            idempotent: result.idempotent,
+        };
+    }
+    async uddoktaRedirect(invoiceId, orderId, res) {
+        const frontendUrl = this.configService.get('FRONTEND_URL') ||
+            this.configService.get('WEB_FRONTEND_URL') ||
+            'http://localhost:3000';
+        let resolvedOrderId = orderId;
+        if (invoiceId) {
+            try {
+                const verifyRes = await this.uddoktaService.verifyPayment(invoiceId, orderId);
+                if (verifyRes.orderNumber) {
+                    resolvedOrderId = verifyRes.orderNumber;
+                }
+            }
+            catch {
+            }
+        }
+        const redirectUrl = `${frontendUrl.replace(/\/+$/, '')}/payment/result?orderId=${encodeURIComponent(resolvedOrderId || orderId || '')}${invoiceId ? `&invoice_id=${encodeURIComponent(invoiceId)}` : ''}`;
+        return res ? res.redirect(redirectUrl) : { redirectUrl };
+    }
+    async uddoktaCancelRedirect(orderId, res) {
+        const frontendUrl = this.configService.get('FRONTEND_URL') ||
+            this.configService.get('WEB_FRONTEND_URL') ||
+            'http://localhost:3000';
+        if (orderId) {
+            try {
+                await this.uddoktaService.handleFailedPayment(orderId, 'Payment cancelled by customer at UddoktaPay checkout');
+            }
+            catch {
+            }
+        }
+        const redirectUrl = `${frontendUrl.replace(/\/+$/, '')}/payment/result?orderId=${encodeURIComponent(orderId || '')}&status=cancelled`;
+        return res ? res.redirect(redirectUrl) : { redirectUrl };
+    }
+    async cancelUddoktaPayment(orderId, _requester) {
+        if (!orderId) {
+            return { success: false, message: 'orderId is required' };
+        }
+        const result = await this.uddoktaService.handleFailedPayment(orderId, 'Payment cancelled by customer at checkout / result page');
+        return {
+            success: true,
+            message: result.message,
         };
     }
     async initiateWaitmark(dto, requester) {
@@ -56,7 +128,9 @@ let PaymentsController = class PaymentsController {
         };
     }
     async waitmarkRedirect(orderId, trxId, status, res) {
-        const frontendUrl = this.configService.get('WEB_FRONTEND_URL') || 'http://localhost:3000';
+        const frontendUrl = this.configService.get('WEB_FRONTEND_URL') ||
+            this.configService.get('FRONTEND_URL') ||
+            'http://localhost:3000';
         const cleanStatus = status?.trim().toLowerCase();
         const isExplicitFailure = cleanStatus &&
             ['failed', 'cancelled', 'cancel', 'declined', 'rejected', 'expired', 'error'].includes(cleanStatus);
@@ -93,13 +167,29 @@ let PaymentsController = class PaymentsController {
             data: await this.paymentsService.createPayment(dto.orderNumber, dto.provider, customerId, dto.phone, dto.trackingToken),
         };
     }
-    async verify(_dto) {
+    async verify(dto) {
+        if (dto.invoiceId) {
+            const data = await this.uddoktaService.verifyPayment(dto.invoiceId, dto.orderId);
+            return {
+                message: data.message,
+                data,
+            };
+        }
         return {
             message: 'Payment verification requested',
             data: await this.paymentsService.verifyPayment(),
         };
     }
-    async webhook(_provider, _body) {
+    async webhook(provider, req, body) {
+        const cleanProvider = (provider || '').trim().toLowerCase();
+        if (cleanProvider === 'uddoktapay') {
+            const result = await this.uddoktaService.processWebhook(req.headers, body);
+            return {
+                success: true,
+                message: result.message,
+                idempotent: result.idempotent,
+            };
+        }
         return {
             message: 'Payment webhook received',
             data: await this.paymentsService.handleWebhook(),
@@ -113,6 +203,64 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], PaymentsController.prototype, "getMethods", null);
+__decorate([
+    Post('uddoktapay/initiate'),
+    UseGuards(OptionalCustomerAuthGuard),
+    ApiBearerAuth(),
+    ApiOperation({ summary: 'Initiate UddoktaPay hosted payment session for an order' }),
+    __param(0, Body()),
+    __param(1, CurrentUser()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [InitiateUddoktaPaymentDto, Object]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "initiateUddokta", null);
+__decorate([
+    Post('uddoktapay/verify'),
+    ApiOperation({ summary: 'Verify UddoktaPay payment server-side via invoice ID' }),
+    __param(0, Body()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [VerifyUddoktaPaymentDto]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "verifyUddokta", null);
+__decorate([
+    Post('uddoktapay/webhook'),
+    ApiOperation({ summary: 'Receive and verify official UddoktaPay IPN webhook' }),
+    __param(0, Req()),
+    __param(1, Body()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, UddoktaWebhookPayloadDto]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "uddoktaWebhook", null);
+__decorate([
+    Get('uddoktapay/redirect'),
+    ApiOperation({ summary: 'Handle customer return redirect from UddoktaPay hosted checkout' }),
+    __param(0, Query('invoice_id')),
+    __param(1, Query('order_id')),
+    __param(2, Res()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "uddoktaRedirect", null);
+__decorate([
+    Get('uddoktapay/cancel'),
+    ApiOperation({ summary: 'Handle customer cancellation redirect from UddoktaPay checkout' }),
+    __param(0, Query('order_id')),
+    __param(1, Res()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "uddoktaCancelRedirect", null);
+__decorate([
+    Post('uddoktapay/cancel'),
+    UseGuards(OptionalCustomerAuthGuard),
+    ApiBearerAuth(),
+    ApiOperation({ summary: 'Cancel/Delete an unpaid UddoktaPay order and restore inventory stock' }),
+    __param(0, Body('orderId')),
+    __param(1, CurrentUser()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "cancelUddoktaPayment", null);
 __decorate([
     Post('waitmark/initiate'),
     UseGuards(OptionalCustomerAuthGuard),
@@ -193,9 +341,10 @@ __decorate([
     Post('webhook/:provider'),
     ApiOperation({ summary: 'Receive a signed gateway payment webhook' }),
     __param(0, Param('provider')),
-    __param(1, Body()),
+    __param(1, Req()),
+    __param(2, Body()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], PaymentsController.prototype, "webhook", null);
 PaymentsController = __decorate([
@@ -204,6 +353,7 @@ PaymentsController = __decorate([
     Controller('payments'),
     __metadata("design:paramtypes", [PaymentsService,
         WaitmarkPaymentService,
+        UddoktaPaymentService,
         ConfigService])
 ], PaymentsController);
 export { PaymentsController };

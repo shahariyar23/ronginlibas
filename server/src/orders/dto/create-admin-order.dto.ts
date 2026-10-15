@@ -215,7 +215,7 @@ export class CreateAdminOrderDto {
   @IsOptional()
   deliveryCharge?: number;
 
-  @ApiPropertyOptional({ enum: ['COD', 'BKASH', 'NAGAD', 'CARD', 'WAITMARK_PAY'], default: 'COD' })
+  @ApiPropertyOptional({ enum: ['COD', 'BKASH', 'NAGAD', 'CARD', 'WAITMARK_PAY', 'UDDOKTAPAY'], default: 'COD' })
   @IsString()
   @IsOptional()
   paymentMethod?: string = 'COD';

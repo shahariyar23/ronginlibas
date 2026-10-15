@@ -118,6 +118,7 @@ export declare class OrdersService {
             orderId: string;
             currency: string;
             providerOrderId: string;
+            providerInvoiceId: string | null;
             providerTransactionId: string | null;
             amount: Prisma.Decimal;
             failureReason: string | null;

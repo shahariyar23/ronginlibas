@@ -23,6 +23,8 @@ class EnvironmentVariables {
     JWT_REFRESH_SECRET;
     WEB_FRONTEND_URL;
     ADMIN_FRONTEND_URL;
+    APP_URL;
+    ADMIN_URL;
     SMTP_HOST;
     SMTP_PORT;
     SMTP_USER;
@@ -52,6 +54,10 @@ class EnvironmentVariables {
     META_PIXEL_ID;
     META_CONVERSIONS_API_ACCESS_TOKEN;
     META_TEST_EVENT_CODE;
+    UDDOKTAPAY_BASE_URL;
+    UDDOKTAPAY_API_KEY;
+    FRONTEND_URL;
+    BACKEND_PUBLIC_URL;
 }
 __decorate([
     IsEnum(Environment),
@@ -88,6 +94,16 @@ __decorate([
     IsOptional(),
     __metadata("design:type", String)
 ], EnvironmentVariables.prototype, "ADMIN_FRONTEND_URL", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "APP_URL", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "ADMIN_URL", void 0);
 __decorate([
     IsString(),
     IsOptional(),
@@ -233,6 +249,26 @@ __decorate([
     IsOptional(),
     __metadata("design:type", String)
 ], EnvironmentVariables.prototype, "META_TEST_EVENT_CODE", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "UDDOKTAPAY_BASE_URL", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "UDDOKTAPAY_API_KEY", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "FRONTEND_URL", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "BACKEND_PUBLIC_URL", void 0);
 export function validateEnv(config) {
     const validatedConfig = plainToInstance(EnvironmentVariables, config, {
         enableImplicitConversion: true,

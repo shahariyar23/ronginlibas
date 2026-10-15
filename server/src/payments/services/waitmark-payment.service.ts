@@ -739,6 +739,7 @@ export class WaitmarkPaymentService {
           { id: orderId },
           { orderNumber: orderId },
           { payments: { some: { providerOrderId: orderId } } },
+          { payments: { some: { providerInvoiceId: orderId } } },
         ],
       },
       include: {

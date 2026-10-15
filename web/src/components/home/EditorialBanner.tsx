@@ -48,6 +48,15 @@ export const EditorialBanner: React.FC = () => {
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
+            <div className="pt-2">
+              <Link
+                href="/journal"
+                className="inline-flex items-center gap-2 font-sans text-xs uppercase tracking-widest text-[#c79a45] hover:text-white transition-colors"
+              >
+                <span>Read Sartorial Style Guides in The Journal</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
 
           {/* Right Image Composition */}
