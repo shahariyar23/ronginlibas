@@ -690,18 +690,6 @@ export const ShopContent: React.FC<ShopContentProps> = ({
               <p className="font-sans text-xs sm:text-sm text-[#69726d] max-w-2xl font-light">
                 {collectionConfig.description}
               </p>
-              <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-[#deddd3]/60 text-xs text-[#717975] font-sans">
-                <span className="font-semibold uppercase tracking-wider text-[#073a2d]">Explore Categories:</span>
-                <Link href="/men/panjabi" className="hover:text-[#073a2d] hover:underline">Panjabi</Link>
-                <span>•</span>
-                <Link href="/men/shirts" className="hover:text-[#073a2d] hover:underline">Shirts</Link>
-                <span>•</span>
-                <Link href="/men/polos" className="hover:text-[#073a2d] hover:underline">Polos</Link>
-                <span>•</span>
-                <Link href="/men/t-shirts" className="hover:text-[#073a2d] hover:underline">T-Shirts</Link>
-                <span>•</span>
-                <Link href="/men/trousers" className="hover:text-[#073a2d] hover:underline">Trousers</Link>
-              </div>
             </>
           ) : categoryConfig ? (
             <>
@@ -716,31 +704,6 @@ export const ShopContent: React.FC<ShopContentProps> = ({
                   {categoryConfig.description}
                 </p>
               )}
-              {categoryConfig.siblingCategories && categoryConfig.siblingCategories.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2 mt-6">
-                  {categoryConfig.siblingCategories.map((c) => (
-                    <Link
-                      key={c.id}
-                      href={`/men/${c.slug}`}
-                      className={`text-xs font-sans uppercase tracking-wider px-3.5 py-1.5 transition-all ${
-                        c.slug === categoryConfig.slug
-                          ? 'bg-[#073a2d] text-white font-semibold'
-                          : 'bg-white border border-[#deddd3] text-[#404945] hover:border-[#073a2d] hover:text-[#073a2d]'
-                      }`}
-                    >
-                      {c.name}
-                    </Link>
-                  ))}
-                </div>
-              )}
-              <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-[#deddd3]/60 text-xs text-[#717975] font-sans">
-                <span className="font-semibold uppercase tracking-wider text-[#073a2d]">Featured Curations:</span>
-                <Link href="/collections/new-arrivals" className="hover:text-[#073a2d] hover:underline">New Loom Drops</Link>
-                <span>•</span>
-                <Link href="/collections/bestsellers" className="hover:text-[#073a2d] hover:underline">Best Sellers</Link>
-                <span>•</span>
-                <Link href="/offers" className="hover:text-[#073a2d] hover:underline">Special Offers</Link>
-              </div>
             </>
           ) : (
             <>
@@ -762,41 +725,6 @@ export const ShopContent: React.FC<ShopContentProps> = ({
               <p className="font-sans text-xs sm:text-sm text-[#69726d] max-w-2xl font-light">
                 Handcrafted Bengal panjabis, Egyptian long-staple cotton shirts, and modern architectural bottom wear designed for tropical ease and aristocratic presence.
               </p>
-              {basePath.startsWith('/men') && (
-                <>
-                  <div className="flex flex-wrap items-center gap-2 mt-6">
-                    <Link
-                      href="/men"
-                      className="text-xs font-sans uppercase tracking-wider px-3.5 py-1.5 transition-all bg-[#073a2d] text-white font-semibold"
-                    >
-                      All Menswear
-                    </Link>
-                    {[
-                      { slug: 'panjabi', name: 'Panjabi' },
-                      { slug: 'shirts', name: 'Shirts' },
-                      { slug: 'polos', name: 'Polos' },
-                      { slug: 't-shirts', name: 'T-Shirts' },
-                      { slug: 'trousers', name: 'Trousers' },
-                    ].map((c) => (
-                      <Link
-                        key={c.slug}
-                        href={`/men/${c.slug}`}
-                        className="text-xs font-sans uppercase tracking-wider px-3.5 py-1.5 transition-all bg-white border border-[#deddd3] text-[#404945] hover:border-[#073a2d] hover:text-[#073a2d]"
-                      >
-                        {c.name}
-                      </Link>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-[#deddd3]/60 text-xs text-[#717975] font-sans">
-                    <span className="font-semibold uppercase tracking-wider text-[#073a2d]">Featured Curations:</span>
-                    <Link href="/collections/new-arrivals" className="hover:text-[#073a2d] hover:underline">New Loom Drops</Link>
-                    <span>•</span>
-                    <Link href="/collections/bestsellers" className="hover:text-[#073a2d] hover:underline">Timeless Best Sellers</Link>
-                    <span>•</span>
-                    <Link href="/offers" className="hover:text-[#073a2d] hover:underline">Curated Offers</Link>
-                  </div>
-                </>
-              )}
             </>
           )}
         </div>

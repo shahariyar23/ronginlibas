@@ -250,6 +250,7 @@ export declare class AdminOrdersController {
                 orderId: string;
                 currency: string;
                 providerOrderId: string;
+                providerInvoiceId: string | null;
                 providerTransactionId: string | null;
                 amount: import("@prisma/client/runtime/library").Decimal;
                 failureReason: string | null;

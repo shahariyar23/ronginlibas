@@ -295,7 +295,7 @@ __decorate([
     __metadata("design:type", Number)
 ], CreateAdminOrderDto.prototype, "deliveryCharge", void 0);
 __decorate([
-    ApiPropertyOptional({ enum: ['COD', 'BKASH', 'NAGAD', 'CARD', 'WAITMARK_PAY'], default: 'COD' }),
+    ApiPropertyOptional({ enum: ['COD', 'BKASH', 'NAGAD', 'CARD', 'WAITMARK_PAY', 'UDDOKTAPAY'], default: 'COD' }),
     IsString(),
     IsOptional(),
     __metadata("design:type", String)

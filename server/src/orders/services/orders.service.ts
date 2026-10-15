@@ -265,11 +265,11 @@ export class OrdersService {
 
   async findCustomerOrders(customerId: string, query: OrderQueryDto) {
     try {
-      // Auto-clean any uncompleted WAITMARK_PAY orders for this customer so they never linger as pending orders
+      // Auto-clean any uncompleted online payment orders for this customer so they never linger as pending orders
       const uncompletedOrders = await this.prisma.order.findMany({
         where: {
           customerId,
-          paymentMethod: PaymentMethod.WAITMARK_PAY,
+          paymentMethod: { in: [PaymentMethod.WAITMARK_PAY, PaymentMethod.UDDOKTAPAY] },
           paymentStatus: { in: [PaymentStatus.PENDING, PaymentStatus.FAILED] },
           status: { not: OrderStatus.CANCELLED },
         },
@@ -306,7 +306,7 @@ export class OrdersService {
       customerId,
       NOT: {
         AND: [
-          { paymentMethod: PaymentMethod.WAITMARK_PAY },
+          { paymentMethod: { in: [PaymentMethod.WAITMARK_PAY, PaymentMethod.UDDOKTAPAY] } },
           { paymentStatus: { in: [PaymentStatus.PENDING, PaymentStatus.FAILED] } },
         ],
       },
@@ -378,7 +378,7 @@ export class OrdersService {
     const cutoff = new Date(Date.now() - timeoutMinutes * 60 * 1000);
     const expiredOrders = await this.prisma.order.findMany({
       where: {
-        paymentMethod: PaymentMethod.WAITMARK_PAY,
+        paymentMethod: { in: [PaymentMethod.WAITMARK_PAY, PaymentMethod.UDDOKTAPAY] },
         status: { not: OrderStatus.CANCELLED },
         paymentStatus: { in: [PaymentStatus.PENDING, PaymentStatus.FAILED] },
         createdAt: { lt: cutoff },
@@ -807,7 +807,7 @@ export class OrdersService {
       throw new BadRequestException('Guest checkout requires a name and contact phone');
     }
     const paymentMethod = dto.paymentMethod ?? 'COD';
-    if (paymentMethod !== 'COD' && paymentMethod !== 'WAITMARK_PAY') {
+    if (paymentMethod !== 'COD' && paymentMethod !== 'WAITMARK_PAY' && paymentMethod !== 'UDDOKTAPAY') {
       throw new ServiceUnavailableException(`Online payment method ${paymentMethod} is not currently available`);
     }
     const variantIds = dto.items.map((item) => item.variantId);

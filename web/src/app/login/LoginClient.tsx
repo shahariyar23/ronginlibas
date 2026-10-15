@@ -241,7 +241,7 @@ export const LoginClient: React.FC = () => {
             Home
           </Link>
           <span>/</span>
-          <span className="text-[#073a2d] font-semibold">Patron Sanctuary Portal</span>
+          <span className="text-[#073a2d] font-semibold">Customer Account</span>
         </nav>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 bg-white shadow-xl overflow-hidden">
@@ -260,8 +260,7 @@ export const LoginClient: React.FC = () => {
                   Cloth Your Identity
                 </h1>
                 <p className="font-sans text-xs sm:text-sm text-[#76a493] mt-3 leading-relaxed">
-                  Enter the portal reserved for patrons of bespoke Bengal panjabis, mercerized knitwear, and aristocratic tailoring.
-                </p>
+Welcome to the exclusive home of custom Bengali cloth, fine knitwear, and classic premium tailoring.                </p>
               </div>
 
               {/* Privilege Features List */}
@@ -333,25 +332,8 @@ export const LoginClient: React.FC = () => {
               </h2>
             </div>
 
-            {/* Unauthenticated Alert Banner */}
-            <div className="max-w-md mx-auto w-full mb-5 sm:mb-6 p-3 sm:p-4 bg-[#fdf8ed] border border-[#e8d5aa] text-[#073a2d] flex items-start gap-3 shadow-xs">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#c79a45]/20 text-[#073a2d] flex items-center justify-center shrink-0 mt-0.5">
-                <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#073a2d]" />
-              </div>
-              <div>
-                <h3 className="font-serif text-sm font-semibold text-[#073a2d]">
-                  You are not logged in. Please login first.
-                </h3>
-                <p className="font-sans text-xs text-[#69726d] mt-0.5">
-                  {searchParams.get('next')
-                    ? 'Please sign in or join the atelier to continue to your requested page.'
-                    : 'Sign in to access your bespoke orders, doorstep tailoring records, and patron privileges.'}
-                </p>
-              </div>
-            </div>
-
             {/* Dual Tab Switcher */}
-            <div className="flex max-w-md mx-auto w-full mb-6 sm:mb-8 bg-[#f5f4ed] p-1">
+            <div className="flex max-w-[400px] mx-auto w-full mb-6 sm:mb-8 bg-[#f5f4ed] p-1">
               <button
                 type="button"
                 onClick={() => setActiveTab('signin')}
@@ -384,7 +366,23 @@ export const LoginClient: React.FC = () => {
 
             {/* ================= TAB 1: SIGN IN ================= */}
             {activeTab === 'signin' && (
-              <div className="max-w-md mx-auto w-full space-y-6">
+              <div className="max-w-[400px] mx-auto w-full space-y-6">
+                {/* Unauthenticated Alert Banner (Shown only on Sign In) */}
+                <div className="p-3 sm:p-4 bg-[#fdf8ed] border border-[#e8d5aa] text-[#073a2d] flex items-start gap-3 shadow-xs">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#c79a45]/20 text-[#073a2d] flex items-center justify-center shrink-0 mt-0.5">
+                    <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#073a2d]" />
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-sm font-semibold text-[#073a2d]">
+                      You are not logged in. Please login first.
+                    </h3>
+                    <p className="font-sans text-xs text-[#69726d] mt-0.5">
+                      {searchParams.get('next')
+                        ? 'Please sign in or join the atelier to continue to your requested page.'
+                        : 'Log in to track your custom orders, view your home-tailoring records, and enjoy member benefits.'}
+                    </p>
+                  </div>
+                </div>
                 <form onSubmit={handleSignIn} className="space-y-5">
                   <div className="space-y-1.5">
                     <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">
@@ -458,7 +456,7 @@ export const LoginClient: React.FC = () => {
                     loading={isSubmitting}
                     loadingText="Authenticating..."
                     disabled={isSubmitting}
-                    className="w-full bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-[0.16em] h-13 shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-[0.16em] h-[44px] rounded-[4px] shadow-xs flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <span>Sign in</span>
                     <ArrowRight className="w-4 h-4" />
@@ -466,7 +464,7 @@ export const LoginClient: React.FC = () => {
                 </form>
 
                 {/* Social Login Divider & Buttons */}
-                <div className="relative my-6">
+                <div className="relative my-5">
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-[#deddd3]" />
                   </div>
@@ -512,7 +510,7 @@ export const LoginClient: React.FC = () => {
 
             {/* ================= TAB 2: REGISTER (JOIN ATELIER) ================= */}
             {activeTab === 'register' && (
-              <div className="max-w-md mx-auto w-full space-y-5">
+              <div className="max-w-[400px] mx-auto w-full space-y-5">
                 {/* ৳500 Privilege Banner */}
                 <div className="bg-[#f5f4ed] border border-[#deddd3] p-3 flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-[#c79a45] text-[#073a2d] flex items-center justify-center shrink-0">
@@ -612,40 +610,6 @@ export const LoginClient: React.FC = () => {
                       />
                     </div>
                   </div>
-
-                  {/* Curated Sizing & Cut Preference */}
-                  {/* <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div className="space-y-1">
-                      <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">
-                        Preferred Cut & Fit
-                      </Label>
-                      <select
-                        value={preferredFit}
-                        onChange={(e) => setPreferredFit(e.target.value)}
-                        className="w-full bg-[#fbf9f2] border border-[#deddd3] h-11 px-3 text-xs font-sans text-[#1b1c18] focus:outline-none focus:border-[#073a2d]"
-                      >
-                        <option value="Slim Heritage Cut">Slim Heritage Cut</option>
-                        <option value="Classic Aristocratic Cut">Classic Aristocratic Cut</option>
-                        <option value="Modern Relaxed Drape">Modern Relaxed Drape</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">
-                        Preferred Collar Type
-                      </Label>
-                      <select
-                        value={preferredCollar}
-                        onChange={(e) => setPreferredCollar(e.target.value)}
-                        className="w-full bg-[#fbf9f2] border border-[#deddd3] h-11 px-3 text-xs font-sans text-[#1b1c18] focus:outline-none focus:border-[#073a2d]"
-                      >
-                        <option value="High Mandarin Collar">High Mandarin Collar</option>
-                        <option value="Classic Band Collar">Classic Band Collar</option>
-                        <option value="Royal Embroidered Collar">Royal Embroidered Collar</option>
-                      </select>
-                    </div>
-                  </div> */}
-
                   <label className="flex items-start gap-2 text-xs text-[#69726d] cursor-pointer">
                     <input
                       type="checkbox"
@@ -672,7 +636,7 @@ export const LoginClient: React.FC = () => {
                       loading={isSubmitting}
                       loadingText="Creating Account..."
                       disabled={isSubmitting || !termsAccepted}
-                      className="w-full bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-[0.16em] h-13 shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-[0.16em] h-[44px] rounded-[4px] shadow-xs flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Crown className="w-4 h-4 text-[#c79a45]" />
                       <span>Create Customer Account</span>
@@ -681,7 +645,7 @@ export const LoginClient: React.FC = () => {
                 </form>
 
                 {/* Social Registration Divider & Buttons */}
-                <div className="relative my-6">
+                <div className="relative my-5">
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-[#deddd3]" />
                   </div>

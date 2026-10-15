@@ -37,6 +37,7 @@ export const HeroBanner: React.FC = () => {
 
           {/* Headline */}
           <h1 className="font-serif text-4xl sm:text-7xl lg:text-8xl font-normal text-white tracking-tight leading-[1.05] sm:leading-[1.02] mb-4 sm:mb-6">
+            <span className="sr-only">Rongin Libas — </span>
             CLOTH YOUR <br />
             <span className="italic font-light">IDENTITY</span>
           </h1>

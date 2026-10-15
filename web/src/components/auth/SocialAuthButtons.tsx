@@ -24,6 +24,7 @@ export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({
   const [initError, setInitError] = useState<string | null>(null);
   const buttonContainerRef = useRef<HTMLDivElement>(null);
   const isSubmittingRef = useRef(false);
+  const lastRenderedWidthRef = useRef<number | null>(null);
 
   const handleCredentialResponse = async (credential: string) => {
     if (isSubmittingRef.current || disabled) return;
@@ -63,11 +64,19 @@ export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({
       return;
     }
 
-    const initButton = async () => {
+    const initButton = async (explicitWidth?: number) => {
       try {
         if (!buttonContainerRef.current) return;
-        const containerWidth = buttonContainerRef.current.clientWidth || 360;
-        const buttonWidth = Math.min(Math.max(containerWidth, 200), 400);
+        const parentW = buttonContainerRef.current.parentElement?.clientWidth;
+        const measured =
+          explicitWidth ||
+          buttonContainerRef.current.clientWidth ||
+          parentW ||
+          380;
+        const buttonWidth = Math.min(Math.max(Math.round(measured), 240), 380);
+
+        buttonContainerRef.current.innerHTML = '';
+        lastRenderedWidthRef.current = buttonWidth;
 
         await renderGisButton(buttonContainerRef.current, {
           onSuccess: (credential) => {
@@ -100,17 +109,38 @@ export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({
 
     void initButton();
 
+    let resizeTimer: NodeJS.Timeout;
+    const handleResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (!isMounted || !buttonContainerRef.current) return;
+        const parentW = buttonContainerRef.current.parentElement?.clientWidth;
+        const measured =
+          buttonContainerRef.current.clientWidth ||
+          parentW ||
+          380;
+        const currentWidth = Math.min(Math.max(Math.round(measured), 240), 380);
+        if (currentWidth !== lastRenderedWidthRef.current) {
+          void initButton(currentWidth);
+        }
+      }, 150);
+    };
+
+    window.addEventListener('resize', handleResize);
+
     return () => {
       isMounted = false;
+      clearTimeout(resizeTimer);
+      window.removeEventListener('resize', handleResize);
     };
   }, [disabled]);
 
   const isAnyLoading = isLoading || disabled;
 
   return (
-    <div className="w-full space-y-2.5">
+    <div className="w-full">
       {initError ? (
-        <div className="p-3 text-xs text-[#ba1a1a] bg-[#ba1a1a]/5 border border-[#ba1a1a]/20 rounded-xs text-center font-sans">
+        <div className="p-3 mb-2.5 text-xs text-[#ba1a1a] bg-[#ba1a1a]/5 border border-[#ba1a1a]/20 rounded-xs text-center font-sans">
           {initError}
         </div>
       ) : null}
@@ -118,7 +148,7 @@ export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({
       <div className="relative w-full min-h-[44px] flex items-center justify-center">
         {/* Loading overlay / feedback state */}
         {isLoading && (
-          <div className="absolute inset-0 z-20 w-full h-11 px-4 bg-white border border-[#073a2d]/40 text-[#1b1c18] font-sans text-xs tracking-wider uppercase font-semibold flex items-center justify-center gap-3 shadow-xs">
+          <div className="absolute inset-0 z-20 w-full h-[44px] px-4 bg-white border border-[#073a2d]/40 text-[#1b1c18] font-sans text-xs tracking-wider uppercase font-semibold flex items-center justify-center gap-3 shadow-xs rounded-[4px]">
             <Loader2 className="w-4 h-4 animate-spin text-[#073a2d]" />
             <span>Authenticating with Google...</span>
           </div>
@@ -126,7 +156,7 @@ export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({
 
         {/* Placeholder while GIS is initializing */}
         {!gisReady && !initError && !isLoading && (
-          <div className="w-full h-11 px-4 bg-white border border-[#d8d5ca] text-[#1b1c18] font-sans text-xs tracking-wider uppercase font-semibold flex items-center justify-center gap-3 shadow-xs opacity-75">
+          <div className="w-full h-[44px] px-4 bg-white border border-[#dadce0] text-[#3c4043] font-sans text-xs tracking-wider font-semibold flex items-center justify-center gap-3 shadow-xs rounded-[4px] opacity-75">
             <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
               <path
                 fill="#4285F4"

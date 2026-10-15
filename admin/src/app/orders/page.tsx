@@ -462,6 +462,7 @@ function OrdersPageContent() {
             >
               <option value="ALL">All Payment Methods</option>
               <option value="COD">COD</option>
+              <option value="UDDOKTAPAY">UddoktaPay</option>
               <option value="WAITMARK_PAY">Waitmark Pay</option>
               <option value="BKASH">bKash</option>
               <option value="NAGAD">Nagad</option>
@@ -579,12 +580,18 @@ function OrdersPageContent() {
                       <div className="flex flex-col gap-1 items-start">
                         <span
                           className={`px-2 py-0.5 text-[10px] font-mono font-bold border ${
-                            order.paymentMethod === 'WAITMARK_PAY'
+                            order.paymentMethod === 'UDDOKTAPAY'
+                              ? 'bg-teal-50 text-teal-800 border-teal-200'
+                              : order.paymentMethod === 'WAITMARK_PAY'
                               ? 'bg-purple-50 text-purple-800 border-purple-200'
                               : 'bg-[#f0eee7] text-[#404945] border-[#deddd3]'
                           }`}
                         >
-                          {order.paymentMethod === 'WAITMARK_PAY' ? 'WAITMARK PAY' : order.paymentMethod}
+                          {order.paymentMethod === 'UDDOKTAPAY'
+                            ? 'UDDOKTAPAY'
+                            : order.paymentMethod === 'WAITMARK_PAY'
+                            ? 'WAITMARK PAY'
+                            : order.paymentMethod}
                         </span>
                         <div>
                           {order.paymentStatus === 'PAID' ? (
@@ -1103,7 +1110,7 @@ function OrdersPageContent() {
                           </span>
                         </div>
                         <p className="text-[11px] text-emerald-700">
-                          Customer successfully completed payment via {selectedOrderForInvoice.paymentMethod === 'WAITMARK_PAY' ? 'Waitmark Pay Gateway' : selectedOrderForInvoice.paymentMethod}.
+                          Customer successfully completed payment via {selectedOrderForInvoice.paymentMethod === 'UDDOKTAPAY' ? 'UddoktaPay Gateway' : selectedOrderForInvoice.paymentMethod === 'WAITMARK_PAY' ? 'Waitmark Pay Gateway' : selectedOrderForInvoice.paymentMethod}.
                         </p>
                       </div>
                     </div>
@@ -1137,7 +1144,9 @@ function OrdersPageContent() {
                           </span>
                         </div>
                         <p className="text-[11px] text-amber-700">
-                          {selectedOrderForInvoice.paymentMethod === 'WAITMARK_PAY'
+                          {selectedOrderForInvoice.paymentMethod === 'UDDOKTAPAY'
+                            ? 'Customer selected UddoktaPay. No completed payment has been confirmed by the gateway yet.'
+                            : selectedOrderForInvoice.paymentMethod === 'WAITMARK_PAY'
                             ? 'Customer selected Waitmark Pay. No completed payment has been confirmed by the gateway yet.'
                             : 'Order placed with Cash on Delivery (COD). Payment to be collected upon courier delivery.'}
                         </p>
@@ -1150,7 +1159,7 @@ function OrdersPageContent() {
                     <div className="bg-white p-2.5 border border-[#deddd3]">
                       <span className="text-[9px] uppercase font-bold text-[#717975] block">Payment Channel</span>
                       <span className="font-mono text-xs font-bold text-[#073a2d]">
-                        {selectedOrderForInvoice.paymentMethod === 'WAITMARK_PAY' ? 'Waitmark Pay' : selectedOrderForInvoice.paymentMethod}
+                        {selectedOrderForInvoice.paymentMethod === 'UDDOKTAPAY' ? 'UddoktaPay' : selectedOrderForInvoice.paymentMethod === 'WAITMARK_PAY' ? 'Waitmark Pay' : selectedOrderForInvoice.paymentMethod}
                       </span>
                     </div>
 
@@ -1223,18 +1232,20 @@ function OrdersPageContent() {
                     <div className="bg-white p-2.5 border border-[#deddd3] flex items-center justify-between gap-2">
                       <div className="min-w-0">
                         <span className="text-[9px] uppercase font-bold text-[#717975] block">
-                          Waitmark Attempt Reference
+                          Gateway Attempt / Invoice Reference
                         </span>
                         <span className="font-mono text-xs font-bold text-[#404945] truncate block">
-                          {selectedOrderForInvoice.payments?.[0]?.providerOrderId ||
-                            `WMPAY-${(selectedOrderForInvoice.orderNumber || selectedOrderForInvoice.id).replace(/[^A-Za-z0-9]/g, '')}`}
+                          {selectedOrderForInvoice.payments?.[0]?.providerInvoiceId ||
+                            selectedOrderForInvoice.payments?.[0]?.providerOrderId ||
+                            `${selectedOrderForInvoice.paymentMethod === 'UDDOKTAPAY' ? 'UPAY' : 'WMPAY'}-${(selectedOrderForInvoice.orderNumber || selectedOrderForInvoice.id).replace(/[^A-Za-z0-9]/g, '')}`}
                         </span>
                       </div>
                       <button
                         onClick={() =>
                           handleCopy(
-                            selectedOrderForInvoice.payments?.[0]?.providerOrderId ||
-                              `WMPAY-${(selectedOrderForInvoice.orderNumber || selectedOrderForInvoice.id).replace(/[^A-Za-z0-9]/g, '')}`,
+                            selectedOrderForInvoice.payments?.[0]?.providerInvoiceId ||
+                              selectedOrderForInvoice.payments?.[0]?.providerOrderId ||
+                              `${selectedOrderForInvoice.paymentMethod === 'UDDOKTAPAY' ? 'UPAY' : 'WMPAY'}-${(selectedOrderForInvoice.orderNumber || selectedOrderForInvoice.id).replace(/[^A-Za-z0-9]/g, '')}`,
                             'attemptId',
                           )
                         }

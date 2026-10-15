@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Logo } from './Logo';
 import { PhoneCall, ShieldCheck } from 'lucide-react';
@@ -14,6 +14,12 @@ const FacebookIcon = () => (
 
 export const Footer: React.FC = () => {
   const { settings } = useStorefront();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const whatsappUrl = getWhatsAppUrl(settings?.whatsapp || '');
 
   return (
@@ -36,7 +42,7 @@ export const Footer: React.FC = () => {
               <span>Nationwide Delivery</span>
             </div>
             {/* WhatsApp Direct */}
-            {settings?.whatsappOrderEnabled && whatsappUrl && (
+            {mounted && settings?.whatsappOrderEnabled && whatsappUrl && (
               <div className="pt-2">
                 <a
                   href={whatsappUrl}
@@ -116,40 +122,50 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Customer Care Column */}
+          {/* Customer Care & Atelier Column */}
           <div>
             <h4 className="font-serif text-sm tracking-widest text-[#fbf9f2] uppercase mb-5 font-semibold">
-              Customer Care
+              Client Sanctuary
             </h4>
             <ul className="space-y-3 font-sans text-xs text-[#c0c8c3]">
               <li>
-                <Link href="/terms" className="hover:text-[#c79a45] transition-colors">
-                  Bespoke Sizing &amp; Fitting Terms
+                <Link href="/about" className="hover:text-[#c79a45] transition-colors">
+                  About Rongin Libas
                 </Link>
               </li>
               <li>
-                <Link href="/track-order" className="text-[#c79a45] hover:underline font-semibold flex items-center gap-1.5">
+                <Link href="/contact" className="hover:text-[#c79a45] transition-colors">
+                  Contact Concierge
+                </Link>
+              </li>
+              <li>
+                <Link href="/shipping" className="hover:text-[#c79a45] transition-colors">
+                  Shipping &amp; Delivery
+                </Link>
+              </li>
+              <li>
+                <Link href="/returns" className="hover:text-[#c79a45] transition-colors">
+                  Returns &amp; Exchanges
+                </Link>
+              </li>
+              <li>
+                <Link href="/faq" className="hover:text-[#c79a45] transition-colors">
+                  Frequently Asked Questions
+                </Link>
+              </li>
+              <li>
+                <Link href="/journal" className="hover:text-[#c79a45] transition-colors text-[#c79a45] font-semibold">
+                  The Sartorial Journal
+                </Link>
+              </li>
+              <li>
+                <Link href="/press" className="hover:text-[#c79a45] transition-colors">
+                  Press &amp; Media Kit
+                </Link>
+              </li>
+              <li>
+                <Link href="/track-order" className="hover:text-[#c79a45] transition-colors flex items-center gap-1.5">
                   <span>Track Consignment</span>
-                </Link>
-              </li>
-              <li>
-                <Link href="/orders" className="hover:text-[#c79a45] transition-colors">
-                  Order History &amp; Invoices
-                </Link>
-              </li>
-              <li>
-                <Link href="/profile" className="hover:text-[#c79a45] transition-colors">
-                  Patron Sanctuary Profile
-                </Link>
-              </li>
-              <li>
-                <Link href="/login?tab=register" className="hover:text-[#c79a45] transition-colors">
-                  Join Atelier (Claim ৳500 Key)
-                </Link>
-              </li>
-              <li>
-                <Link href="/terms" className="hover:text-[#c79a45] transition-colors">
-                  Delivery &amp; Shipping Terms
                 </Link>
               </li>
             </ul>

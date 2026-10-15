@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { OrdersService } from '../../orders/services/orders.service.js';
 import { WaitmarkPaymentService } from './waitmark-payment.service.js';
+import { UddoktaPaymentService } from './uddokta-payment.service.js';
 export interface PaymentGatewayProvider {
     initiatePayment(orderNumber: string, amount: number): Promise<{
         redirectUrl: string;
@@ -13,7 +14,8 @@ export declare class PaymentsService {
     private readonly configService;
     private readonly ordersService;
     private readonly waitmarkService;
-    constructor(configService: ConfigService, ordersService: OrdersService, waitmarkService: WaitmarkPaymentService);
+    private readonly uddoktaService;
+    constructor(configService: ConfigService, ordersService: OrdersService, waitmarkService: WaitmarkPaymentService, uddoktaService: UddoktaPaymentService);
     getAvailableMethods(): Promise<({
         id: string;
         name: string;

@@ -125,7 +125,7 @@ export default function CreateOrderPage() {
   const [manualDiscountValue, setManualDiscountValue] = useState<number>(0);
 
   // SECTION E: Payment State
-  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'BKASH' | 'NAGAD' | 'CARD' | 'WAITMARK_PAY'>('COD');
+  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'BKASH' | 'NAGAD' | 'CARD' | 'WAITMARK_PAY' | 'UDDOKTAPAY'>('COD');
   const [paymentStatus, setPaymentStatus] = useState<'UNPAID' | 'PAID' | 'PARTIALLY_PAID'>('UNPAID');
   const [paymentReference, setPaymentReference] = useState('');
   const [paidAmount, setPaidAmount] = useState<number>(0);
@@ -1513,6 +1513,7 @@ export default function CreateOrderPage() {
                         className="mt-1 w-full border border-[#deddd3] bg-[#fbf9f2] p-2.5 text-xs text-[#1b1c18] outline-hidden focus:border-[#073a2d]"
                       >
                         <option value="COD">Cash on Delivery (COD)</option>
+                        <option value="UDDOKTAPAY">UddoktaPay (Online Gateway)</option>
                         <option value="WAITMARK_PAY">Waitmark Pay (Online Gateway)</option>
                         <option value="BKASH">bKash (MFS / Merchant)</option>
                         <option value="NAGAD">Nagad (MFS)</option>

@@ -137,6 +137,7 @@ export interface AdminPaymentAttempt {
   id: string;
   provider: string;
   providerOrderId: string;
+  providerInvoiceId?: string | null;
   providerTransactionId?: string | null;
   amount: number;
   currency: string;
@@ -158,7 +159,7 @@ export interface AdminOrder {
   subtotal?: number;
   discountAmount?: number;
   deliveryCharge?: number;
-  paymentMethod: 'COD' | 'BKASH' | 'NAGAD' | 'CARD' | 'WAITMARK_PAY';
+  paymentMethod: 'COD' | 'BKASH' | 'NAGAD' | 'CARD' | 'WAITMARK_PAY' | 'UDDOKTAPAY';
   paymentStatus?: 'PENDING' | 'PAID' | 'PARTIALLY_PAID' | 'FAILED' | 'REFUNDED';
   status: 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
   dateStr: string;

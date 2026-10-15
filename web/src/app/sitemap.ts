@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 import type { Product } from '@/types';
 import { getShopProducts, getStorefrontCategories, getCollections } from '@/lib/api';
 import { getCanonicalUrl } from '@/lib/seo';
+import { getAllArticles } from '@/data/journal';
 
 export const revalidate = 3600; // Revalidate at most once every hour
 
@@ -153,9 +154,72 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   });
 
-  // 7. Trust, Legal & Atelier Policy Pages
+  // 7. Trust & Authority Pages
   const staticDocDate = new Date('2026-10-12T00:00:00.000Z');
+  const policyUpdateDate = new Date('2026-10-15T00:00:00.000Z');
 
+  addEntry({
+    url: getCanonicalUrl('/about'),
+    lastModified: policyUpdateDate,
+    changeFrequency: 'monthly',
+    priority: 0.8,
+  });
+
+  addEntry({
+    url: getCanonicalUrl('/contact'),
+    lastModified: policyUpdateDate,
+    changeFrequency: 'monthly',
+    priority: 0.8,
+  });
+
+  addEntry({
+    url: getCanonicalUrl('/shipping'),
+    lastModified: policyUpdateDate,
+    changeFrequency: 'monthly',
+    priority: 0.7,
+  });
+
+  addEntry({
+    url: getCanonicalUrl('/returns'),
+    lastModified: policyUpdateDate,
+    changeFrequency: 'monthly',
+    priority: 0.7,
+  });
+
+  addEntry({
+    url: getCanonicalUrl('/faq'),
+    lastModified: policyUpdateDate,
+    changeFrequency: 'weekly',
+    priority: 0.7,
+  });
+
+  addEntry({
+    url: getCanonicalUrl('/press'),
+    lastModified: policyUpdateDate,
+    changeFrequency: 'monthly',
+    priority: 0.7,
+  });
+
+  // 8. Editorial Content Hub & Published Articles (/journal)
+  addEntry({
+    url: getCanonicalUrl('/journal'),
+    lastModified: policyUpdateDate,
+    changeFrequency: 'weekly',
+    priority: 0.8,
+  });
+
+  const journalArticles = getAllArticles();
+  for (const article of journalArticles) {
+    if (!article.isPublished || !article.slug) continue;
+    addEntry({
+      url: getCanonicalUrl(`/journal/${article.slug}`),
+      lastModified: parseDateSafely(article.updatedAt) || parseDateSafely(article.publishedAt),
+      changeFrequency: 'weekly',
+      priority: 0.7,
+    });
+  }
+
+  // 9. Legal & Data Privacy Charters
   addEntry({
     url: getCanonicalUrl('/terms'),
     lastModified: staticDocDate,

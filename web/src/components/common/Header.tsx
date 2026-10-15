@@ -480,22 +480,25 @@ export const Header: React.FC = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
-  const [readIds, setReadIds] = useState<string[]>(() => {
+  const [readIds, setReadIds] = useState<string[]>([]);
+  const [readTimestamp, setReadTimestamp] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
     try {
-      const saved = typeof window !== 'undefined' ? localStorage.getItem('rongin_customer_read_notification_ids') : null;
-      return saved ? JSON.parse(saved) : [];
+      const savedIds = localStorage.getItem('rongin_customer_read_notification_ids');
+      if (savedIds) setReadIds(JSON.parse(savedIds));
     } catch {
-      return [];
+      // ignore
     }
-  });
-  const [readTimestamp, setReadTimestamp] = useState<number | null>(() => {
     try {
-      const saved = typeof window !== 'undefined' ? localStorage.getItem('rongin_customer_notifications_read_at') : null;
-      return saved ? Number(saved) : null;
+      const savedTs = localStorage.getItem('rongin_customer_notifications_read_at');
+      if (savedTs) setReadTimestamp(Number(savedTs));
     } catch {
-      return null;
+      // ignore
     }
-  });
+  }, []);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -714,29 +717,33 @@ export const Header: React.FC = () => {
               <Sparkles className="w-3 h-3 text-[#c79a45]" />
               Haute Couture & Bespoke Menswear
             </span>
-            <div className="flex-1 text-center truncate">
-              {freeShippingMessage && (
-                <span className="font-semibold text-[#c79a45]">{freeShippingMessage}</span>
-              )}
-              {promotionMessage && (
+            <div className="flex-1 text-center truncate min-h-[16px]" suppressHydrationWarning>
+              {mounted && (
                 <>
-                  {freeShippingMessage && <span className="mx-2 text-[#76a493] hidden sm:inline">|</span>}
-                  <span className="text-[#c79a45] font-semibold hidden sm:inline">{promotionMessage}</span>
-                </>
-              )}
-              {showWhatsAppAnnouncement && (
-                <>
-                  {(freeShippingMessage || promotionMessage) && (
-                    <span className="mx-2 text-[#76a493] hidden md:inline">|</span>
+                  {freeShippingMessage && (
+                    <span className="font-semibold text-[#c79a45]">{freeShippingMessage}</span>
                   )}
-                  <a
-                    href={whatsappUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-[#c79a45] transition-colors hidden md:inline font-bold"
-                  >
-                    WHATSAPP ORDER: {settings?.whatsapp}
-                  </a>
+                  {promotionMessage && (
+                    <>
+                      {freeShippingMessage && <span className="mx-2 text-[#76a493] hidden sm:inline">|</span>}
+                      <span className="text-[#c79a45] font-semibold hidden sm:inline">{promotionMessage}</span>
+                    </>
+                  )}
+                  {showWhatsAppAnnouncement && (
+                    <>
+                      {(freeShippingMessage || promotionMessage) && (
+                        <span className="mx-2 text-[#76a493] hidden md:inline">|</span>
+                      )}
+                      <a
+                        href={whatsappUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="hover:text-[#c79a45] transition-colors hidden md:inline font-bold"
+                      >
+                        WHATSAPP ORDER: {settings?.whatsapp}
+                      </a>
+                    </>
+                  )}
                 </>
               )}
             </div>

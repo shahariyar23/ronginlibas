@@ -48,12 +48,41 @@ let MailService = MailService_1 = class MailService {
         return authFrom.includes('<') ? authFrom : `Rongin Libas <${authFrom}>`;
     }
     getWebUrl() {
-        return (this.configService.get('app.webFrontendUrl') ||
-            'http://localhost:3000').replace(/\/$/, '');
+        const isProduction = this.configService.get('app.nodeEnv') === 'production' ||
+            process.env.NODE_ENV === 'production';
+        const configured = this.configService.get('app.webFrontendUrl') ||
+            this.configService.get('WEB_FRONTEND_URL') ||
+            this.configService.get('FRONTEND_URL') ||
+            this.configService.get('APP_URL') ||
+            this.configService.get('NEXT_PUBLIC_APP_URL') ||
+            process.env.WEB_FRONTEND_URL ||
+            process.env.FRONTEND_URL ||
+            process.env.APP_URL;
+        if (configured && configured.trim()) {
+            const cleanUrl = configured.trim().replace(/\/$/, '');
+            if (isProduction && (cleanUrl.includes('localhost') || cleanUrl.includes('127.0.0.1'))) {
+                return 'https://ronginlibas.com';
+            }
+            return cleanUrl;
+        }
+        return isProduction ? 'https://ronginlibas.com' : 'http://localhost:3000';
     }
     getAdminUrl() {
-        return (this.configService.get('app.adminFrontendUrl') ||
-            'http://localhost:3001').replace(/\/$/, '');
+        const isProduction = this.configService.get('app.nodeEnv') === 'production' ||
+            process.env.NODE_ENV === 'production';
+        const configured = this.configService.get('app.adminFrontendUrl') ||
+            this.configService.get('ADMIN_FRONTEND_URL') ||
+            this.configService.get('ADMIN_URL') ||
+            process.env.ADMIN_FRONTEND_URL ||
+            process.env.ADMIN_URL;
+        if (configured && configured.trim()) {
+            const cleanUrl = configured.trim().replace(/\/$/, '');
+            if (isProduction && (cleanUrl.includes('localhost') || cleanUrl.includes('127.0.0.1'))) {
+                return 'https://admin.ronginlibas.com';
+            }
+            return cleanUrl;
+        }
+        return isProduction ? 'https://admin.ronginlibas.com' : 'http://localhost:3001';
     }
     async sendPasswordResetEmail(email, resetToken, name) {
         const transporter = this.getTransporter();

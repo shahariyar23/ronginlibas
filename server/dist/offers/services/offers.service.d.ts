@@ -136,7 +136,7 @@ export declare class OffersService {
         startDate: string;
         expiryDate: string;
         isActive: boolean;
-        status: "ACTIVE" | "SCHEDULED" | "EXPIRED" | "INACTIVE";
+        status: "ACTIVE" | "EXPIRED" | "SCHEDULED" | "INACTIVE";
         badgeText: string | null;
         couponCode: string | null;
         priority: number;
@@ -149,7 +149,7 @@ export declare class OffersService {
         discountValue: number;
         startDate: string;
         expiryDate: string;
-        status: "ACTIVE" | "SCHEDULED" | "EXPIRED" | "INACTIVE";
+        status: "ACTIVE" | "EXPIRED" | "SCHEDULED" | "INACTIVE";
         products: {
             name: string;
             price: Prisma.Decimal;

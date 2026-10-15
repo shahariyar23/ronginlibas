@@ -118,16 +118,30 @@ export const SITE_CONFIG = {
   name: 'Rongin Libas',
   legalName: 'Rongin Libas Atelier',
   tagline: 'CLOTH YOUR IDENTITY',
+  secondaryTagline: 'Style. Comfort. Confidence. Everyday.',
   url: CANONICAL_BASE_URL,
   description:
     'Luxury Bangladeshi menswear atelier specializing in bespoke panjabis, mercerized knitwear, and architectural casual wear. Handcrafted in Dhaka.',
   logo: `${CANONICAL_BASE_URL}/logo.svg`,
-  telephone: '+8801700000000',
+  logoPng: `${CANONICAL_BASE_URL}/logo.png`,
+  ogImage: `${CANONICAL_BASE_URL}/hero-model.jpg`,
+  telephone: '01916664011',
+  whatsapp: '01916664011',
+  email: 'concierge@ronginlibas.com',
+  pressEmail: 'concierge@ronginlibas.com',
   currency: 'BDT',
   country: 'BD',
+  location: 'Dhaka, Bangladesh',
+  colors: {
+    primary: '#073A2D', // Primary Emerald
+    deepEmerald: '#0D4D3B', // Deep Emerald
+    accent: '#C79A45', // Imperial Gold
+    parchment: '#F8F6EF', // Warm Ivory / Parchment
+    borderOchre: '#DEDDD3', // Border Ochre
+    mutedSlate: '#69726D', // Muted Slate
+  },
   social: [
-    'https://www.facebook.com/ronginlibas',
-    'https://www.instagram.com/ronginlibas',
+    'https://facebook.com/ronginlibas',
   ],
 };
 
@@ -447,3 +461,99 @@ export function generateWebSiteJsonLd(): Record<string, unknown> {
     description: SITE_CONFIG.description,
   };
 }
+
+export interface ArticleSchemaProps {
+  headline: string;
+  description: string;
+  url: string;
+  image: string;
+  datePublished: string;
+  dateModified?: string;
+  authorName?: string;
+}
+
+/**
+ * Generate Article / BlogPosting schema for Rongin Libas Journal entries
+ */
+export function generateArticleJsonLd(props: ArticleSchemaProps): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: props.headline,
+    description: props.description,
+    url: getCanonicalUrl(props.url),
+    image: props.image.startsWith('http') ? props.image : `${CANONICAL_BASE_URL}${props.image}`,
+    datePublished: props.datePublished,
+    dateModified: props.dateModified || props.datePublished,
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': getCanonicalUrl(props.url),
+    },
+    author: {
+      '@type': 'Organization',
+      name: props.authorName || SITE_CONFIG.name,
+      url: CANONICAL_BASE_URL,
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: SITE_CONFIG.name,
+      url: CANONICAL_BASE_URL,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${CANONICAL_BASE_URL}/logo.svg`,
+      },
+    },
+  };
+}
+
+export interface FaqItemSchema {
+  question: string;
+  answer: string;
+}
+
+/**
+ * Generate FAQPage schema strictly matching visible question-and-answer pairs
+ */
+export function generateFaqJsonLd(faqs: FaqItemSchema[]): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((faq) => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer,
+      },
+    })),
+  };
+}
+
+/**
+ * Generate ContactPage schema with confirmed atelier communication channels
+ */
+export function generateContactPageJsonLd(): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ContactPage',
+    name: `Contact ${SITE_CONFIG.name}`,
+    url: `${CANONICAL_BASE_URL}/contact`,
+    mainEntity: {
+      '@type': 'Organization',
+      name: SITE_CONFIG.name,
+      telephone: SITE_CONFIG.telephone,
+      email: SITE_CONFIG.email,
+      url: CANONICAL_BASE_URL,
+      contactPoint: [
+        {
+          '@type': 'ContactPoint',
+          telephone: SITE_CONFIG.telephone,
+          contactType: 'customer service',
+          availableLanguage: ['English', 'Bengali'],
+          areaServed: 'BD',
+        },
+      ],
+    },
+  };
+}
+

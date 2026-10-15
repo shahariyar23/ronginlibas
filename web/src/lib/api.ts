@@ -1146,6 +1146,28 @@ export interface WaitmarkInitiateResult {
   currency: string;
 }
 
+export interface UddoktaInitiateResult {
+  checkoutUrl: string;
+  paymentAttemptId: string;
+  orderId: string;
+  orderNumber: string;
+  amount: number;
+  currency: string;
+}
+
+export interface UddoktaVerifyResult {
+  success: boolean;
+  message: string;
+  isPaid: boolean;
+  orderId: string;
+  orderNumber: string;
+  paymentStatus: string;
+  amount: number;
+  transactionId?: string | null;
+  invoiceId?: string | null;
+  paymentMethod?: string | null;
+}
+
 export interface OrderPaymentStatusResult {
   orderId: string;
   orderNumber: string;
@@ -1172,6 +1194,27 @@ export interface OrderPaymentStatusResult {
 export async function getPaymentMethodsApi(): Promise<PaymentMethodItem[]> {
   return apiRequest<PaymentMethodItem[]>('/payments/methods', {
     method: 'GET',
+  });
+}
+
+export async function initiateUddoktaPaymentApi(data: {
+  orderId: string;
+  phone?: string;
+  trackingToken?: string;
+}): Promise<UddoktaInitiateResult> {
+  return apiRequest<UddoktaInitiateResult>('/payments/uddoktapay/initiate', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function verifyUddoktaPaymentApi(data: {
+  invoiceId: string;
+  orderId?: string;
+}): Promise<UddoktaVerifyResult> {
+  return apiRequest<UddoktaVerifyResult>('/payments/uddoktapay/verify', {
+    method: 'POST',
+    body: JSON.stringify(data),
   });
 }
 

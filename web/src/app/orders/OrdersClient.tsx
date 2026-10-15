@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
-import { apiRequest, getProduct, initiateWaitmarkPaymentApi, cancelOrderApi } from '@/lib/api';
+import { apiRequest, getProduct, initiateUddoktaPaymentApi, initiateWaitmarkPaymentApi, cancelOrderApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -171,14 +171,17 @@ export const OrdersClient: React.FC = () => {
   const [payingOrderNumber, setPayingOrderNumber] = useState<string | null>(null);
   const [restoringOrderNumber, setRestoringOrderNumber] = useState<string | null>(null);
 
-  const handlePayNow = async (orderNumber: string) => {
+  const handlePayNow = async (orderNumber: string, method?: string) => {
     if (payingOrderNumber) return;
     setPayingOrderNumber(orderNumber);
     try {
-      const res = await initiateWaitmarkPaymentApi({ orderId: orderNumber });
+      const isWaitmark = method === 'WAITMARK_PAY';
+      const res = isWaitmark
+        ? await initiateWaitmarkPaymentApi({ orderId: orderNumber })
+        : await initiateUddoktaPaymentApi({ orderId: orderNumber });
       const checkoutUrl = (res as any)?.checkoutUrl || (res as any)?.data?.checkoutUrl;
       if (checkoutUrl) {
-        toast.info('Redirecting to Waitmark Pay...');
+        toast.info(`Redirecting to ${isWaitmark ? 'Waitmark Pay' : 'UddoktaPay'}...`);
         window.location.assign(checkoutUrl);
       }
     } catch (err: any) {
@@ -805,13 +808,13 @@ export const OrdersClient: React.FC = () => {
 
                     {/* Action buttons: 2-column grid on mobile, inline on desktop */}
                     <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
-                      {order.paymentMethod === 'WAITMARK_PAY' &&
+                      {(order.paymentMethod === 'UDDOKTAPAY' || order.paymentMethod === 'WAITMARK_PAY') &&
                         order.paymentStatus !== 'PAID' &&
                         order.status !== 'CANCELLED' && (
                           <>
                             <Button
                               size="sm"
-                              onClick={() => void handlePayNow(order.orderNumber)}
+                              onClick={() => void handlePayNow(order.orderNumber, order.paymentMethod)}
                               disabled={Boolean(payingOrderNumber || restoringOrderNumber)}
                               className="bg-[#073a2d] hover:bg-[#0c4e3b] text-white font-semibold text-xs h-9 sm:h-8 justify-center cursor-pointer shadow-xs"
                             >
@@ -1098,6 +1101,8 @@ export const OrdersClient: React.FC = () => {
                               <span className="font-semibold text-[#073a2d]">
                                 {order.paymentMethod === 'COD'
                                   ? 'Cash on Delivery (COD)'
+                                  : order.paymentMethod === 'UDDOKTAPAY'
+                                  ? 'UddoktaPay (Online)'
                                   : order.paymentMethod === 'WAITMARK_PAY'
                                   ? 'Waitmark Pay (Online)'
                                   : order.paymentMethod || 'Cash on Delivery'}

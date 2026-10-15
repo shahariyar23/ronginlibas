@@ -29,17 +29,23 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'Rongin Libas Atelier' }],
   icons: {
-    icon: '/logo.svg',
-    shortcut: '/logo.svg',
-    apple: '/logo.svg',
+    icon: '/logo.png',
+    shortcut: '/logo.png',
+    apple: '/logo.png',
   },
   openGraph: {
     title: 'Rongin Libas | Cloth Your Identity',
     description: 'Aristocratic Menswear & Bespoke Panjabis handcrafted with ancestral Bengal weaves.',
     url: 'https://ronginlibas.com',
     siteName: 'Rongin Libas',
-    images: [{ url: '/logo.svg' }],
+    images: [{ url: '/hero-model.jpg', width: 1200, height: 630, alt: 'Rongin Libas — Cloth Your Identity' }],
     type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Rongin Libas | Cloth Your Identity',
+    description: 'Aristocratic Menswear & Bespoke Panjabis handcrafted with ancestral Bengal weaves.',
+    images: ['/hero-model.jpg'],
   },
   alternates: {
     canonical: 'https://ronginlibas.com',

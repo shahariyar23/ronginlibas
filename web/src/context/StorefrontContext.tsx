@@ -30,21 +30,30 @@ let cachedData: StorefrontData | null = null;
 let cachedAt = 0;
 let pendingRequest: Promise<StorefrontData> | null = null;
 
-async function loadStorefrontData(): Promise<StorefrontData> {
+async function loadStorefrontData(retryCount = 0): Promise<StorefrontData> {
   const [settingsResult, categoriesResult, womenResult] = await Promise.allSettled([
     getStorefrontSettings(),
     getStorefrontCategories(),
     getShopProducts({ gender: 'WOMEN', limit: 1 }),
   ]);
 
+  const hasCriticalFailure =
+    settingsResult.status === 'rejected' || categoriesResult.status === 'rejected';
+
+  // If critical storefront metadata failed (e.g. during a serverless DB cold-start), retry once
+  if (hasCriticalFailure && retryCount === 0) {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    return loadStorefrontData(retryCount + 1);
+  }
+
   if (settingsResult.status === 'rejected') {
-    console.error('Could not load public store settings:', settingsResult.reason);
+    console.warn('Could not load public store settings:', settingsResult.reason);
   }
   if (categoriesResult.status === 'rejected') {
-    console.error('Could not load storefront categories:', categoriesResult.reason);
+    console.warn('Could not load storefront categories:', categoriesResult.reason);
   }
   if (womenResult.status === 'rejected') {
-    console.error('Could not check availability of women’s products:', womenResult.reason);
+    console.warn('Could not check availability of women’s products:', womenResult.reason);
   }
 
   return {

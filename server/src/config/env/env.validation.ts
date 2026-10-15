@@ -38,6 +38,14 @@ class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
+  APP_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  ADMIN_URL?: string;
+
+  @IsString()
+  @IsOptional()
   SMTP_HOST?: string;
 
   @IsString()
@@ -151,6 +159,22 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   META_TEST_EVENT_CODE?: string;
+
+  @IsString()
+  @IsOptional()
+  UDDOKTAPAY_BASE_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  UDDOKTAPAY_API_KEY?: string;
+
+  @IsString()
+  @IsOptional()
+  FRONTEND_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  BACKEND_PUBLIC_URL?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>) {

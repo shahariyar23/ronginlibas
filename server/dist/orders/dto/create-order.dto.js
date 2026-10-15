@@ -135,8 +135,8 @@ __decorate([
     __metadata("design:type", ShippingAddressDto)
 ], CreateOrderDto.prototype, "shippingAddress", void 0);
 __decorate([
-    ApiPropertyOptional({ enum: ['COD', 'BKASH', 'NAGAD', 'CARD', 'WAITMARK_PAY'], default: 'COD' }),
-    IsEnum(['COD', 'BKASH', 'NAGAD', 'CARD', 'WAITMARK_PAY']),
+    ApiPropertyOptional({ enum: ['COD', 'BKASH', 'NAGAD', 'CARD', 'WAITMARK_PAY', 'UDDOKTAPAY'], default: 'COD' }),
+    IsEnum(['COD', 'BKASH', 'NAGAD', 'CARD', 'WAITMARK_PAY', 'UDDOKTAPAY']),
     IsOptional(),
     __metadata("design:type", String)
 ], CreateOrderDto.prototype, "paymentMethod", void 0);

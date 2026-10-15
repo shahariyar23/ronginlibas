@@ -22,6 +22,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { isInWishlist, toggleWishlist, isItemLoading } = useWishlist();
   const [selectedColor, setSelectedColor] = useState(product.colors[0]?.name || 'Standard');
   const [isHovered, setIsHovered] = useState(false);
+  const [mobileImageIndex, setMobileImageIndex] = useState(0);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
   const [showSizePicker, setShowSizePicker] = useState(false);
   const [isAddingSize, setIsAddingSize] = useState<string | null>(null);
 
@@ -69,30 +72,68 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     }
   };
 
+  const hasMultipleImages = Boolean(product.images && product.images.length > 1);
+  const displayIndex = isHovered && hasMultipleImages ? 1 : mobileImageIndex;
   const currentRawImage =
-    isHovered && product.images.length > 1 ? product.images[1] : product.images[0];
+    hasMultipleImages && product.images[displayIndex]
+      ? product.images[displayIndex]
+      : (product.images[0] || '');
   const optimizedImage = getOptimizedImageUrl(currentRawImage, { preset: 'card' });
   const cardSrcSet = getCloudinarySrcSet(currentRawImage, [320, 480, 640, 800]);
 
   const naturalAlt = getNaturalAltText(product.name, {
     color: selectedColor,
     category: product.categoryLabel,
-    viewIndex: isHovered && product.images.length > 1 ? 1 : 0,
+    viewIndex: displayIndex,
     totalViews: product.images.length,
-    customAlt: isHovered ? product.imageDetails?.[1]?.altText : product.imageDetails?.[0]?.altText,
+    customAlt: product.imageDetails?.[displayIndex]?.altText || product.imageDetails?.[0]?.altText,
   });
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!hasMultipleImages) return;
+    setTouchStartX(e.touches[0].clientX);
+    setTouchStartY(e.touches[0].clientY);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!hasMultipleImages || touchStartX === null || touchStartY === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX;
+    const deltaY = e.changedTouches[0].clientY - touchStartY;
+
+    // Detect horizontal swipe with clear intent: deltaX > 35px and more horizontal than vertical
+    if (Math.abs(deltaX) > 35 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3) {
+      const maxViews = Math.min(product.images.length, 3);
+      if (deltaX < 0) {
+        // Swiped Left -> Next image (e.g. 2nd image)
+        setMobileImageIndex((prev) => (prev + 1) % maxViews);
+      } else {
+        // Swiped Right -> Previous image
+        setMobileImageIndex((prev) => (prev - 1 + maxViews) % maxViews);
+      }
+    }
+    setTouchStartX(null);
+    setTouchStartY(null);
+  };
 
   return (
     <div
       className="group relative flex flex-col bg-white border border-[#deddd3] overflow-hidden transition-all duration-300 hover:shadow-lg"
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => {
+        if (typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+          setIsHovered(true);
+        }
+      }}
       onMouseLeave={() => {
         setIsHovered(false);
         setShowSizePicker(false);
       }}
     >
       {/* Product Image Frame */}
-      <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#f5f4ed]">
+      <div
+        className="relative aspect-[3/4] w-full overflow-hidden bg-[#f5f4ed]"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         <Link href={`/products/${product.slug}`} className="block w-full h-full">
           <img
             src={optimizedImage || currentRawImage}
@@ -225,6 +266,42 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             </Button>
           )}
         </div>
+
+        {/* Mobile & Tablet Second Image Indicator (Hidden on Desktop 'lg:hidden') */}
+        {hasMultipleImages && (
+          <div
+            className="lg:hidden absolute bottom-2 sm:bottom-2.5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1b1c18]/70 backdrop-blur-md border border-white/20 shadow-xs pointer-events-auto select-none"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
+            {product.images.slice(0, Math.min(product.images.length, 3)).map((_, idx) => {
+              const isActive = displayIndex === idx;
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  aria-label={`View photo ${idx + 1} of ${product.name}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setMobileImageIndex(idx);
+                  }}
+                  className="p-1 -m-0.5 flex items-center justify-center cursor-pointer focus:outline-none"
+                >
+                  <span
+                    className={`block rounded-full transition-all duration-300 ${
+                      isActive
+                        ? 'w-3.5 h-1.5 bg-[#c79a45] shadow-xs'
+                        : 'w-1.5 h-1.5 bg-white/60 hover:bg-white'
+                    }`}
+                  />
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Card Info */}
@@ -333,7 +410,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             )}
           </div>
           <span className="font-sans text-[8.5px] sm:text-[10px] uppercase tracking-wider text-[#c79a45] font-semibold truncate max-w-[55px] sm:max-w-none">
-            {product.fabricOrigin?.split(',')[0] || 'RonginLibas'}
+            {product.fabricOrigin?.split(',')[0] || 'Rongin Libas'}
           </span>
         </div>
       </div>

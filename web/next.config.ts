@@ -44,6 +44,17 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+
+  // Permanent 308 redirects for brand & PR navigation consolidation
+  async redirects() {
+    return [
+      {
+        source: '/brand-assets',
+        destination: '/press',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

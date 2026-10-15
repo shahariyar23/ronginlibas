@@ -45,9 +45,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <h1 className="sr-only">
-        Rongin Libas — Cloth Your Identity | Luxury Bangladeshi Menswear Atelier & Bespoke Panjabis
-      </h1>
+
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}

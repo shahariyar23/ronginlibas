@@ -11,6 +11,8 @@ declare class EnvironmentVariables {
     JWT_REFRESH_SECRET?: string;
     WEB_FRONTEND_URL?: string;
     ADMIN_FRONTEND_URL?: string;
+    APP_URL?: string;
+    ADMIN_URL?: string;
     SMTP_HOST?: string;
     SMTP_PORT?: string;
     SMTP_USER?: string;
@@ -40,6 +42,10 @@ declare class EnvironmentVariables {
     META_PIXEL_ID?: string;
     META_CONVERSIONS_API_ACCESS_TOKEN?: string;
     META_TEST_EVENT_CODE?: string;
+    UDDOKTAPAY_BASE_URL?: string;
+    UDDOKTAPAY_API_KEY?: string;
+    FRONTEND_URL?: string;
+    BACKEND_PUBLIC_URL?: string;
 }
 export declare function validateEnv(config: Record<string, unknown>): EnvironmentVariables;
 export {};

@@ -11,16 +11,20 @@ import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OrdersService } from '../../orders/services/orders.service.js';
 import { WaitmarkPaymentService } from './waitmark-payment.service.js';
+import { UddoktaPaymentService } from './uddokta-payment.service.js';
 let PaymentsService = class PaymentsService {
     configService;
     ordersService;
     waitmarkService;
-    constructor(configService, ordersService, waitmarkService) {
+    uddoktaService;
+    constructor(configService, ordersService, waitmarkService, uddoktaService) {
         this.configService = configService;
         this.ordersService = ordersService;
         this.waitmarkService = waitmarkService;
+        this.uddoktaService = uddoktaService;
     }
     async getAvailableMethods() {
+        const uddoktaConfigured = this.uddoktaService.isConfigured();
         const waitmarkConfigured = this.waitmarkService.isConfigured();
         const bkashConfigured = Boolean(this.configService.get('BKASH_APP_KEY') &&
             this.configService.get('BKASH_APP_SECRET'));
@@ -30,6 +34,12 @@ let PaymentsService = class PaymentsService {
             this.configService.get('SSLCOMMERZ_STORE_PASSWORD'));
         return [
             { id: 'COD', name: 'Cash on Delivery', isEnabled: true },
+            {
+                id: 'UDDOKTAPAY',
+                name: 'UddoktaPay (Cards, Mobile Banking & Net Banking)',
+                isEnabled: uddoktaConfigured,
+                credentialsConfigured: uddoktaConfigured,
+            },
             {
                 id: 'WAITMARK_PAY',
                 name: 'Waitmark Pay (Cards, Mobile Banking & Wallets)',
@@ -78,7 +88,8 @@ PaymentsService = __decorate([
     Injectable(),
     __metadata("design:paramtypes", [ConfigService,
         OrdersService,
-        WaitmarkPaymentService])
+        WaitmarkPaymentService,
+        UddoktaPaymentService])
 ], PaymentsService);
 export { PaymentsService };
 //# sourceMappingURL=payments.service.js.map
