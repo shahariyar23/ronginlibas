@@ -14,12 +14,10 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { PaymentsService } from '../services/payments.service.js';
-import { WaitmarkPaymentService } from '../services/waitmark-payment.service.js';
 import { UddoktaPaymentService } from '../services/uddokta-payment.service.js';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { CreatePaymentDto } from '../dto/payment-request.dto.js';
 import { VerifyPaymentDto, VerifyUddoktaPaymentDto } from '../dto/verify-payment.dto.js';
-import { InitiateWaitmarkPaymentDto } from '../dto/initiate-waitmark-payment.dto.js';
 import { InitiateUddoktaPaymentDto } from '../dto/initiate-uddokta-payment.dto.js';
 import { UddoktaWebhookPayloadDto } from '../dto/payment-webhook.dto.js';
 import { OptionalCustomerAuthGuard } from '../../auth/guards/optional-customer-auth.guard.js';
@@ -31,7 +29,6 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 export class PaymentsController {
   constructor(
     private readonly paymentsService: PaymentsService,
-    private readonly waitmarkService: WaitmarkPaymentService,
     private readonly uddoktaService: UddoktaPaymentService,
     private readonly configService: ConfigService,
   ) {}
@@ -92,18 +89,32 @@ export class PaymentsController {
   }
 
   @Get('uddoktapay/redirect')
-  @ApiOperation({ summary: 'Handle customer return redirect from UddoktaPay hosted checkout' })
+  @Post('uddoktapay/redirect')
+  @ApiOperation({ summary: 'Handle customer return redirect from UddoktaPay hosted checkout (GET or POST)' })
   async uddoktaRedirect(
-    @Query('invoice_id') invoiceId?: string,
-    @Query('order_id') orderId?: string,
+    @Query('invoice_id') queryInvoiceId?: string,
+    @Query('order_id') queryOrderId?: string,
+    @Body('invoice_id') bodyInvoiceId?: string,
+    @Body('order_id') bodyOrderId?: string,
     @Res() res?: Response,
   ) {
+    const invoiceId = queryInvoiceId || bodyInvoiceId;
+    const orderId = queryOrderId || bodyOrderId;
+
     const frontendUrl =
       this.configService.get<string>('FRONTEND_URL') ||
       this.configService.get<string>('WEB_FRONTEND_URL') ||
       'http://localhost:3000';
 
     let resolvedOrderId = orderId;
+
+    if (invoiceId && orderId) {
+      try {
+        await this.uddoktaService.recordInvoiceIdIfPending(orderId, invoiceId);
+      } catch {
+        // Non-blocking
+      }
+    }
 
     if (invoiceId) {
       try {
@@ -121,6 +132,34 @@ export class PaymentsController {
     )}${invoiceId ? `&invoice_id=${encodeURIComponent(invoiceId)}` : ''}`;
 
     return res ? res.redirect(redirectUrl) : { redirectUrl };
+  }
+
+  @Post('uddoktapay/reconcile')
+  @ApiOperation({ summary: 'Trigger background auto-reconciliation of pending UddoktaPay payments' })
+  async triggerReconciliation() {
+    const result = await this.uddoktaService.reconcilePendingPayments();
+    return {
+      success: true,
+      message: `Reconciliation sweep finished: ${result.checked} checked, ${result.settled} settled, ${result.failed} failed.`,
+      data: result,
+    };
+  }
+
+  @Post('uddoktapay/refund')
+  @UseGuards(OptionalCustomerAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Process full or partial refund via UddoktaPay gateway' })
+  async refundUddokta(
+    @Body('invoiceId') invoiceId: string,
+    @Body('amount') amount?: number,
+    @Body('reason') reason?: string,
+  ) {
+    const result = await this.uddoktaService.refundPayment(invoiceId, amount, reason);
+    return {
+      success: true,
+      message: result.message,
+      data: result.data,
+    };
   }
 
   @Get('uddoktapay/cancel')
@@ -174,109 +213,7 @@ export class PaymentsController {
   }
 
   // ==========================================
-  // WAITMARK PAY PAYMENT GATEWAY ENDPOINTS
-  // ==========================================
-
-  @Post('waitmark/initiate')
-  @UseGuards(OptionalCustomerAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Initiate Waitmark Pay online payment session for an order' })
-  async initiateWaitmark(
-    @Body() dto: InitiateWaitmarkPaymentDto,
-    @CurrentUser() requester?: any,
-  ) {
-    const data = await this.waitmarkService.initiatePayment(dto, requester);
-    return {
-      success: true,
-      message: 'Waitmark Pay checkout session created successfully',
-      data,
-    };
-  }
-
-  @Post('waitmark/webhook')
-  @ApiOperation({ summary: 'Receive and verify official Waitmark Pay HMAC webhook' })
-  async waitmarkWebhook(
-    @Req() req: Request,
-    @Headers('x-waitmark-signature') sigHeader?: string,
-    @Headers('X-Waitmark-Signature') sigHeaderUpper?: string,
-    @Body() body?: unknown,
-  ) {
-    const signature = sigHeader || sigHeaderUpper;
-    const rawBody =
-      (req as any).rawBody ||
-      (typeof body === 'string' ? Buffer.from(body) : Buffer.from(JSON.stringify(body || '')));
-
-    const result = await this.waitmarkService.processWebhook(rawBody, signature);
-    return {
-      success: true,
-      message: result.message,
-      idempotent: result.idempotent,
-    };
-  }
-
-  @Get('waitmark/webhook')
-  @ApiOperation({ summary: 'Handle potential browser redirect from Waitmark Pay' })
-  async waitmarkRedirect(
-    @Query('order_id') orderId?: string,
-    @Query('trx_id') trxId?: string,
-    @Query('status') status?: string,
-    @Res() res?: Response,
-  ) {
-    const frontendUrl =
-      this.configService.get<string>('WEB_FRONTEND_URL') ||
-      this.configService.get<string>('FRONTEND_URL') ||
-      'http://localhost:3000';
-
-    const cleanStatus = status?.trim().toLowerCase();
-    const isExplicitFailure =
-      cleanStatus &&
-      ['failed', 'cancelled', 'cancel', 'declined', 'rejected', 'expired', 'error'].includes(
-        cleanStatus,
-      );
-
-    if (orderId && isExplicitFailure) {
-      try {
-        await this.waitmarkService.handleFailedPayment(
-          orderId,
-          `Gateway browser redirect reported status: ${status}`,
-        );
-      } catch (err: any) {
-        // Log and proceed to redirect
-      }
-    }
-
-    const redirectUrl = `${frontendUrl.replace(/\/+$/, '')}/payment/result?orderId=${encodeURIComponent(
-      orderId || '',
-    )}${trxId ? `&trx_id=${encodeURIComponent(trxId)}` : ''}${
-      cleanStatus ? `&status=${encodeURIComponent(cleanStatus)}` : ''
-    }`;
-
-    return res ? res.redirect(redirectUrl) : { redirectUrl };
-  }
-
-  @Post('waitmark/cancel')
-  @UseGuards(OptionalCustomerAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Cancel/Delete an unpaid Waitmark Pay order and restore inventory stock' })
-  async cancelWaitmarkPayment(
-    @Body('orderId') orderId: string,
-    @CurrentUser() _requester?: any,
-  ) {
-    if (!orderId) {
-      return { success: false, message: 'orderId is required' };
-    }
-    const result = await this.waitmarkService.handleFailedPayment(
-      orderId,
-      'Payment cancelled by customer at checkout / result page',
-    );
-    return {
-      success: true,
-      message: result.message,
-    };
-  }
-
-  // ==========================================
-  // SHARED & LEGACY PAYMENT ENDPOINTS
+  // SHARED PAYMENT ENDPOINTS
   // ==========================================
 
   @Get('status/:orderId')
@@ -289,7 +226,7 @@ export class PaymentsController {
     @Query('phone') phone?: string,
     @Query('trackingToken') trackingToken?: string,
   ) {
-    const data = await this.waitmarkService.getPaymentStatus(
+    const data = await this.paymentsService.getPaymentStatus(
       orderId,
       requester,
       phone,

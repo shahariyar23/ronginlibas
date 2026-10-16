@@ -1,3 +1,4 @@
+import type { Response } from 'express';
 import { OrdersService } from '../services/orders.service.js';
 import { UpdateOrderStatusDto } from '../dto/update-order-status.dto.js';
 import { OrderQueryDto } from '../dto/order-query.dto.js';
@@ -157,6 +158,58 @@ export declare class AdminOrdersController {
                 lastName: string | null;
                 id: string;
             } | null;
+            invoice: ({
+                items: {
+                    productName: string;
+                    size: string | null;
+                    color: string | null;
+                    createdAt: Date;
+                    id: string;
+                    sku: string;
+                    productId: string | null;
+                    unitPrice: import("@prisma/client/runtime/library").Decimal;
+                    quantity: number;
+                    productVariantId: string | null;
+                    invoiceId: string;
+                    lineTotal: import("@prisma/client/runtime/library").Decimal;
+                    variantLabel: string | null;
+                }[];
+                payments: {
+                    status: import("@prisma/client").$Enums.PaymentStatus;
+                    createdAt: Date;
+                    id: string;
+                    updatedAt: Date;
+                    provider: string;
+                    orderId: string;
+                    currency: string;
+                    invoiceId: string | null;
+                    providerOrderId: string;
+                    providerInvoiceId: string | null;
+                    providerTransactionId: string | null;
+                    amount: import("@prisma/client/runtime/library").Decimal;
+                    failureReason: string | null;
+                    rawWebhookPayload: import("@prisma/client/runtime/library").JsonValue | null;
+                    paidAt: Date | null;
+                }[];
+            } & {
+                customerName: string;
+                subtotal: import("@prisma/client/runtime/library").Decimal;
+                deliveryCharge: import("@prisma/client/runtime/library").Decimal;
+                discountAmount: import("@prisma/client/runtime/library").Decimal;
+                totalAmount: import("@prisma/client/runtime/library").Decimal;
+                shippingAddress: import("@prisma/client/runtime/library").JsonValue;
+                invoiceNumber: string;
+                status: import("@prisma/client").$Enums.InvoiceStatus;
+                customerPhone: string | null;
+                customerEmail: string | null;
+                createdAt: Date;
+                id: string;
+                updatedAt: Date;
+                orderId: string;
+                currency: string;
+                issuedAt: Date;
+                voidedAt: Date | null;
+            }) | null;
             items: ({
                 product: ({
                     images: {
@@ -249,6 +302,7 @@ export declare class AdminOrdersController {
                 provider: string;
                 orderId: string;
                 currency: string;
+                invoiceId: string | null;
                 providerOrderId: string;
                 providerInvoiceId: string | null;
                 providerTransactionId: string | null;
@@ -435,4 +489,5 @@ export declare class AdminOrdersController {
             createdByName: string | null;
         };
     }>;
+    downloadInvoice(id: string, response: Response): Promise<void>;
 }

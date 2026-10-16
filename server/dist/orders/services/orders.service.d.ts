@@ -7,6 +7,7 @@ import { CreateOrderDto } from '../dto/create-order.dto.js';
 import { CreateAdminOrderDto } from '../dto/create-admin-order.dto.js';
 import { UpdateOrderStatusDto } from '../dto/update-order-status.dto.js';
 import { OrderQueryDto } from '../dto/order-query.dto.js';
+import { InvoicesService } from './invoices.service.js';
 import { PaginatedResult } from '../../common/dto/pagination-query.dto.js';
 import type { AdminAuditActor } from '../../audit/audit.service.js';
 export declare class OrdersService {
@@ -14,8 +15,9 @@ export declare class OrdersService {
     private readonly settingsService;
     private readonly mailService?;
     private readonly ga4Service?;
+    private readonly invoicesService?;
     private readonly logger;
-    constructor(prisma: PrismaService, settingsService: SettingsService, mailService?: MailService | undefined, ga4Service?: Ga4MeasurementProtocolService | undefined);
+    constructor(prisma: PrismaService, settingsService: SettingsService, mailService?: MailService | undefined, ga4Service?: Ga4MeasurementProtocolService | undefined, invoicesService?: InvoicesService | undefined);
     findAll(query: OrderQueryDto): Promise<PaginatedResult<any>>;
     findById(id: string): Promise<{
         customer: {
@@ -25,6 +27,58 @@ export declare class OrdersService {
             lastName: string | null;
             id: string;
         } | null;
+        invoice: ({
+            items: {
+                productName: string;
+                size: string | null;
+                color: string | null;
+                createdAt: Date;
+                id: string;
+                sku: string;
+                productId: string | null;
+                unitPrice: Prisma.Decimal;
+                quantity: number;
+                productVariantId: string | null;
+                invoiceId: string;
+                lineTotal: Prisma.Decimal;
+                variantLabel: string | null;
+            }[];
+            payments: {
+                status: import("@prisma/client").$Enums.PaymentStatus;
+                createdAt: Date;
+                id: string;
+                updatedAt: Date;
+                provider: string;
+                orderId: string;
+                currency: string;
+                invoiceId: string | null;
+                providerOrderId: string;
+                providerInvoiceId: string | null;
+                providerTransactionId: string | null;
+                amount: Prisma.Decimal;
+                failureReason: string | null;
+                rawWebhookPayload: Prisma.JsonValue | null;
+                paidAt: Date | null;
+            }[];
+        } & {
+            customerName: string;
+            subtotal: Prisma.Decimal;
+            deliveryCharge: Prisma.Decimal;
+            discountAmount: Prisma.Decimal;
+            totalAmount: Prisma.Decimal;
+            shippingAddress: Prisma.JsonValue;
+            invoiceNumber: string;
+            status: import("@prisma/client").$Enums.InvoiceStatus;
+            customerPhone: string | null;
+            customerEmail: string | null;
+            createdAt: Date;
+            id: string;
+            updatedAt: Date;
+            orderId: string;
+            currency: string;
+            issuedAt: Date;
+            voidedAt: Date | null;
+        }) | null;
         items: ({
             product: ({
                 images: {
@@ -117,6 +171,7 @@ export declare class OrdersService {
             provider: string;
             orderId: string;
             currency: string;
+            invoiceId: string | null;
             providerOrderId: string;
             providerInvoiceId: string | null;
             providerTransactionId: string | null;
@@ -166,6 +221,13 @@ export declare class OrdersService {
     }>;
     findCustomerOrders(customerId: string, query: OrderQueryDto): Promise<{
         items: {
+            invoice: {
+                totalAmount: Prisma.Decimal;
+                invoiceNumber: string;
+                status: import("@prisma/client").$Enums.InvoiceStatus;
+                id: string;
+                issuedAt: Date;
+            } | null;
             items: {
                 product: {
                     name: string;
@@ -225,6 +287,13 @@ export declare class OrdersService {
         totalPages: number;
     }>;
     findCustomerOrder(customerId: string, orderNumber: string): Promise<{
+        invoice: {
+            totalAmount: Prisma.Decimal;
+            invoiceNumber: string;
+            status: import("@prisma/client").$Enums.InvoiceStatus;
+            id: string;
+            issuedAt: Date;
+        } | null;
         items: {
             product: {
                 name: string;
@@ -301,6 +370,13 @@ export declare class OrdersService {
             phone: string | null;
             firstName: string;
             lastName: string | null;
+        } | null;
+        invoice: {
+            totalAmount: Prisma.Decimal;
+            invoiceNumber: string;
+            status: import("@prisma/client").$Enums.InvoiceStatus;
+            id: string;
+            issuedAt: Date;
         } | null;
         items: {
             product: {
@@ -432,6 +508,13 @@ export declare class OrdersService {
             phone: string | null;
             firstName: string;
             lastName: string | null;
+        } | null;
+        invoice: {
+            totalAmount: Prisma.Decimal;
+            invoiceNumber: string;
+            status: import("@prisma/client").$Enums.InvoiceStatus;
+            id: string;
+            issuedAt: Date;
         } | null;
         items: {
             product: {
@@ -816,6 +899,13 @@ export declare class OrdersService {
             firstName: string;
             lastName: string | null;
         } | null;
+        invoice: {
+            totalAmount: Prisma.Decimal;
+            invoiceNumber: string;
+            status: import("@prisma/client").$Enums.InvoiceStatus;
+            id: string;
+            issuedAt: Date;
+        } | null;
         items: {
             product: {
                 name: string;
@@ -939,7 +1029,14 @@ export declare class OrdersService {
             createdAt: Date;
         }[];
     }>;
-    generateInvoice(orderNumber: string, customerId?: string, phone?: string, trackingToken?: string): Promise<Buffer>;
-    generateInvoiceBuffer(order: any): Promise<Buffer>;
+    generateInvoice(orderNumber: string, customerId?: string, phone?: string, trackingToken?: string): Promise<{
+        buffer: Buffer;
+        invoiceNumber: string;
+    }>;
+    generateInvoiceForAdmin(id: string): Promise<{
+        buffer: Buffer;
+        invoiceNumber: string;
+    }>;
+    generateInvoiceBuffer(order: any, invoice?: any): Promise<Buffer>;
     private normalizeOrderNumber;
 }

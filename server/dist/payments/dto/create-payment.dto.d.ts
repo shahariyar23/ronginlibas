@@ -1,6 +1,6 @@
 export declare class CreatePaymentDto {
     orderNumber: string;
-    provider: 'BKASH' | 'NAGAD' | 'CARD' | 'UDDOKTAPAY' | 'WAITMARK_PAY';
+    provider: 'BKASH' | 'NAGAD' | 'CARD' | 'UDDOKTAPAY';
     phone?: string;
     trackingToken?: string;
 }

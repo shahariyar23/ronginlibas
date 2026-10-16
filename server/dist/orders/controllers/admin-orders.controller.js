@@ -10,8 +10,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Res } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiProduces } from '@nestjs/swagger';
 import { OrdersService } from '../services/orders.service.js';
 import { UpdateOrderStatusDto } from '../dto/update-order-status.dto.js';
 import { OrderQueryDto } from '../dto/order-query.dto.js';
@@ -113,6 +113,12 @@ let AdminOrdersController = class AdminOrdersController {
             data,
         };
     }
+    async downloadInvoice(id, response) {
+        const { buffer, invoiceNumber } = await this.ordersService.generateInvoiceForAdmin(id);
+        response.setHeader('Content-Type', 'application/pdf');
+        response.setHeader('Content-Disposition', `attachment; filename="Rongin-Libas-Invoice-${invoiceNumber.replace(/[^a-zA-Z0-9-_]/g, '')}.pdf"`);
+        response.send(buffer);
+    }
 };
 __decorate([
     Post(),
@@ -159,6 +165,16 @@ __decorate([
     __metadata("design:paramtypes", [String, UpdateOrderStatusDto, Object]),
     __metadata("design:returntype", Promise)
 ], AdminOrdersController.prototype, "updateStatus", null);
+__decorate([
+    Get(':id/invoice'),
+    ApiProduces('application/pdf'),
+    ApiOperation({ summary: 'Download full order tax invoice as PDF by Admin' }),
+    __param(0, Param('id')),
+    __param(1, Res()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], AdminOrdersController.prototype, "downloadInvoice", null);
 AdminOrdersController = __decorate([
     ApiTags('Admin - Orders'),
     ApiBearerAuth(),

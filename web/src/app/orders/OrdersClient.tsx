@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
-import { apiRequest, getProduct, initiateUddoktaPaymentApi, initiateWaitmarkPaymentApi, cancelOrderApi } from '@/lib/api';
+import { apiRequest, getProduct, initiateUddoktaPaymentApi, cancelOrderApi, downloadOrderInvoice } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +29,8 @@ import {
   ShoppingBag,
   ExternalLink,
   X,
+  FileText,
+  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { OrderTrackingStepper } from '@/components/orders/OrderTrackingStepper';
@@ -106,6 +108,13 @@ interface OrderRecord {
   shippingAddress?: ShippingAddress | null;
   items: OrderItem[];
   trackingEvents?: TrackingEvent[];
+  invoice?: {
+    id: string;
+    invoiceNumber: string;
+    status: string;
+    issuedAt?: string;
+    totalAmount?: number | string;
+  } | null;
 }
 
 const getItemName = (item: OrderItem): string => {
@@ -170,18 +179,33 @@ export const OrdersClient: React.FC = () => {
   const [reorderingItemKey, setReorderingItemKey] = useState<string | null>(null);
   const [payingOrderNumber, setPayingOrderNumber] = useState<string | null>(null);
   const [restoringOrderNumber, setRestoringOrderNumber] = useState<string | null>(null);
+  const [downloadingInvoiceOrder, setDownloadingInvoiceOrder] = useState<string | null>(null);
 
-  const handlePayNow = async (orderNumber: string, method?: string) => {
+  const handleDownloadInvoice = async (order: OrderRecord) => {
+    if (downloadingInvoiceOrder) return;
+    setDownloadingInvoiceOrder(order.orderNumber);
+    try {
+      await downloadOrderInvoice(order.orderNumber, order.invoice?.invoiceNumber);
+      toast.success(
+        order.invoice?.invoiceNumber
+          ? `Invoice ${order.invoice.invoiceNumber} downloaded.`
+          : 'Invoice PDF downloaded.',
+      );
+    } catch (err: any) {
+      toast.error(err?.message || 'Could not download invoice. Please try again.');
+    } finally {
+      setDownloadingInvoiceOrder(null);
+    }
+  };
+
+  const handlePayNow = async (orderNumber: string) => {
     if (payingOrderNumber) return;
     setPayingOrderNumber(orderNumber);
     try {
-      const isWaitmark = method === 'WAITMARK_PAY';
-      const res = isWaitmark
-        ? await initiateWaitmarkPaymentApi({ orderId: orderNumber })
-        : await initiateUddoktaPaymentApi({ orderId: orderNumber });
+      const res = await initiateUddoktaPaymentApi({ orderId: orderNumber });
       const checkoutUrl = (res as any)?.checkoutUrl || (res as any)?.data?.checkoutUrl;
       if (checkoutUrl) {
-        toast.info(`Redirecting to ${isWaitmark ? 'Waitmark Pay' : 'UddoktaPay'}...`);
+        toast.info('Redirecting to UddoktaPay...');
         window.location.assign(checkoutUrl);
       }
     } catch (err: any) {
@@ -519,6 +543,11 @@ export const OrdersClient: React.FC = () => {
                           <h2 className="font-serif text-base font-bold text-[#073a2d]">
                             {order.orderNumber}
                           </h2>
+                          {order.invoice?.invoiceNumber && (
+                            <span className="font-mono text-[9px] font-bold text-[#073a2d] bg-[#deddd3]/50 px-1.5 py-0.5 border border-[#deddd3] inline-block mt-0.5">
+                              {order.invoice.invoiceNumber}
+                            </span>
+                          )}
                         </div>
                         <div className="flex flex-wrap items-center gap-1.5 justify-end">
                           <Badge
@@ -588,6 +617,11 @@ export const OrdersClient: React.FC = () => {
                           <h2 className="font-serif text-xl font-bold text-[#073a2d]">
                             {order.orderNumber}
                           </h2>
+                          {order.invoice?.invoiceNumber && (
+                            <span className="font-mono text-[11px] font-bold text-[#073a2d] bg-white px-2 py-0.5 border border-[#deddd3]" title="Rongin Libas Customer Invoice">
+                              {order.invoice.invoiceNumber}
+                            </span>
+                          )}
                           <span className="text-[11px] text-[#717975]">
                             ({order.items.length} {order.items.length === 1 ? 'item' : 'items'})
                           </span>
@@ -808,13 +842,13 @@ export const OrdersClient: React.FC = () => {
 
                     {/* Action buttons: 2-column grid on mobile, inline on desktop */}
                     <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
-                      {(order.paymentMethod === 'UDDOKTAPAY' || order.paymentMethod === 'WAITMARK_PAY') &&
+                      {order.paymentMethod === 'UDDOKTAPAY' &&
                         order.paymentStatus !== 'PAID' &&
                         order.status !== 'CANCELLED' && (
                           <>
                             <Button
                               size="sm"
-                              onClick={() => void handlePayNow(order.orderNumber, order.paymentMethod)}
+                              onClick={() => void handlePayNow(order.orderNumber)}
                               disabled={Boolean(payingOrderNumber || restoringOrderNumber)}
                               className="bg-[#073a2d] hover:bg-[#0c4e3b] text-white font-semibold text-xs h-9 sm:h-8 justify-center cursor-pointer shadow-xs"
                             >
@@ -852,6 +886,23 @@ export const OrdersClient: React.FC = () => {
                           </span>
                         </Button>
                       )}
+
+                      {order.invoice?.status === 'ISSUED' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void handleDownloadInvoice(order)}
+                          disabled={downloadingInvoiceOrder === order.orderNumber}
+                          className="border-[#073a2d] text-[#073a2d] hover:bg-[#073a2d] hover:text-white font-semibold text-xs h-9 sm:h-8 justify-center cursor-pointer"
+                          title={`Download Invoice ${order.invoice.invoiceNumber}`}
+                        >
+                          <Download className="mr-1.5 h-3.5 w-3.5 text-[#c79a45]" />
+                          <span>
+                            {downloadingInvoiceOrder === order.orderNumber ? 'Downloading...' : 'Invoice'}
+                          </span>
+                        </Button>
+                      )}
+
                       <Button
                         variant="outline"
                         size="sm"
@@ -1123,6 +1174,33 @@ export const OrdersClient: React.FC = () => {
                                   : 'Pending'}
                               </span>
                             </div>
+
+                            {order.invoice?.invoiceNumber && (
+                              <div className="border-t border-[#f0eee7] pt-2 flex items-center justify-between text-[11px]">
+                                <div>
+                                  <span className="text-[#717975] block text-[9px] uppercase tracking-wider">
+                                    Official Customer Invoice
+                                  </span>
+                                  <span className="font-mono font-bold text-[#073a2d]">
+                                    {order.invoice.invoiceNumber}
+                                  </span>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => void handleDownloadInvoice(order)}
+                                  disabled={downloadingInvoiceOrder === order.orderNumber}
+                                  className="h-7 px-2.5 text-[11px] border-[#073a2d] text-[#073a2d] hover:bg-[#073a2d] hover:text-white cursor-pointer"
+                                >
+                                  <Download className="w-3 h-3 mr-1 text-[#c79a45]" />
+                                  <span>
+                                    {downloadingInvoiceOrder === order.orderNumber
+                                      ? 'Downloading...'
+                                      : 'PDF Invoice'}
+                                  </span>
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

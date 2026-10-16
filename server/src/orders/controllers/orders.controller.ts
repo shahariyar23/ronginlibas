@@ -98,7 +98,7 @@ export class OrdersController {
     @Query() query: OrderAccessDto,
     @Res() response: Response,
   ) {
-    const pdf = await this.ordersService.generateInvoice(
+    const { buffer, invoiceNumber } = await this.ordersService.generateInvoice(
       orderNumber,
       customerId,
       query.phone,
@@ -107,9 +107,9 @@ export class OrdersController {
     response.setHeader('Content-Type', 'application/pdf');
     response.setHeader(
       'Content-Disposition',
-      `attachment; filename="${orderNumber}-invoice.pdf"`,
+      `attachment; filename="Rongin-Libas-Invoice-${invoiceNumber.replace(/[^a-zA-Z0-9-_]/g, '')}.pdf"`,
     );
-    response.send(pdf);
+    response.send(buffer);
   }
 
   @Get(':orderNumber')

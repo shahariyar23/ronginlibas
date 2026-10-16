@@ -261,6 +261,7 @@ let MailService = MailService_1 = class MailService {
         const trackUrl = `${webUrl}/track-order?${trackQuery.toString()}`;
         const from = this.getFromAddress('orders');
         const cleanOrderNum = params.orderNumber.replace(/[^a-zA-Z0-9-_]/g, '');
+        const cleanInvoiceRef = (params.invoiceNumber || cleanOrderNum).replace(/[^a-zA-Z0-9-_]/g, '');
         const { subject, html, text } = renderOrderConfirmationEmail({
             orderNumber: params.orderNumber,
             customerName: params.customerName,
@@ -276,11 +277,12 @@ let MailService = MailService_1 = class MailService {
             trackUrl,
             webUrl,
             hasInvoiceAttachment: Boolean(params.invoiceBuffer),
+            invoiceNumber: params.invoiceNumber,
         });
         const attachments = params.invoiceBuffer
             ? [
                 {
-                    filename: `Rongin-Libas-Invoice-${cleanOrderNum}.pdf`,
+                    filename: `Rongin-Libas-Invoice-${cleanInvoiceRef}.pdf`,
                     content: params.invoiceBuffer,
                     contentType: 'application/pdf',
                 },

@@ -47,15 +47,15 @@ class EnvironmentVariables {
     PATHAO_USERNAME;
     PATHAO_PASSWORD;
     PATHAO_GRANT_TYPE;
-    WAITMARK_PUBLIC_KEY;
-    WAITMARK_SECRET_KEY;
-    WAITMARK_CHECKOUT_URL;
-    WAITMARK_SUCCESS_URL;
     META_PIXEL_ID;
     META_CONVERSIONS_API_ACCESS_TOKEN;
     META_TEST_EVENT_CODE;
+    UDDOKTAPAY_ENV;
     UDDOKTAPAY_BASE_URL;
     UDDOKTAPAY_API_KEY;
+    UDDOKTAPAY_WEBHOOK_URL;
+    UDDOKTAPAY_SUCCESS_URL;
+    UDDOKTAPAY_CANCEL_URL;
     FRONTEND_URL;
     BACKEND_PUBLIC_URL;
 }
@@ -218,26 +218,6 @@ __decorate([
     IsString(),
     IsOptional(),
     __metadata("design:type", String)
-], EnvironmentVariables.prototype, "WAITMARK_PUBLIC_KEY", void 0);
-__decorate([
-    IsString(),
-    IsOptional(),
-    __metadata("design:type", String)
-], EnvironmentVariables.prototype, "WAITMARK_SECRET_KEY", void 0);
-__decorate([
-    IsString(),
-    IsOptional(),
-    __metadata("design:type", String)
-], EnvironmentVariables.prototype, "WAITMARK_CHECKOUT_URL", void 0);
-__decorate([
-    IsString(),
-    IsOptional(),
-    __metadata("design:type", String)
-], EnvironmentVariables.prototype, "WAITMARK_SUCCESS_URL", void 0);
-__decorate([
-    IsString(),
-    IsOptional(),
-    __metadata("design:type", String)
 ], EnvironmentVariables.prototype, "META_PIXEL_ID", void 0);
 __decorate([
     IsString(),
@@ -253,12 +233,32 @@ __decorate([
     IsString(),
     IsOptional(),
     __metadata("design:type", String)
+], EnvironmentVariables.prototype, "UDDOKTAPAY_ENV", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
 ], EnvironmentVariables.prototype, "UDDOKTAPAY_BASE_URL", void 0);
 __decorate([
     IsString(),
     IsOptional(),
     __metadata("design:type", String)
 ], EnvironmentVariables.prototype, "UDDOKTAPAY_API_KEY", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "UDDOKTAPAY_WEBHOOK_URL", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "UDDOKTAPAY_SUCCESS_URL", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "UDDOKTAPAY_CANCEL_URL", void 0);
 __decorate([
     IsString(),
     IsOptional(),

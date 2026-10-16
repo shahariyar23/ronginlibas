@@ -695,7 +695,7 @@ export async function getCollections(): Promise<StorefrontCollection[]> {
   }
 }
 
-export async function downloadOrderInvoice(orderNumber: string) {
+export async function downloadOrderInvoice(orderNumber: string, invoiceNumber?: string) {
   const headers = new Headers();
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
   const response = await fetch(
@@ -709,10 +709,13 @@ export async function downloadOrderInvoice(orderNumber: string) {
       : body?.message || `The server returned ${response.status}.`;
     throw new ApiError(message, response.status);
   }
+  const filename = invoiceNumber
+    ? `Rongin-Libas-Invoice-${invoiceNumber}.pdf`
+    : `${orderNumber.replace(/[^a-z0-9-]/gi, '')}-invoice.pdf`;
   const url = URL.createObjectURL(await response.blob());
   const link = document.createElement('a');
   link.href = url;
-  link.download = `${orderNumber.replace(/[^a-z0-9-]/gi, '')}-invoice.pdf`;
+  link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -1137,15 +1140,6 @@ export interface PaymentMethodItem {
   credentialsConfigured?: boolean;
 }
 
-export interface WaitmarkInitiateResult {
-  checkoutUrl: string;
-  paymentAttemptId: string;
-  orderId: string;
-  orderNumber: string;
-  amount: number;
-  currency: string;
-}
-
 export interface UddoktaInitiateResult {
   checkoutUrl: string;
   paymentAttemptId: string;
@@ -1213,17 +1207,6 @@ export async function verifyUddoktaPaymentApi(data: {
   orderId?: string;
 }): Promise<UddoktaVerifyResult> {
   return apiRequest<UddoktaVerifyResult>('/payments/uddoktapay/verify', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function initiateWaitmarkPaymentApi(data: {
-  orderId: string;
-  phone?: string;
-  trackingToken?: string;
-}): Promise<WaitmarkInitiateResult> {
-  return apiRequest<WaitmarkInitiateResult>('/payments/waitmark/initiate', {
     method: 'POST',
     body: JSON.stringify(data),
   });

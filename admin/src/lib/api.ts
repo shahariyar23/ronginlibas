@@ -791,6 +791,26 @@ export const adminApi = {
       }),
     getPaymentStatus: (orderId: string) =>
       request<any>(`/payments/status/${encodeURIComponent(orderId.trim())}`),
+    downloadInvoice: async (id: string, invoiceNumber?: string) => {
+      let token = getStoredToken();
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const url = `${API_BASE}/admin/orders/${encodeURIComponent(id.trim())}/invoice`;
+      const res = await fetch(url, { headers });
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.message || `Failed to download invoice (HTTP ${res.status})`);
+      }
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = `Rongin-Libas-Invoice-${invoiceNumber || id}.pdf`;
+      link.click();
+      URL.revokeObjectURL(objectUrl);
+    },
   },
 
   // Abandoned Carts

@@ -319,6 +319,7 @@ export class MailService {
     customerNotes?: string | null;
     trackingToken?: string;
     invoiceBuffer?: Buffer;
+    invoiceNumber?: string;
   }): Promise<boolean> {
     const transporter = this.getTransporter();
     if (!transporter) return false;
@@ -333,6 +334,7 @@ export class MailService {
     const from = this.getFromAddress('orders');
 
     const cleanOrderNum = params.orderNumber.replace(/[^a-zA-Z0-9-_]/g, '');
+    const cleanInvoiceRef = (params.invoiceNumber || cleanOrderNum).replace(/[^a-zA-Z0-9-_]/g, '');
 
     const { subject, html, text } = renderOrderConfirmationEmail({
       orderNumber: params.orderNumber,
@@ -349,12 +351,13 @@ export class MailService {
       trackUrl,
       webUrl,
       hasInvoiceAttachment: Boolean(params.invoiceBuffer),
+      invoiceNumber: params.invoiceNumber,
     });
 
     const attachments = params.invoiceBuffer
       ? [
           {
-            filename: `Rongin-Libas-Invoice-${cleanOrderNum}.pdf`,
+            filename: `Rongin-Libas-Invoice-${cleanInvoiceRef}.pdf`,
             content: params.invoiceBuffer,
             contentType: 'application/pdf',
           },

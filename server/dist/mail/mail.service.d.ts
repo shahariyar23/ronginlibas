@@ -35,6 +35,7 @@ export declare class MailService {
         customerNotes?: string | null;
         trackingToken?: string;
         invoiceBuffer?: Buffer;
+        invoiceNumber?: string;
     }): Promise<boolean>;
     sendOrderStatusUpdateEmail(params: {
         email: string;

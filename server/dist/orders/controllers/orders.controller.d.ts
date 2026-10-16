@@ -62,6 +62,13 @@ export declare class OrdersController {
         message: string;
         data: {
             items: {
+                invoice: {
+                    totalAmount: import("@prisma/client/runtime/library").Decimal;
+                    invoiceNumber: string;
+                    status: import("@prisma/client").$Enums.InvoiceStatus;
+                    id: string;
+                    issuedAt: Date;
+                } | null;
                 items: {
                     product: {
                         name: string;
@@ -124,6 +131,13 @@ export declare class OrdersController {
     getMyOrder(customerId: string, orderNumber: string): Promise<{
         message: string;
         data: {
+            invoice: {
+                totalAmount: import("@prisma/client/runtime/library").Decimal;
+                invoiceNumber: string;
+                status: import("@prisma/client").$Enums.InvoiceStatus;
+                id: string;
+                issuedAt: Date;
+            } | null;
             items: {
                 product: {
                     name: string;
@@ -257,6 +271,13 @@ export declare class OrdersController {
                 phone: string | null;
                 firstName: string;
                 lastName: string | null;
+            } | null;
+            invoice: {
+                totalAmount: import("@prisma/client/runtime/library").Decimal;
+                invoiceNumber: string;
+                status: import("@prisma/client").$Enums.InvoiceStatus;
+                id: string;
+                issuedAt: Date;
             } | null;
             items: {
                 product: {

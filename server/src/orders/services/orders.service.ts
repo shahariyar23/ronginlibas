@@ -21,6 +21,7 @@ import { CreateOrderDto, ShippingAddressDto } from '../dto/create-order.dto.js';
 import { CreateAdminOrderDto } from '../dto/create-admin-order.dto.js';
 import { UpdateOrderStatusDto } from '../dto/update-order-status.dto.js';
 import { OrderQueryDto } from '../dto/order-query.dto.js';
+import { InvoicesService } from './invoices.service.js';
 import { PaginatedResult } from '../../common/dto/pagination-query.dto.js';
 import type { AdminAuditActor } from '../../audit/audit.service.js';
 import {
@@ -88,6 +89,15 @@ const customerOrderSelect = {
   createdAt: true,
   updatedAt: true,
   items: { select: orderItemCustomerSelect },
+  invoice: {
+    select: {
+      id: true,
+      invoiceNumber: true,
+      status: true,
+      issuedAt: true,
+      totalAmount: true,
+    },
+  },
   trackingEvents: {
     where: { customerVisible: true },
     select: { status: true, description: true, createdAt: true },
@@ -126,11 +136,12 @@ export class OrdersService {
     private readonly settingsService: SettingsService,
     @Optional() private readonly mailService?: MailService,
     @Optional() private readonly ga4Service?: Ga4MeasurementProtocolService,
+    @Optional() private readonly invoicesService?: InvoicesService,
   ) {}
 
   async findAll(query: OrderQueryDto): Promise<PaginatedResult<any>> {
     try {
-      await this.cancelExpiredUnpaidOrders(2);
+      await this.cancelExpiredUnpaidOrders(120);
     } catch (e: any) {
       this.logger.warn(`Failed to auto-clean expired unpaid orders: ${e?.message}`);
     }
@@ -203,6 +214,15 @@ export class OrdersService {
             },
             orderBy: { createdAt: 'desc' },
           },
+          invoice: {
+            select: {
+              id: true,
+              invoiceNumber: true,
+              status: true,
+              issuedAt: true,
+              totalAmount: true,
+            },
+          },
           items: {
             select: {
               id: true,
@@ -255,6 +275,14 @@ export class OrdersService {
         payments: {
           orderBy: { createdAt: 'desc' },
         },
+        invoice: {
+          include: {
+            items: true,
+            payments: {
+              orderBy: { createdAt: 'desc' },
+            },
+          },
+        },
         trackingEvents: { orderBy: { createdAt: 'asc' } },
       },
     });
@@ -265,38 +293,7 @@ export class OrdersService {
 
   async findCustomerOrders(customerId: string, query: OrderQueryDto) {
     try {
-      // Auto-clean any uncompleted online payment orders for this customer so they never linger as pending orders
-      const uncompletedOrders = await this.prisma.order.findMany({
-        where: {
-          customerId,
-          paymentMethod: { in: [PaymentMethod.WAITMARK_PAY, PaymentMethod.UDDOKTAPAY] },
-          paymentStatus: { in: [PaymentStatus.PENDING, PaymentStatus.FAILED] },
-          status: { not: OrderStatus.CANCELLED },
-        },
-        include: { items: true },
-      });
-
-      for (const uncompleted of uncompletedOrders) {
-        try {
-          await this.prisma.$transaction(async (tx) => {
-            await this.releaseOrderStockInTx(
-              tx,
-              uncompleted,
-              'Customer checked orders without completed online payment - stock released:',
-            );
-            await tx.order.delete({ where: { id: uncompleted.id } });
-          });
-          this.logger.log(
-            `[Orders] Auto-cleaned abandoned online payment order ${uncompleted.orderNumber} for customer ${customerId}`,
-          );
-        } catch (cleanErr: any) {
-          this.logger.warn(
-            `Failed to auto-clean uncompleted order ${uncompleted.orderNumber}: ${cleanErr?.message}`,
-          );
-        }
-      }
-
-      await this.cancelExpiredUnpaidOrders(2);
+      await this.cancelExpiredUnpaidOrders(120);
     } catch (e: any) {
       this.logger.warn(`Failed to auto-clean expired unpaid orders: ${e?.message}`);
     }
@@ -304,12 +301,6 @@ export class OrdersService {
     const limit = query.limit ?? 20;
     const where: Prisma.OrderWhereInput = {
       customerId,
-      NOT: {
-        AND: [
-          { paymentMethod: { in: [PaymentMethod.WAITMARK_PAY, PaymentMethod.UDDOKTAPAY] } },
-          { paymentStatus: { in: [PaymentStatus.PENDING, PaymentStatus.FAILED] } },
-        ],
-      },
     };
     const [items, total] = await Promise.all([
       this.prisma.order.findMany({
@@ -372,9 +363,9 @@ export class OrdersService {
   }
 
   /**
-   * Releases reserved stock and deletes unpaid online orders exceeding the timeout window.
+   * Releases reserved stock and deletes unpaid online orders exceeding the timeout window (default: 2 hours).
    */
-  async cancelExpiredUnpaidOrders(timeoutMinutes = 2): Promise<number> {
+  async cancelExpiredUnpaidOrders(timeoutMinutes = 120): Promise<number> {
     const cutoff = new Date(Date.now() - timeoutMinutes * 60 * 1000);
     const expiredOrders = await this.prisma.order.findMany({
       where: {
@@ -807,7 +798,7 @@ export class OrdersService {
       throw new BadRequestException('Guest checkout requires a name and contact phone');
     }
     const paymentMethod = dto.paymentMethod ?? 'COD';
-    if (paymentMethod !== 'COD' && paymentMethod !== 'WAITMARK_PAY' && paymentMethod !== 'UDDOKTAPAY') {
+    if (paymentMethod !== 'COD' && paymentMethod !== 'UDDOKTAPAY') {
       throw new ServiceUnavailableException(`Online payment method ${paymentMethod} is not currently available`);
     }
     const variantIds = dto.items.map((item) => item.variantId);
@@ -1022,7 +1013,7 @@ export class OrdersService {
 
     // Asynchronously dispatch Order Confirmation email to customer via orders@ronginlibas.com
     // Only dispatch immediately for COD (since COD is confirmed on placement).
-    // For online gateways (WAITMARK_PAY), confirmation email is dispatched after successful payment verification.
+    // For online gateways (UDDOKTAPAY), confirmation email is dispatched after successful payment verification.
     if (dto.paymentMethod === 'COD') {
       this.dispatchOrderConfirmationNotification(createdOrder.order, trackingToken, customerId).catch((err) => {
         this.logger.warn(`Failed to dispatch order confirmation email for ${createdOrder.order.orderNumber}: ${err.message}`);
@@ -1570,18 +1561,30 @@ export class OrdersService {
     }));
 
     let invoiceBuffer: Buffer | undefined;
+    let customerInvoiceNumber: string | undefined;
     try {
-      const orderForInvoice = {
-        ...order,
-        guestName: customerName,
-        guestPhone: shipping.phone || order.guestPhone,
-        guestEmail: customerEmail,
-      };
-      invoiceBuffer = await this.generateInvoiceBuffer(orderForInvoice);
-      if (invoiceBuffer) {
-        this.logger.log(
-          `Official PDF invoice generated for order confirmation: ${order.orderNumber} (${invoiceBuffer.length} bytes)`
-        );
+      let invoice = await this.invoicesService?.findByOrderIdOrNumber(order.id);
+      // For COD orders, issue invoice if not already created
+      if (!invoice && order.paymentMethod === 'COD' && order.status !== 'CANCELLED') {
+        if (this.invoicesService) {
+          invoice = await this.invoicesService.getOrCreateInvoiceForOrder(order.id);
+        }
+      }
+
+      if (invoice) {
+        customerInvoiceNumber = invoice.invoiceNumber;
+        const orderForInvoice = {
+          ...order,
+          guestName: customerName,
+          guestPhone: shipping.phone || order.guestPhone,
+          guestEmail: customerEmail,
+        };
+        invoiceBuffer = await this.generateInvoiceBuffer(orderForInvoice, invoice);
+        if (invoiceBuffer) {
+          this.logger.log(
+            `Official PDF invoice generated for order confirmation: ${order.orderNumber} [${invoice.invoiceNumber}] (${invoiceBuffer.length} bytes)`
+          );
+        }
       }
     } catch (err) {
       this.logger.warn(
@@ -1592,6 +1595,7 @@ export class OrdersService {
     await this.mailService.sendOrderConfirmationEmail({
       email: customerEmail,
       orderNumber: order.orderNumber,
+      invoiceNumber: customerInvoiceNumber,
       customerName,
       items,
       subtotal: Number(order.subtotal),
@@ -1838,15 +1842,71 @@ export class OrdersService {
     customerId?: string,
     phone?: string,
     trackingToken?: string,
-  ): Promise<Buffer> {
+  ): Promise<{ buffer: Buffer; invoiceNumber: string }> {
     const order = await this.findOrderForAccess(orderNumber, customerId, phone, trackingToken);
-    return this.generateInvoiceBuffer(order);
+    let invoice = await this.invoicesService?.findByOrderIdOrNumber(order.id);
+
+    if (!invoice) {
+      if (
+        order.paymentStatus === PaymentStatus.PAID ||
+        (order.paymentMethod === 'COD' && order.status !== OrderStatus.CANCELLED)
+      ) {
+        if (this.invoicesService) {
+          invoice = await this.invoicesService.getOrCreateInvoiceForOrder(order.id);
+        }
+      } else {
+        throw new BadRequestException(
+          `Customer invoice has not been issued yet. Invoices for online payments are issued after payment verification. Current payment status: ${order.paymentStatus}`,
+        );
+      }
+    }
+
+    const buffer = await this.generateInvoiceBuffer(order, invoice);
+    return {
+      buffer,
+      invoiceNumber: invoice?.invoiceNumber || order.orderNumber,
+    };
   }
 
-  async generateInvoiceBuffer(order: any): Promise<Buffer> {
+  async generateInvoiceForAdmin(
+    id: string,
+  ): Promise<{ buffer: Buffer; invoiceNumber: string }> {
+    const order = await this.findById(id);
+    let invoice = await this.invoicesService?.findByOrderIdOrNumber(order.id);
+
+    if (!invoice) {
+      if (
+        order.paymentStatus === PaymentStatus.PAID ||
+        (order.paymentMethod === 'COD' && order.status !== OrderStatus.CANCELLED)
+      ) {
+        if (this.invoicesService) {
+          invoice = await this.invoicesService.getOrCreateInvoiceForOrder(order.id);
+        }
+      } else {
+        throw new BadRequestException(
+          `Customer invoice has not been issued yet for order ${order.orderNumber}. Online orders require payment verification before an invoice is issued.`,
+        );
+      }
+    }
+
+    const buffer = await this.generateInvoiceBuffer(order, invoice);
+    return {
+      buffer,
+      invoiceNumber: invoice?.invoiceNumber || order.orderNumber,
+    };
+  }
+
+  async generateInvoiceBuffer(order: any, invoice?: any): Promise<Buffer> {
+    const invoiceRecord = invoice || order.invoice;
+    const invoiceNumber = invoiceRecord?.invoiceNumber || order.orderNumber;
+    const invoiceItems =
+      invoiceRecord?.items && invoiceRecord.items.length > 0
+        ? invoiceRecord.items
+        : order.items || [];
+
     // Preload item images in parallel (Cloudinary JPEG or remote images)
     const itemThumbnails = await Promise.all(
-      (order.items || []).map((item: any) => {
+      invoiceItems.map((item: any) => {
         const imgUrl = item.productImage || item.product?.images?.[0]?.url;
         return fetchThumbnailBuffer(imgUrl);
       }),
@@ -1861,9 +1921,9 @@ export class OrdersService {
           margin: 36,
           autoFirstPage: true,
           info: {
-            Title: `Invoice ${order.orderNumber} - Rongin Libas`,
+            Title: `Invoice ${invoiceNumber} - Rongin Libas`,
             Author: 'Rongin Libas Haute Couture Menswear',
-            Subject: `Official Tax Invoice & Consignment Bill for ${order.orderNumber}`,
+            Subject: `Official Tax Invoice & Consignment Bill for ${invoiceNumber} (Order: ${order.orderNumber})`,
           },
         });
 
@@ -1919,7 +1979,7 @@ export class OrdersService {
           .text('Hotline: +880 1700-000000  •  orders@ronginlibas.com  •  BIN: RL-VAT-7829104', brandTextX, margin + 55);
 
         // Header Right - Invoice Badge Card
-        const badgeW = 152;
+        const badgeW = 156;
         const badgeH = 58;
         const badgeX = margin + contentWidth - badgeW - 10;
         const badgeY = margin + 10;
@@ -1933,19 +1993,19 @@ export class OrdersService {
           .text('OFFICIAL TAX INVOICE', badgeX, badgeY + 6, { width: badgeW, align: 'center' });
         doc
           .fillColor('#D4AF37')
-          .fontSize(11)
+          .fontSize(10)
           .font('Helvetica-Bold')
-          .text(order.orderNumber, badgeX, badgeY + 18, { width: badgeW, align: 'center' });
+          .text(invoiceNumber, badgeX, badgeY + 18, { width: badgeW, align: 'center' });
         doc
           .fillColor('#E5E7EB')
           .fontSize(6.5)
           .font('Helvetica')
-          .text(`TX ID: ${order.id.slice(0, 18).toUpperCase()}`, badgeX, badgeY + 33, { width: badgeW, align: 'center' });
+          .text(`Order Ref: ${order.orderNumber}`, badgeX, badgeY + 33, { width: badgeW, align: 'center' });
         doc
           .fillColor('#D1D5DB')
           .fontSize(6.5)
           .font('Helvetica')
-          .text(`Issued: ${formatInvoiceDate(order.createdAt)}`, badgeX, badgeY + 44, { width: badgeW, align: 'center' });
+          .text(`Issued: ${formatInvoiceDate(invoiceRecord?.issuedAt || order.createdAt)}`, badgeX, badgeY + 44, { width: badgeW, align: 'center' });
 
         // ==========================================
         // 2. TWO-COLUMN CARDS: CONSIGNEE & DISPATCH
@@ -1955,15 +2015,16 @@ export class OrdersService {
         const cardW = (contentWidth - 10) / 2; // 256.64
 
         // Extract Customer / Shipping Details
-        const addr = (order.shippingAddress as Record<string, any>) || {};
+        const addr = (invoiceRecord?.shippingAddress as Record<string, any>) || (order.shippingAddress as Record<string, any>) || {};
         const recipientName =
+          invoiceRecord?.customerName ||
           addr.fullName ||
           addr.recipient ||
           addr.name ||
           ((order as any).customer ? [(order as any).customer.firstName, (order as any).customer.lastName].filter(Boolean).join(' ') : (order as any).guestName) ||
           'Valued Patron';
-        const contactPhone = addr.phone || (order as any).guestPhone || (order as any).customer?.phone || 'N/A';
-        const contactEmail = addr.email || (order as any).guestEmail || (order as any).customer?.email || 'N/A';
+        const contactPhone = invoiceRecord?.customerPhone || addr.phone || (order as any).guestPhone || (order as any).customer?.phone || 'N/A';
+        const contactEmail = invoiceRecord?.customerEmail || addr.email || (order as any).guestEmail || (order as any).customer?.email || 'N/A';
         const destAddress =
           [addr.addressLine1 || addr.address, addr.addressLine2, addr.city, addr.division, addr.postalCode]
             .filter(Boolean)
@@ -2040,11 +2101,42 @@ export class OrdersService {
             ? 'Cash on Delivery (COD)'
             : `${order.paymentMethod} (Digital Gateway)`;
 
+        const pmt = invoiceRecord?.payments?.[0] || order.payments?.[0];
+        const trxRef = order.paymentReference || pmt?.providerTransactionId;
+        const gwInvoiceId = pmt?.providerInvoiceId;
+
         doc
           .fillColor('#111827')
           .fontSize(7.5)
           .font('Helvetica-Bold')
-          .text(`Payment: ${payMethodStr} [${order.paymentStatus}]`, rightCardX + 8, cardsY + 22, {
+          .text(`Payment: ${payMethodStr} [${order.paymentStatus}]`, rightCardX + 8, cardsY + 20, {
+            width: cardW - 16,
+            ellipsis: true,
+          });
+
+        if (trxRef || gwInvoiceId) {
+          const paymentMeta = [
+            trxRef ? `Trx: ${trxRef}` : null,
+            gwInvoiceId ? `Gateway Inv: ${gwInvoiceId}` : null,
+          ]
+            .filter(Boolean)
+            .join('  •  ');
+
+          doc
+            .fillColor('#4B5563')
+            .fontSize(6.5)
+            .font('Helvetica')
+            .text(paymentMeta, rightCardX + 8, cardsY + 32, {
+              width: cardW - 16,
+              ellipsis: true,
+            });
+        }
+
+        doc
+          .fillColor('#4B5563')
+          .fontSize(7)
+          .font('Helvetica')
+          .text(`Carrier: ${courier}`, rightCardX + 8, cardsY + (trxRef || gwInvoiceId ? 43 : 35), {
             width: cardW - 16,
             ellipsis: true,
           });
@@ -2052,15 +2144,7 @@ export class OrdersService {
           .fillColor('#4B5563')
           .fontSize(7)
           .font('Helvetica')
-          .text(`Carrier: ${courier}`, rightCardX + 8, cardsY + 35, {
-            width: cardW - 16,
-            ellipsis: true,
-          });
-        doc
-          .fillColor('#4B5563')
-          .fontSize(7)
-          .font('Helvetica')
-          .text(`Waybill / Airway Ref: ${trackingWaybill}`, rightCardX + 8, cardsY + 47, {
+          .text(`Waybill: ${trackingWaybill}`, rightCardX + 8, cardsY + (trxRef || gwInvoiceId ? 54 : 47), {
             width: cardW - 16,
             ellipsis: true,
           });
@@ -2068,7 +2152,7 @@ export class OrdersService {
           .fillColor('#059669')
           .fontSize(6.5)
           .font('Helvetica-Bold')
-          .text('Express Handover: 24–48 Hours Doorstep TAT', rightCardX + 8, cardsY + 59, {
+          .text('Express Handover: 24–48 Hours Doorstep TAT', rightCardX + 8, cardsY + 64, {
             width: cardW - 16,
             ellipsis: true,
           });
@@ -2092,8 +2176,8 @@ export class OrdersService {
         const rowHeight = 48;
         let currentY = tableY + tableHdrHeight;
 
-        if (order.items && order.items.length > 0) {
-          (order.items as any[]).forEach((item: any, index: number) => {
+        if (invoiceItems && invoiceItems.length > 0) {
+          (invoiceItems as any[]).forEach((item: any, index: number) => {
             const isAlt = index % 2 === 1;
             if (isAlt) {
               doc.rect(margin, currentY, contentWidth, rowHeight).fill('#FBFBFA');
@@ -2157,7 +2241,7 @@ export class OrdersService {
               item.sku ? `SKU: ${item.sku}` : null,
             ]
               .filter(Boolean)
-              .join('  |  ') || item.variantName || 'Atelier Standard';
+              .join('  |  ') || item.variantLabel || item.variantName || 'Atelier Standard';
 
             doc
               .fillColor('#6B7280')
@@ -2188,12 +2272,13 @@ export class OrdersService {
                 align: 'center',
               });
 
-            // Subtotal
+            // Subtotal / Line Total
+            const lineTotal = Number(item.lineTotal ?? item.subtotal ?? (Number(item.unitPrice) * Number(item.quantity)));
             doc
               .fillColor('#073A2D')
               .fontSize(8.5)
               .font('Helvetica-Bold')
-              .text(`BDT ${Number(item.subtotal).toLocaleString()}`, margin + 424, currentY + 18, {
+              .text(`BDT ${lineTotal.toLocaleString()}`, margin + 424, currentY + 18, {
                 width: 90,
                 align: 'right',
               });
@@ -2224,7 +2309,7 @@ export class OrdersService {
             .fillColor('#073A2D')
             .fontSize(8.5)
             .font('Helvetica-Bold')
-            .text(`BDT ${Number(order.subtotal).toLocaleString()}`, margin + 424, currentY + 18, {
+            .text(`BDT ${Number(invoiceRecord?.subtotal ?? order.subtotal).toLocaleString()}`, margin + 424, currentY + 18, {
               width: 90,
               align: 'right',
             });
@@ -2245,12 +2330,12 @@ export class OrdersService {
         const summarySecY = currentY + 12;
 
         // Left Side: Airway Barcode & Concierge Note
-        drawBarcode(doc, order.orderNumber, margin + 8, summarySecY + 4, 180, 22);
+        drawBarcode(doc, invoiceNumber, margin + 8, summarySecY + 4, 180, 22);
         doc
           .fillColor('#374151')
           .fontSize(7)
           .font('Helvetica-Bold')
-          .text(`* ${order.orderNumber} *`, margin + 8, summarySecY + 28, { width: 180, align: 'center' });
+          .text(`* ${invoiceNumber} *`, margin + 8, summarySecY + 28, { width: 180, align: 'center' });
 
         doc
           .fillColor('#073A2D')
@@ -2271,7 +2356,11 @@ export class OrdersService {
         // Right Side: Financial Breakdown Box
         const summaryBoxW = 236;
         const summaryBoxX = margin + contentWidth - summaryBoxW;
-        const summaryBoxH = Number(order.discountAmount) > 0 ? 94 : 80;
+        const subtotalVal = Number(invoiceRecord?.subtotal ?? order.subtotal);
+        const deliveryChargeVal = Number(invoiceRecord?.deliveryCharge ?? order.deliveryCharge);
+        const discountAmountVal = Number(invoiceRecord?.discountAmount ?? order.discountAmount ?? 0);
+        const totalAmountVal = Number(invoiceRecord?.totalAmount ?? order.totalAmount);
+        const summaryBoxH = discountAmountVal > 0 ? 94 : 80;
 
         doc.roundedRect(summaryBoxX, summarySecY, summaryBoxW, summaryBoxH, 4).fill('#F8FAFC');
         doc.lineWidth(0.5).strokeColor('#E2E8F0').roundedRect(summaryBoxX, summarySecY, summaryBoxW, summaryBoxH, 4).stroke();
@@ -2286,21 +2375,21 @@ export class OrdersService {
           .fillColor('#111827')
           .fontSize(7.5)
           .font('Helvetica-Bold')
-          .text(`BDT ${Number(order.subtotal).toLocaleString()}`, summaryBoxX + 100, sY, {
+          .text(`BDT ${subtotalVal.toLocaleString()}`, summaryBoxX + 100, sY, {
             width: summaryBoxW - 112,
             align: 'right',
           });
 
         sY += 15;
         const deliveryStr =
-          Number(order.deliveryCharge) === 0 ? 'FREE' : `BDT ${Number(order.deliveryCharge).toLocaleString()}`;
+          deliveryChargeVal === 0 ? 'FREE' : `BDT ${deliveryChargeVal.toLocaleString()}`;
         doc
           .fillColor('#4B5563')
           .fontSize(7.5)
           .font('Helvetica')
           .text('Packaging & Delivery:', summaryBoxX + 12, sY);
         doc
-          .fillColor(Number(order.deliveryCharge) === 0 ? '#059669' : '#111827')
+          .fillColor(deliveryChargeVal === 0 ? '#059669' : '#111827')
           .fontSize(7.5)
           .font('Helvetica-Bold')
           .text(deliveryStr, summaryBoxX + 100, sY, {
@@ -2308,7 +2397,7 @@ export class OrdersService {
             align: 'right',
           });
 
-        if (Number(order.discountAmount) > 0) {
+        if (discountAmountVal > 0) {
           sY += 15;
           doc
             .fillColor('#059669')
@@ -2319,7 +2408,7 @@ export class OrdersService {
             .fillColor('#059669')
             .fontSize(7.5)
             .font('Helvetica-Bold')
-            .text(`- BDT ${Number(order.discountAmount).toLocaleString()}`, summaryBoxX + 100, sY, {
+            .text(`- BDT ${discountAmountVal.toLocaleString()}`, summaryBoxX + 100, sY, {
               width: summaryBoxW - 112,
               align: 'right',
             });
@@ -2338,7 +2427,7 @@ export class OrdersService {
           .fillColor('#D4AF37')
           .fontSize(9.5)
           .font('Helvetica-Bold')
-          .text(`BDT ${Number(order.totalAmount).toLocaleString()}`, summaryBoxX + 100, sY + 6, {
+          .text(`BDT ${totalAmountVal.toLocaleString()}`, summaryBoxX + 100, sY + 6, {
             width: summaryBoxW - 122,
             align: 'right',
           });

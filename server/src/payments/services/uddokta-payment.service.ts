@@ -10,6 +10,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { OrdersService } from '../../orders/services/orders.service.js';
+import { InvoicesService } from '../../orders/services/invoices.service.js';
 import { Ga4MeasurementProtocolService } from '../../analytics/services/ga4-measurement-protocol.service.js';
 import { OrderStatus, PaymentStatus, PaymentMethod, Prisma } from '@prisma/client';
 import { timingSafeEqual } from 'node:crypto';
@@ -36,6 +37,7 @@ export interface UddoktaVerifyResponse {
   transactionId?: string | null;
   invoiceId?: string | null;
   paymentMethod?: string | null;
+  customerInvoiceNumber?: string | null;
 }
 
 @Injectable()
@@ -46,6 +48,7 @@ export class UddoktaPaymentService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     @Optional() private readonly ordersService?: OrdersService,
+    @Optional() private readonly invoicesService?: InvoicesService,
     @Optional() private readonly ga4Service?: Ga4MeasurementProtocolService,
   ) {}
 
@@ -57,24 +60,51 @@ export class UddoktaPaymentService {
   }
 
   /**
-   * Returns UddoktaPay / Paymently base URL (default: https://ronginlibas.paymently.io/api).
+   * Returns current UddoktaPay environment ('sandbox' | 'production').
+   * Defaults to 'sandbox' unless UDDOKTAPAY_ENV is explicitly set to 'production'.
    */
-  public getBaseUrl(): string {
-    return (
-      this.configService.get<string>('UDDOKTAPAY_BASE_URL')?.trim() ||
-      'https://ronginlibas.paymently.io/api'
-    );
+  public getEnvironment(): 'sandbox' | 'production' {
+    const env = this.configService.get<string>('UDDOKTAPAY_ENV')?.trim().toLowerCase();
+    if (env === 'production' || env === 'prod' || env === 'live') {
+      return 'production';
+    }
+    return 'sandbox';
   }
 
   /**
-   * Normalizes and constructs UddoktaPay / Paymently API endpoint URL.
-   * Handles base URLs whether configured with or without trailing `/api` or `/`.
-   * e.g., "https://ronginlibas.paymently.io/api" + "checkout-v2" -> "https://ronginlibas.paymently.io/api/checkout-v2"
+   * Returns true if UddoktaPay is operating in Sandbox / Test mode.
+   */
+  public isSandbox(): boolean {
+    return this.getEnvironment() === 'sandbox';
+  }
+
+  /**
+   * Returns UddoktaPay base URL.
+   * Resolves to https://sandbox.uddoktapay.com when in sandbox mode,
+   * or https://ronginlibas.paymently.io/api when in production mode unless overridden.
+   */
+  public getBaseUrl(): string {
+    const explicitUrl = this.configService.get<string>('UDDOKTAPAY_BASE_URL')?.trim();
+    if (explicitUrl) return explicitUrl;
+
+    return this.isSandbox()
+      ? 'https://sandbox.uddoktapay.com'
+      : 'https://ronginlibas.paymently.io/api';
+  }
+
+  /**
+   * Normalizes and constructs UddoktaPay API endpoint URL.
+   * Handles base URLs whether configured with or without trailing `/api`, `/checkout-v2`, or `/`.
    * e.g., "https://sandbox.uddoktapay.com" + "checkout-v2" -> "https://sandbox.uddoktapay.com/api/checkout-v2"
+   * e.g., "https://sandbox.uddoktapay.com" + "verify-payment" -> "https://sandbox.uddoktapay.com/api/verify-payment"
+   * e.g., "https://sandbox.uddoktapay.com" + "refund-payment" -> "https://sandbox.uddoktapay.com/api/refund-payment"
    */
   public getApiEndpoint(subPath: string): string {
     const rawBase = this.getBaseUrl().replace(/\/+$/, '');
-    const baseWithoutApi = rawBase.replace(/\/api\/?$/, '');
+    const baseWithoutApi = rawBase
+      .replace(/\/api\/checkout-v2\/?$/, '')
+      .replace(/\/checkout-v2\/?$/, '')
+      .replace(/\/api\/?$/, '');
     const cleanPath = subPath.replace(/^\/+/, '');
     const apiPath = cleanPath.startsWith('api/') ? cleanPath : `api/${cleanPath}`;
     return `${baseWithoutApi}/${apiPath}`;
@@ -276,13 +306,19 @@ export class UddoktaPaymentService {
     const checkoutEndpoint = this.getApiEndpoint('checkout-v2');
     const backendUrl = this.getBackendPublicUrl().replace(/\/+$/, '');
 
-    const redirectUrl = `${backendUrl}/api/v1/payments/uddoktapay/redirect?order_id=${encodeURIComponent(
-      order.orderNumber,
-    )}`;
-    const cancelUrl = `${backendUrl}/api/v1/payments/uddoktapay/cancel?order_id=${encodeURIComponent(
-      order.orderNumber,
-    )}`;
-    const webhookUrl = `${backendUrl}/api/v1/payments/uddoktapay/webhook`;
+    const redirectUrl =
+      this.configService.get<string>('UDDOKTAPAY_SUCCESS_URL')?.trim() ||
+      `${backendUrl}/api/v1/payments/uddoktapay/redirect?order_id=${encodeURIComponent(
+        order.orderNumber,
+      )}`;
+    const cancelUrl =
+      this.configService.get<string>('UDDOKTAPAY_CANCEL_URL')?.trim() ||
+      `${backendUrl}/api/v1/payments/uddoktapay/cancel?order_id=${encodeURIComponent(
+        order.orderNumber,
+      )}`;
+    const webhookUrl =
+      this.configService.get<string>('UDDOKTAPAY_WEBHOOK_URL')?.trim() ||
+      `${backendUrl}/api/v1/payments/uddoktapay/webhook`;
 
     const requestPayload = {
       full_name: customerName,
@@ -347,6 +383,25 @@ export class UddoktaPaymentService {
       }
 
       checkoutUrl = targetUrl;
+
+      // Extract upstream invoice ID if returned by gateway (some versions/paymently include invoice_id)
+      const upstreamInvoiceId =
+        responseData.invoice_id ||
+        responseData.data?.invoice_id ||
+        responseData.invoiceId ||
+        responseData.data?.invoiceId;
+
+      try {
+        await this.prisma.payment.updateMany({
+          where: { providerOrderId: paymentAttemptId },
+          data: {
+            rawWebhookPayload: responseData as any,
+            ...(upstreamInvoiceId ? { providerInvoiceId: upstreamInvoiceId.toString().trim() } : {}),
+          },
+        });
+      } catch (saveErr: any) {
+        this.logger.warn(`Could not attach initiation payload to payment ${paymentAttemptId}: ${saveErr?.message}`);
+      }
     } catch (apiErr: any) {
       if (apiErr instanceof ServiceUnavailableException) throw apiErr;
       this.logger.error(
@@ -368,11 +423,49 @@ export class UddoktaPaymentService {
   }
 
   /**
+   * Helper to attach providerInvoiceId to an existing pending payment attempt.
+   */
+  public async recordInvoiceIdIfPending(orderIdHint: string, invoiceId: string): Promise<boolean> {
+    if (!orderIdHint || !invoiceId) return false;
+    const cleanHint = orderIdHint.trim();
+    const bareHint = cleanHint.replace(/^#/, '');
+    const withHash = `#${bareHint}`;
+    const cleanInvoiceId = invoiceId.trim();
+
+    const payment = await this.prisma.payment.findFirst({
+      where: {
+        provider: 'UDDOKTAPAY',
+        status: PaymentStatus.PENDING,
+        OR: [
+          { orderId: cleanHint },
+          { order: { orderNumber: cleanHint } },
+          { order: { orderNumber: bareHint } },
+          { order: { orderNumber: withHash } },
+          { providerOrderId: cleanHint },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (payment) {
+      await this.prisma.payment.update({
+        where: { id: payment.id },
+        data: { providerInvoiceId: cleanInvoiceId },
+      });
+      this.logger.log(
+        `[UddoktaPay] Associated invoice_id "${cleanInvoiceId}" with pending payment attempt for order ${orderIdHint}`,
+      );
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Verifies an UddoktaPay payment using the server-to-server Verify Payment API.
    * Safe: Does not rely on client-supplied data or browser state.
    */
   public async verifyPayment(
-    invoiceId: string,
+    invoiceId?: string,
     orderIdHint?: string,
   ): Promise<UddoktaVerifyResponse> {
     const apiKey = this.getApiKey();
@@ -380,11 +473,39 @@ export class UddoktaPaymentService {
       throw new ServiceUnavailableException('UddoktaPay API key is not configured.');
     }
 
-    if (!invoiceId || typeof invoiceId !== 'string') {
+    let cleanInvoiceId = (invoiceId || '').trim();
+
+    if (!cleanInvoiceId && orderIdHint) {
+      const cleanHint = orderIdHint.trim();
+      const bareHint = cleanHint.replace(/^#/, '');
+      const withHash = `#${bareHint}`;
+      const foundPayment = await this.prisma.payment.findFirst({
+        where: {
+          provider: 'UDDOKTAPAY',
+          providerInvoiceId: { not: null },
+          OR: [
+            { orderId: cleanHint },
+            { order: { orderNumber: cleanHint } },
+            { order: { orderNumber: bareHint } },
+            { order: { orderNumber: withHash } },
+            { providerOrderId: cleanHint },
+          ],
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (foundPayment?.providerInvoiceId) {
+        cleanInvoiceId = foundPayment.providerInvoiceId.trim();
+        this.logger.log(
+          `[UddoktaPay] Resolved invoice_id "${cleanInvoiceId}" from order hint "${orderIdHint}"`,
+        );
+      }
+    }
+
+    if (!cleanInvoiceId) {
       throw new BadRequestException('Valid invoice_id is required for verification.');
     }
 
-    const cleanInvoiceId = invoiceId.trim();
     const verifyEndpoint = this.getApiEndpoint('verify-payment');
 
     this.logger.log(`[UddoktaPay] Verifying transaction server-side for invoice_id: ${cleanInvoiceId}`);
@@ -486,7 +607,7 @@ export class UddoktaPaymentService {
       const trxId = invoiceData.transaction_id || invoiceData.trx_id || cleanInvoiceId;
       const channel = invoiceData.payment_method || 'UddoktaPay';
 
-      await this.applySuccessfulPayment(payment, cleanInvoiceId, trxId, verifiedAmount, verifyResult, channel);
+      const applied = await this.applySuccessfulPayment(payment, cleanInvoiceId, trxId, verifiedAmount, verifyResult, channel);
 
       return {
         success: true,
@@ -499,6 +620,7 @@ export class UddoktaPaymentService {
         transactionId: trxId,
         invoiceId: cleanInvoiceId,
         paymentMethod: channel,
+        customerInvoiceNumber: applied?.customerInvoiceNumber || null,
       };
     }
 
@@ -783,7 +905,10 @@ export class UddoktaPaymentService {
     const order = payment.order;
     const now = new Date();
 
-    await this.prisma.$transaction(async (tx) => {
+    let customerInvoiceNumber: string | undefined;
+
+    await this.prisma.$transaction(
+      async (tx) => {
       // 1. Update Payment attempt record
       await tx.payment.update({
         where: { id: payment.id },
@@ -813,19 +938,29 @@ export class UddoktaPaymentService {
         data: updatedOrderData,
       });
 
-      // 3. Record order tracking event
+      // 3. Atomically create or ensure Rongin Libas customer Invoice and link Payment
+      if (this.invoicesService) {
+        const invoice = await this.invoicesService.createInvoiceForOrderInTx(
+          tx,
+          order.id,
+          payment.id,
+        );
+        customerInvoiceNumber = invoice.invoiceNumber;
+      }
+
+      // 4. Record order tracking event
       await tx.orderTrackingEvent.create({
         data: {
           orderId: order.id,
           status: order.status === OrderStatus.PENDING ? OrderStatus.CONFIRMED : order.status,
-          description: `Payment of ৳${amount.toLocaleString()} verified and settled via UddoktaPay (${channelName}) [Invoice: ${invoiceId}, Trx: ${transactionId}]`,
+          description: `Payment of ৳${amount.toLocaleString()} verified and settled via UddoktaPay (${channelName}) [Gateway Invoice: ${invoiceId}${customerInvoiceNumber ? `, RL Invoice: ${customerInvoiceNumber}` : ''}, Trx: ${transactionId}]`,
           customerVisible: true,
         },
       });
-    });
+    }, { maxWait: 10000, timeout: 30000 });
 
     this.logger.log(
-      `[UddoktaPay] Successfully settled payment for order ${order.orderNumber} (Invoice: ${invoiceId}, Trx: ${transactionId}, Amount: ৳${amount})`,
+      `[UddoktaPay] Successfully settled payment for order ${order.orderNumber} (Gateway Invoice: ${invoiceId}${customerInvoiceNumber ? `, RL Invoice: ${customerInvoiceNumber}` : ''}, Trx: ${transactionId}, Amount: ৳${amount})`,
     );
 
     // Asynchronously dispatch order confirmation notification
@@ -858,6 +993,8 @@ export class UddoktaPaymentService {
           );
         });
     }
+
+    return { customerInvoiceNumber };
   }
 
   /**
@@ -920,4 +1057,186 @@ export class UddoktaPaymentService {
 
     return { success: true, message: 'Order deleted and stock released successfully' };
   }
+
+  /**
+   * Automatically polls UddoktaPay to verify and settle any pending online orders
+   * created within the last 2 hours (120 minutes).
+   * If a payment is confirmed as COMPLETED, it marks the order as CONFIRMED & PAID,
+   * dispatches the order confirmation email with the official invoice attached,
+   * and records a customer-visible tracking event.
+   */
+  public async reconcilePendingPayments(): Promise<{
+    checked: number;
+    settled: number;
+    failed: number;
+  }> {
+    const apiKey = this.getApiKey();
+    if (!apiKey) {
+      return { checked: 0, settled: 0, failed: 0 };
+    }
+
+    // Look for pending orders with UddoktaPay from the last 2 hours (120 minutes)
+    const twoHoursAgo = new Date(Date.now() - 120 * 60 * 1000);
+
+    const pendingPayments = await this.prisma.payment.findMany({
+      where: {
+        provider: 'UDDOKTAPAY',
+        status: PaymentStatus.PENDING,
+        providerInvoiceId: { not: null },
+        createdAt: { gte: twoHoursAgo },
+        order: {
+          status: OrderStatus.PENDING,
+          paymentStatus: PaymentStatus.PENDING,
+        },
+      },
+      include: {
+        order: {
+          include: { customer: true, items: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    let checked = 0;
+    let settled = 0;
+    let failed = 0;
+
+    for (const payment of pendingPayments) {
+      checked++;
+      try {
+        const invoiceId = payment.providerInvoiceId;
+        if (!invoiceId) continue;
+
+        this.logger.log(
+          `[UddoktaPay Auto-Reconciliation] Checking pending order ${payment.order.orderNumber} (Invoice: ${invoiceId})`,
+        );
+
+        const verifyRes = await this.verifyPayment(invoiceId, payment.order.orderNumber);
+
+        if (verifyRes.isPaid) {
+          settled++;
+          this.logger.log(
+            `[UddoktaPay Auto-Reconciliation] Settled order ${payment.order.orderNumber} successfully. Confirmation email with invoice dispatched!`,
+          );
+        } else if (verifyRes.paymentStatus === PaymentStatus.FAILED) {
+          failed++;
+        }
+      } catch (err: any) {
+        this.logger.warn(
+          `[UddoktaPay Auto-Reconciliation] Check error for order ${payment.order.orderNumber}: ${err.message}`,
+        );
+      }
+    }
+
+    return { checked, settled, failed };
+  }
+
+  /**
+   * Performs full or partial refund via UddoktaPay API (POST /api/refund-payment).
+   * Safe: Uses UDDOKTAPAY_BASE_URL and UDDOKTAPAY_API_KEY from environment.
+   */
+  public async refundPayment(
+    invoiceId: string,
+    amount?: number,
+    reason?: string,
+  ): Promise<{ success: boolean; message: string; data?: any }> {
+    const apiKey = this.getApiKey();
+    if (!apiKey) {
+      throw new ServiceUnavailableException('UddoktaPay API key is not configured.');
+    }
+    if (!invoiceId || typeof invoiceId !== 'string') {
+      throw new BadRequestException('Valid invoice_id is required to process refund.');
+    }
+
+    const cleanInvoiceId = invoiceId.trim();
+    const refundEndpoint = this.getApiEndpoint('refund-payment');
+
+    this.logger.log(
+      `[UddoktaPay ${this.getEnvironment().toUpperCase()}] Requesting refund for invoice: ${cleanInvoiceId}, amount: ${amount ?? 'full'}`,
+    );
+
+    const payload: Record<string, any> = { invoice_id: cleanInvoiceId };
+    if (amount !== undefined && amount > 0) {
+      payload.amount = amount;
+    }
+    if (reason) {
+      payload.reason = reason;
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch(refundEndpoint, {
+        method: 'POST',
+        headers: {
+          'RT-UDDOKTAPAY-API-KEY': apiKey,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      const resData: any = await response.json().catch(() => null);
+
+      if (!response.ok || !resData || resData.status === false) {
+        this.logger.error(
+          `[UddoktaPay Refund] Upstream refund request failed (HTTP ${response.status}): ${JSON.stringify(
+            resData,
+          )}`,
+        );
+        throw new BadRequestException(
+          resData?.message || 'UddoktaPay refund request was declined by gateway.',
+        );
+      }
+
+      // Update database records
+      const payment = await this.prisma.payment.findFirst({
+        where: { providerInvoiceId: cleanInvoiceId },
+        include: { order: true },
+      });
+
+      if (payment) {
+        await this.prisma.$transaction(async (tx) => {
+          await tx.payment.update({
+            where: { id: payment.id },
+            data: {
+              status: PaymentStatus.REFUNDED,
+              failureReason: reason ? `Refunded: ${reason}` : 'Refunded via UddoktaPay gateway',
+            },
+          });
+
+          await tx.order.update({
+            where: { id: payment.orderId },
+            data: {
+              paymentStatus: PaymentStatus.REFUNDED,
+              status: OrderStatus.REFUNDED,
+            },
+          });
+
+          await tx.orderTrackingEvent.create({
+            data: {
+              orderId: payment.orderId,
+              status: OrderStatus.REFUNDED,
+              description: `Payment refunded via UddoktaPay (${this.getEnvironment()}) [Invoice: ${cleanInvoiceId}, Amount: ৳${amount || payment.amount}]`,
+              customerVisible: true,
+            },
+          });
+        });
+      }
+
+      return {
+        success: true,
+        message: resData?.message || 'Payment refunded successfully.',
+        data: resData,
+      };
+    } catch (err: any) {
+      if (err instanceof BadRequestException || err instanceof ServiceUnavailableException) throw err;
+      this.logger.error(`[UddoktaPay Refund] Network exception: ${err?.message || err}`);
+      throw new ServiceUnavailableException('UddoktaPay refund API is temporarily unreachable.');
+    }
+  }
 }
+

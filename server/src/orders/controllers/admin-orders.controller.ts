@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Res } from '@nestjs/common';
+import type { Response } from 'express';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiProduces } from '@nestjs/swagger';
 import { OrdersService } from '../services/orders.service.js';
 import { UpdateOrderStatusDto } from '../dto/update-order-status.dto.js';
 import { OrderQueryDto } from '../dto/order-query.dto.js';
@@ -131,5 +132,21 @@ export class AdminOrdersController {
         : 'Order updated successfully',
       data,
     };
+  }
+
+  @Get(':id/invoice')
+  @ApiProduces('application/pdf')
+  @ApiOperation({ summary: 'Download full order tax invoice as PDF by Admin' })
+  async downloadInvoice(
+    @Param('id') id: string,
+    @Res() response: Response,
+  ) {
+    const { buffer, invoiceNumber } = await this.ordersService.generateInvoiceForAdmin(id);
+    response.setHeader('Content-Type', 'application/pdf');
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="Rongin-Libas-Invoice-${invoiceNumber.replace(/[^a-zA-Z0-9-_]/g, '')}.pdf"`,
+    );
+    response.send(buffer);
   }
 }

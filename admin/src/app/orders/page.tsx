@@ -100,6 +100,7 @@ function OrdersPageContent() {
   const [targetStatus, setTargetStatus] = useState<string | null>(null);
   const [showFlowGuide, setShowFlowGuide] = useState(false);
   const [isSyncingPayment, setIsSyncingPayment] = useState(false);
+  const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const handleCopy = (text: string, key: string) => {
@@ -107,6 +108,22 @@ function OrdersPageContent() {
     setCopiedKey(key);
     toast.success('Copied to clipboard');
     setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const handleDownloadInvoice = async (order: AdminOrder) => {
+    setIsDownloadingInvoice(true);
+    try {
+      await adminApi.orders.downloadInvoice(order.id, order.invoice?.invoiceNumber);
+      toast.success(
+        order.invoice?.invoiceNumber
+          ? `Invoice ${order.invoice.invoiceNumber} downloaded.`
+          : 'Invoice PDF downloaded.',
+      );
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to download invoice PDF');
+    } finally {
+      setIsDownloadingInvoice(false);
+    }
   };
 
   const handleSyncPayment = async (orderId: string) => {
@@ -133,6 +150,7 @@ function OrdersPageContent() {
                         id: p.id,
                         provider: p.provider,
                         providerOrderId: p.providerOrderId,
+                        providerInvoiceId: p.providerInvoiceId,
                         providerTransactionId: p.providerTransactionId,
                         amount: Number(p.amount) || 0,
                         currency: p.currency || 'BDT',
@@ -142,6 +160,19 @@ function OrdersPageContent() {
                         createdAt: p.createdAt,
                       }))
                     : prev.payments,
+                  invoice: updated.data.invoice
+                    ? {
+                        id: updated.data.invoice.id,
+                        invoiceNumber: updated.data.invoice.invoiceNumber,
+                        status: updated.data.invoice.status,
+                        subtotal: Number(updated.data.invoice.subtotal || 0),
+                        discountAmount: Number(updated.data.invoice.discountAmount || 0),
+                        deliveryCharge: Number(updated.data.invoice.deliveryCharge || 0),
+                        totalAmount: Number(updated.data.invoice.totalAmount || 0),
+                        currency: updated.data.invoice.currency || 'BDT',
+                        issuedAt: updated.data.invoice.issuedAt,
+                      }
+                    : prev.invoice,
                 }
               : null,
           );
@@ -917,6 +948,20 @@ function OrdersPageContent() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={() => handleDownloadInvoice(selectedOrderForInvoice)}
+                  disabled={isDownloadingInvoice}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#c79a45] hover:bg-[#b58b38] text-[#073a2d] text-xs font-bold uppercase tracking-wider transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+                  title="Download Customer Invoice PDF"
+                >
+                  {isDownloadingInvoice ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#073a2d]" />
+                  ) : (
+                    <FileText className="w-3.5 h-3.5 text-[#073a2d]" />
+                  )}
+                  <span>{selectedOrderForInvoice.invoice?.invoiceNumber ? 'Download Invoice' : 'Invoice PDF'}</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => printParcelSlip(selectedOrderForInvoice)}
                   className="flex items-center gap-1.5 px-4 py-1.5 bg-[#073a2d] hover:bg-[#0d4d3b] text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-xs cursor-pointer"
                   title="Print Slip for Courier (Steadfast/Pathao/RedX)"
@@ -1088,7 +1133,7 @@ function OrdersPageContent() {
                         onClick={() => handleSyncPayment(selectedOrderForInvoice.orderNumber || selectedOrderForInvoice.id)}
                         disabled={isSyncingPayment}
                         className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#deddd3] hover:border-[#073a2d] text-[10px] font-bold uppercase tracking-wider text-[#073a2d] transition-colors disabled:opacity-50 cursor-pointer"
-                        title="Query Waitmark Gateway live status for this order"
+                        title="Query Payment Gateway live status for this order"
                       >
                         <RefreshCw className={`w-3 h-3 ${isSyncingPayment ? 'animate-spin' : ''}`} />
                         <span>{isSyncingPayment ? 'Syncing...' : 'Check Gateway Status'}</span>
@@ -1309,6 +1354,146 @@ function OrdersPageContent() {
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* RONGIN LIBAS CUSTOMER INVOICE AUDIT & DETAILS */}
+                <div className="bg-[#fcfaf5] p-4 border border-[#deddd3] space-y-3">
+                  <div className="flex items-center justify-between border-b border-[#deddd3] pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-[#c79a45]" />
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-[#073a2d]">
+                        Rongin Libas Customer Invoice
+                      </h3>
+                      {selectedOrderForInvoice.invoice?.invoiceNumber && (
+                        <span className="font-mono text-[11px] font-bold text-[#073a2d] bg-white px-2 py-0.5 border border-[#deddd3]">
+                          {selectedOrderForInvoice.invoice.invoiceNumber}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {selectedOrderForInvoice.invoice ? (
+                        <span
+                          className={`px-2 py-0.5 text-[10px] font-bold uppercase border ${
+                            selectedOrderForInvoice.invoice.status === 'ISSUED'
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                              : 'bg-rose-50 text-rose-700 border-rose-300'
+                          }`}
+                        >
+                          Invoice: {selectedOrderForInvoice.invoice.status}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 text-[10px] font-bold uppercase border bg-amber-50 text-amber-800 border-amber-300">
+                          {selectedOrderForInvoice.paymentStatus === 'PAID'
+                            ? 'Ready for Issue'
+                            : 'Pending Settlement'}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadInvoice(selectedOrderForInvoice)}
+                        disabled={isDownloadingInvoice}
+                        className="flex items-center gap-1 px-2.5 py-1 bg-[#073a2d] hover:bg-[#0d4d3b] text-white text-[11px] font-bold uppercase tracking-wider transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+                      >
+                        {isDownloadingInvoice ? (
+                          <Loader2 className="w-3 h-3 animate-spin text-[#c79a45]" />
+                        ) : (
+                          <Download className="w-3 h-3 text-[#c79a45]" />
+                        )}
+                        <span>Download PDF</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div className="bg-white p-2.5 border border-[#deddd3]">
+                      <span className="text-[9px] uppercase font-bold text-[#717975] block">
+                        Invoice Number
+                      </span>
+                      <div className="flex items-center justify-between gap-1 mt-0.5">
+                        <span className="font-mono text-xs font-bold text-[#073a2d] truncate">
+                          {selectedOrderForInvoice.invoice?.invoiceNumber || '— (Awaiting settlement)'}
+                        </span>
+                        {selectedOrderForInvoice.invoice?.invoiceNumber && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleCopy(selectedOrderForInvoice.invoice!.invoiceNumber, 'invNum')
+                            }
+                            className="p-0.5 hover:bg-[#f0eee7] text-[#717975] hover:text-[#073a2d]"
+                            title="Copy Invoice Number"
+                          >
+                            {copiedKey === 'invNum' ? (
+                              <Check className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-2.5 border border-[#deddd3]">
+                      <span className="text-[9px] uppercase font-bold text-[#717975] block">
+                        Invoice Status
+                      </span>
+                      <span className="text-xs font-bold text-[#1b1c18] block mt-0.5">
+                        {selectedOrderForInvoice.invoice?.status || (selectedOrderForInvoice.paymentStatus === 'PAID' ? 'ISSUABLE' : 'PENDING')}
+                      </span>
+                    </div>
+
+                    <div className="bg-white p-2.5 border border-[#deddd3]">
+                      <span className="text-[9px] uppercase font-bold text-[#717975] block">
+                        Issued Date
+                      </span>
+                      <span className="text-xs font-semibold text-[#1b1c18] block mt-0.5">
+                        {selectedOrderForInvoice.invoice?.issuedAt
+                          ? new Date(selectedOrderForInvoice.invoice.issuedAt).toLocaleString()
+                          : selectedOrderForInvoice.paymentStatus === 'PAID'
+                          ? 'Available on Download'
+                          : 'Pending Payment'}
+                      </span>
+                    </div>
+
+                    <div className="bg-white p-2.5 border border-[#deddd3]">
+                      <span className="text-[9px] uppercase font-bold text-[#717975] block">
+                        Invoice Total
+                      </span>
+                      <span className="font-serif text-xs font-bold text-[#073a2d] block mt-0.5">
+                        ৳{(selectedOrderForInvoice.invoice?.totalAmount ?? selectedOrderForInvoice.amount).toLocaleString()} BDT
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-0.5 text-xs text-[#404945]">
+                    <div className="bg-white p-2 border border-[#deddd3]">
+                      <span className="text-[9px] uppercase font-bold text-[#717975] block">
+                        Order Number
+                      </span>
+                      <span className="font-mono text-xs font-semibold text-[#1b1c18]">
+                        {selectedOrderForInvoice.orderNumber || selectedOrderForInvoice.id}
+                      </span>
+                    </div>
+                    <div className="bg-white p-2 border border-[#deddd3]">
+                      <span className="text-[9px] uppercase font-bold text-[#717975] block">
+                        Payment Method & Status
+                      </span>
+                      <span className="text-xs font-semibold text-[#1b1c18]">
+                        {selectedOrderForInvoice.paymentMethod} • {selectedOrderForInvoice.paymentStatus || 'PENDING'}
+                      </span>
+                    </div>
+                    <div className="bg-white p-2 border border-[#deddd3]">
+                      <span className="text-[9px] uppercase font-bold text-[#717975] block">
+                        Gateway Reference
+                      </span>
+                      <span className="font-mono text-xs text-[#717975] truncate block">
+                        {selectedOrderForInvoice.payments?.[0]?.providerInvoiceId
+                          ? `Gateway Inv: ${selectedOrderForInvoice.payments[0].providerInvoiceId}`
+                          : selectedOrderForInvoice.paymentReference
+                          ? `Trx: ${selectedOrderForInvoice.paymentReference}`
+                          : '—'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Consignment Items Table with Real Photos */}
