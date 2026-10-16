@@ -37,6 +37,7 @@ export interface OrderConfirmationEmailOptions {
     webUrl?: string;
     orderDate?: string;
     hasInvoiceAttachment?: boolean;
+    invoiceNumber?: string | null;
 }
 export declare function renderOrderConfirmationEmail(options: OrderConfirmationEmailOptions): {
     subject: string;

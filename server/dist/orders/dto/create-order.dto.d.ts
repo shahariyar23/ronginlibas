@@ -18,7 +18,7 @@ export declare class ShippingAddressDto {
 export declare class CreateOrderDto {
     items: CreateOrderItemDto[];
     shippingAddress: ShippingAddressDto;
-    paymentMethod?: 'COD' | 'BKASH' | 'NAGAD' | 'CARD' | 'WAITMARK_PAY' | 'UDDOKTAPAY';
+    paymentMethod?: 'COD' | 'BKASH' | 'NAGAD' | 'CARD' | 'UDDOKTAPAY';
     couponCode?: string;
     customerNotes?: string;
     guestName?: string;

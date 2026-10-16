@@ -8,6 +8,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { appConfig } from '../config/app/app.config.js';
 import { databaseConfig } from '../config/database/database.config.js';
 import { validateEnv } from '../config/env/env.validation.js';
@@ -51,6 +52,7 @@ AppModule = __decorate([
                 validate: validateEnv,
             }),
             ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 120 }]),
+            ScheduleModule.forRoot(),
             PrismaModule,
             AuthModule,
             UsersModule,

@@ -673,11 +673,11 @@ describe('OrdersService.createByAdmin', () => {
   });
 
   describe('Unpaid Order Expiration & Inventory Release', () => {
-    it('cancels expired unpaid WAITMARK_PAY orders and releases reserved stock back to variants', async () => {
+    it('cancels expired unpaid online payment orders and releases reserved stock back to variants', async () => {
       const expiredOrder = {
         id: 'ord-expired-1',
         orderNumber: '#RL100300',
-        paymentMethod: 'WAITMARK_PAY',
+        paymentMethod: 'UDDOKTAPAY',
         status: OrderStatus.PENDING,
         paymentStatus: 'PENDING',
         createdAt: new Date(Date.now() - 40 * 60 * 1000), // 40 minutes old

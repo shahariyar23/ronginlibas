@@ -189,6 +189,17 @@ export interface AdminOrder {
   paidAmount?: number;
   manualDiscountAmount?: number;
   payments?: AdminPaymentAttempt[];
+  invoice?: {
+    id: string;
+    invoiceNumber: string;
+    status: 'ISSUED' | 'VOID' | string;
+    subtotal?: number;
+    discountAmount?: number;
+    deliveryCharge?: number;
+    totalAmount: number;
+    currency?: string;
+    issuedAt?: string;
+  } | null;
 }
 
 export interface InventoryItem {

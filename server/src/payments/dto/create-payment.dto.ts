@@ -7,9 +7,9 @@ export class CreatePaymentDto {
   @MaxLength(60)
   orderNumber: string;
 
-  @ApiProperty({ enum: ['BKASH', 'NAGAD', 'CARD', 'UDDOKTAPAY', 'WAITMARK_PAY'] })
-  @IsIn(['BKASH', 'NAGAD', 'CARD', 'UDDOKTAPAY', 'WAITMARK_PAY'])
-  provider: 'BKASH' | 'NAGAD' | 'CARD' | 'UDDOKTAPAY' | 'WAITMARK_PAY';
+  @ApiProperty({ enum: ['BKASH', 'NAGAD', 'CARD', 'UDDOKTAPAY'] })
+  @IsIn(['BKASH', 'NAGAD', 'CARD', 'UDDOKTAPAY'])
+  provider: 'BKASH' | 'NAGAD' | 'CARD' | 'UDDOKTAPAY';
 
   @ApiPropertyOptional({ description: 'Contact phone for guest order access' })
   @IsString()

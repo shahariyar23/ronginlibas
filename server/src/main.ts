@@ -65,7 +65,7 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'X-Waitmark-Signature', 'x-waitmark-signature', 'X-Visitor-Id', 'x-visitor-id'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'RT-UDDOKTAPAY-API-KEY', 'rt-uddoktapay-api-key', 'X-Visitor-Id', 'x-visitor-id'],
   });
 
   // Swagger Documentation Setup

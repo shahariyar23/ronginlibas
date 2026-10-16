@@ -132,21 +132,6 @@ class EnvironmentVariables {
   @IsOptional()
   PATHAO_GRANT_TYPE?: string;
 
-  @IsString()
-  @IsOptional()
-  WAITMARK_PUBLIC_KEY?: string;
-
-  @IsString()
-  @IsOptional()
-  WAITMARK_SECRET_KEY?: string;
-
-  @IsString()
-  @IsOptional()
-  WAITMARK_CHECKOUT_URL?: string;
-
-  @IsString()
-  @IsOptional()
-  WAITMARK_SUCCESS_URL?: string;
 
   @IsString()
   @IsOptional()
@@ -162,11 +147,27 @@ class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
+  UDDOKTAPAY_ENV?: string;
+
+  @IsString()
+  @IsOptional()
   UDDOKTAPAY_BASE_URL?: string;
 
   @IsString()
   @IsOptional()
   UDDOKTAPAY_API_KEY?: string;
+
+  @IsString()
+  @IsOptional()
+  UDDOKTAPAY_WEBHOOK_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  UDDOKTAPAY_SUCCESS_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  UDDOKTAPAY_CANCEL_URL?: string;
 
   @IsString()
   @IsOptional()

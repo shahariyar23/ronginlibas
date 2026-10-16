@@ -16,10 +16,11 @@ export function renderOrderConfirmationEmail(options) {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
-    }), hasInvoiceAttachment = true, } = options;
+    }), hasInvoiceAttachment = true, invoiceNumber, } = options;
     const displayName = customerName?.trim() || shippingAddress?.fullName?.trim() || 'Valued Patron';
     const subject = `Order Received: ${orderNumber} (Pending Confirmation) | Rongin Libas`;
     const previewText = `Your order ${orderNumber} has been received and is pending confirmation. Total: ${formatCurrency(totalAmount)}.`;
+    const invFilename = invoiceNumber ? invoiceNumber : orderNumber.replace('#', '');
     const discountNum = typeof discountAmount === 'number' ? discountAmount : parseFloat(discountAmount) || 0;
     const addressLines = [
         shippingAddress?.addressLine1,
@@ -89,7 +90,7 @@ export function renderOrderConfirmationEmail(options) {
               Official Tax Invoice Attached
             </div>
             <div style="font-size: 12px; color: #49544e; margin-top: 3px; line-height: 1.5;">
-              Your official A4 PDF tax invoice (<strong>Rongin-Libas-Invoice-${escapeHtml(orderNumber.replace('#', ''))}.pdf</strong>) has been generated and attached to this email for your personal accounting and delivery inspection.
+              Your official A4 PDF tax invoice (<strong>Rongin-Libas-Invoice-${escapeHtml(invFilename)}.pdf</strong>) has been generated and attached to this email for your personal accounting and delivery inspection.
             </div>
           </td>
         </tr>

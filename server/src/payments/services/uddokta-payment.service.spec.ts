@@ -13,6 +13,7 @@ describe('UddoktaPaymentService', () => {
   let mockPrisma: any;
   let mockConfig: any;
   let mockOrdersService: any;
+  let mockInvoicesService: any;
   let mockGa4Service: any;
 
   const mockApiKey = 'test_uddoktapay_api_key_2026';
@@ -63,6 +64,24 @@ describe('UddoktaPaymentService', () => {
       dispatchConfirmationNotificationForPaidOrder: vi.fn().mockResolvedValue(undefined),
     };
 
+    mockInvoicesService = {
+      createInvoiceForOrderInTx: vi.fn().mockResolvedValue({
+        id: 'inv-1',
+        invoiceNumber: 'RL-INV-2026-000001',
+        orderId: 'ord-123',
+        status: 'ISSUED',
+        totalAmount: 2500,
+      }),
+      getOrCreateInvoiceForOrder: vi.fn().mockResolvedValue({
+        id: 'inv-1',
+        invoiceNumber: 'RL-INV-2026-000001',
+        orderId: 'ord-123',
+        status: 'ISSUED',
+        totalAmount: 2500,
+      }),
+      findByOrderIdOrNumber: vi.fn().mockResolvedValue(null),
+    };
+
     mockGa4Service = {
       sendPurchaseEvent: vi.fn().mockResolvedValue(undefined),
     };
@@ -71,6 +90,7 @@ describe('UddoktaPaymentService', () => {
       mockPrisma as any,
       mockConfig as any,
       mockOrdersService as any,
+      mockInvoicesService as any,
       mockGa4Service as any,
     );
   });
@@ -82,11 +102,11 @@ describe('UddoktaPaymentService', () => {
       expect(service.getBaseUrl()).toBe(mockBaseUrl);
     });
 
-    it('defaults base URL to paymently when not explicitly configured', () => {
+    it('defaults base URL to sandbox when not explicitly configured', () => {
       mockConfig.get.mockImplementation((key: string) =>
         key === 'UDDOKTAPAY_API_KEY' ? mockApiKey : undefined,
       );
-      expect(service.getBaseUrl()).toBe('https://ronginlibas.paymently.io/api');
+      expect(service.getBaseUrl()).toBe('https://sandbox.uddoktapay.com');
     });
 
     it('throws ServiceUnavailableException during initiation if API key is missing', async () => {
@@ -598,6 +618,138 @@ describe('UddoktaPaymentService', () => {
 
       expect(customService.getApiEndpoint('checkout-v2')).toBe('https://ronginlibas.paymently.io/api/checkout-v2');
       expect(customService.getApiEndpoint('verify-payment')).toBe('https://ronginlibas.paymently.io/api/verify-payment');
+    });
+  });
+
+  describe('Invoice Association & Auto-Reconciliation', () => {
+    it('associates invoiceId with an existing pending payment attempt', async () => {
+      mockPrisma.payment.findFirst.mockResolvedValue({ id: 'pmt-1', providerOrderId: 'UPAY-RL100' });
+      mockPrisma.payment.update.mockResolvedValue({ id: 'pmt-1', providerInvoiceId: 'INV-NEW-999' });
+
+      const associated = await service.recordInvoiceIdIfPending('#RL100', 'INV-NEW-999');
+      expect(associated).toBe(true);
+      expect(mockPrisma.payment.update).toHaveBeenCalledWith({
+        where: { id: 'pmt-1' },
+        data: { providerInvoiceId: 'INV-NEW-999' },
+      });
+    });
+
+    it('resolves invoice_id from order hint when invoiceId is empty', async () => {
+      mockPrisma.payment.findFirst.mockResolvedValue({
+        id: 'pmt-1',
+        providerInvoiceId: 'INV-RESOLVED-123',
+        amount: 2500,
+        status: PaymentStatus.PENDING,
+        order: { id: 'ord-123', orderNumber: '#RL100200', totalAmount: '2500.00', items: [] },
+      });
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          status: 'COMPLETED',
+          invoice_id: 'INV-RESOLVED-123',
+          amount: '2500.00',
+          transaction_id: 'TRX-123',
+        }),
+      } as any);
+
+      const result = await service.verifyPayment('', '#RL100200');
+      expect(result.isPaid).toBe(true);
+      expect(result.orderNumber).toBe('#RL100200');
+    });
+
+    it('reconciles pending payments created within 2 hours and settles completed payments', async () => {
+      mockPrisma.payment.findMany = vi.fn().mockResolvedValue([
+        {
+          id: 'pmt-sweep-1',
+          providerInvoiceId: 'INV-SWEEP-1',
+          amount: 1500,
+          status: PaymentStatus.PENDING,
+          order: { id: 'ord-sweep-1', orderNumber: '#RL2001', totalAmount: '1500.00', items: [] },
+        },
+      ]);
+
+      mockPrisma.payment.findFirst.mockResolvedValue({
+        id: 'pmt-sweep-1',
+        providerInvoiceId: 'INV-SWEEP-1',
+        amount: 1500,
+        status: PaymentStatus.PENDING,
+        order: { id: 'ord-sweep-1', orderNumber: '#RL2001', totalAmount: '1500.00', items: [] },
+      });
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          status: 'COMPLETED',
+          invoice_id: 'INV-SWEEP-1',
+          amount: '1500.00',
+          transaction_id: 'TRX-SWEEP-1',
+        }),
+      } as any);
+
+      const res = await service.reconcilePendingPayments();
+      expect(res.checked).toBe(1);
+      expect(res.settled).toBe(1);
+      expect(mockOrdersService.dispatchConfirmationNotificationForPaidOrder).toHaveBeenCalledWith('ord-sweep-1');
+    });
+  });
+
+  describe('Sandbox Environment & Refund API', () => {
+    it('detects sandbox mode when UDDOKTAPAY_ENV is sandbox or unset', () => {
+      mockConfig.get.mockImplementation((key: string) => {
+        if (key === 'UDDOKTAPAY_ENV') return 'sandbox';
+        return undefined;
+      });
+      expect(service.getEnvironment()).toBe('sandbox');
+      expect(service.isSandbox()).toBe(true);
+      expect(service.getBaseUrl()).toBe('https://sandbox.uddoktapay.com');
+    });
+
+    it('detects production mode when UDDOKTAPAY_ENV is production', () => {
+      mockConfig.get.mockImplementation((key: string) => {
+        if (key === 'UDDOKTAPAY_ENV') return 'production';
+        return undefined;
+      });
+      expect(service.getEnvironment()).toBe('production');
+      expect(service.isSandbox()).toBe(false);
+      expect(service.getBaseUrl()).toBe('https://ronginlibas.paymently.io/api');
+    });
+
+    it('processes refund via POST /api/refund-payment and updates database to REFUNDED', async () => {
+      mockConfig.get.mockImplementation((key: string) => {
+        if (key === 'UDDOKTAPAY_API_KEY') return mockApiKey;
+        if (key === 'UDDOKTAPAY_BASE_URL') return 'https://sandbox.uddoktapay.com';
+        return undefined;
+      });
+
+      mockPrisma.payment.findFirst.mockResolvedValue({
+        id: 'pmt-refund-1',
+        providerInvoiceId: 'INV-REFUND-1',
+        orderId: 'ord-refund-1',
+        amount: 2500,
+        status: PaymentStatus.PAID,
+      });
+
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          status: true,
+          message: 'Payment refunded successfully',
+        }),
+      } as any);
+
+      const res = await service.refundPayment('INV-REFUND-1', 2500, 'Customer return');
+      expect(res.success).toBe(true);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://sandbox.uddoktapay.com/api/refund-payment',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'RT-UDDOKTAPAY-API-KEY': mockApiKey,
+          }),
+          body: JSON.stringify({ invoice_id: 'INV-REFUND-1', amount: 2500, reason: 'Customer return' }),
+        }),
+      );
     });
   });
 });

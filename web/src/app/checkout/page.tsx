@@ -11,7 +11,6 @@ import {
   getCustomerAddresses,
   CustomerAddress,
   initiateUddoktaPaymentApi,
-  initiateWaitmarkPaymentApi,
   cancelOrderApi,
 } from '@/lib/api';
 import { analytics } from '@/lib/analytics/client';
@@ -134,7 +133,7 @@ export default function CheckoutPage() {
     [cartId, formData.email, formData.phone, formData.fullName],
   );
 
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'COD' | 'UDDOKTAPAY' | 'WAITMARK_PAY'>('COD');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'COD' | 'UDDOKTAPAY'>('COD');
   const [couponInput, setCouponInput] = useState('');
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [updatingKey, setUpdatingKey] = useState<string | null>(null);
@@ -534,7 +533,7 @@ export default function CheckoutPage() {
       setTrackingToken(order.guestTrackingToken || '');
 
       // Only track purchase if the order state is immediately confirmed (e.g. COD)
-      // Pending online payments via Waitmark Pay are tracked upon successful payment confirmation at /payment/result
+      // Pending online payments via UddoktaPay are tracked upon successful payment confirmation at /payment/result
       if (selectedPaymentMethod === 'COD') {
         analytics.trackPurchase({
           pagePath: '/checkout',
@@ -555,7 +554,7 @@ export default function CheckoutPage() {
             currency: 'BDT',
           })),
         });
-      } else if (selectedPaymentMethod === 'UDDOKTAPAY' || selectedPaymentMethod === 'WAITMARK_PAY') {
+      } else if (selectedPaymentMethod === 'UDDOKTAPAY') {
         try {
           sessionStorage.setItem(
             `rl_pending_order_items_${order.orderNumber}`,
@@ -576,23 +575,15 @@ export default function CheckoutPage() {
         }
       }
 
-      if (selectedPaymentMethod === 'UDDOKTAPAY' || selectedPaymentMethod === 'WAITMARK_PAY') {
-        const isUddokta = selectedPaymentMethod === 'UDDOKTAPAY';
-        const gatewayName = isUddokta ? 'UddoktaPay' : 'Waitmark Pay';
+      if (selectedPaymentMethod === 'UDDOKTAPAY') {
         setIsRedirectingToGateway(true);
-        toast.info(`Order placed! Initializing ${gatewayName} checkout...`);
+        toast.info(`Order placed! Initializing UddoktaPay checkout...`);
         try {
-          const paymentSession = isUddokta
-            ? await initiateUddoktaPaymentApi({
-                orderId: order.id,
-                phone: formData.phone.replace(/\s/g, ''),
-                trackingToken: order.guestTrackingToken || undefined,
-              })
-            : await initiateWaitmarkPaymentApi({
-                orderId: order.id,
-                phone: formData.phone.replace(/\s/g, ''),
-                trackingToken: order.guestTrackingToken || undefined,
-              });
+          const paymentSession = await initiateUddoktaPaymentApi({
+            orderId: order.id,
+            phone: formData.phone.replace(/\s/g, ''),
+            trackingToken: order.guestTrackingToken || undefined,
+          });
 
           const targetCheckoutUrl =
             paymentSession?.checkoutUrl || (paymentSession as any)?.data?.checkoutUrl;
@@ -619,7 +610,7 @@ export default function CheckoutPage() {
             try {
               paymentWindow = window.open(
                 targetCheckoutUrl,
-                isUddokta ? 'UddoktaPayWindow' : 'WaitmarkPayWindow',
+                'UddoktaPayWindow',
                 `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`,
               );
             } catch {
@@ -1341,36 +1332,10 @@ export default function CheckoutPage() {
                     </div>
                   </label>
 
-                  {/* Waitmark Pay */}
-                  <label
-                    onClick={() => setSelectedPaymentMethod('WAITMARK_PAY')}
-                    className={`p-4 border flex items-start gap-3 cursor-pointer transition-all ${
-                      selectedPaymentMethod === 'WAITMARK_PAY'
-                        ? 'border-[#073a2d] bg-[#f0eee7]'
-                        : 'border-[#deddd3] bg-white hover:border-[#073a2d]/50'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      checked={selectedPaymentMethod === 'WAITMARK_PAY'}
-                      onChange={() => setSelectedPaymentMethod('WAITMARK_PAY')}
-                      className="mt-0.5 accent-[#073a2d]"
-                    />
-                    <div>
-                      <div className="flex items-center gap-1.5 font-sans font-bold text-xs uppercase text-[#073a2d]">
-                        <CreditCard className="w-4 h-4 text-[#c79a45]" />
-                        <span>Waitmark Pay (Alternative Online)</span>
-                      </div>
-                      <p className="text-[11px] text-[#69726d] mt-1 font-sans">
-                        Alternative digital gateway for debit/credit cards and mobile wallets.
-                      </p>
-                    </div>
-                  </label>
                 </div>
                 <div className="mt-4 flex items-center gap-2 text-xs text-[#69726d]">
                   <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
-                  <span>Both Cash on Delivery and 256-bit encrypted Online Payments via UddoktaPay & Waitmark Pay are supported.</span>
+                  <span>Both Cash on Delivery and 256-bit encrypted Online Payments via UddoktaPay are supported.</span>
                 </div>
               </div>
 
@@ -1415,7 +1380,7 @@ export default function CheckoutPage() {
         )}
       </div>
 
-      {/* Waitmark Pay Immediate Redirect Screen */}
+      {/* UddoktaPay Immediate Redirect Screen */}
       {isRedirectingToGateway && (
         <div className="fixed inset-0 z-50 bg-[#073a2d]/95 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white border-2 border-[#c79a45] max-w-md w-full p-8 text-center space-y-5 shadow-2xl animate-in zoom-in-95 duration-200">
@@ -1428,10 +1393,10 @@ export default function CheckoutPage() {
                 Rongin Libas Atelier
               </span>
               <h3 className="font-serif text-2xl text-[#1b1c18]">
-                Connecting to {selectedPaymentMethod === 'UDDOKTAPAY' ? 'UddoktaPay' : 'Waitmark Pay'}
+                Connecting to UddoktaPay
               </h3>
               <p className="text-xs text-[#717975] leading-relaxed">
-                Order <strong>{orderId}</strong> created successfully. Transferring you to {selectedPaymentMethod === 'UDDOKTAPAY' ? 'UddoktaPay' : 'Waitmark Pay'} secure gateway for cards, bKash & mobile wallets.
+                Order <strong>{orderId}</strong> created successfully. Transferring you to UddoktaPay secure gateway for cards, bKash & mobile wallets.
               </p>
             </div>
 
@@ -1520,14 +1485,6 @@ export default function CheckoutPage() {
           </p>
 
           <div className="pt-4 flex flex-col gap-2">
-            {selectedPaymentMethod === 'WAITMARK_PAY' && (
-              <a
-                href={`/payment/result?orderId=${encodeURIComponent(orderId)}${formData.phone ? `&phone=${encodeURIComponent(formData.phone)}` : ''}`}
-                className="w-full inline-flex items-center justify-center bg-purple-800 hover:bg-purple-900 text-white font-sans uppercase tracking-wider text-xs h-11 font-bold transition-colors"
-              >
-                Complete Payment via Waitmark Pay →
-              </a>
-            )}
             <Button
               onClick={() => {
                 setOrderConfirmed(false);

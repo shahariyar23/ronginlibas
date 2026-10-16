@@ -17,7 +17,6 @@ import { Button } from '@/components/ui/button';
 import {
   getPaymentStatusApi,
   initiateUddoktaPaymentApi,
-  initiateWaitmarkPaymentApi,
   verifyUddoktaPaymentApi,
   cancelOrderApi,
   OrderPaymentStatusResult,
@@ -48,7 +47,7 @@ function PaymentResultContent() {
           totalAmount: 0,
           paidAmount: 0,
           paymentReference: trxId || null,
-          paymentMethod: 'WAITMARK_PAY',
+          paymentMethod: 'UDDOKTAPAY',
           payments: [],
         }
       : null,
@@ -167,24 +166,16 @@ function PaymentResultContent() {
     if (!targetOrderId) return;
     setIsRetrying(true);
     try {
-      const isWaitmark = statusData?.paymentMethod === 'WAITMARK_PAY';
-      const res = isWaitmark
-        ? await initiateWaitmarkPaymentApi({
-            orderId: targetOrderId,
-            phone: phone || undefined,
-            trackingToken: trackingToken || undefined,
-          })
-        : await initiateUddoktaPaymentApi({
-            orderId: targetOrderId,
-            phone: phone || undefined,
-            trackingToken: trackingToken || undefined,
-          });
+      const res = await initiateUddoktaPaymentApi({
+        orderId: targetOrderId,
+        phone: phone || undefined,
+        trackingToken: trackingToken || undefined,
+      });
 
       const checkoutUrl = (res as any)?.checkoutUrl || (res as any)?.data?.checkoutUrl;
 
       if (checkoutUrl) {
-        const gatewayLabel = isWaitmark ? 'Waitmark Pay' : 'UddoktaPay';
-        toast.info(`Redirecting to ${gatewayLabel} secure gateway...`);
+        toast.info('Redirecting to UddoktaPay secure gateway...');
         window.location.assign(checkoutUrl);
       }
     } catch (err: any) {
@@ -236,7 +227,7 @@ function PaymentResultContent() {
       orderNumber,
       currency: 'BDT',
       value: Number(statusData.paidAmount || statusData.totalAmount || 0),
-      paymentMethod: statusData.paymentMethod || 'WAITMARK_PAY',
+      paymentMethod: statusData.paymentMethod || 'UDDOKTAPAY',
       items,
     });
   }, [isPaid, statusData, orderId]);
@@ -386,8 +377,8 @@ function PaymentResultContent() {
               <span className="inline-block bg-amber-100 text-amber-800 border border-amber-300 text-[11px] font-sans font-bold px-3 py-1 uppercase tracking-wider rounded-full">
                 Verification in Progress
               </span>
-              <p className="text-xs text-[#525b55] pt-1">
-                We are confirming your payment authorization with the payment gateway. This usually takes just a few moments.
+              <p className="text-xs text-[#525b55] pt-1 leading-relaxed">
+                We are actively verifying your payment with the gateway. Your order and artisan items remain safely reserved for up to 2 hours. As soon as verification clears, your order will automatically be confirmed and the official invoice will be emailed to your inbox.
               </p>
             </div>
 
@@ -422,11 +413,7 @@ function PaymentResultContent() {
                 className="w-full bg-[#073a2d] hover:bg-[#0d4d3b] text-white text-xs font-sans uppercase font-bold py-3"
               >
                 <CreditCard className="w-3.5 h-3.5 mr-2" />
-                {isRetrying
-                  ? 'Initiating...'
-                  : statusData?.paymentMethod === 'WAITMARK_PAY'
-                  ? 'Pay with Waitmark Pay'
-                  : 'Pay with UddoktaPay'}
+                {isRetrying ? 'Initiating...' : 'Pay with UddoktaPay'}
               </Button>
               {pollCount >= MAX_POLLS && (
                 <Button

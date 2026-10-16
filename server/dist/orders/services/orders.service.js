@@ -22,6 +22,7 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { SettingsService } from '../../settings/services/settings.service.js';
 import { MailService } from '../../mail/mail.service.js';
 import { Ga4MeasurementProtocolService } from '../../analytics/services/ga4-measurement-protocol.service.js';
+import { InvoicesService } from './invoices.service.js';
 import { canMarkOrderDelivered, canProcessReturn, normalizePathaoStatus, getCustomerSafeCourierStatus, } from '../../pathao/status/courier-status.types.js';
 function roundCurrency(val) {
     return Math.round((val + Number.EPSILON) * 100) / 100;
@@ -79,6 +80,15 @@ const customerOrderSelect = {
     createdAt: true,
     updatedAt: true,
     items: { select: orderItemCustomerSelect },
+    invoice: {
+        select: {
+            id: true,
+            invoiceNumber: true,
+            status: true,
+            issuedAt: true,
+            totalAmount: true,
+        },
+    },
     trackingEvents: {
         where: { customerVisible: true },
         select: { status: true, description: true, createdAt: true },
@@ -110,16 +120,18 @@ let OrdersService = OrdersService_1 = class OrdersService {
     settingsService;
     mailService;
     ga4Service;
+    invoicesService;
     logger = new Logger(OrdersService_1.name);
-    constructor(prisma, settingsService, mailService, ga4Service) {
+    constructor(prisma, settingsService, mailService, ga4Service, invoicesService) {
         this.prisma = prisma;
         this.settingsService = settingsService;
         this.mailService = mailService;
         this.ga4Service = ga4Service;
+        this.invoicesService = invoicesService;
     }
     async findAll(query) {
         try {
-            await this.cancelExpiredUnpaidOrders(2);
+            await this.cancelExpiredUnpaidOrders(120);
         }
         catch (e) {
             this.logger.warn(`Failed to auto-clean expired unpaid orders: ${e?.message}`);
@@ -194,6 +206,15 @@ let OrdersService = OrdersService_1 = class OrdersService {
                         },
                         orderBy: { createdAt: 'desc' },
                     },
+                    invoice: {
+                        select: {
+                            id: true,
+                            invoiceNumber: true,
+                            status: true,
+                            issuedAt: true,
+                            totalAmount: true,
+                        },
+                    },
                     items: {
                         select: {
                             id: true,
@@ -245,6 +266,14 @@ let OrdersService = OrdersService_1 = class OrdersService {
                 payments: {
                     orderBy: { createdAt: 'desc' },
                 },
+                invoice: {
+                    include: {
+                        items: true,
+                        payments: {
+                            orderBy: { createdAt: 'desc' },
+                        },
+                    },
+                },
                 trackingEvents: { orderBy: { createdAt: 'asc' } },
             },
         });
@@ -255,28 +284,7 @@ let OrdersService = OrdersService_1 = class OrdersService {
     }
     async findCustomerOrders(customerId, query) {
         try {
-            const uncompletedOrders = await this.prisma.order.findMany({
-                where: {
-                    customerId,
-                    paymentMethod: { in: [PaymentMethod.WAITMARK_PAY, PaymentMethod.UDDOKTAPAY] },
-                    paymentStatus: { in: [PaymentStatus.PENDING, PaymentStatus.FAILED] },
-                    status: { not: OrderStatus.CANCELLED },
-                },
-                include: { items: true },
-            });
-            for (const uncompleted of uncompletedOrders) {
-                try {
-                    await this.prisma.$transaction(async (tx) => {
-                        await this.releaseOrderStockInTx(tx, uncompleted, 'Customer checked orders without completed online payment - stock released:');
-                        await tx.order.delete({ where: { id: uncompleted.id } });
-                    });
-                    this.logger.log(`[Orders] Auto-cleaned abandoned online payment order ${uncompleted.orderNumber} for customer ${customerId}`);
-                }
-                catch (cleanErr) {
-                    this.logger.warn(`Failed to auto-clean uncompleted order ${uncompleted.orderNumber}: ${cleanErr?.message}`);
-                }
-            }
-            await this.cancelExpiredUnpaidOrders(2);
+            await this.cancelExpiredUnpaidOrders(120);
         }
         catch (e) {
             this.logger.warn(`Failed to auto-clean expired unpaid orders: ${e?.message}`);
@@ -285,12 +293,6 @@ let OrdersService = OrdersService_1 = class OrdersService {
         const limit = query.limit ?? 20;
         const where = {
             customerId,
-            NOT: {
-                AND: [
-                    { paymentMethod: { in: [PaymentMethod.WAITMARK_PAY, PaymentMethod.UDDOKTAPAY] } },
-                    { paymentStatus: { in: [PaymentStatus.PENDING, PaymentStatus.FAILED] } },
-                ],
-            },
         };
         const [items, total] = await Promise.all([
             this.prisma.order.findMany({
@@ -344,7 +346,7 @@ let OrdersService = OrdersService_1 = class OrdersService {
             });
         }
     }
-    async cancelExpiredUnpaidOrders(timeoutMinutes = 2) {
+    async cancelExpiredUnpaidOrders(timeoutMinutes = 120) {
         const cutoff = new Date(Date.now() - timeoutMinutes * 60 * 1000);
         const expiredOrders = await this.prisma.order.findMany({
             where: {
@@ -661,7 +663,7 @@ let OrdersService = OrdersService_1 = class OrdersService {
             throw new BadRequestException('Guest checkout requires a name and contact phone');
         }
         const paymentMethod = dto.paymentMethod ?? 'COD';
-        if (paymentMethod !== 'COD' && paymentMethod !== 'WAITMARK_PAY' && paymentMethod !== 'UDDOKTAPAY') {
+        if (paymentMethod !== 'COD' && paymentMethod !== 'UDDOKTAPAY') {
             throw new ServiceUnavailableException(`Online payment method ${paymentMethod} is not currently available`);
         }
         const variantIds = dto.items.map((item) => item.variantId);
@@ -1324,16 +1326,26 @@ let OrdersService = OrdersService_1 = class OrdersService {
             productImage: item.productImage || item.product?.images?.[0]?.url,
         }));
         let invoiceBuffer;
+        let customerInvoiceNumber;
         try {
-            const orderForInvoice = {
-                ...order,
-                guestName: customerName,
-                guestPhone: shipping.phone || order.guestPhone,
-                guestEmail: customerEmail,
-            };
-            invoiceBuffer = await this.generateInvoiceBuffer(orderForInvoice);
-            if (invoiceBuffer) {
-                this.logger.log(`Official PDF invoice generated for order confirmation: ${order.orderNumber} (${invoiceBuffer.length} bytes)`);
+            let invoice = await this.invoicesService?.findByOrderIdOrNumber(order.id);
+            if (!invoice && order.paymentMethod === 'COD' && order.status !== 'CANCELLED') {
+                if (this.invoicesService) {
+                    invoice = await this.invoicesService.getOrCreateInvoiceForOrder(order.id);
+                }
+            }
+            if (invoice) {
+                customerInvoiceNumber = invoice.invoiceNumber;
+                const orderForInvoice = {
+                    ...order,
+                    guestName: customerName,
+                    guestPhone: shipping.phone || order.guestPhone,
+                    guestEmail: customerEmail,
+                };
+                invoiceBuffer = await this.generateInvoiceBuffer(orderForInvoice, invoice);
+                if (invoiceBuffer) {
+                    this.logger.log(`Official PDF invoice generated for order confirmation: ${order.orderNumber} [${invoice.invoiceNumber}] (${invoiceBuffer.length} bytes)`);
+                }
             }
         }
         catch (err) {
@@ -1342,6 +1354,7 @@ let OrdersService = OrdersService_1 = class OrdersService {
         await this.mailService.sendOrderConfirmationEmail({
             email: customerEmail,
             orderNumber: order.orderNumber,
+            invoiceNumber: customerInvoiceNumber,
             customerName,
             items,
             subtotal: Number(order.subtotal),
@@ -1550,10 +1563,51 @@ let OrdersService = OrdersService_1 = class OrdersService {
     }
     async generateInvoice(orderNumber, customerId, phone, trackingToken) {
         const order = await this.findOrderForAccess(orderNumber, customerId, phone, trackingToken);
-        return this.generateInvoiceBuffer(order);
+        let invoice = await this.invoicesService?.findByOrderIdOrNumber(order.id);
+        if (!invoice) {
+            if (order.paymentStatus === PaymentStatus.PAID ||
+                (order.paymentMethod === 'COD' && order.status !== OrderStatus.CANCELLED)) {
+                if (this.invoicesService) {
+                    invoice = await this.invoicesService.getOrCreateInvoiceForOrder(order.id);
+                }
+            }
+            else {
+                throw new BadRequestException(`Customer invoice has not been issued yet. Invoices for online payments are issued after payment verification. Current payment status: ${order.paymentStatus}`);
+            }
+        }
+        const buffer = await this.generateInvoiceBuffer(order, invoice);
+        return {
+            buffer,
+            invoiceNumber: invoice?.invoiceNumber || order.orderNumber,
+        };
     }
-    async generateInvoiceBuffer(order) {
-        const itemThumbnails = await Promise.all((order.items || []).map((item) => {
+    async generateInvoiceForAdmin(id) {
+        const order = await this.findById(id);
+        let invoice = await this.invoicesService?.findByOrderIdOrNumber(order.id);
+        if (!invoice) {
+            if (order.paymentStatus === PaymentStatus.PAID ||
+                (order.paymentMethod === 'COD' && order.status !== OrderStatus.CANCELLED)) {
+                if (this.invoicesService) {
+                    invoice = await this.invoicesService.getOrCreateInvoiceForOrder(order.id);
+                }
+            }
+            else {
+                throw new BadRequestException(`Customer invoice has not been issued yet for order ${order.orderNumber}. Online orders require payment verification before an invoice is issued.`);
+            }
+        }
+        const buffer = await this.generateInvoiceBuffer(order, invoice);
+        return {
+            buffer,
+            invoiceNumber: invoice?.invoiceNumber || order.orderNumber,
+        };
+    }
+    async generateInvoiceBuffer(order, invoice) {
+        const invoiceRecord = invoice || order.invoice;
+        const invoiceNumber = invoiceRecord?.invoiceNumber || order.orderNumber;
+        const invoiceItems = invoiceRecord?.items && invoiceRecord.items.length > 0
+            ? invoiceRecord.items
+            : order.items || [];
+        const itemThumbnails = await Promise.all(invoiceItems.map((item) => {
             const imgUrl = item.productImage || item.product?.images?.[0]?.url;
             return fetchThumbnailBuffer(imgUrl);
         }));
@@ -1565,9 +1619,9 @@ let OrdersService = OrdersService_1 = class OrdersService {
                     margin: 36,
                     autoFirstPage: true,
                     info: {
-                        Title: `Invoice ${order.orderNumber} - Rongin Libas`,
+                        Title: `Invoice ${invoiceNumber} - Rongin Libas`,
                         Author: 'Rongin Libas Haute Couture Menswear',
-                        Subject: `Official Tax Invoice & Consignment Bill for ${order.orderNumber}`,
+                        Subject: `Official Tax Invoice & Consignment Bill for ${invoiceNumber} (Order: ${order.orderNumber})`,
                     },
                 });
                 const chunks = [];
@@ -1611,7 +1665,7 @@ let OrdersService = OrdersService_1 = class OrdersService {
                     .fontSize(6.8)
                     .font('Helvetica')
                     .text('Hotline: +880 1700-000000  •  orders@ronginlibas.com  •  BIN: RL-VAT-7829104', brandTextX, margin + 55);
-                const badgeW = 152;
+                const badgeW = 156;
                 const badgeH = 58;
                 const badgeX = margin + contentWidth - badgeW - 10;
                 const badgeY = margin + 10;
@@ -1624,30 +1678,31 @@ let OrdersService = OrdersService_1 = class OrdersService {
                     .text('OFFICIAL TAX INVOICE', badgeX, badgeY + 6, { width: badgeW, align: 'center' });
                 doc
                     .fillColor('#D4AF37')
-                    .fontSize(11)
+                    .fontSize(10)
                     .font('Helvetica-Bold')
-                    .text(order.orderNumber, badgeX, badgeY + 18, { width: badgeW, align: 'center' });
+                    .text(invoiceNumber, badgeX, badgeY + 18, { width: badgeW, align: 'center' });
                 doc
                     .fillColor('#E5E7EB')
                     .fontSize(6.5)
                     .font('Helvetica')
-                    .text(`TX ID: ${order.id.slice(0, 18).toUpperCase()}`, badgeX, badgeY + 33, { width: badgeW, align: 'center' });
+                    .text(`Order Ref: ${order.orderNumber}`, badgeX, badgeY + 33, { width: badgeW, align: 'center' });
                 doc
                     .fillColor('#D1D5DB')
                     .fontSize(6.5)
                     .font('Helvetica')
-                    .text(`Issued: ${formatInvoiceDate(order.createdAt)}`, badgeX, badgeY + 44, { width: badgeW, align: 'center' });
+                    .text(`Issued: ${formatInvoiceDate(invoiceRecord?.issuedAt || order.createdAt)}`, badgeX, badgeY + 44, { width: badgeW, align: 'center' });
                 const cardsY = margin + headerHeight + 10;
                 const cardH = 76;
                 const cardW = (contentWidth - 10) / 2;
-                const addr = order.shippingAddress || {};
-                const recipientName = addr.fullName ||
+                const addr = invoiceRecord?.shippingAddress || order.shippingAddress || {};
+                const recipientName = invoiceRecord?.customerName ||
+                    addr.fullName ||
                     addr.recipient ||
                     addr.name ||
                     (order.customer ? [order.customer.firstName, order.customer.lastName].filter(Boolean).join(' ') : order.guestName) ||
                     'Valued Patron';
-                const contactPhone = addr.phone || order.guestPhone || order.customer?.phone || 'N/A';
-                const contactEmail = addr.email || order.guestEmail || order.customer?.email || 'N/A';
+                const contactPhone = invoiceRecord?.customerPhone || addr.phone || order.guestPhone || order.customer?.phone || 'N/A';
+                const contactEmail = invoiceRecord?.customerEmail || addr.email || order.guestEmail || order.customer?.email || 'N/A';
                 const destAddress = [addr.addressLine1 || addr.address, addr.addressLine2, addr.city, addr.division, addr.postalCode]
                     .filter(Boolean)
                     .join(', ') || 'Doorstep Delivery Location on file';
@@ -1713,11 +1768,38 @@ let OrdersService = OrdersService_1 = class OrdersService {
                 const payMethodStr = order.paymentMethod === 'COD'
                     ? 'Cash on Delivery (COD)'
                     : `${order.paymentMethod} (Digital Gateway)`;
+                const pmt = invoiceRecord?.payments?.[0] || order.payments?.[0];
+                const trxRef = order.paymentReference || pmt?.providerTransactionId;
+                const gwInvoiceId = pmt?.providerInvoiceId;
                 doc
                     .fillColor('#111827')
                     .fontSize(7.5)
                     .font('Helvetica-Bold')
-                    .text(`Payment: ${payMethodStr} [${order.paymentStatus}]`, rightCardX + 8, cardsY + 22, {
+                    .text(`Payment: ${payMethodStr} [${order.paymentStatus}]`, rightCardX + 8, cardsY + 20, {
+                    width: cardW - 16,
+                    ellipsis: true,
+                });
+                if (trxRef || gwInvoiceId) {
+                    const paymentMeta = [
+                        trxRef ? `Trx: ${trxRef}` : null,
+                        gwInvoiceId ? `Gateway Inv: ${gwInvoiceId}` : null,
+                    ]
+                        .filter(Boolean)
+                        .join('  •  ');
+                    doc
+                        .fillColor('#4B5563')
+                        .fontSize(6.5)
+                        .font('Helvetica')
+                        .text(paymentMeta, rightCardX + 8, cardsY + 32, {
+                        width: cardW - 16,
+                        ellipsis: true,
+                    });
+                }
+                doc
+                    .fillColor('#4B5563')
+                    .fontSize(7)
+                    .font('Helvetica')
+                    .text(`Carrier: ${courier}`, rightCardX + 8, cardsY + (trxRef || gwInvoiceId ? 43 : 35), {
                     width: cardW - 16,
                     ellipsis: true,
                 });
@@ -1725,15 +1807,7 @@ let OrdersService = OrdersService_1 = class OrdersService {
                     .fillColor('#4B5563')
                     .fontSize(7)
                     .font('Helvetica')
-                    .text(`Carrier: ${courier}`, rightCardX + 8, cardsY + 35, {
-                    width: cardW - 16,
-                    ellipsis: true,
-                });
-                doc
-                    .fillColor('#4B5563')
-                    .fontSize(7)
-                    .font('Helvetica')
-                    .text(`Waybill / Airway Ref: ${trackingWaybill}`, rightCardX + 8, cardsY + 47, {
+                    .text(`Waybill: ${trackingWaybill}`, rightCardX + 8, cardsY + (trxRef || gwInvoiceId ? 54 : 47), {
                     width: cardW - 16,
                     ellipsis: true,
                 });
@@ -1741,7 +1815,7 @@ let OrdersService = OrdersService_1 = class OrdersService {
                     .fillColor('#059669')
                     .fontSize(6.5)
                     .font('Helvetica-Bold')
-                    .text('Express Handover: 24–48 Hours Doorstep TAT', rightCardX + 8, cardsY + 59, {
+                    .text('Express Handover: 24–48 Hours Doorstep TAT', rightCardX + 8, cardsY + 64, {
                     width: cardW - 16,
                     ellipsis: true,
                 });
@@ -1756,8 +1830,8 @@ let OrdersService = OrdersService_1 = class OrdersService {
                 doc.text('TOTAL AMOUNT', margin + 424, tableY + 7, { width: 90, align: 'right' });
                 const rowHeight = 48;
                 let currentY = tableY + tableHdrHeight;
-                if (order.items && order.items.length > 0) {
-                    order.items.forEach((item, index) => {
+                if (invoiceItems && invoiceItems.length > 0) {
+                    invoiceItems.forEach((item, index) => {
                         const isAlt = index % 2 === 1;
                         if (isAlt) {
                             doc.rect(margin, currentY, contentWidth, rowHeight).fill('#FBFBFA');
@@ -1812,7 +1886,7 @@ let OrdersService = OrdersService_1 = class OrdersService {
                             item.sku ? `SKU: ${item.sku}` : null,
                         ]
                             .filter(Boolean)
-                            .join('  |  ') || item.variantName || 'Atelier Standard';
+                            .join('  |  ') || item.variantLabel || item.variantName || 'Atelier Standard';
                         doc
                             .fillColor('#6B7280')
                             .fontSize(6.8)
@@ -1837,11 +1911,12 @@ let OrdersService = OrdersService_1 = class OrdersService {
                             width: 56,
                             align: 'center',
                         });
+                        const lineTotal = Number(item.lineTotal ?? item.subtotal ?? (Number(item.unitPrice) * Number(item.quantity)));
                         doc
                             .fillColor('#073A2D')
                             .fontSize(8.5)
                             .font('Helvetica-Bold')
-                            .text(`BDT ${Number(item.subtotal).toLocaleString()}`, margin + 424, currentY + 18, {
+                            .text(`BDT ${lineTotal.toLocaleString()}`, margin + 424, currentY + 18, {
                             width: 90,
                             align: 'right',
                         });
@@ -1870,7 +1945,7 @@ let OrdersService = OrdersService_1 = class OrdersService {
                         .fillColor('#073A2D')
                         .fontSize(8.5)
                         .font('Helvetica-Bold')
-                        .text(`BDT ${Number(order.subtotal).toLocaleString()}`, margin + 424, currentY + 18, {
+                        .text(`BDT ${Number(invoiceRecord?.subtotal ?? order.subtotal).toLocaleString()}`, margin + 424, currentY + 18, {
                         width: 90,
                         align: 'right',
                     });
@@ -1882,12 +1957,12 @@ let OrdersService = OrdersService_1 = class OrdersService {
                     .roundedRect(margin, tableY, contentWidth, currentY - tableY, 3)
                     .stroke();
                 const summarySecY = currentY + 12;
-                drawBarcode(doc, order.orderNumber, margin + 8, summarySecY + 4, 180, 22);
+                drawBarcode(doc, invoiceNumber, margin + 8, summarySecY + 4, 180, 22);
                 doc
                     .fillColor('#374151')
                     .fontSize(7)
                     .font('Helvetica-Bold')
-                    .text(`* ${order.orderNumber} *`, margin + 8, summarySecY + 28, { width: 180, align: 'center' });
+                    .text(`* ${invoiceNumber} *`, margin + 8, summarySecY + 28, { width: 180, align: 'center' });
                 doc
                     .fillColor('#073A2D')
                     .fontSize(7)
@@ -1905,7 +1980,11 @@ let OrdersService = OrdersService_1 = class OrdersService {
                     .text('For fitting adjustments or concierge support, call +880 1700-000000.', margin + 8, summarySecY + 63);
                 const summaryBoxW = 236;
                 const summaryBoxX = margin + contentWidth - summaryBoxW;
-                const summaryBoxH = Number(order.discountAmount) > 0 ? 94 : 80;
+                const subtotalVal = Number(invoiceRecord?.subtotal ?? order.subtotal);
+                const deliveryChargeVal = Number(invoiceRecord?.deliveryCharge ?? order.deliveryCharge);
+                const discountAmountVal = Number(invoiceRecord?.discountAmount ?? order.discountAmount ?? 0);
+                const totalAmountVal = Number(invoiceRecord?.totalAmount ?? order.totalAmount);
+                const summaryBoxH = discountAmountVal > 0 ? 94 : 80;
                 doc.roundedRect(summaryBoxX, summarySecY, summaryBoxW, summaryBoxH, 4).fill('#F8FAFC');
                 doc.lineWidth(0.5).strokeColor('#E2E8F0').roundedRect(summaryBoxX, summarySecY, summaryBoxW, summaryBoxH, 4).stroke();
                 let sY = summarySecY + 8;
@@ -1918,26 +1997,26 @@ let OrdersService = OrdersService_1 = class OrdersService {
                     .fillColor('#111827')
                     .fontSize(7.5)
                     .font('Helvetica-Bold')
-                    .text(`BDT ${Number(order.subtotal).toLocaleString()}`, summaryBoxX + 100, sY, {
+                    .text(`BDT ${subtotalVal.toLocaleString()}`, summaryBoxX + 100, sY, {
                     width: summaryBoxW - 112,
                     align: 'right',
                 });
                 sY += 15;
-                const deliveryStr = Number(order.deliveryCharge) === 0 ? 'FREE' : `BDT ${Number(order.deliveryCharge).toLocaleString()}`;
+                const deliveryStr = deliveryChargeVal === 0 ? 'FREE' : `BDT ${deliveryChargeVal.toLocaleString()}`;
                 doc
                     .fillColor('#4B5563')
                     .fontSize(7.5)
                     .font('Helvetica')
                     .text('Packaging & Delivery:', summaryBoxX + 12, sY);
                 doc
-                    .fillColor(Number(order.deliveryCharge) === 0 ? '#059669' : '#111827')
+                    .fillColor(deliveryChargeVal === 0 ? '#059669' : '#111827')
                     .fontSize(7.5)
                     .font('Helvetica-Bold')
                     .text(deliveryStr, summaryBoxX + 100, sY, {
                     width: summaryBoxW - 112,
                     align: 'right',
                 });
-                if (Number(order.discountAmount) > 0) {
+                if (discountAmountVal > 0) {
                     sY += 15;
                     doc
                         .fillColor('#059669')
@@ -1948,7 +2027,7 @@ let OrdersService = OrdersService_1 = class OrdersService {
                         .fillColor('#059669')
                         .fontSize(7.5)
                         .font('Helvetica-Bold')
-                        .text(`- BDT ${Number(order.discountAmount).toLocaleString()}`, summaryBoxX + 100, sY, {
+                        .text(`- BDT ${discountAmountVal.toLocaleString()}`, summaryBoxX + 100, sY, {
                         width: summaryBoxW - 112,
                         align: 'right',
                     });
@@ -1965,7 +2044,7 @@ let OrdersService = OrdersService_1 = class OrdersService {
                     .fillColor('#D4AF37')
                     .fontSize(9.5)
                     .font('Helvetica-Bold')
-                    .text(`BDT ${Number(order.totalAmount).toLocaleString()}`, summaryBoxX + 100, sY + 6, {
+                    .text(`BDT ${totalAmountVal.toLocaleString()}`, summaryBoxX + 100, sY + 6, {
                     width: summaryBoxW - 122,
                     align: 'right',
                 });
@@ -2029,10 +2108,12 @@ OrdersService = OrdersService_1 = __decorate([
     Injectable(),
     __param(2, Optional()),
     __param(3, Optional()),
+    __param(4, Optional()),
     __metadata("design:paramtypes", [PrismaService,
         SettingsService,
         MailService,
-        Ga4MeasurementProtocolService])
+        Ga4MeasurementProtocolService,
+        InvoicesService])
 ], OrdersService);
 export { OrdersService };
 function hashToken(token) {

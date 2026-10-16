@@ -7,25 +7,25 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { ForbiddenException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { OrderStatus, PaymentMethod, PaymentStatus } from '@prisma/client';
 import { OrdersService } from '../../orders/services/orders.service.js';
-import { WaitmarkPaymentService } from './waitmark-payment.service.js';
+import { PrismaService } from '../../prisma/prisma.service.js';
 import { UddoktaPaymentService } from './uddokta-payment.service.js';
 let PaymentsService = class PaymentsService {
     configService;
     ordersService;
-    waitmarkService;
+    prisma;
     uddoktaService;
-    constructor(configService, ordersService, waitmarkService, uddoktaService) {
+    constructor(configService, ordersService, prisma, uddoktaService) {
         this.configService = configService;
         this.ordersService = ordersService;
-        this.waitmarkService = waitmarkService;
+        this.prisma = prisma;
         this.uddoktaService = uddoktaService;
     }
     async getAvailableMethods() {
         const uddoktaConfigured = this.uddoktaService.isConfigured();
-        const waitmarkConfigured = this.waitmarkService.isConfigured();
         const bkashConfigured = Boolean(this.configService.get('BKASH_APP_KEY') &&
             this.configService.get('BKASH_APP_SECRET'));
         const nagadConfigured = Boolean(this.configService.get('NAGAD_MERCHANT_ID') &&
@@ -39,12 +39,6 @@ let PaymentsService = class PaymentsService {
                 name: 'UddoktaPay (Cards, Mobile Banking & Net Banking)',
                 isEnabled: uddoktaConfigured,
                 credentialsConfigured: uddoktaConfigured,
-            },
-            {
-                id: 'WAITMARK_PAY',
-                name: 'Waitmark Pay (Cards, Mobile Banking & Wallets)',
-                isEnabled: waitmarkConfigured,
-                credentialsConfigured: waitmarkConfigured,
             },
             {
                 id: 'BKASH',
@@ -83,12 +77,92 @@ let PaymentsService = class PaymentsService {
     async handleWebhook() {
         throw new ServiceUnavailableException('Payment webhooks are unavailable until a signed gateway provider is configured');
     }
+    async getPaymentStatus(orderId, requester, phone, trackingToken) {
+        const requesterId = typeof requester === 'string' ? requester : requester?.id;
+        const isAdmin = typeof requester === 'object' &&
+            (requester?.type === 'admin' ||
+                requester?.role === 'ADMIN' ||
+                requester?.role === 'SUPER_ADMIN' ||
+                requester?.role === 'MANAGER');
+        const order = await this.prisma.order.findFirst({
+            where: {
+                OR: [
+                    { id: orderId },
+                    { orderNumber: orderId },
+                    { payments: { some: { providerOrderId: orderId } } },
+                    { payments: { some: { providerInvoiceId: orderId } } },
+                ],
+            },
+            include: {
+                payments: {
+                    orderBy: { createdAt: 'desc' },
+                },
+            },
+        });
+        if (!order) {
+            return {
+                orderId,
+                orderNumber: orderId,
+                paymentStatus: PaymentStatus.FAILED,
+                orderStatus: OrderStatus.CANCELLED,
+                totalAmount: 0,
+                paidAmount: 0,
+                paymentReference: null,
+                paymentMethod: PaymentMethod.COD,
+                payments: [],
+            };
+        }
+        if (!isAdmin) {
+            if (order.customerId) {
+                if (requesterId && requesterId !== order.customerId) {
+                    throw new ForbiddenException('You do not have permission to view payment status for this order.');
+                }
+            }
+            else {
+                const shippingAddress = order.shippingAddress || {};
+                const expectedPhone = (order.guestPhone ||
+                    shippingAddress.phone ||
+                    shippingAddress.receiverPhone ||
+                    '')
+                    .replace(/\D/g, '')
+                    .slice(-11);
+                const suppliedPhone = (phone || '').replace(/\D/g, '').slice(-11);
+                const phoneMatches = Boolean(expectedPhone && suppliedPhone && expectedPhone === suppliedPhone);
+                const tokenMatches = Boolean(trackingToken && order.trackingTokenHash);
+                if (!requesterId && !phoneMatches && !tokenMatches) {
+                    throw new ForbiddenException('Access denied. Please provide contact phone or tracking token.');
+                }
+            }
+        }
+        return {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            paymentStatus: order.paymentStatus,
+            orderStatus: order.status,
+            totalAmount: Number(order.totalAmount),
+            paidAmount: Number(order.paidAmount || 0),
+            paymentReference: order.paymentReference,
+            paymentMethod: order.paymentMethod,
+            payments: order.payments.map((p) => ({
+                id: p.id,
+                provider: p.provider,
+                providerOrderId: p.providerOrderId,
+                providerTransactionId: p.providerTransactionId,
+                amount: Number(p.amount),
+                currency: p.currency,
+                status: p.status,
+                failureReason: p.failureReason,
+                paidAt: p.paidAt,
+                createdAt: p.createdAt,
+            })),
+        };
+    }
 };
 PaymentsService = __decorate([
     Injectable(),
     __metadata("design:paramtypes", [ConfigService,
         OrdersService,
-        WaitmarkPaymentService,
+        PrismaService,
         UddoktaPaymentService])
 ], PaymentsService);
 export { PaymentsService };

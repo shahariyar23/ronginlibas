@@ -271,7 +271,7 @@ describe('AuthService - Google Identity Services (GIS)', () => {
     vi.mocked(prisma.customer.update).mockResolvedValueOnce({} as any);
 
     const result = await authService.linkGoogleAccount('cust-current', 'valid.token');
-    expect(result.id).toBe('ident-linked');
+    expect((result as any).id).toBe('ident-linked');
     expect(prisma.authIdentity.create).toHaveBeenCalledWith({
       data: {
         customerId: 'cust-current',

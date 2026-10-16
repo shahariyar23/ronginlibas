@@ -50,10 +50,10 @@ let OrdersController = class OrdersController {
         };
     }
     async invoice(orderNumber, customerId, query, response) {
-        const pdf = await this.ordersService.generateInvoice(orderNumber, customerId, query.phone, query.trackingToken);
+        const { buffer, invoiceNumber } = await this.ordersService.generateInvoice(orderNumber, customerId, query.phone, query.trackingToken);
         response.setHeader('Content-Type', 'application/pdf');
-        response.setHeader('Content-Disposition', `attachment; filename="${orderNumber}-invoice.pdf"`);
-        response.send(pdf);
+        response.setHeader('Content-Disposition', `attachment; filename="Rongin-Libas-Invoice-${invoiceNumber.replace(/[^a-zA-Z0-9-_]/g, '')}.pdf"`);
+        response.send(buffer);
     }
     async getOrder(orderNumber, customerId, query) {
         return {

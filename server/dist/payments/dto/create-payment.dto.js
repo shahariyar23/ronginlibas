@@ -22,8 +22,8 @@ __decorate([
     __metadata("design:type", String)
 ], CreatePaymentDto.prototype, "orderNumber", void 0);
 __decorate([
-    ApiProperty({ enum: ['BKASH', 'NAGAD', 'CARD', 'UDDOKTAPAY', 'WAITMARK_PAY'] }),
-    IsIn(['BKASH', 'NAGAD', 'CARD', 'UDDOKTAPAY', 'WAITMARK_PAY']),
+    ApiProperty({ enum: ['BKASH', 'NAGAD', 'CARD', 'UDDOKTAPAY'] }),
+    IsIn(['BKASH', 'NAGAD', 'CARD', 'UDDOKTAPAY']),
     __metadata("design:type", String)
 ], CreatePaymentDto.prototype, "provider", void 0);
 __decorate([

@@ -35,15 +35,15 @@ declare class EnvironmentVariables {
     PATHAO_USERNAME?: string;
     PATHAO_PASSWORD?: string;
     PATHAO_GRANT_TYPE?: string;
-    WAITMARK_PUBLIC_KEY?: string;
-    WAITMARK_SECRET_KEY?: string;
-    WAITMARK_CHECKOUT_URL?: string;
-    WAITMARK_SUCCESS_URL?: string;
     META_PIXEL_ID?: string;
     META_CONVERSIONS_API_ACCESS_TOKEN?: string;
     META_TEST_EVENT_CODE?: string;
+    UDDOKTAPAY_ENV?: string;
     UDDOKTAPAY_BASE_URL?: string;
     UDDOKTAPAY_API_KEY?: string;
+    UDDOKTAPAY_WEBHOOK_URL?: string;
+    UDDOKTAPAY_SUCCESS_URL?: string;
+    UDDOKTAPAY_CANCEL_URL?: string;
     FRONTEND_URL?: string;
     BACKEND_PUBLIC_URL?: string;
 }

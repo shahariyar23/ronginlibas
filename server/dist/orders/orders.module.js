@@ -12,14 +12,15 @@ import { SettingsModule } from '../settings/settings.module.js';
 import { AuthModule } from '../auth/auth.module.js';
 import { MailModule } from '../mail/mail.module.js';
 import { AnalyticsModule } from '../analytics/analytics.module.js';
+import { InvoicesService } from './services/invoices.service.js';
 let OrdersModule = class OrdersModule {
 };
 OrdersModule = __decorate([
     Module({
         imports: [SettingsModule, AuthModule, MailModule, AnalyticsModule],
         controllers: [OrdersController, AdminOrdersController],
-        providers: [OrdersService],
-        exports: [OrdersService],
+        providers: [OrdersService, InvoicesService],
+        exports: [OrdersService, InvoicesService],
     })
 ], OrdersModule);
 export { OrdersModule };

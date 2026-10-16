@@ -239,6 +239,7 @@ function adaptBackendOrder(o: any): AdminOrder {
           id: p.id,
           provider: p.provider,
           providerOrderId: p.providerOrderId,
+          providerInvoiceId: p.providerInvoiceId,
           providerTransactionId: p.providerTransactionId,
           amount: Number(p.amount) || 0,
           currency: p.currency || 'BDT',
@@ -248,6 +249,19 @@ function adaptBackendOrder(o: any): AdminOrder {
           createdAt: p.createdAt,
         }))
       : [],
+    invoice: o.invoice
+      ? {
+          id: o.invoice.id,
+          invoiceNumber: o.invoice.invoiceNumber,
+          status: o.invoice.status,
+          subtotal: o.invoice.subtotal !== undefined ? Number(o.invoice.subtotal) : Number(o.subtotal || 0),
+          discountAmount: o.invoice.discountAmount !== undefined ? Number(o.invoice.discountAmount) : Number(o.discountAmount || 0),
+          deliveryCharge: o.invoice.deliveryCharge !== undefined ? Number(o.invoice.deliveryCharge) : Number(o.deliveryCharge || 0),
+          totalAmount: Number(o.invoice.totalAmount || o.totalAmount || 0),
+          currency: o.invoice.currency || 'BDT',
+          issuedAt: o.invoice.issuedAt,
+        }
+      : null,
   };
 }
 
