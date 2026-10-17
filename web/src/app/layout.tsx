@@ -15,7 +15,10 @@ import Script from 'next/script';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://ronginlibas.com'),
-  title: 'Rongin Libas | Cloth Your Identity — Aristocratic Menswear & Bespoke Panjabis',
+  title: {
+    default: 'Rongin Libas | Cloth Your Identity — Aristocratic Menswear & Bespoke Panjabis',
+    template: '%s | Rongin Libas',
+  },
   description:
     'Luxury Bangladeshi menswear atelier specializing in bespoke panjabis, mercerized knitwear, and architectural casual wear. Handcrafted in Dhaka.',
   keywords: [
@@ -43,6 +46,7 @@ export const metadata: Metadata = {
     description: 'Aristocratic Menswear & Bespoke Panjabis handcrafted with ancestral Bengal weaves.',
     url: 'https://ronginlibas.com',
     siteName: 'Rongin Libas',
+    locale: 'en_US',
     images: [{ url: '/hero-model.jpg', width: 1200, height: 630, alt: 'Rongin Libas — Cloth Your Identity' }],
     type: 'website',
   },
@@ -51,6 +55,17 @@ export const metadata: Metadata = {
     title: 'Rongin Libas | Cloth Your Identity',
     description: 'Aristocratic Menswear & Bespoke Panjabis handcrafted with ancestral Bengal weaves.',
     images: ['/hero-model.jpg'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
   },
   alternates: {
     canonical: 'https://ronginlibas.com',
