@@ -46,6 +46,13 @@ declare class EnvironmentVariables {
     UDDOKTAPAY_CANCEL_URL?: string;
     FRONTEND_URL?: string;
     BACKEND_PUBLIC_URL?: string;
+    STEADFAST_ENABLED?: string;
+    STEADFAST_MODE?: string;
+    STEADFAST_BASE_URL?: string;
+    STEADFAST_API_KEY?: string;
+    STEADFAST_SECRET_KEY?: string;
+    STEADFAST_TIMEOUT?: number;
+    STEADFAST_WEBHOOK_SECRET?: string;
 }
 export declare function validateEnv(config: Record<string, unknown>): EnvironmentVariables;
 export {};

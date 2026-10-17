@@ -58,6 +58,13 @@ class EnvironmentVariables {
     UDDOKTAPAY_CANCEL_URL;
     FRONTEND_URL;
     BACKEND_PUBLIC_URL;
+    STEADFAST_ENABLED;
+    STEADFAST_MODE;
+    STEADFAST_BASE_URL;
+    STEADFAST_API_KEY;
+    STEADFAST_SECRET_KEY;
+    STEADFAST_TIMEOUT;
+    STEADFAST_WEBHOOK_SECRET;
 }
 __decorate([
     IsEnum(Environment),
@@ -269,6 +276,41 @@ __decorate([
     IsOptional(),
     __metadata("design:type", String)
 ], EnvironmentVariables.prototype, "BACKEND_PUBLIC_URL", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "STEADFAST_ENABLED", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "STEADFAST_MODE", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "STEADFAST_BASE_URL", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "STEADFAST_API_KEY", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "STEADFAST_SECRET_KEY", void 0);
+__decorate([
+    IsNumber(),
+    IsOptional(),
+    __metadata("design:type", Number)
+], EnvironmentVariables.prototype, "STEADFAST_TIMEOUT", void 0);
+__decorate([
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], EnvironmentVariables.prototype, "STEADFAST_WEBHOOK_SECRET", void 0);
 export function validateEnv(config) {
     const validatedConfig = plainToInstance(EnvironmentVariables, config, {
         enableImplicitConversion: true,
@@ -278,6 +320,11 @@ export function validateEnv(config) {
     });
     if (errors.length > 0) {
         throw new Error(errors.toString());
+    }
+    if (validatedConfig.STEADFAST_MODE === 'live') {
+        if (!validatedConfig.STEADFAST_API_KEY || !validatedConfig.STEADFAST_SECRET_KEY) {
+            throw new Error('STEADFAST_API_KEY and STEADFAST_SECRET_KEY are required when STEADFAST_MODE=live');
+        }
     }
     if (validatedConfig.NODE_ENV === Environment.Production) {
         for (const [key, value] of [

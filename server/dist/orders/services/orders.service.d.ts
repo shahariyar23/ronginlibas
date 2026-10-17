@@ -1017,7 +1017,7 @@ export declare class OrdersService {
         orderNumber: string;
         status: import("@prisma/client").$Enums.OrderStatus;
         courier: string;
-        courierName: string | null;
+        courierName: string;
         courierStatus: string;
         trackingNumber: string | null;
         trackingUrl: string | null;

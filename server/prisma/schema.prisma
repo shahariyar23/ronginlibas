@@ -377,6 +377,7 @@ model Order {
   trackingEvents OrderTrackingEvent[]
   payments Payment[]
   invoice Invoice?
+  shipments Shipment[]
 
   @@index([customerId, createdAt])
   @@index([status, createdAt])
@@ -848,5 +849,67 @@ model MetaConversionLog {
   @@index([status, createdAt])
   @@map("meta_conversion_logs")
 }
+
+enum ShipmentStatus {
+  PENDING
+  IN_REVIEW
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  PARTIAL_DELIVERED
+  CANCELLED
+  ON_HOLD
+  RETURNED
+  UNKNOWN
+}
+
+model Shipment {
+  id               String         @id @default(uuid())
+  orderId          String
+  order            Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider         String         @default("STEADFAST")
+  consignmentId    String?
+  trackingCode     String?
+  providerInvoice  String?
+  status           ShipmentStatus @default(PENDING)
+  providerStatus   String?
+  codAmount        Decimal        @default(0.00) @db.Decimal(10, 2)
+  deliveryCharge   Decimal        @default(0.00) @db.Decimal(10, 2)
+  returnCharge     Decimal        @default(0.00) @db.Decimal(10, 2)
+  trackingUrl      String?
+  recipientName    String?
+  recipientPhone   String?
+  recipientAddress String?
+  note             String?
+  metadata         Json?
+  lastSyncedAt     DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  events           ShipmentEvent[]
+
+  @@unique([provider, consignmentId])
+  @@unique([provider, trackingCode])
+  @@index([orderId])
+  @@index([provider, providerInvoice])
+  @@index([status])
+  @@map("shipments")
+}
+
+model ShipmentEvent {
+  id         String   @id @default(uuid())
+  shipmentId String
+  shipment   Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  eventType  String
+  status     String
+  message    String?
+  source     String   @default("SYSTEM")
+  payload    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([shipmentId, createdAt])
+  @@map("shipment_events")
+}
+
 
 

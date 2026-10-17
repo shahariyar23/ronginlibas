@@ -176,6 +176,34 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   BACKEND_PUBLIC_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  STEADFAST_ENABLED?: string;
+
+  @IsString()
+  @IsOptional()
+  STEADFAST_MODE?: string;
+
+  @IsString()
+  @IsOptional()
+  STEADFAST_BASE_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  STEADFAST_API_KEY?: string;
+
+  @IsString()
+  @IsOptional()
+  STEADFAST_SECRET_KEY?: string;
+
+  @IsNumber()
+  @IsOptional()
+  STEADFAST_TIMEOUT?: number;
+
+  @IsString()
+  @IsOptional()
+  STEADFAST_WEBHOOK_SECRET?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>) {
@@ -188,6 +216,14 @@ export function validateEnv(config: Record<string, unknown>) {
 
   if (errors.length > 0) {
     throw new Error(errors.toString());
+  }
+
+  if (validatedConfig.STEADFAST_MODE === 'live') {
+    if (!validatedConfig.STEADFAST_API_KEY || !validatedConfig.STEADFAST_SECRET_KEY) {
+      throw new Error(
+        'STEADFAST_API_KEY and STEADFAST_SECRET_KEY are required when STEADFAST_MODE=live',
+      );
+    }
   }
   if (validatedConfig.NODE_ENV === Environment.Production) {
     for (const [key, value] of [
