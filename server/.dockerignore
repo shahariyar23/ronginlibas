@@ -1,0 +1,40 @@
+# Version control
+.git
+.gitignore
+
+# Environment files and credentials (never bake into images)
+.env
+.env.*
+!.env.example
+
+# Dependencies (installed cleanly inside image)
+node_modules
+
+# Build artifacts & caches
+dist
+*.tsbuildinfo
+.npm
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test files & coverage
+coverage
+test
+vitest.config.ts
+vitest.config.e2e.ts
+
+# Linter and formatting configs
+.oxlintrc.json
+.prettierrc
+
+# Documentation
+*.md
+LICENSE
+
+# System & editor files
+.DS_Store
+Thumbs.db
+.vscode
+.idea

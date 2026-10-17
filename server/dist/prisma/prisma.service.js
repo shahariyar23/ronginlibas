@@ -13,7 +13,10 @@ import { PrismaClient } from '@prisma/client';
 let PrismaService = PrismaService_1 = class PrismaService extends PrismaClient {
     logger = new Logger(PrismaService_1.name);
     constructor() {
+        const rawUrl = process.env.DATABASE_URL;
+        const dbUrl = rawUrl ? rawUrl.replace(/^["']|["']$/g, '') : undefined;
         super({
+            ...(dbUrl ? { datasources: { db: { url: dbUrl } } } : {}),
             transactionOptions: {
                 maxWait: 10000,
                 timeout: 30000,

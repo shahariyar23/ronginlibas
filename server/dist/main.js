@@ -8,6 +8,11 @@ import cookieParser from 'cookie-parser';
 import { AppModule } from './app/app.module.js';
 async function bootstrap() {
     const logger = new Logger('Bootstrap');
+    for (const [key, value] of Object.entries(process.env)) {
+        if (value && ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'")))) {
+            process.env[key] = value.slice(1, -1);
+        }
+    }
     const app = await NestFactory.create(AppModule, { rawBody: true });
     const configService = app.get(ConfigService);
     const helmetMiddleware = helmet;
@@ -66,13 +71,14 @@ async function bootstrap() {
         },
     });
     const port = process.env.PORT || configService.get('app.port') || 4000;
-    await app.listen(port);
+    const host = process.env.HOST || '0.0.0.0';
+    await app.listen(port, host);
     logger.log(`=======================================================`);
     logger.log(`  Rongin Libas Backend Server Initialized Successfully `);
-    logger.log(`  Application Port : http://localhost:${port}          `);
-    logger.log(`  API Base URL     : http://localhost:${port}${apiPrefix} `);
-    logger.log(`  Swagger Docs     : http://localhost:${port}/api/docs `);
-    logger.log(`  Health Endpoint  : http://localhost:${port}${apiPrefix}/health`);
+    logger.log(`  Application Port : http://${host}:${port}          `);
+    logger.log(`  API Base URL     : http://${host}:${port}${apiPrefix} `);
+    logger.log(`  Swagger Docs     : http://${host}:${port}/api/docs `);
+    logger.log(`  Health Endpoint  : http://${host}:${port}${apiPrefix}/health`);
     logger.log(`=======================================================`);
 }
 bootstrap().catch((err) => {

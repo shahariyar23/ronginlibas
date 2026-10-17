@@ -6,7 +6,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   private readonly logger = new Logger(PrismaService.name);
 
   constructor() {
+    const rawUrl = process.env.DATABASE_URL;
+    const dbUrl = rawUrl ? rawUrl.replace(/^["']|["']$/g, '') : undefined;
     super({
+      ...(dbUrl ? { datasources: { db: { url: dbUrl } } } : {}),
       transactionOptions: {
         maxWait: 10000,
         timeout: 30000,

@@ -1,16 +1,22 @@
 services:
-  postgres:
-    image: postgres:17
-    container_name: rongin-libas-postgres
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: rongin-libas-server:latest
+    container_name: rongin-libas-server
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: rongin_libas
     ports:
-      - "5432:5432"
-    volumes:
-      - rongin_libas_postgres_data:/var/lib/postgresql/data
-
-volumes:
-  rongin_libas_postgres_data:
+      - "${PORT:-4000}:${PORT:-4000}"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=${PORT:-4000}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
