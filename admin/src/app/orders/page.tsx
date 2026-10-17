@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import {
   Search,
   Printer,
@@ -183,6 +183,133 @@ function OrdersPageContent() {
     } finally {
       setIsSyncingPayment(false);
     }
+  };
+
+  // Steadfast Courier Logistics States & Handlers
+  const [courierShipment, setCourierShipment] = useState<any>(null);
+  const [isBookingSteadfast, setIsBookingSteadfast] = useState(false);
+  const [isRefreshingSteadfast, setIsRefreshingSteadfast] = useState(false);
+  const [isCreatingReturn, setIsCreatingReturn] = useState(false);
+  const [isCopiedTracking, setIsCopiedTracking] = useState(false);
+
+  useEffect(() => {
+    if (selectedOrderForInvoice?.id) {
+      adminApi.courier
+        .getShipment(selectedOrderForInvoice.id)
+        .then((res) => {
+          if (res.success && res.data) {
+            setCourierShipment(res.data);
+          } else {
+            setCourierShipment(null);
+          }
+        })
+        .catch(() => setCourierShipment(null));
+    } else {
+      setCourierShipment(null);
+    }
+  }, [selectedOrderForInvoice?.id]);
+
+  const handleBookSteadfastShipment = async (orderId: string) => {
+    if (isBookingSteadfast) return;
+    setIsBookingSteadfast(true);
+    try {
+      const res = await adminApi.courier.createShipment(orderId);
+      const payload = res.data;
+      if (res.success && payload) {
+        toast.success(`Steadfast shipment booked! Consignment #${payload.consignmentId}`);
+        setCourierShipment(payload);
+        setSelectedOrderForInvoice((prev: any) =>
+          prev
+            ? {
+                ...prev,
+                courierName: 'Steadfast',
+                courierProvider: payload.provider,
+                courierConsignmentId: payload.consignmentId,
+                trackingNumber: payload.trackingCode,
+                trackingUrl: payload.trackingUrl,
+                courierStatus: payload.status,
+                courierStatusRaw: payload.providerStatus,
+                courierLastSyncedAt: payload.lastSyncedAt,
+              }
+            : null,
+        );
+        await refreshData();
+      } else {
+        toast.error((res as any).error || 'Failed to book Steadfast shipment');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Error booking Steadfast shipment');
+    } finally {
+      setIsBookingSteadfast(false);
+    }
+  };
+
+  const handleRefreshSteadfastStatus = async (orderId: string) => {
+    if (isRefreshingSteadfast) return;
+    setIsRefreshingSteadfast(true);
+    try {
+      const res = await adminApi.courier.refreshStatus(orderId);
+      const payload = res.data;
+      if (res.success && payload) {
+        toast.success(`Steadfast status updated: ${payload.status}`);
+        setCourierShipment((prev: any) => ({
+          ...prev,
+          status: payload.status,
+          providerStatus: payload.providerStatus,
+          customerSafeStatus: payload.customerSafeStatus,
+          lastSyncedAt: payload.lastSyncedAt,
+        }));
+        setSelectedOrderForInvoice((prev: any) =>
+          prev
+            ? {
+                ...prev,
+                courierStatus: payload.status,
+                courierStatusRaw: payload.providerStatus,
+                courierLastSyncedAt: payload.lastSyncedAt,
+              }
+            : null,
+        );
+        await refreshData();
+      } else {
+        toast.error((res as any).error || 'Failed to sync Steadfast status');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Error syncing Steadfast status');
+    } finally {
+      setIsRefreshingSteadfast(false);
+    }
+  };
+
+  const handleCreateSteadfastReturn = async (orderId: string) => {
+    if (isCreatingReturn) return;
+    const confirmReturn = window.confirm(
+      'Are you sure you want to request a courier return for this consignment?',
+    );
+    if (!confirmReturn) return;
+
+    setIsCreatingReturn(true);
+    try {
+      const res = await adminApi.courier.createReturnRequest(orderId, {
+        reason: 'Customer requested doorstep return / size exchange',
+      });
+      if (res.success) {
+        toast.success(res.message || 'Return request initiated with Steadfast');
+        await handleRefreshSteadfastStatus(orderId);
+      } else {
+        toast.error(res.message || 'Failed to create return request');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Error creating return request');
+    } finally {
+      setIsCreatingReturn(false);
+    }
+  };
+
+  const handleCopyTrackingCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setIsCopiedTracking(true);
+    toast.success(`Tracking code copied: ${code}`);
+    setTimeout(() => setIsCopiedTracking(false), 2000);
   };
 
   // Pathao Courier Sandbox States
@@ -1629,77 +1756,81 @@ function OrdersPageContent() {
                   </div>
                 </div>
 
-                {/* Pathao Courier Sandbox Dispatch Section */}
+                {/* Steadfast Courier Logistics Dispatch Section */}
                 <div className="bg-[#fbf9f2] border border-[#deddd3] p-4 space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#deddd3]/60 pb-2">
                     <div className="flex items-center gap-2">
-                      <Truck className="w-4 h-4 text-[#8c6722]" />
+                      <Truck className="w-4 h-4 text-[#073a2d]" />
                       <h4 className="text-xs font-bold uppercase tracking-wider text-[#1b1c18]">
-                        Pathao Courier Logistics
+                        Steadfast Courier Logistics
                       </h4>
-                      <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-[#c79a45]/20 text-[#8c6722] border border-[#c79a45]/40">
-                        SANDBOX / TEST
+                      <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-[#073a2d]/10 text-[#073a2d] border border-[#073a2d]/30">
+                        {courierShipment?.provider || selectedOrderForInvoice.courierProvider || 'STEADFAST'}
                       </span>
                     </div>
 
                     <p className="text-[10px] text-[#717975] italic">
-                      Testing Mode — No real delivery will be created.
+                      Production Courier Integration • 64-District Nationwide Delivery
                     </p>
                   </div>
 
-                  {selectedOrderForInvoice.courierConsignmentId ? (
-                    <div className="bg-white border border-[#deddd3] p-3 space-y-2">
+                  {courierShipment?.consignmentId || selectedOrderForInvoice.courierConsignmentId ? (
+                    <div className="bg-white border border-[#deddd3] p-3 space-y-3">
+                      {/* Top Bar: Consignment ID, Status, and Refresh Button */}
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="space-y-0.5">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-[#717975] block">
-                            Sandbox Consignment ID
+                            Consignment ID
                           </span>
                           <span className="font-mono text-sm font-black text-[#073a2d]">
-                            #{selectedOrderForInvoice.courierConsignmentId}
+                            #{courierShipment?.consignmentId || selectedOrderForInvoice.courierConsignmentId}
                           </span>
                         </div>
 
                         <div className="flex items-center gap-2">
                           <span
                             className={`px-2.5 py-1 text-xs font-semibold border ${
-                              selectedOrderForInvoice.courierStatus === 'UNKNOWN'
+                              (courierShipment?.status || selectedOrderForInvoice.courierStatus) === 'UNKNOWN'
                                 ? 'bg-amber-100/60 border-amber-400 text-amber-900 font-bold'
-                                : selectedOrderForInvoice.courierStatus === 'DELIVERED'
+                                : (courierShipment?.status || selectedOrderForInvoice.courierStatus) === 'DELIVERED'
                                   ? 'bg-[#b0ecd3]/50 border-[#0d4d3b]/40 text-[#073a2d]'
                                   : 'bg-[#b0ecd3]/40 border-[#0d4d3b]/30 text-[#073a2d]'
                             }`}
                           >
-                            {selectedOrderForInvoice.courierStatus || 'Pending'}
+                            {courierShipment?.customerSafeStatus ||
+                              courierShipment?.status ||
+                              selectedOrderForInvoice.courierStatus ||
+                              'In Review'}
                           </span>
 
                           <button
                             type="button"
-                            onClick={() => handleRefreshPathaoStatus(selectedOrderForInvoice.id)}
-                            disabled={isRefreshingPathao}
+                            onClick={() => handleRefreshSteadfastStatus(selectedOrderForInvoice.id)}
+                            disabled={isRefreshingSteadfast}
                             className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-[#deddd3] hover:bg-[#fbf9f2] text-xs font-medium text-[#404945] transition-colors disabled:opacity-50 cursor-pointer"
                           >
-                            {isRefreshingPathao ? (
+                            {isRefreshingSteadfast ? (
                               <Loader2 className="w-3 h-3 animate-spin text-[#073a2d]" />
                             ) : (
                               <RefreshCw className="w-3 h-3 text-[#717975]" />
                             )}
-                            <span>{isRefreshingPathao ? 'Syncing...' : 'Refresh Status'}</span>
+                            <span>{isRefreshingSteadfast ? 'Syncing...' : 'Refresh Status'}</span>
                           </button>
                         </div>
                       </div>
 
-                      {/* Unknown Status Warning Notice (Requirement 14) */}
-                      {selectedOrderForInvoice.courierStatus === 'UNKNOWN' && (
+                      {/* Unknown Status Warning Notice */}
+                      {(courierShipment?.status || selectedOrderForInvoice.courierStatus) === 'UNKNOWN' && (
                         <div className="p-2.5 bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-start gap-2">
                           <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                           <div className="space-y-0.5">
                             <p className="font-bold text-amber-900">
-                              Pathao reported a status that is not currently mapped.
+                              Steadfast reported a status that is not currently mapped.
                             </p>
                             <p className="text-[11px] text-amber-800">
                               Provider Status:{' '}
                               <code className="font-mono bg-white/80 px-1 py-0.5 border border-amber-300">
-                                {selectedOrderForInvoice.courierStatusRaw || 'unknown'}
+                                {courierShipment?.providerStatus || selectedOrderForInvoice.courierStatusRaw || 'unknown'}
                               </code>
                               . No automated order completion or stock changes have occurred.
                             </p>
@@ -1707,83 +1838,118 @@ function OrdersPageContent() {
                         </div>
                       )}
 
-                      {/* Courier Diagnostics / Status Breakdown */}
-                      <div className="bg-[#fbf9f2] border border-[#deddd3] p-2.5 space-y-1 text-xs">
-                        <div className="flex items-center justify-between text-[11px] text-[#717975]">
-                          <span>Courier:</span>
-                          <span className="font-semibold text-[#1b1c18]">Pathao Express (Sandbox)</span>
+                      {/* Detailed Grid: Courier, Tracking Code, Provider Invoice, COD Amount, Delivery Charge, Last Sync */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-[#fbf9f2] border border-[#deddd3] p-2.5 text-xs">
+                        <div>
+                          <span className="text-[10px] text-[#717975] block uppercase font-medium">Courier</span>
+                          <span className="font-semibold text-[#1b1c18]">Steadfast Courier</span>
                         </div>
-                        <div className="flex items-center justify-between text-[11px] text-[#717975]">
-                          <span>Normalized Status:</span>
-                          <span className="font-mono font-bold text-[#073a2d]">
-                            {selectedOrderForInvoice.courierStatus || 'PENDING'}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-[11px] text-[#717975]">
-                          <span>Raw Provider Status:</span>
-                          <span className="font-mono text-[#404945]">
-                            {selectedOrderForInvoice.courierStatusRaw || selectedOrderForInvoice.courierStatus || 'Pending'}
-                          </span>
-                        </div>
-                        {selectedOrderForInvoice.courierLastSyncedAt && (
-                          <div className="flex items-center justify-between text-[11px] text-[#717975]">
-                            <span>Last Synced:</span>
-                            <span className="text-[#404945]">
-                              {new Date(selectedOrderForInvoice.courierLastSyncedAt).toLocaleString()}
-                            </span>
+                        <div>
+                          <span className="text-[10px] text-[#717975] block uppercase font-medium">Tracking Code</span>
+                          <div className="flex items-center gap-1 font-mono font-bold text-[#073a2d]">
+                            <span>{courierShipment?.trackingCode || selectedOrderForInvoice.trackingNumber || 'N/A'}</span>
+                            {(courierShipment?.trackingCode || selectedOrderForInvoice.trackingNumber) && (
+                              <button
+                                type="button"
+                                title="Copy Tracking Code"
+                                onClick={() => handleCopyTrackingCode(courierShipment?.trackingCode || selectedOrderForInvoice.trackingNumber!)}
+                                className="text-[#717975] hover:text-[#073a2d] cursor-pointer"
+                              >
+                                {isCopiedTracking ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                              </button>
+                            )}
                           </div>
-                        )}
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-[#717975] block uppercase font-medium">Provider Invoice</span>
+                          <span className="font-mono text-[#1b1c18]">
+                            {courierShipment?.providerInvoice || selectedOrderForInvoice.orderNumber}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-[#717975] block uppercase font-medium">COD Amount</span>
+                          <span className="font-semibold text-[#073a2d]">
+                            ৳{(courierShipment?.codAmount ?? (selectedOrderForInvoice.paymentStatus === 'PAID' ? 0 : selectedOrderForInvoice.amount)).toLocaleString()}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-[#717975] block uppercase font-medium">Delivery Charge</span>
+                          <span className="font-medium text-[#1b1c18]">
+                            ৳{(courierShipment?.deliveryCharge ?? 80).toLocaleString()}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-[#717975] block uppercase font-medium">Last Sync</span>
+                          <span className="text-[#404945]">
+                            {courierShipment?.lastSyncedAt || selectedOrderForInvoice.courierLastSyncedAt
+                              ? new Date(courierShipment?.lastSyncedAt || selectedOrderForInvoice.courierLastSyncedAt!).toLocaleString()
+                              : 'Just now'}
+                          </span>
+                        </div>
                       </div>
 
+                      {/* Action Links & Return Request */}
                       <div className="pt-2 border-t border-[#f0eee7] flex flex-wrap items-center justify-between gap-2 text-xs text-[#717975]">
-                        <span>Carrier: <strong>Pathao Express (Sandbox)</strong></span>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           <a
-                            href={`https://merchant.pathao.com/tracking?consignment_id=${selectedOrderForInvoice.courierConsignmentId}`}
+                            href={
+                              courierShipment?.trackingUrl ||
+                              selectedOrderForInvoice.trackingUrl ||
+                              `https://steadfast.com.bd/t/${courierShipment?.trackingCode || selectedOrderForInvoice.trackingNumber || ''}`
+                            }
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center gap-1 text-[#073a2d] hover:underline font-semibold"
                           >
-                            <span>Pathao Portal</span>
+                            <span>Open Steadfast Tracking</span>
                             <ExternalLink className="w-3 h-3" />
                           </a>
                         </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleCreateSteadfastReturn(selectedOrderForInvoice.id)}
+                            disabled={isCreatingReturn}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-[#deddd3] hover:border-amber-400 text-amber-800 text-[11px] font-semibold transition-colors disabled:opacity-50 cursor-pointer"
+                          >
+                            {isCreatingReturn ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                            <span>Create Return Request</span>
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-[10px] text-[#717975] italic">
-                        Note: Sandbox test parcels exist only in the Pathao Sandbox API. Click &quot;Refresh Status&quot; above to sync live test updates.
-                      </p>
                     </div>
                   ) : (
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-[#deddd3] p-3 text-xs">
                       <div>
-                        <p className="font-semibold text-[#1b1c18]">Ready for Sandbox Courier Booking</p>
+                        <p className="font-semibold text-[#1b1c18]">Ready for Steadfast Courier Booking</p>
                         <p className="text-[11px] text-[#69726d] mt-0.5">
-                          Collect: ৳
+                          COD to Collect: ৳
                           {selectedOrderForInvoice.paymentStatus === 'PAID'
                             ? 0
                             : Math.max(
                                 0,
                                 selectedOrderForInvoice.amount - (selectedOrderForInvoice.paidAmount || 0),
                               ).toLocaleString()}{' '}
-                          • Units: {selectedOrderForInvoice.itemCount} Total Garment(s)
+                          • Destination: {selectedOrderForInvoice.fullAddress?.city || 'Dhaka'}
                         </p>
                       </div>
 
                       <button
                         type="button"
-                        onClick={() => handleBookPathaoParcel(selectedOrderForInvoice.id)}
-                        disabled={isBookingPathao}
+                        onClick={() => handleBookSteadfastShipment(selectedOrderForInvoice.id)}
+                        disabled={isBookingSteadfast}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-[#073a2d] hover:bg-[#0c4e3b] text-white text-xs font-semibold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer shadow-xs whitespace-nowrap"
                       >
-                        {isBookingPathao ? (
+                        {isBookingSteadfast ? (
                           <>
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            <span>Booking Sandbox Parcel...</span>
+                            <span>Booking Steadfast Shipment...</span>
                           </>
                         ) : (
                           <>
                             <Truck className="w-3.5 h-3.5 text-[#c79a45]" />
-                            <span>Book Pathao Sandbox Parcel</span>
+                            <span>Create Steadfast Shipment</span>
                           </>
                         )}
                       </button>

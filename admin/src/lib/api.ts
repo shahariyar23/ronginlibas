@@ -1181,6 +1181,92 @@ export const adminApi = {
         method: 'POST',
       }),
   },
+  // Steadfast Courier & Logistics Integration
+  courier: {
+    getHealth: () =>
+      request<{
+        enabled: boolean;
+        mode: 'mock' | 'live';
+        provider: string;
+        configured: boolean;
+        connected: boolean;
+        message: string;
+        baseUrl?: string;
+        details?: any;
+      }>('/admin/courier/health'),
+    getBalance: () =>
+      request<{
+        currentBalance: number;
+        currency?: string;
+      }>('/admin/courier/balance'),
+    createShipment: (orderId: string, payload?: { note?: string }) =>
+      request<{
+        id: string;
+        orderId: string;
+        orderNumber: string;
+        provider: string;
+        consignmentId: string;
+        trackingCode: string;
+        providerInvoice: string;
+        status: string;
+        providerStatus: string;
+        customerSafeStatus: string;
+        codAmount: number;
+        deliveryCharge: number;
+        trackingUrl: string;
+        lastSyncedAt: string;
+      }>(`/admin/orders/${orderId}/shipment`, {
+        method: 'POST',
+        body: JSON.stringify(payload || {}),
+      }),
+    getShipment: (orderId: string) =>
+      request<{
+        id: string;
+        orderId: string;
+        orderNumber: string;
+        provider: string;
+        consignmentId: string;
+        trackingCode: string;
+        providerInvoice: string;
+        status: string;
+        providerStatus: string;
+        customerSafeStatus: string;
+        codAmount: number;
+        deliveryCharge: number;
+        trackingUrl: string;
+        lastSyncedAt: string;
+        events?: Array<{
+          id: string;
+          eventType: string;
+          status: string;
+          message?: string;
+          createdAt: string;
+        }>;
+      } | null>(`/admin/orders/${orderId}/shipment`),
+    refreshStatus: (orderId: string) =>
+      request<{
+        id: string;
+        orderId: string;
+        orderNumber: string;
+        provider: string;
+        consignmentId: string;
+        trackingCode: string;
+        status: string;
+        providerStatus: string;
+        customerSafeStatus: string;
+        lastSyncedAt: string;
+      }>(`/admin/orders/${orderId}/shipment/refresh-status`, {
+        method: 'POST',
+      }),
+    createReturnRequest: (orderId: string, payload?: { reason?: string }) =>
+      request<{
+        success: boolean;
+        message: string;
+      }>(`/admin/orders/${orderId}/shipment/return`, {
+        method: 'POST',
+        body: JSON.stringify(payload || {}),
+      }),
+  },
   analytics: {
     getOverview: (params?: { period?: string; from?: string; to?: string }) => {
       const q = new URLSearchParams();

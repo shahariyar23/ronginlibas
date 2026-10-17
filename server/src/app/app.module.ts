@@ -32,6 +32,7 @@ import { OffersModule } from '../offers/offers.module.js';
 import { CollectionsModule } from '../collections/collections.module.js';
 import { ReportsModule } from '../reports/reports.module.js';
 import { PathaoModule } from '../pathao/pathao.module.js';
+import { CourierModule } from '../courier/courier.module.js';
 import { AnalyticsModule } from '../analytics/analytics.module.js';
 
 import { AppController } from './app.controller.js';
@@ -67,6 +68,7 @@ import { AllExceptionsFilter } from '../common/filters/all-exceptions.filter.js'
     PaymentsModule,
     ShippingModule,
     PathaoModule,
+    CourierModule,
     StorefrontModule,
     CartModule,
     WishlistModule,

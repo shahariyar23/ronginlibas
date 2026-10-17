@@ -5,6 +5,7 @@ import { useAdmin } from '@/context/AdminContext';
 import { Settings, Save, CheckCircle2, Shield, Phone, Globe, CreditCard, Truck, RefreshCw, Tag } from 'lucide-react';
 import { SettingsSkeleton } from '@/components/common/Skeleton';
 import { PermissionGuard } from '@/components/auth/PermissionGuard';
+import { SteadfastCourierCard } from '@/components/settings/SteadfastCourierCard';
 import { PathaoSandboxCard } from '@/components/settings/PathaoSandboxCard';
 
 function SettingsContent() {
@@ -402,6 +403,9 @@ function SettingsContent() {
             </div>
           </div>
         </div>
+
+        {/* Steadfast Courier Logistics Integration */}
+        <SteadfastCourierCard />
 
         {/* Pathao Logistics Courier Integration (Sandbox Testing) */}
         <PathaoSandboxCard />

@@ -30,6 +30,7 @@ import {
   normalizePathaoStatus,
   getCustomerSafeCourierStatus,
 } from '../../pathao/status/courier-status.types.js';
+import { getCustomerSafeShipmentStatus } from '../../courier/status/steadfast-status.mapper.js';
 
 function roundCurrency(val: number): number {
   return Math.round((val + Number.EPSILON) * 100) / 100;
@@ -1820,14 +1821,18 @@ export class OrdersService {
     trackingToken?: string,
   ) {
     const order = await this.findOrderForAccess(orderNumber, customerId, phone, trackingToken);
-    const normalizedCourier = normalizePathaoStatus(order.courierStatus);
-    const safeCourierStatus = getCustomerSafeCourierStatus(normalizedCourier);
+    const providerUpper = (order.courierProvider || '').toUpperCase();
+    const isSteadfast = providerUpper === 'STEADFAST' || (order.courierName || '').toLowerCase().includes('steadfast');
+
+    const safeCourierStatus = isSteadfast
+      ? getCustomerSafeShipmentStatus(order.courierStatus || '')
+      : getCustomerSafeCourierStatus(normalizePathaoStatus(order.courierStatus));
 
     return {
       orderNumber: order.orderNumber,
       status: order.status,
-      courier: order.courierProvider || order.courierName || 'PATHAO',
-      courierName: order.courierName,
+      courier: order.courierProvider || order.courierName || 'STEADFAST',
+      courierName: order.courierName || (isSteadfast ? 'Steadfast Courier' : 'Pathao Courier'),
       courierStatus: safeCourierStatus,
       trackingNumber: order.trackingNumber,
       trackingUrl: order.trackingUrl,
