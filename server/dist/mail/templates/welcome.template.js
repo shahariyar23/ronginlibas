@@ -51,7 +51,7 @@ export function renderWelcomeEmail(options) {
         <tr>
           <td style="padding: 6px 0; font-size: 13px; color: #404945;" valign="top">
             <span style="color: #c79a45; font-weight: bold; margin-right: 6px;">🔄</span>
-            <strong>7-Day Doorstep Exchange:</strong> Complimentary size exchange service delivered right to your location.
+            <strong>2-Day Doorstep Exchange:</strong> Complimentary size exchange service delivered right to your location.
           </td>
         </tr>
       </table>
@@ -95,7 +95,7 @@ ${shopUrl}
 Manage your profile & sizing:
 ${profileUrl}
 
-Patron Concierge Helpline: +880 1916 664011
+Patron Concierge Helpline: +8801352926067
 `;
     return {
         subject: 'Welcome to Rongin Libas — Cloth Your Identity',

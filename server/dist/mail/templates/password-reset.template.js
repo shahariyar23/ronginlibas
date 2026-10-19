@@ -75,7 +75,7 @@ ${resetUrl}
 This link will expire in ${expiresInMinutes} minutes for your security.
 If you did not request this recovery, please ignore this email.
 
-Patron Concierge Helpline: +880 1916 664011
+Patron Concierge Helpline: +8801352926067
 `;
     return {
         subject: 'Reset your Rongin Libas password',

@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { generateInvoicePdf, formatInvoiceIssueDate } from './invoice-generator.js';
+import {
+  generateInvoicePdf,
+  generateInvoicePdfKitFallback,
+  formatInvoiceIssueDate,
+} from './invoice-generator.js';
 import { renderInvoiceHtml, InvoiceTemplateData } from '../templates/invoice.template.js';
 
 describe('Invoice System & Multi-Page PDF Generation', () => {
@@ -313,6 +317,42 @@ describe('Invoice System & Multi-Page PDF Generation', () => {
 
     const buffer = await generateInvoicePdf(orderWithImage, invoiceRecord);
     expect(buffer).toBeDefined();
+    expect(buffer.slice(0, 4).toString()).toBe('%PDF');
+  });
+
+  it('TEST 14: PDFKit fallback generates valid A4 PDF buffer independently for environments without Chromium', async () => {
+    const templateData: InvoiceTemplateData = {
+      invoiceNumber: 'RL-INV-2026-000088',
+      orderNumber: '#RL88888',
+      issueDate: '19 Oct 2026',
+      orderStatus: 'Confirmed',
+      customerName: 'Shahariyar Rahman',
+      customerPhone: '+8801761208866',
+      deliveryAddress: 'House 10, Road 4, Sector 3, Uttara, Dhaka',
+      paymentMethod: 'Cash on Delivery (COD)',
+      paymentStatus: 'Pending',
+      deliveryMethod: 'Express (24-48 Hours)',
+      items: [
+        {
+          productName: 'Royal Bengal Handloom Panjabi',
+          size: '42',
+          color: 'Ivory White',
+          sku: 'RL-PAN-42-IVR',
+          unitPrice: 4500,
+          quantity: 1,
+          lineTotal: 4500,
+          thumbnailBase64: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        },
+      ],
+      itemsSubtotal: 4500,
+      deliveryCharge: 80,
+      discountAmount: 0,
+      grandTotal: 4580,
+    };
+
+    const buffer = await generateInvoicePdfKitFallback(templateData);
+    expect(buffer).toBeDefined();
+    expect(buffer.length).toBeGreaterThan(1000);
     expect(buffer.slice(0, 4).toString()).toBe('%PDF');
   });
 });

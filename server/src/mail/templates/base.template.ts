@@ -100,20 +100,20 @@ export function renderBaseEmailTemplate(options: BaseEmailOptions): string {
           
           <!-- BRAND HEADER BANNER (FIRST OF THE PAGE LOGO) -->
           <tr>
-            <td align="center" style="background-color: #073a2d; padding: 32px 24px 28px 24px; border-bottom: 3px solid #c79a45;">
+            <td align="center" style="background-color: #fbf9f5; padding: 28px 24px 24px 24px; border-top: 4px solid #073a2d; border-bottom: 2px solid #c79a45;">
               <table border="0" cellpadding="0" cellspacing="0" align="center">
                 <tr>
                   <!-- Brand Official Logo Emblem (First of the page) -->
                   <td align="center" style="padding-bottom: 12px;">
                     <a href="${normalizedWebUrl}" target="_blank" style="text-decoration: none; display: inline-block;">
-                      <img src="${logoUrl}" alt="Rongin Libas Logo" width="76" height="56" style="display: block; margin: 0 auto; max-height: 56px; width: auto; border: 0; outline: none;" />
+                      <img src="${logoUrl}" alt="Rongin Libas Logo" width="84" height="62" style="display: block; margin: 0 auto; max-height: 62px; width: auto; border: 0; outline: none;" />
                     </a>
                   </td>
                 </tr>
                 <tr>
                   <!-- Brand Name -->
                   <td align="center">
-                    <span style="font-family: 'Cinzel', 'Georgia', serif; font-size: 22px; font-weight: 700; color: #fbf9f2; letter-spacing: 4px; text-transform: uppercase; display: block; margin: 0;">
+                    <span style="font-family: 'Cinzel', 'Georgia', serif; font-size: 22px; font-weight: 700; color: #073a2d; letter-spacing: 4px; text-transform: uppercase; display: block; margin: 0;">
                       RONGIN LIBAS
                     </span>
                   </td>
@@ -121,7 +121,7 @@ export function renderBaseEmailTemplate(options: BaseEmailOptions): string {
                 <tr>
                   <!-- Tagline -->
                   <td align="center" style="padding-top: 4px;">
-                    <span style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 9px; font-weight: 600; color: #c79a45; letter-spacing: 3px; text-transform: uppercase; display: block;">
+                    <span style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 9px; font-weight: 700; color: #a87829; letter-spacing: 3px; text-transform: uppercase; display: block;">
                       CLOTH YOUR IDENTITY &bull; BENGAL ATELIER
                     </span>
                   </td>
@@ -183,27 +183,27 @@ export function renderBaseEmailTemplate(options: BaseEmailOptions): string {
 
           <!-- CONCIERGE & SUPPORT FOOTER (LAST OF THE PAGE LOGO & NO EMAIL) -->
           <tr>
-            <td style="background-color: #073a2d; padding: 28px 30px 24px 30px; text-align: center; color: #b0ecd3;">
+            <td style="background-color: #fbf9f5; padding: 28px 30px 24px 30px; text-align: center; color: #49544e; border-top: 2px solid #c79a45;">
               <table border="0" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
                   <!-- Brand Logo at Last of the Page -->
                   <td align="center" style="padding-bottom: 14px;">
                     <a href="${normalizedWebUrl}" target="_blank" style="text-decoration: none; display: inline-block;">
-                      <img src="${logoUrl}" alt="Rongin Libas Logo" width="56" height="42" style="display: block; margin: 0 auto; max-height: 42px; width: auto; border: 0; outline: none; opacity: 0.95;" />
+                      <img src="${logoUrl}" alt="Rongin Libas Logo" width="56" height="42" style="display: block; margin: 0 auto; max-height: 42px; width: auto; border: 0; outline: none; opacity: 1;" />
                     </a>
                   </td>
                 </tr>
                 <tr>
                   <!-- Helpline (Email removed as requested) -->
-                  <td align="center" style="font-size: 12px; line-height: 1.6; color: #b0ecd3;">
-                    <span style="color: #fbf9f2; font-weight: 600;">Patron Concierge Helpline:</span><br>
-                    WhatsApp / Direct: <a href="https://wa.me/8801352926067" style="color: #c79a45; text-decoration: underline; font-weight: bold;">+8801352926067</a>
+                  <td align="center" style="font-size: 12px; line-height: 1.6; color: #49544e;">
+                    <span style="color: #073a2d; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Patron Concierge Helpline:</span><br>
+                    WhatsApp / Direct: <a href="https://wa.me/8801352926067" style="color: #073a2d; text-decoration: underline; font-weight: bold;">+8801352926067</a>
                   </td>
                 </tr>
                 <tr>
-                  <td align="center" style="padding-top: 14px; font-size: 11px; color: #7eab9b; border-top: 1px solid #145946; margin-top: 12px;">
+                  <td align="center" style="padding-top: 14px; font-size: 11px; color: #717975; border-top: 1px solid #deddd3; margin-top: 12px;">
                     &copy; ${currentYear} Rongin Libas. All rights reserved.<br>
-                    Dhaka, Bangladesh &bull; <a href="${normalizedWebUrl}" style="color: #c79a45; text-decoration: none;">Visit Sanctuary Storefront</a>
+                    Dhaka, Bangladesh &bull; <a href="${normalizedWebUrl}" style="color: #073a2d; text-decoration: underline; font-weight: 600;">Visit Sanctuary Storefront</a>
                   </td>
                 </tr>
               </table>

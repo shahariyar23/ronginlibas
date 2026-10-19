@@ -21,8 +21,18 @@ export interface OrderConfirmationAddress {
     deliveryInstructions?: string;
     [key: string]: any;
 }
+export interface OrderStatusBadgeConfig {
+    label: string;
+    bgColor: string;
+    borderColor: string;
+    textColor: string;
+    icon: string;
+}
+export declare const ORDER_STATUS_MAP: Record<string, OrderStatusBadgeConfig>;
+export declare function getOrderStatusBadge(status?: string | null): OrderStatusBadgeConfig;
 export interface OrderConfirmationEmailOptions {
     orderNumber: string;
+    orderStatus?: string | null;
     customerName?: string | null;
     items: OrderConfirmationItem[];
     subtotal: number | string;

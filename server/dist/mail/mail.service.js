@@ -264,6 +264,7 @@ let MailService = MailService_1 = class MailService {
         const cleanInvoiceRef = (params.invoiceNumber || cleanOrderNum).replace(/[^a-zA-Z0-9-_]/g, '');
         const { subject, html, text } = renderOrderConfirmationEmail({
             orderNumber: params.orderNumber,
+            orderStatus: params.orderStatus,
             customerName: params.customerName,
             items: params.items,
             subtotal: params.subtotal,

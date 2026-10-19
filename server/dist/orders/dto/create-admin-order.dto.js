@@ -41,13 +41,13 @@ __decorate([
     __metadata("design:type", String)
 ], CreateAdminOrderCustomerDto.prototype, "lastName", void 0);
 __decorate([
-    ApiPropertyOptional({ example: '01916664011' }),
+    ApiPropertyOptional({ example: '01352926067' }),
     IsString(),
     IsOptional(),
     __metadata("design:type", String)
 ], CreateAdminOrderCustomerDto.prototype, "phone", void 0);
 __decorate([
-    ApiPropertyOptional({ example: '01916664011' }),
+    ApiPropertyOptional({ example: '01352926067' }),
     IsString(),
     IsOptional(),
     __metadata("design:type", String)
@@ -161,13 +161,13 @@ __decorate([
     __metadata("design:type", String)
 ], CreateAdminOrderAddressDto.prototype, "postalCode", void 0);
 __decorate([
-    ApiPropertyOptional({ example: '01916664011' }),
+    ApiPropertyOptional({ example: '01352926067' }),
     IsString(),
     IsOptional(),
     __metadata("design:type", String)
 ], CreateAdminOrderAddressDto.prototype, "phone", void 0);
 __decorate([
-    ApiPropertyOptional({ example: '01916664011' }),
+    ApiPropertyOptional({ example: '01352926067' }),
     IsString(),
     IsOptional(),
     __metadata("design:type", String)

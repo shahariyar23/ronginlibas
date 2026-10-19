@@ -1,6 +1,6 @@
 import { renderBaseEmailTemplate } from './base.template.js';
 export function renderAccountBannedEmail(options) {
-    const { name, reason, supportEmail = 'support@ronginlibas.com', supportPhone = '+880 1916 664011', webUrl, } = options;
+    const { name, reason, supportEmail = 'support@ronginlibas.com', supportPhone = '+8801352926067', webUrl, } = options;
     const patronGreeting = name && name.trim() ? `Dear ${escapeHtml(name.trim())},` : 'Dear Patron,';
     const cleanReason = escapeHtml(reason.trim());
     const contentHtml = `

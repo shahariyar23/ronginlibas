@@ -134,7 +134,7 @@ export function renderAbandonedCartReminderEmail(options) {
 
     <!-- NEED HELP -->
     <div style="border-top: 1px dashed #deddd3; padding-top: 18px; margin-top: 24px; font-size: 12px; color: #6b7770; line-height: 1.6; text-align: center;">
-      Questions about sizing, custom length, or fabric weight? Reach out directly to our Dhaka studio concierge on WhatsApp or call <strong>+880 1916 664011</strong>.
+      Questions about sizing, custom length, or fabric weight? Reach out directly to our Dhaka studio concierge on WhatsApp or call <strong>+8801352926067</strong>.
     </div>
   `;
     const html = renderBaseEmailTemplate({
@@ -163,7 +163,7 @@ Review your bag: ${cartUrl}
 ${customMessage ? `Concierge Note: ${customMessage}\n` : ''}
 
 Rongin Libas | Bengal Atelier
-Dhaka Concierge: +880 1916 664011
+Dhaka Concierge: +8801352926067
   `.trim();
     return { subject, html, text };
 }

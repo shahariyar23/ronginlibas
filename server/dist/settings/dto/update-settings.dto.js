@@ -38,13 +38,13 @@ __decorate([
     __metadata("design:type", String)
 ], UpdateSettingsDto.prototype, "storeName", void 0);
 __decorate([
-    ApiPropertyOptional({ example: '01916664011' }),
+    ApiPropertyOptional({ example: '01352926067' }),
     IsString(),
     IsOptional(),
     __metadata("design:type", String)
 ], UpdateSettingsDto.prototype, "phone", void 0);
 __decorate([
-    ApiPropertyOptional({ example: '01916664011' }),
+    ApiPropertyOptional({ example: '01352926067' }),
     IsString(),
     IsOptional(),
     __metadata("design:type", String)

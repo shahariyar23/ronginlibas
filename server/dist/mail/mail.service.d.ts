@@ -23,6 +23,7 @@ export declare class MailService {
     sendOrderConfirmationEmail(params: {
         email: string;
         orderNumber: string;
+        orderStatus?: string | null;
         customerName?: string | null;
         items: OrderConfirmationItem[];
         subtotal: number | string;
