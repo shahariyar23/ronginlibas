@@ -43,7 +43,7 @@ const FAQ_ITEMS = [
     category: 'Ordering & Custom Sizing',
     question: 'How do I place an order on Rongin Libas?',
     answer:
-      'You can select any garment from our Men\'s Collection, choose your preferred size, and complete your order via our secure online checkout. Alternatively, you may place an order directly with our Dhaka concierge via official WhatsApp at 01916664011.',
+      'You can select any garment from our Men\'s Collection, choose your preferred size, and complete your order via our secure online checkout. Alternatively, you may place an order directly with our Dhaka concierge via official WhatsApp at 01352926067.',
     link: { href: '/men', label: 'Explore the full Men\'s Collection' },
   },
   {
@@ -90,10 +90,10 @@ const FAQ_ITEMS = [
   },
   {
     category: 'Returns & Cancellations',
-    question: 'How do I exchange an item if the size does not fit?',
+    question: 'How do I exchange an item if the size or color does not match?',
     answer:
-      'If you need a different size, notify our concierge via WhatsApp (01916664011) within 24 hours of delivery. The garment must remain unworn and unwashed with original atelier tags intact. We will coordinate a swift size exchange.',
-    link: { href: '/returns', label: 'Review the Size Exchange Procedure' },
+      "Eligible exchanges must be requested within 2 days of receiving the order if the delivered item's size, color, or another eligible product attribute does not match the order. Notify our concierge via WhatsApp (01352926067) within 2 days of delivery with the garment unworn and tags intact to coordinate a 2-day hassle-free exchange.",
+    link: { href: '/returns', label: 'Review the 2-Day Exchange Procedure' },
   },
   {
     category: 'Fabrics & Garment Care',

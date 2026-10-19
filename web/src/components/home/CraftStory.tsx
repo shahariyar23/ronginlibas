@@ -20,8 +20,8 @@ export const CraftStory: React.FC = () => {
     },
     {
       icon: RotateCcw,
-      title: 'Hassle-Free 7-Day Exchange',
-      desc: 'Need a different collar size or chest measurement? Our dedicated concierge arranges doorstep exchange without friction.',
+      title: '2-Day Hassle-Free Exchange',
+      desc: 'Need a different size, color, or eligible attribute exchange? Our dedicated concierge arranges doorstep exchange within 2 days without friction.',
     },
   ];
 

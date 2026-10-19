@@ -266,7 +266,7 @@ export const ForgotPasswordClient: React.FC = () => {
             </div>
             <div className="flex items-center justify-center gap-2">
               <RotateCcw className="w-4 h-4 text-[#073a2d]" />
-              <span className="font-sans text-xs text-[#404945]">7-Day Doorstep Size Exchange</span>
+              <span className="font-sans text-xs text-[#404945]">2-Day Doorstep Size Exchange</span>
             </div>
             <div className="flex items-center justify-center gap-2">
               <Sparkles className="w-4 h-4 text-[#073a2d]" />

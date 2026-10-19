@@ -168,7 +168,7 @@ ${addressLines ? `Delivery Address: ${addressLines}\n` : ''}${courierName ? `Cou
 View updated order: ${trackUrl}
 
 Rongin Libas | Bengal Atelier
-Helpline: +880 1916 664011
+Helpline: +8801352926067
   `.trim();
 
   return { subject, html, text };

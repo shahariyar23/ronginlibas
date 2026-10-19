@@ -63,7 +63,7 @@ export function renderPasswordResetSuccessEmail(options: PasswordResetSuccessTem
           <td style="font-size: 12px; color: #404945; line-height: 1.6;">
             <strong style="color: #ba1a1a;">Did not make this change?</strong><br>
             If you did not reset your password, please contact our concierge immediately at 
-            <a href="https://wa.me/8801916664011" style="color: #073a2d; font-weight: bold; text-decoration: underline;">+880 1916 664011</a> 
+            <a href="https://wa.me/8801352926067" style="color: #073a2d; font-weight: bold; text-decoration: underline;">+8801352926067</a> 
             to secure your account.
           </td>
         </tr>
@@ -96,7 +96,7 @@ Sign in to your account:
 ${loginUrl}
 
 If you did NOT authorize this change, please contact our Concierge immediately:
-WhatsApp / Direct: +880 1916 664011
+WhatsApp / Direct: +8801352926067
 `;
 
   return {

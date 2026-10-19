@@ -245,7 +245,7 @@ export const JOURNAL_ARTICLES: JournalArticle[] = [
         ],
         callout: {
           title: 'Risk-Free Inspection',
-          text: 'Every garment is backed by our doorstep open-box verification and 1-day sizing exchange charter.',
+          text: 'Every garment is backed by our doorstep open-box verification and 2-day sizing and mismatch exchange charter.',
           link: {
             href: '/returns',
             label: 'Review our open-box verification and exchange policy',

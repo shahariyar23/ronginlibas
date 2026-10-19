@@ -125,26 +125,29 @@ export default function ReturnsPage() {
             </ul>
           </section>
 
-          {/* Section 3: Sizing & Craftsmanship Exchanges */}
+          {/* Section 3: 2-Day Hassle-Free Exchanges */}
           <section className="bg-white p-6 sm:p-8 border border-[#deddd3] space-y-4 shadow-xs">
             <div className="flex items-center gap-2.5 text-[#073a2d]">
               <RotateCcw className="w-5 h-5 text-[#c79a45]" />
               <h2 className="font-serif text-2xl font-normal">
-                3. Size &amp; Craftsmanship Exchanges
+                3. 2-Day Hassle-Free Exchange Policy
               </h2>
             </div>
             <p className="text-sm">
-              If an accepted garment requires a different size for optimal fit:
+              Eligible exchanges must be requested within 2 days of receiving the order if the delivered item&apos;s size, color, or another eligible product attribute does not match the order:
             </p>
             <div className="space-y-3 text-xs text-[#52605b]">
               <p>
-                1. <strong>Notification Within 24 Hours:</strong> Contact our atelier concierge via WhatsApp (<code>01916664011</code>) within 24 hours of parcel acceptance.
+                1. <strong>Notification Within 2 Days:</strong> Contact our atelier concierge via WhatsApp (<code>01352926067</code>) within 2 days of receiving your order.
               </p>
               <p>
-                2. <strong>Pristine Condition Required:</strong> The garment must be completely unworn, unwashed, unaltered, with original atelier tags and packaging intact.
+                2. <strong>Eligible Exchange Reasons:</strong> Exchanges are supported when the delivered item&apos;s size, color, or another eligible product attribute does not match what was ordered.
               </p>
               <p>
-                3. <strong>Replacement Dispatch:</strong> Upon receiving and verifying the returned piece at our Dhaka atelier, the requested alternative size will be promptly dispatched.
+                3. <strong>Pristine Condition Required:</strong> The garment must be completely unworn, unwashed, unaltered, with original atelier tags and packaging intact.
+              </p>
+              <p>
+                4. <strong>Replacement Dispatch:</strong> Upon receiving and verifying the returned piece at our Dhaka atelier, the requested replacement variant will be promptly dispatched.
               </p>
             </div>
           </section>

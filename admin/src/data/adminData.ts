@@ -268,8 +268,8 @@ export const INITIAL_INVENTORY: InventoryItem[] = [];
 
 export const INITIAL_SETTINGS: StoreSettings = {
   storeName: 'Rongin Libas',
-  phone: '+880 1916-664011',
-  whatsapp: '+880 1916-664011',
+  phone: '01352926067',
+  whatsapp: '01352926067',
   website: 'https://ronginlibas.com',
   facebook: 'https://facebook.com/ronginlibas',
   dhakaDeliveryCharge: 80,

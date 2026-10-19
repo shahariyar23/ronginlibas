@@ -17,7 +17,7 @@ export function renderAccountBannedEmail(options: AccountBannedTemplateOptions):
     name,
     reason,
     supportEmail = 'support@ronginlibas.com',
-    supportPhone = '+880 1916 664011',
+    supportPhone = '+8801352926067',
     webUrl,
   } = options;
 

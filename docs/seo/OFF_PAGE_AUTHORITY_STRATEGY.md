@@ -24,8 +24,8 @@ Search engines rely on consistent entity signals across the web to build confide
 | **Legal Entity** | `Rongin Libas Atelier` | Used in legal terms and Organization schema |
 | **Canonical Origin** | `https://ronginlibas.com` | Strict HTTPS, non-www, trailing-slash normalized |
 | **Headquarters** | Dhaka, Bangladesh | Regional anchor for local entity recognition |
-| **Official Telephone** | `01916664011` / `+8801916664011` | Synchronized across database, UI, and schema |
-| **Official WhatsApp** | `01916664011` (`https://wa.me/8801916664011`) | Direct concierge communication link |
+| **Official Telephone** | `01352926067` / `+8801352926067` | Synchronized across database, UI, and schema |
+| **Official WhatsApp** | `01352926067` (`https://wa.me/8801352926067`) | Direct concierge communication link |
 | **Official Email** | `concierge@ronginlibas.com` | Verified atelier customer & press contact |
 | **Official Facebook** | `https://facebook.com/ronginlibas` | Primary verified social profile |
 | **Primary Vector Emblem** | `https://ronginlibas.com/logo.svg` | Approved vector format for digital press |
@@ -120,7 +120,7 @@ The following categories outline legitimate, high-relevance editorial and citati
 
 ### Tier 4: Local Business Directories & Brand Knowledge Graphs
 - **Examples:** Google Business Profile, Yellow Pages Bangladesh, verified business registry portals.
-- **Data Accuracy:** Strict NAP consistency (Name: Rongin Libas, Address: Dhaka, Bangladesh, Phone: 01916664011).
+- **Data Accuracy:** Strict NAP consistency (Name: Rongin Libas, Address: Dhaka, Bangladesh, Phone: 01352926067).
 - **Destination:** `https://ronginlibas.com/`.
 
 ---

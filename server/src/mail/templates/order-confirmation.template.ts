@@ -25,8 +25,110 @@ export interface OrderConfirmationAddress {
   [key: string]: any;
 }
 
+export interface OrderStatusBadgeConfig {
+  label: string;
+  bgColor: string;
+  borderColor: string;
+  textColor: string;
+  icon: string;
+}
+
+export const ORDER_STATUS_MAP: Record<string, OrderStatusBadgeConfig> = {
+  PENDING: {
+    label: 'Confirmed',
+    bgColor: '#e6f4ea',
+    borderColor: '#073a2d',
+    textColor: '#073a2d',
+    icon: '✓',
+  },
+  CONFIRMED: {
+    label: 'Confirmed',
+    bgColor: '#e6f4ea',
+    borderColor: '#073a2d',
+    textColor: '#073a2d',
+    icon: '✓',
+  },
+  PROCESSING: {
+    label: 'Processing',
+    bgColor: '#e2efe9',
+    borderColor: '#0d4d3b',
+    textColor: '#073a2d',
+    icon: '⚙',
+  },
+  PACKED: {
+    label: 'Packed & Ready',
+    bgColor: '#e8f0fe',
+    borderColor: '#1e5f74',
+    textColor: '#1e5f74',
+    icon: '📦',
+  },
+  SHIPPED: {
+    label: 'Shipped',
+    bgColor: '#e0f2fe',
+    borderColor: '#0284c7',
+    textColor: '#0369a1',
+    icon: '🚚',
+  },
+  OUT_FOR_DELIVERY: {
+    label: 'Out for Delivery',
+    bgColor: '#fef3c7',
+    borderColor: '#d97706',
+    textColor: '#b45309',
+    icon: '📍',
+  },
+  DELIVERED: {
+    label: 'Delivered',
+    bgColor: '#dcfce7',
+    borderColor: '#15803d',
+    textColor: '#166534',
+    icon: '★',
+  },
+  CANCELLED: {
+    label: 'Cancelled',
+    bgColor: '#fee2e2',
+    borderColor: '#b91c1c',
+    textColor: '#991b1b',
+    icon: '✕',
+  },
+  RETURN_REQUESTED: {
+    label: 'Return Requested',
+    bgColor: '#fef3c7',
+    borderColor: '#f59e0b',
+    textColor: '#92400e',
+    icon: '🔄',
+  },
+  RETURNED: {
+    label: 'Returned',
+    bgColor: '#f3f4f6',
+    borderColor: '#6b7280',
+    textColor: '#374151',
+    icon: '↩',
+  },
+  REFUNDED: {
+    label: 'Refunded',
+    bgColor: '#ede9fe',
+    borderColor: '#7c3aed',
+    textColor: '#5b21b6',
+    icon: '💳',
+  },
+};
+
+export function getOrderStatusBadge(status?: string | null): OrderStatusBadgeConfig {
+  const key = (status || 'PENDING').trim().toUpperCase();
+  return (
+    ORDER_STATUS_MAP[key] || {
+      label: key.replace(/_/g, ' '),
+      bgColor: '#f4f3ec',
+      borderColor: '#073a2d',
+      textColor: '#073a2d',
+      icon: '•',
+    }
+  );
+}
+
 export interface OrderConfirmationEmailOptions {
   orderNumber: string;
+  orderStatus?: string | null;
   customerName?: string | null;
   items: OrderConfirmationItem[];
   subtotal: number | string;
@@ -58,6 +160,33 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#39;');
 }
 
+function formatPaymentMethod(method: string): string {
+  if (!method) return 'Cash on Delivery (COD)';
+  const upper = method.trim().toUpperCase();
+  if (upper === 'COD') return 'Cash on Delivery (COD)';
+  if (upper === 'UDDOKTAPAY') return 'UddoktaPay (Online Gateway)';
+  if (upper === 'BKASH') return 'bKash';
+  if (upper === 'NAGAD') return 'Nagad';
+  return method;
+}
+
+function formatPaymentStatus(status: string): { label: string; color: string } {
+  const upper = (status || 'PENDING').trim().toUpperCase();
+  switch (upper) {
+    case 'PAID':
+      return { label: 'Paid', color: '#073a2d' };
+    case 'PARTIALLY_PAID':
+      return { label: 'Partially Paid', color: '#c79a45' };
+    case 'REFUNDED':
+      return { label: 'Refunded', color: '#7c3aed' };
+    case 'FAILED':
+      return { label: 'Failed', color: '#991b1b' };
+    case 'PENDING':
+    default:
+      return { label: 'Pending', color: '#b45309' };
+  }
+}
+
 export function renderOrderConfirmationEmail(options: OrderConfirmationEmailOptions): {
   subject: string;
   html: string;
@@ -65,6 +194,7 @@ export function renderOrderConfirmationEmail(options: OrderConfirmationEmailOpti
 } {
   const {
     orderNumber,
+    orderStatus,
     customerName,
     items,
     subtotal,
@@ -86,9 +216,18 @@ export function renderOrderConfirmationEmail(options: OrderConfirmationEmailOpti
     invoiceNumber,
   } = options;
 
+  const statusBadge = getOrderStatusBadge(orderStatus);
+  const paymentMethodDisplay = formatPaymentMethod(paymentMethod);
+  const paymentStatusDisplay = formatPaymentStatus(paymentStatus);
+
   const displayName = customerName?.trim() || shippingAddress?.fullName?.trim() || 'Valued Patron';
-  const subject = `Order Received: ${orderNumber} (Pending Confirmation) | Rongin Libas`;
-  const previewText = `Your order ${orderNumber} has been received and is pending confirmation. Total: ${formatCurrency(totalAmount)}.`;
+  const isConfirmed = statusBadge.label === 'Confirmed';
+  const subject = isConfirmed
+    ? `Order Confirmed: ${orderNumber} | Rongin Libas`
+    : `Order Received: ${orderNumber} (${statusBadge.label}) | Rongin Libas`;
+  const previewText = isConfirmed
+    ? `Your order ${orderNumber} has been confirmed. Total: ${formatCurrency(totalAmount)}.`
+    : `Your order ${orderNumber} has been received (${statusBadge.label}). Total: ${formatCurrency(totalAmount)}.`;
   const invFilename = invoiceNumber ? invoiceNumber : orderNumber.replace('#', '');
 
   const discountNum = typeof discountAmount === 'number' ? discountAmount : parseFloat(discountAmount) || 0;
@@ -135,19 +274,24 @@ export function renderOrderConfirmationEmail(options: OrderConfirmationEmailOpti
     <!-- GREETING & PLACEMENT HEADER -->
     <div style="margin-bottom: 24px;">
       <div style="font-size: 11px; font-weight: 700; color: #c79a45; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px;">
-        Sartorial Order Placement
+        Rongin Libas &bull; Sartorial Atelier
       </div>
       <h1 style="font-family: 'Cinzel', 'Georgia', serif; font-size: 24px; color: #073a2d; margin: 0 0 10px 0; font-weight: 700; line-height: 1.3;">
-        Order Received: ${escapeHtml(orderNumber)}
+        ${isConfirmed ? `Order Confirmed: ${escapeHtml(orderNumber)}` : `Order Received: ${escapeHtml(orderNumber)}`}
       </h1>
-      <div style="display: inline-block; background-color: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 4px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px;">
-        ⏳ Status: Pending Confirmation
-      </div>
-      <p style="font-size: 15px; color: #37413d; margin: 0 0 12px 0; line-height: 1.6;">
+      <!-- ORDER STATUS BADGE (SINGLE UNBROKEN LINE) -->
+      <table border="0" cellpadding="0" cellspacing="0" style="margin: 0 0 16px 0; border-collapse: separate;">
+        <tr>
+          <td style="background-color: ${statusBadge.bgColor}; border: 1px solid ${statusBadge.borderColor}; color: ${statusBadge.textColor}; padding: 6px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; border-radius: 2px; white-space: nowrap !important; vertical-align: middle; line-height: 1.2;">
+            <span style="font-size: 12px; vertical-align: middle; display: inline-block; line-height: 1; margin-right: 6px; white-space: nowrap;">${statusBadge.icon}</span><span style="vertical-align: middle; white-space: nowrap !important; display: inline-block; line-height: 1;">Status: ${escapeHtml(statusBadge.label)}</span>
+          </td>
+        </tr>
+      </table>
+      <p style="font-size: 15px; color: #37413d; margin: 0 0 10px 0; line-height: 1.6;">
         Dear <strong>${escapeHtml(displayName)}</strong>,
       </p>
       <p style="font-size: 14px; color: #49544e; margin: 0; line-height: 1.6;">
-        Thank you for choosing Rongin Libas. We have safely recorded your order in our Bengal heritage atelier ledger under status <strong>Pending Confirmation</strong>. Our concierge and verification team will review your order details and confirm it shortly before dispatch.
+        Thank you for shopping with Rongin Libas. Your order has been successfully received into our Bengal atelier ledger. We will keep you updated about its progress.
       </p>
     </div>
 
@@ -171,29 +315,19 @@ export function renderOrderConfirmationEmail(options: OrderConfirmationEmailOpti
       </table>
     </div>` : ''}
 
-    <!-- ORDER SUMMARY CARD -->
+    <!-- ORDER INFORMATION CARD (CLEAR, BALANCED & NON-DUPLICATIVE) -->
     <div style="background-color: #fcfbf7; border: 1px solid #deddd3; border-radius: 4px; padding: 20px; margin-bottom: 26px;">
       <table border="0" cellpadding="0" cellspacing="0" width="100%">
         <tr>
-          <td width="50%" valign="top" style="padding-bottom: 14px;">
+          <td width="50%" valign="top" style="padding-bottom: 14px; padding-right: 10px;">
             <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #838e87; font-weight: 600;">
               Order Reference
             </div>
-            <div style="font-size: 16px; font-weight: 700; color: #073a2d; margin-top: 3px; font-family: monospace;">
+            <div style="font-size: 15px; font-weight: 700; color: #073a2d; margin-top: 3px; font-family: monospace;">
               ${escapeHtml(orderNumber)}
             </div>
           </td>
-          <td width="50%" valign="top" style="padding-bottom: 14px;">
-            <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #838e87; font-weight: 600;">
-              Order Status
-            </div>
-            <div style="display: inline-block; background-color: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 3px 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-top: 3px; border-radius: 2px;">
-              ⏳ Pending Confirmation
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td width="50%" valign="top" style="padding-bottom: 14px;">
+          <td width="50%" valign="top" style="padding-bottom: 14px; padding-left: 10px;">
             <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #838e87; font-weight: 600;">
               Placement Date
             </div>
@@ -201,12 +335,22 @@ export function renderOrderConfirmationEmail(options: OrderConfirmationEmailOpti
               ${escapeHtml(orderDate)}
             </div>
           </td>
-          <td width="50%" valign="top" style="padding-bottom: 14px;">
+        </tr>
+        <tr>
+          <td width="50%" valign="top" style="padding-bottom: 14px; padding-right: 10px;">
             <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #838e87; font-weight: 600;">
               Payment Method
             </div>
             <div style="font-size: 13px; font-weight: 600; color: #2b332f; margin-top: 3px;">
-              ${escapeHtml(paymentMethod)} <span style="font-size: 11px; color: #c79a45;">(${escapeHtml(paymentStatus)})</span>
+              ${escapeHtml(paymentMethodDisplay)}
+            </div>
+          </td>
+          <td width="50%" valign="top" style="padding-bottom: 14px; padding-left: 10px;">
+            <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #838e87; font-weight: 600;">
+              Payment Status
+            </div>
+            <div style="font-size: 13px; font-weight: 700; color: ${paymentStatusDisplay.color}; margin-top: 3px;">
+              ${escapeHtml(paymentStatusDisplay.label)}
             </div>
           </td>
         </tr>
@@ -309,19 +453,19 @@ export function renderOrderConfirmationEmail(options: OrderConfirmationEmailOpti
   });
 
   const text = `
-ORDER RECEIVED: ${orderNumber} (Pending Confirmation)
+${isConfirmed ? `ORDER CONFIRMED: ${orderNumber}` : `ORDER RECEIVED: ${orderNumber} (${statusBadge.label})`}
 Rongin Libas Atelier
 
 Dear ${displayName},
 
-Thank you for choosing Rongin Libas. We have recorded your order under status: Pending Confirmation. Our atelier concierge team will review and confirm your order shortly before dispatch.
+Thank you for shopping with Rongin Libas. Your order has been successfully received into our Bengal atelier ledger. We will keep you updated about its progress.
 
-Order Number: ${orderNumber}
-Order Status: Pending Confirmation
-Date: ${orderDate}
-Payment Method: ${paymentMethod} (${paymentStatus})
+Order Reference: ${orderNumber}
+Placement Date: ${orderDate}
+Payment Method: ${paymentMethodDisplay}
+Payment Status: ${paymentStatusDisplay.label}
 Total Amount: ${formatCurrency(totalAmount)}
-Shipping Address: ${addressLines}
+Shipping Destination: ${addressLines}
 
 Items:
 ${items.map((i) => `- ${i.productName} (${i.quantity}x) - ${formatCurrency(i.subtotal)}`).join('\n')}
@@ -333,7 +477,8 @@ Total: ${formatCurrency(totalAmount)}
 Track your order: ${trackUrl}
 
 Rongin Libas | Bengal Atelier
-Helpline: +880 1916 664011
+Helpline: +8801352926067
+WhatsApp: https://wa.me/8801352926067
   `.trim();
 
   return { subject, html, text };

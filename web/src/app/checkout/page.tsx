@@ -19,13 +19,7 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+import { OrderConfirmationModal } from '@/components/orders/OrderConfirmationModal';
 import {
   ShieldCheck,
   PhoneCall,
@@ -33,7 +27,6 @@ import {
   Plus,
   Minus,
   Trash2,
-  CheckCircle2,
   Tag,
   CreditCard,
   Banknote,
@@ -143,10 +136,22 @@ export default function CheckoutPage() {
   const [isRedirectingToGateway, setIsRedirectingToGateway] = useState(false);
   const [orderConfirmed, setOrderConfirmed] = useState(false);
   const [orderId, setOrderId] = useState('');
+  const [orderStatus, setOrderStatus] = useState('Pending Confirmation');
   const [trackingToken, setTrackingToken] = useState('');
   const [savedAddresses, setSavedAddresses] = useState<CustomerAddress[]>([]);
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState<string | 'new' | null>(null);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get('previewModal') === 'true') {
+        setOrderId('RL45813971D3D4');
+        setOrderStatus('Pending Confirmation');
+        setOrderConfirmed(true);
+      }
+    }
+  }, []);
 
   const applyAddressToForm = React.useCallback(
     (addr: CustomerAddress) => {
@@ -506,6 +511,7 @@ export default function CheckoutPage() {
         id: string;
         orderNumber: string;
         guestTrackingToken?: string;
+        status?: string;
       }>('/orders', {
         method: 'POST',
         body: JSON.stringify({
@@ -531,6 +537,9 @@ export default function CheckoutPage() {
 
       setOrderId(order.orderNumber);
       setTrackingToken(order.guestTrackingToken || '');
+      if (order.status) {
+        setOrderStatus(order.status);
+      }
 
       // Only track purchase if the order state is immediately confirmed (e.g. COD)
       // Pending online payments via UddoktaPay are tracked upon successful payment confirmation at /payment/result
@@ -1432,7 +1441,7 @@ export default function CheckoutPage() {
                   Cancel Payment & Return to Bag
                 </Button>
                 <p className="text-[11px] text-[#717975]">
-                  If your browser didn't redirect automatically, click the button above.
+                  If your browser didn&apos;t redirect automatically, click the button above.
                 </p>
               </div>
             ) : (
@@ -1446,63 +1455,18 @@ export default function CheckoutPage() {
       )}
 
       {/* Order Confirmation Modal */}
-      <Dialog open={orderConfirmed} onOpenChange={setOrderConfirmed}>
-        <DialogContent className="max-w-md p-8 bg-[#fbf9f2] border border-[#073a2d] text-center space-y-4" data-clarity-mask="true">
-          {/* Prominent Success Icon */}
-          <div className="mx-auto flex flex-col items-center justify-center gap-2">
-            <div className="w-16 h-16 rounded-full bg-emerald-50 border-2 border-emerald-600 flex items-center justify-center text-emerald-700 shadow-sm animate-in zoom-in-75 duration-300">
-              <CheckCircle2 className="w-9 h-9 text-emerald-700 stroke-[2.5]" />
-            </div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100/80 border border-emerald-300 text-emerald-800 text-xs font-sans font-bold tracking-wider uppercase">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Order Created Successfully</span>
-            </div>
-          </div>
-
-          <DialogHeader className="space-y-1">
-            <span className="text-[11px] font-sans font-semibold uppercase tracking-[0.25em] text-[#c79a45]">
-              Rongin Libas Atelier
-            </span>
-            <DialogTitle className="font-serif text-2xl text-[#073a2d]">
-              Shukriya for Honoring Us
-            </DialogTitle>
-            <div className="pt-1">
-              <span className="inline-block bg-amber-100 border border-amber-300 text-amber-900 font-sans text-[11px] font-bold px-3 py-1 uppercase tracking-wider rounded">
-                ⏳ Status: Pending Confirmation
-              </span>
-            </div>
-            <DialogDescription className="font-sans text-xs text-[#69726d] pt-1">
-              Your order has been recorded in the atelier ledger under reference:
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="p-3 bg-white border border-[#deddd3] text-sm font-mono font-bold text-[#073a2d]">
-            {orderId}
-          </div>
-
-          <p className="text-xs font-sans text-[#404945] leading-relaxed">
-            Your order status is currently <strong>Pending Confirmation</strong>. Our atelier concierge team will review and confirm your order shortly, and reach out to you at <strong>{formData.phone || 'your mobile'}</strong> before departure for seamless delivery to {formData.division || 'your city'}.
-          </p>
-
-          <div className="pt-4 flex flex-col gap-2">
-            <Button
-              onClick={() => {
-                setOrderConfirmed(false);
-                router.push('/shop');
-              }}
-              className="w-full bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans uppercase tracking-wider text-xs h-11"
-            >
-              Continue Exploring
-            </Button>
-            <a
-              href={`/track-order?id=${encodeURIComponent(orderId)}${trackingToken ? `&phone=${encodeURIComponent(formData.phone)}&trackingToken=${encodeURIComponent(trackingToken)}` : ''}`}
-              className="text-xs font-sans text-[#073a2d] hover:underline py-2"
-            >
-              Track this order
-            </a>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <OrderConfirmationModal
+        open={orderConfirmed}
+        onOpenChange={setOrderConfirmed}
+        orderNumber={orderId}
+        orderStatus={orderStatus}
+        phone={formData.phone}
+        trackingToken={trackingToken}
+        onContinueShopping={() => {
+          setOrderConfirmed(false);
+          router.push('/shop');
+        }}
+      />
     </div>
   );
 }

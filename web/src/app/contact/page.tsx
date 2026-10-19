@@ -17,14 +17,14 @@ import { SITE_CONFIG, getCanonicalUrl, generateContactPageJsonLd } from '@/lib/s
 export const metadata: Metadata = {
   title: 'Contact Concierge & Customer Care | Rongin Libas Dhaka',
   description:
-    'Connect with Rongin Libas customer concierge in Dhaka. Reach our support team via official WhatsApp at 01916664011, direct phone, or email for order and sizing assistance.',
+    'Connect with Rongin Libas customer concierge in Dhaka. Reach our support team via official WhatsApp at 01352926067, direct phone, or email for order and sizing assistance.',
   alternates: {
     canonical: getCanonicalUrl('/contact'),
   },
   openGraph: {
     title: 'Contact Concierge & Customer Care | Rongin Libas',
     description:
-      'Official contact channels for Rongin Libas atelier in Dhaka. Reach our concierge via WhatsApp at 01916664011, phone, or direct email.',
+      'Official contact channels for Rongin Libas atelier in Dhaka. Reach our concierge via WhatsApp at 01352926067, phone, or direct email.',
     url: getCanonicalUrl('/contact'),
     siteName: SITE_CONFIG.name,
     images: [{ url: `${SITE_CONFIG.url}/hero-model.jpg`, width: 1200, height: 1200, alt: 'Contact Rongin Libas Concierge' }],
@@ -46,7 +46,7 @@ export default function ContactPage() {
     : rawDigits.startsWith('0')
       ? `+88${rawDigits}`
       : `+880${rawDigits}`;
-  const whatsappUrl = `https://wa.me/8801916664011?text=${encodeURIComponent(
+  const whatsappUrl = `https://wa.me/8801352926067?text=${encodeURIComponent(
     'Assalamu Alaikum. I would like assistance with Rongin Libas garments and orders.',
   )}`;
 
@@ -98,7 +98,7 @@ export default function ContactPage() {
                   Fastest response for sizing advice, order confirmation, and parcel status.
                 </p>
                 <p className="font-mono text-sm text-[#073a2d] font-semibold pt-1">
-                  01916664011
+                  01352926067
                 </p>
               </div>
               <a

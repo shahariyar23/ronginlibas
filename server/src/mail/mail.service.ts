@@ -307,6 +307,7 @@ export class MailService {
   async sendOrderConfirmationEmail(params: {
     email: string;
     orderNumber: string;
+    orderStatus?: string | null;
     customerName?: string | null;
     items: OrderConfirmationItem[];
     subtotal: number | string;
@@ -338,6 +339,7 @@ export class MailService {
 
     const { subject, html, text } = renderOrderConfirmationEmail({
       orderNumber: params.orderNumber,
+      orderStatus: params.orderStatus,
       customerName: params.customerName,
       items: params.items,
       subtotal: params.subtotal,

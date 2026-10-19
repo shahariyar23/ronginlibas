@@ -289,7 +289,7 @@ export default function PrivacyPolicyPage() {
               
               <div className="p-3 bg-[#fbf9f2] border border-[#deddd3] flex items-center gap-2.5">
                <Phone className="w-4 h-4 text-[#073a2d] shrink-0" />
-                <span> WhatsApp: <a href="tel:+8801916664011" className="text-[#073a2d] font-semibold">+880 1916-664011</a></span>
+                <span> WhatsApp: <a href="tel:+8801352926067" className="text-[#073a2d] font-semibold">+8801352926067</a></span>
               </div>
             </div>
            
