@@ -162,10 +162,10 @@ export function renderBaseEmailTemplate(options: BaseEmailOptions): string {
                 <tr>
                   <td width="50%" class="badge-col" style="padding: 6px 8px;" valign="top">
                     <div style="font-size: 12px; font-weight: 600; color: #073a2d; margin-bottom: 2px;">
-                      🔄 7-Day Doorstep Exchange
+                      🔄 2-Day Doorstep Exchange
                     </div>
                     <div style="font-size: 11px; color: #717975;">
-                      Hassle-free size replacement
+                      2-Day hassle-free exchange
                     </div>
                   </td>
                   <td width="50%" class="badge-col" style="padding: 6px 8px;" valign="top">
@@ -197,7 +197,7 @@ export function renderBaseEmailTemplate(options: BaseEmailOptions): string {
                   <!-- Helpline (Email removed as requested) -->
                   <td align="center" style="font-size: 12px; line-height: 1.6; color: #b0ecd3;">
                     <span style="color: #fbf9f2; font-weight: 600;">Patron Concierge Helpline:</span><br>
-                    WhatsApp / Direct: <a href="https://wa.me/8801916664011" style="color: #c79a45; text-decoration: underline; font-weight: bold;">+880 1916 664011</a>
+                    WhatsApp / Direct: <a href="https://wa.me/8801352926067" style="color: #c79a45; text-decoration: underline; font-weight: bold;">+8801352926067</a>
                   </td>
                 </tr>
                 <tr>

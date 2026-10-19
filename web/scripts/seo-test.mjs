@@ -170,7 +170,7 @@ test('Structured data schemas generate valid JSON-LD objects matching visible pa
   const org = generateOrganizationJsonLd();
   assert.equal(org['@type'], 'Organization');
   assert.equal(org.name, 'Rongin Libas');
-  assert.equal(org.telephone, '01916664011');
+  assert.equal(org.telephone, '01352926067');
   assert.equal(org.address.addressCountry, 'BD');
 
   // WebSite (no deprecated SearchAction)
@@ -199,7 +199,7 @@ test('Structured data schemas generate valid JSON-LD objects matching visible pa
   // ContactPage
   const contact = generateContactPageJsonLd();
   assert.equal(contact['@type'], 'ContactPage');
-  assert.equal(contact.mainEntity.telephone, '01916664011');
+  assert.equal(contact.mainEntity.telephone, '01352926067');
 
   // ProductGroup with variants
   const dummyVariantProduct = {

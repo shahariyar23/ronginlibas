@@ -117,7 +117,7 @@ All critical technical foundations, crawler access boundaries, canonical normali
   - **Ratings & Reviews:** `aggregateRating` and `review` objects are only emitted when verified customer reviews exist in the database (never fabricated).
   - **Category / Collection:** `CollectionPage` with structured `ItemList` and `BreadcrumbList` (guaranteed Position 1 "Home").
   - **Journal:** `BlogPosting` schema with author, datePublished, dateModified, and publisher logo.
-  - **Trust Pages:** `FAQPage` with strictly visible Q&A items; `ContactPage` with direct telephone `01916664011`.
+  - **Trust Pages:** `FAQPage` with strictly visible Q&A items; `ContactPage` with direct telephone `01352926067`.
 
 ### 3.10 Product SEO & Image Optimization
 - **Status:** PASS — No issue found.

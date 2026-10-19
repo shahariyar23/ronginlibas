@@ -524,8 +524,8 @@ async function main() {
   const settingsData: Record<string, any> = {
     storeName: 'Rongin Libas',
     logo: '/logo.svg',
-    phone: '01916664011',
-    whatsapp: '01916664011',
+    phone: '01352926067',
+    whatsapp: '01352926067',
     email: 'concierge@ronginlibas.com',
     website: 'https://ronginlibas.com',
     facebook: 'https://facebook.com/ronginlibas.bd',

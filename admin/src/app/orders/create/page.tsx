@@ -832,7 +832,7 @@ export default function CreateOrderPage() {
                             setNewCustomerPhone(e.target.value);
                             setReceiverPhone(e.target.value);
                           }}
-                          placeholder="e.g. 01916664011"
+                          placeholder="e.g. 01352926067"
                           className="mt-1 w-full border border-[#deddd3] bg-[#fbf9f2] p-2.5 text-xs text-[#1b1c18] outline-hidden focus:border-[#073a2d]"
                         />
                         <span className="text-[10px] text-[#717975]">

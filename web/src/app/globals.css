@@ -98,6 +98,72 @@
   }
 }
 
+/* Order Success Modal Animations */
+@keyframes rl-circle-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes rl-check-draw {
+  0% {
+    stroke-dashoffset: 44;
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes rl-content-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-rl-circle {
+  animation: rl-circle-pop 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-rl-check {
+  stroke-dasharray: 44;
+  stroke-dashoffset: 44;
+  animation: rl-check-draw 0.5s 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-rl-rise {
+  animation: rl-content-rise 0.45s 0.12s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rl-circle,
+  .animate-rl-check,
+  .animate-rl-rise {
+    animation: none;
+    stroke-dashoffset: 0;
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @layer base {
   * {
     border-color: var(--border);

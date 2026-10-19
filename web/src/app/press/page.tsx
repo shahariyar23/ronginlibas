@@ -252,12 +252,12 @@ export default function PressPage() {
                 WhatsApp Press Hotline
               </span>
               <a
-                href={`https://wa.me/8801916664011?text=${encodeURIComponent('Press & Editorial Inquiry for Rongin Libas')}`}
+                href={`https://wa.me/8801352926067?text=${encodeURIComponent('Press & Editorial Inquiry for Rongin Libas')}`}
                 target="_blank"
                 rel="noreferrer"
                 className="text-white hover:underline text-sm font-medium"
               >
-                01916664011
+                01352926067
               </a>
             </div>
           </div>

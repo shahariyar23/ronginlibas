@@ -7,12 +7,12 @@ export class UpdateSettingsDto {
   @IsOptional()
   storeName?: string;
 
-  @ApiPropertyOptional({ example: '01916664011' })
+  @ApiPropertyOptional({ example: '01352926067' })
   @IsString()
   @IsOptional()
   phone?: string;
 
-  @ApiPropertyOptional({ example: '01916664011' })
+  @ApiPropertyOptional({ example: '01352926067' })
   @IsString()
   @IsOptional()
   whatsapp?: string;

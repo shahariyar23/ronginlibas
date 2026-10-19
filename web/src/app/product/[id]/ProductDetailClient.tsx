@@ -1236,7 +1236,7 @@ const ProductDetailView: React.FC<{
                 <RotateCcw className="w-5 h-5 text-[#073a2d] shrink-0 mt-0.5" />
                 <div>
                   <p className="font-sans text-xs uppercase tracking-wider text-[#1b1c18] font-bold">
-                    7-Day Doorstep Size Exchange
+                    2-Day Doorstep Size Exchange
                   </p>
                   <p className="font-sans text-[11px] text-[#69726d]">
                     Effortless exchange pickup right from your residence or Dhaka atelier salon.
@@ -1395,7 +1395,7 @@ const ProductDetailView: React.FC<{
               },
               {
                 id: 'accordion-5',
-                title: 'Doorstep Transit, COD & 7-Day Returns',
+                title: 'Doorstep Transit, COD & 2-Day Exchanges',
                 icon: Truck,
                 content: (
                   <p className="text-xs font-sans text-[#404945]">

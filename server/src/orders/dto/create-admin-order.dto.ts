@@ -35,12 +35,12 @@ export class CreateAdminOrderCustomerDto {
   @MaxLength(60)
   lastName?: string;
 
-  @ApiPropertyOptional({ example: '01916664011' })
+  @ApiPropertyOptional({ example: '01352926067' })
   @IsString()
   @IsOptional()
   phone?: string;
 
-  @ApiPropertyOptional({ example: '01916664011' })
+  @ApiPropertyOptional({ example: '01352926067' })
   @IsString()
   @IsOptional()
   phoneNumber?: string;
@@ -119,12 +119,12 @@ export class CreateAdminOrderAddressDto {
   @IsOptional()
   postalCode?: string;
 
-  @ApiPropertyOptional({ example: '01916664011' })
+  @ApiPropertyOptional({ example: '01352926067' })
   @IsString()
   @IsOptional()
   phone?: string;
 
-  @ApiPropertyOptional({ example: '01916664011' })
+  @ApiPropertyOptional({ example: '01352926067' })
   @IsString()
   @IsOptional()
   receiverPhone?: string;

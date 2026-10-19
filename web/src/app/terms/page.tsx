@@ -72,9 +72,9 @@ export default function TermsOfServicePage() {
           </div>
           <div className="p-4 bg-white border border-[#deddd3] shadow-xs">
             <RotateCcw className="w-5 h-5 text-[#073a2d] mb-2" />
-            <h4 className="font-serif text-sm font-medium text-[#073a2d]">1-Day Exchange Window</h4>
+            <h4 className="font-serif text-sm font-medium text-[#073a2d]">2-Day Exchange Window</h4>
             <p className="font-sans text-xs text-[#69726d] mt-1">
-              Hassle-free size and product exchanges for unworn garments with original atelier tags attached.
+              Hassle-free size, color, and product exchanges for unworn garments with original atelier tags attached.
             </p>
           </div>
         </div>
@@ -149,7 +149,7 @@ export default function TermsOfServicePage() {
                   <strong>Cash on Delivery (COD):</strong> Available across all 64 districts of Bangladesh. Patrons settle the exact invoice amount with the courier delivery officer upon parcel receipt.
                 </li>
                 <li>
-                  <strong>Direct WhatsApp Concierge:</strong> Patrons may coordinate private order assistance and manual payment confirmation directly via official WhatsApp (<code>+880 1916-664011</code>).
+                  <strong>Direct WhatsApp Concierge:</strong> Patrons may coordinate private order assistance and manual payment confirmation directly via official WhatsApp (<code>+8801352926067</code>).
                 </li>
               </ul>
             </div>
@@ -185,7 +185,7 @@ export default function TermsOfServicePage() {
               7. Returns, Exchanges &amp; Order Cancellation Policy
             </h2>
             <p>
-              We want every patron to be thoroughly pleased with their heirloom garment. We provide clear guidelines regarding our <strong>6-Hour Limited Cancellation Window</strong> and <strong>1-Day Exchange Policy</strong>:
+              We want every patron to be thoroughly pleased with their heirloom garment. We provide clear guidelines regarding our <strong>6-Hour Limited Cancellation Window</strong> and <strong>2-Day Exchange Policy</strong>:
             </p>
 
             <div className="bg-[#fbf9f2] border border-[#deddd3] p-4 rounded-md space-y-2 text-xs">
@@ -216,17 +216,17 @@ export default function TermsOfServicePage() {
 
             <div className="space-y-2 text-xs pt-2">
               <h3 className="font-sans font-bold text-[#073a2d] uppercase tracking-wider text-[11px]">
-                1-Day Exchange Policy (Post-Delivery)
+                2-Day Exchange Policy (Post-Delivery)
               </h3>
               <ul className="list-disc pl-5 space-y-1.5 text-[#37413d]">
+                <li>
+                  Eligible exchanges must be requested within 2 days of receiving the order if the delivered item&apos;s size, color, or another eligible product attribute does not match the order.
+                </li>
                 <li>
                   Garments must be unworn, unwashed, unaltered, and returned in their original packaging with all atelier brand tags intact.
                 </li>
                 <li>
-                  Size exchanges are accommodated subject to available atelier stock within 24 hours of recorded courier delivery.
-                </li>
-                <li>
-                  For inquiries or assistance beyond the 6-hour window, patrons are encouraged to contact our WhatsApp Concierge at <strong>+880 1916-664011</strong>.
+                  For inquiries or assistance, patrons are encouraged to contact our WhatsApp Concierge at <strong>+8801352926067</strong>.
                 </li>
               </ul>
             </div>
@@ -283,7 +283,7 @@ export default function TermsOfServicePage() {
             <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div className="p-3 bg-[#fbf9f2] border border-[#deddd3] flex items-center gap-2.5">
                 <Phone className="w-4 h-4 text-[#073a2d] shrink-0" />
-                <span> WhatsApp: <a href="tel:+8801916664011" className="text-[#073a2d] font-semibold">+880 1916-664011</a></span>
+                <span> WhatsApp: <a href="tel:+8801352926067" className="text-[#073a2d] font-semibold">+8801352926067</a></span>
               </div>
             </div>
             
