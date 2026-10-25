@@ -399,10 +399,10 @@ const ProductDetailView: React.FC<{
 
   const handleOpenReviewForm = () => {
     if (!user) {
-      toast.error('First login please', {
-        description: 'Please login first to submit a review.',
+      toast.error('Please Sign In', {
+        description: 'Please sign in to submit a review.',
         action: {
-          label: 'Login',
+          label: 'Sign In',
           onClick: () => router.push(`/login?next=${encodeURIComponent(`/products/${product.slug}#patron-reviews`)}`),
         },
       });
@@ -428,8 +428,8 @@ const ProductDetailView: React.FC<{
   const submitReview = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!user) {
-      toast.error('First login please', {
-        description: 'Please login first to submit a review.',
+      toast.error('Please Sign In', {
+        description: 'Please sign in to submit a review.',
       });
       router.push(`/login?next=${encodeURIComponent(`/products/${product.slug}#patron-reviews`)}`);
       return;
@@ -466,10 +466,10 @@ const ProductDetailView: React.FC<{
   const handleVoteHelpful = async (reviewId: string, helpful: boolean) => {
     if (votingReviewId) return;
     if (!user) {
-      toast.error('First login please', {
-        description: 'Please login to vote on patron reviews.',
+      toast.error('Please Sign In', {
+        description: 'Please sign in to vote on patron reviews.',
         action: {
-          label: 'Login',
+          label: 'Sign In',
           onClick: () => router.push(`/login?next=${encodeURIComponent(`/products/${product.slug}#patron-reviews`)}`),
         },
       });
@@ -520,10 +520,10 @@ const ProductDetailView: React.FC<{
   const handleAddToCart = async () => {
     if (isAddingToCart || isBuyingNow) return;
     if (!user) {
-      toast.error('First login please', {
-        description: 'Please login first to add items to your cart.',
+      toast.error('Please Sign In', {
+        description: 'Please sign in to add items to your cart.',
         action: {
-          label: 'Login',
+          label: 'Sign In',
           onClick: () => router.push(`/login?next=${encodeURIComponent(`/products/${product.slug}`)}`),
         },
       });
@@ -571,10 +571,10 @@ const ProductDetailView: React.FC<{
   const handleBuyNow = async () => {
     if (isAddingToCart || isBuyingNow) return;
     if (!user) {
-      toast.error('First login please', {
-        description: 'Please login first to proceed to checkout.',
+      toast.error('Please Sign In', {
+        description: 'Please sign in to proceed to checkout.',
         action: {
-          label: 'Login',
+          label: 'Sign In',
           onClick: () => router.push(`/login?next=${encodeURIComponent(`/products/${product.slug}`)}`),
         },
       });
@@ -632,7 +632,7 @@ const ProductDetailView: React.FC<{
   };
 
   return (
-    <div className="w-full pt-6 sm:pt-10 pb-28 md:pb-24 bg-[#fbf9f2]">
+    <div className="w-full pt-6 sm:pt-10 pb-[calc(140px+env(safe-area-inset-bottom,0px))] md:pb-24 bg-[#fbf9f2]">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-8 sm:space-y-12">
         {/* Subtle Breadcrumb & Artisan Reference Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 text-xs font-sans uppercase tracking-wider text-[#717975] pb-2 border-b border-[#deddd3]/60">
@@ -1882,7 +1882,7 @@ const ProductDetailView: React.FC<{
       </div>
 
       {/* Sticky Mobile Add To Cart / Buy Bar */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-[#fbf9f2]/95 backdrop-blur-md border-t border-[#deddd3] p-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
+      <div className="md:hidden fixed bottom-[calc(54px+env(safe-area-inset-bottom,0px))] sm:bottom-[calc(58px+env(safe-area-inset-bottom,0px))] inset-x-0 z-30 bg-[#fbf9f2]/95 backdrop-blur-md border-t border-[#deddd3] p-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <span className="font-serif font-bold text-base text-[#073a2d] block leading-tight">

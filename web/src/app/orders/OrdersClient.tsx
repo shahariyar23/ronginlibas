@@ -386,33 +386,34 @@ export const OrdersClient: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen pt-28 pb-20 bg-[#fbf9f2] flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white border border-[#deddd3] p-8 sm:p-10 text-center shadow-xl">
-          <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-[#fdf8ed] border border-[#e8d5aa] flex items-center justify-center text-[#073a2d]">
-            <Lock className="w-8 h-8 text-[#073a2d]" />
+      <div className="min-h-screen pt-20 pb-20 bg-[#fbf9f2] flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white border border-[#deddd3] p-6 sm:p-10 text-center shadow-lg">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-4 sm:mb-5 rounded-full bg-[#073a2d]/5 border border-[#c79a45]/30 flex items-center justify-center text-[#073a2d]">
+            <Package className="w-7 h-7 sm:w-8 sm:h-8 text-[#073a2d]" />
           </div>
-          <Badge className="bg-[#ba1a1a] text-white text-[10px] font-sans uppercase tracking-widest px-2.5 py-0.5 mb-3">
-            Authentication Required
+          <Badge className="bg-[#073a2d] text-[#c79a45] border border-[#c79a45]/30 text-[10px] font-sans uppercase tracking-widest px-2.5 py-0.5 mb-3">
+            Orders &amp; Tracking
           </Badge>
           <h1 className="font-serif text-2xl sm:text-3xl text-[#073a2d] mb-2 font-normal">
-            You are not logged in
+            Sign In to View Orders
           </h1>
           <p className="font-sans text-xs sm:text-sm text-[#69726d] leading-relaxed mb-6">
-            Please login first to view your order history, delivery details, product history, and live statuses.
+            Sign in to access your bespoke orders, invoices, and live courier tracking. Placed an order as a guest? You can track it directly using your order number.
           </p>
           <div className="space-y-3">
             <Link
               href="/login?next=%2Forders"
-              className="w-full inline-flex items-center justify-center gap-2 bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-widest py-3.5 px-6 font-semibold shadow-md transition-all cursor-pointer"
+              className="w-full inline-flex items-center justify-center gap-2 bg-[#073a2d] hover:bg-[#0d4d3b] text-white font-sans text-xs uppercase tracking-widest py-3 px-6 font-semibold shadow-md transition-all cursor-pointer"
             >
               <User className="w-4 h-4 text-[#c79a45]" />
-              <span>Login First</span>
+              <span>Sign In to Account</span>
             </Link>
             <Link
-              href="/men"
-              className="w-full inline-flex items-center justify-center gap-2 bg-[#f5f4ed] hover:bg-[#eae8e1] text-[#073a2d] font-sans text-xs uppercase tracking-wider py-3 px-6 font-semibold transition-all cursor-pointer"
+              href="/track-order"
+              className="w-full inline-flex items-center justify-center gap-2 bg-[#f5f4ed] hover:bg-[#eae8e1] border border-[#deddd3] text-[#073a2d] font-sans text-xs uppercase tracking-wider py-3 px-6 font-semibold transition-all cursor-pointer"
             >
-              <span>Explore Men&apos;s Collection</span>
+              <Truck className="w-4 h-4 text-[#c79a45]" />
+              <span>Track Guest Order</span>
             </Link>
           </div>
         </div>

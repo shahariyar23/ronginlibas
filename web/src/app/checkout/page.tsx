@@ -1110,10 +1110,11 @@ export default function CheckoutPage() {
                     <Input
                       required
                       placeholder="e.g. Shahariyar Ahmed"
+                      autoComplete="name"
                       value={formData.fullName}
                       onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                       onBlur={() => syncCartContact()}
-                      className="bg-[#fbf9f2] rounded-none border-[#deddd3]"
+                      className="bg-[#fbf9f2] rounded-none border-[#deddd3] h-11 sm:h-10 text-sm sm:text-xs"
                     />
                   </div>
 
@@ -1124,11 +1125,14 @@ export default function CheckoutPage() {
                     </label>
                     <Input
                       required
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
                       placeholder="01XXXXXXXXX"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       onBlur={() => syncCartContact()}
-                      className="bg-[#fbf9f2] rounded-none border-[#deddd3]"
+                      className="bg-[#fbf9f2] rounded-none border-[#deddd3] h-11 sm:h-10 text-sm sm:text-xs font-mono"
                     />
                   </div>
 
@@ -1140,7 +1144,7 @@ export default function CheckoutPage() {
                     <select
                       value={formData.division}
                       onChange={(e) => handleDivisionChange(e.target.value)}
-                      className="w-full h-9 px-3 bg-[#fbf9f2] border border-[#deddd3] text-xs font-sans text-[#1b1c18] focus:outline-none focus:border-[#073a2d]"
+                      className="w-full h-11 sm:h-10 px-3 bg-[#fbf9f2] border border-[#deddd3] text-sm sm:text-xs font-sans text-[#1b1c18] focus:outline-none focus:border-[#073a2d]"
                     >
                       <option value="">Select Division</option>
                       {BANGLADESH_DIVISIONS.map((d) => (
@@ -1160,7 +1164,7 @@ export default function CheckoutPage() {
                       value={formData.district}
                       disabled={!formData.division}
                       onChange={(e) => handleDistrictChange(e.target.value)}
-                      className="w-full h-9 px-3 bg-[#fbf9f2] border border-[#deddd3] text-xs font-sans text-[#1b1c18] focus:outline-none focus:border-[#073a2d] disabled:opacity-50 disabled:bg-[#f0eee7] disabled:cursor-not-allowed"
+                      className="w-full h-11 sm:h-10 px-3 bg-[#fbf9f2] border border-[#deddd3] text-sm sm:text-xs font-sans text-[#1b1c18] focus:outline-none focus:border-[#073a2d] disabled:opacity-50 disabled:bg-[#f0eee7] disabled:cursor-not-allowed"
                     >
                       <option value="">
                         {formData.division ? 'Select District (Zilla)' : 'Select Division first'}
@@ -1182,7 +1186,7 @@ export default function CheckoutPage() {
                       value={formData.thana}
                       disabled={!formData.district}
                       onChange={(e) => setFormData({ ...formData, thana: e.target.value })}
-                      className="w-full h-9 px-3 bg-[#fbf9f2] border border-[#deddd3] text-xs font-sans text-[#1b1c18] focus:outline-none focus:border-[#073a2d] disabled:opacity-50 disabled:bg-[#f0eee7] disabled:cursor-not-allowed"
+                      className="w-full h-11 sm:h-10 px-3 bg-[#fbf9f2] border border-[#deddd3] text-sm sm:text-xs font-sans text-[#1b1c18] focus:outline-none focus:border-[#073a2d] disabled:opacity-50 disabled:bg-[#f0eee7] disabled:cursor-not-allowed"
                     >
                       <option value="">
                         {formData.district ? 'Select Thana / Upazila' : 'Select District first'}
@@ -1206,11 +1210,13 @@ export default function CheckoutPage() {
                     <Input
                       type="email"
                       required
+                      autoComplete="email"
+                      inputMode="email"
                       placeholder="e.g. yourname@example.com"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       onBlur={() => syncCartContact()}
-                      className="bg-[#fbf9f2] rounded-none border-[#deddd3]"
+                      className="bg-[#fbf9f2] rounded-none border-[#deddd3] h-11 sm:h-10 text-sm sm:text-xs"
                     />
                     <p className="text-[10px] text-[#717975] mt-1">
                       Order confirmation &amp; courier status tracking will be dispatched to this email.
@@ -1228,7 +1234,7 @@ export default function CheckoutPage() {
                         placeholder="e.g. Specific police station, cantonment, or local upazila"
                         value={formData.customThana}
                         onChange={(e) => setFormData({ ...formData, customThana: e.target.value })}
-                        className="bg-[#fbf9f2] rounded-none border-[#deddd3]"
+                        className="bg-[#fbf9f2] rounded-none border-[#deddd3] h-11 sm:h-10 text-sm sm:text-xs"
                       />
                     </div>
                   )}
@@ -1240,10 +1246,11 @@ export default function CheckoutPage() {
                     </label>
                     <Input
                       required
+                      autoComplete="street-address"
                       placeholder="House No, Road No, Flat / Holding, Landmark (e.g. House 14, Road 7, Block C)"
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      className="bg-[#fbf9f2] rounded-none border-[#deddd3]"
+                      className="bg-[#fbf9f2] rounded-none border-[#deddd3] h-11 sm:h-10 text-sm sm:text-xs"
                     />
                   </div>
 
@@ -1253,10 +1260,12 @@ export default function CheckoutPage() {
                       Postal Code (Optional)
                     </label>
                     <Input
+                      inputMode="numeric"
+                      autoComplete="postal-code"
                       placeholder="e.g. 1212"
                       value={formData.postalCode}
                       onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
-                      className="bg-[#fbf9f2] rounded-none border-[#deddd3]"
+                      className="bg-[#fbf9f2] rounded-none border-[#deddd3] h-11 sm:h-10 text-sm sm:text-xs"
                     />
                   </div>
 

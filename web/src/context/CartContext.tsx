@@ -157,10 +157,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     _customNotes?: string,
   ): Promise<boolean> => {
     if (!user) {
-      toast.error('First login please', {
-        description: 'Please login first to add items to your cart.',
+      toast.error('Please Sign In', {
+        description: 'Please sign in to add items to your bespoke bag.',
         action: {
-          label: 'Login',
+          label: 'Sign In',
           onClick: () => {
             if (typeof window !== 'undefined') {
               window.location.href = '/login';

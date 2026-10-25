@@ -66,7 +66,7 @@ export function ConsentBanner() {
       {isOpen && !isModalOpen && (
         <aside
           aria-label="Cookie and Privacy Consent"
-          className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:max-w-xl z-50 bg-[#073a2d] text-[#fbf9f2] p-5 sm:p-6 shadow-2xl border border-[#d4af37]/30 rounded-xs backdrop-blur-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-5"
+          className="fixed bottom-16 lg:bottom-4 left-4 right-4 md:left-auto md:right-6 md:max-w-xl z-50 bg-[#073a2d] text-[#fbf9f2] p-5 sm:p-6 shadow-2xl border border-[#d4af37]/30 rounded-xs backdrop-blur-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-5"
         >
           <div className="flex items-start gap-3.5 mb-3">
             <div className="p-2 bg-[#d4af37]/10 rounded-full shrink-0 text-[#d4af37]">

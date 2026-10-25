@@ -367,22 +367,22 @@ Welcome to the exclusive home of custom Bengali cloth, fine knitwear, and classi
             {/* ================= TAB 1: SIGN IN ================= */}
             {activeTab === 'signin' && (
               <div className="max-w-[400px] mx-auto w-full space-y-6">
-                {/* Unauthenticated Alert Banner (Shown only on Sign In) */}
-                <div className="p-3 sm:p-4 bg-[#fdf8ed] border border-[#e8d5aa] text-[#073a2d] flex items-start gap-3 shadow-xs">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#c79a45]/20 text-[#073a2d] flex items-center justify-center shrink-0 mt-0.5">
-                    <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#073a2d]" />
+                {/* Unauthenticated Alert Banner (Shown only when redirected to sign in) */}
+                {Boolean(searchParams.get('next')) && (
+                  <div className="p-3 sm:p-4 bg-[#fdf8ed] border border-[#e8d5aa] text-[#073a2d] flex items-start gap-3 shadow-xs">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#c79a45]/20 text-[#073a2d] flex items-center justify-center shrink-0 mt-0.5">
+                      <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#073a2d]" />
+                    </div>
+                    <div>
+                      <h3 className="font-serif text-sm font-semibold text-[#073a2d]">
+                        Sign In Required
+                      </h3>
+                      <p className="font-sans text-xs text-[#69726d] mt-0.5">
+                        Please sign in to access your requested page and bespoke privileges.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-serif text-sm font-semibold text-[#073a2d]">
-                      You are not logged in. Please login first.
-                    </h3>
-                    <p className="font-sans text-xs text-[#69726d] mt-0.5">
-                      {searchParams.get('next')
-                        ? 'Please sign in or join the atelier to continue to your requested page.'
-                        : 'Log in to track your custom orders, view your home-tailoring records, and enjoy member benefits.'}
-                    </p>
-                  </div>
-                </div>
+                )}
                 <form onSubmit={handleSignIn} className="space-y-5">
                   <div className="space-y-1.5">
                     <Label className="font-sans text-xs uppercase tracking-wider text-[#404945]">

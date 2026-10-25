@@ -3,6 +3,7 @@ import {
   generateInvoicePdf,
   generateInvoicePdfKitFallback,
   formatInvoiceIssueDate,
+  resolveBrowserLaunchConfig,
 } from './invoice-generator.js';
 import { renderInvoiceHtml, InvoiceTemplateData } from '../templates/invoice.template.js';
 
@@ -332,6 +333,7 @@ describe('Invoice System & Multi-Page PDF Generation', () => {
       paymentMethod: 'Cash on Delivery (COD)',
       paymentStatus: 'Pending',
       deliveryMethod: 'Express (24-48 Hours)',
+      deliveryStatus: 'Processing',
       items: [
         {
           productName: 'Royal Bengal Handloom Panjabi',
@@ -354,5 +356,64 @@ describe('Invoice System & Multi-Page PDF Generation', () => {
     expect(buffer).toBeDefined();
     expect(buffer.length).toBeGreaterThan(1000);
     expect(buffer.slice(0, 4).toString()).toBe('%PDF');
+  });
+
+  it('TEST 15: PDFKit fallback renders delivery status when provided', async () => {
+    const templateData: InvoiceTemplateData = {
+      invoiceNumber: 'RL-INV-2026-000089',
+      orderNumber: '#RL88889',
+      issueDate: '25 Oct 2026',
+      orderStatus: 'Confirmed',
+      customerName: 'Shahariyar Rahman',
+      customerPhone: '+8801761208866',
+      deliveryAddress: 'Uttara, Dhaka',
+      paymentMethod: 'Cash on Delivery (COD)',
+      paymentStatus: 'Pending',
+      deliveryMethod: 'Express (24-48 Hours)',
+      deliveryStatus: 'In Transit',
+      items: [
+        {
+          productName: 'Royal Bengal Handloom Panjabi',
+          unitPrice: 4500,
+          quantity: 1,
+          lineTotal: 4500,
+        },
+      ],
+      itemsSubtotal: 4500,
+      grandTotal: 4500,
+    };
+
+    const buffer = await generateInvoicePdfKitFallback(templateData);
+    expect(buffer).toBeDefined();
+    expect(buffer.length).toBeGreaterThan(1000);
+    expect(buffer.slice(0, 4).toString()).toBe('%PDF');
+    
+    // Verify using pdftotext utility if present, or decompression
+    try {
+      const { execSync } = await import('node:child_process');
+      const text = execSync('pdftotext - -', { input: buffer }).toString();
+      expect(text).toContain('Delivery Status');
+      expect(text).toContain('In Transit');
+    } catch {
+      // Fallback for environments without pdftotext binary: check uncompressed stream
+      const { inflateSync } = await import('node:zlib');
+      const raw = buffer.toString('latin1');
+      const streamStart = raw.indexOf('stream\r\n') !== -1 ? raw.indexOf('stream\r\n') + 8 : raw.indexOf('stream\n') + 7;
+      const streamEnd = raw.indexOf('\nendstream');
+      const compressed = buffer.subarray(streamStart, streamEnd);
+      const decompressed = inflateSync(compressed).toString('utf-8');
+      expect(decompressed).toContain('Delivery Status');
+      expect(decompressed).toContain('In Transit');
+    }
+  });
+
+  it('TEST 16: resolveBrowserLaunchConfig provides valid launch arguments and executable path', async () => {
+    const config = await resolveBrowserLaunchConfig();
+    expect(config).toBeDefined();
+    expect(typeof config.executablePath).toBe('string');
+    expect(config.executablePath.length).toBeGreaterThan(0);
+    expect(Array.isArray(config.args)).toBe(true);
+    expect(config.args).toContain('--no-sandbox');
+    expect(config.headless).toBeTruthy();
   });
 });

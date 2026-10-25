@@ -283,7 +283,18 @@ export default function TermsOfServicePage() {
             <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div className="p-3 bg-[#fbf9f2] border border-[#deddd3] flex items-center gap-2.5">
                 <Phone className="w-4 h-4 text-[#073a2d] shrink-0" />
-                <span> WhatsApp: <a href="tel:+8801352926067" className="text-[#073a2d] font-semibold">+8801352926067</a></span>
+                <span>
+                  WhatsApp:{' '}
+                  <a
+                    href="https://wa.me/8801352926067"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#073a2d] font-semibold hover:underline"
+                  >
+                    +8801352926067
+                  </a>{' '}
+                  (<a href="tel:+8801352926067" className="text-[#073a2d] hover:underline">Direct Tel</a>)
+                </span>
               </div>
             </div>
             

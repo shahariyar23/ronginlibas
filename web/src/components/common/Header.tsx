@@ -6,6 +6,7 @@ import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useAuth } from '@/context/AuthContext';
+import { useNotifications, CustomerNotification } from '@/context/NotificationContext';
 import { getWhatsAppUrl, useStorefront } from '@/context/StorefrontContext';
 import { apiRequest } from '@/lib/api';
 import { Logo } from './Logo';
@@ -36,15 +37,6 @@ import {
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 
-interface CustomerNotification {
-  id: string;
-  title: string;
-  message: string;
-  status: string;
-  type: 'order' | 'shipping' | 'delivery' | 'review' | 'general';
-  timestamp: number;
-  link: string;
-}
 
 function formatRelativeTime(timestamp: number) {
   const diffMs = Date.now() - timestamp;
@@ -475,29 +467,21 @@ export const Header: React.FC = () => {
   const { wishlist } = useWishlist();
   const { user, isLoggedIn, logout } = useAuth();
   const { settings, categories, womenAvailable } = useStorefront();
+  const {
+    notifications,
+    unreadCount,
+    isNotificationUnread,
+    markAsRead,
+    markAllAsRead,
+  } = useNotifications();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
-  const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
-  const [readIds, setReadIds] = useState<string[]>([]);
-  const [readTimestamp, setReadTimestamp] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    try {
-      const savedIds = localStorage.getItem('rongin_customer_read_notification_ids');
-      if (savedIds) setReadIds(JSON.parse(savedIds));
-    } catch {
-      // ignore
-    }
-    try {
-      const savedTs = localStorage.getItem('rongin_customer_notifications_read_at');
-      if (savedTs) setReadTimestamp(Number(savedTs));
-    } catch {
-      // ignore
-    }
   }, []);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -515,176 +499,14 @@ export const Header: React.FC = () => {
   const showWhatsAppAnnouncement =
     settings?.whatsappOrderEnabled && Boolean(whatsappUrl);
 
-  // Fetch notifications for logged-in user
-  useEffect(() => {
-    if (!isLoggedIn) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setNotifications([]);
-      return;
-    }
-
-    let active = true;
-
-    async function loadNotifications() {
-      try {
-        const [ordersRes, reviewsRes] = await Promise.allSettled([
-          apiRequest<{
-            items: Array<{
-              orderNumber: string;
-              status: string;
-              createdAt: string;
-              courierName?: string | null;
-            }>;
-          }>('/orders/my-orders?limit=10'),
-          apiRequest<
-            Array<{
-              id: string;
-              productName: string;
-              status: string;
-              createdAt: string;
-              adminFeedback?: string | null;
-              adminFeedbackAt?: string | null;
-            }>
-          >('/reviews/mine'),
-        ]);
-
-        if (!active) return;
-
-        const notifs: CustomerNotification[] = [];
-
-        if (ordersRes.status === 'fulfilled' && ordersRes.value?.items) {
-          for (const order of ordersRes.value.items) {
-            const time = new Date(order.createdAt).getTime();
-            if (['CONFIRMED', 'PROCESSING'].includes(order.status)) {
-              notifs.push({
-                id: `order-${order.orderNumber}-${order.status}`,
-                title: `Order ${order.orderNumber} ${order.status === 'CONFIRMED' ? 'Confirmed' : 'in Tailoring'}`,
-                message: `Your bespoke commission is ${order.status.toLowerCase()} and being prepared in the atelier.`,
-                status: order.status,
-                type: 'order',
-                timestamp: time,
-                link: '/orders',
-              });
-            } else if (['SHIPPED', 'OUT_FOR_DELIVERY'].includes(order.status)) {
-              notifs.push({
-                id: `order-${order.orderNumber}-${order.status}`,
-                title:
-                  order.status === 'OUT_FOR_DELIVERY'
-                    ? `Out for Delivery: ${order.orderNumber}`
-                    : `Dispatched: ${order.orderNumber}`,
-                message:
-                  order.status === 'OUT_FOR_DELIVERY'
-                    ? 'Your parcel is scheduled for doorstep delivery today!'
-                    : `Consignment dispatched with ${order.courierName || 'premium courier'}.`,
-                status: order.status,
-                type: 'shipping',
-                timestamp: time,
-                link: '/orders',
-              });
-            } else if (order.status === 'DELIVERED') {
-              notifs.push({
-                id: `order-${order.orderNumber}-DELIVERED`,
-                title: `Delivered: ${order.orderNumber}`,
-                message: 'Your parcel has arrived. Review your garments to share your feedback.',
-                status: 'DELIVERED',
-                type: 'delivery',
-                timestamp: time,
-                link: `/profile?tab=reviews&orderNumber=${encodeURIComponent(order.orderNumber)}`,
-              });
-            } else if (order.status === 'PENDING') {
-              notifs.push({
-                id: `order-${order.orderNumber}-PENDING`,
-                title: `Order ${order.orderNumber} Placed`,
-                message: 'Awaiting atelier review & confirmation.',
-                status: 'PENDING',
-                type: 'order',
-                timestamp: time,
-                link: '/orders',
-              });
-            }
-          }
-        }
-
-        if (reviewsRes.status === 'fulfilled' && Array.isArray(reviewsRes.value)) {
-          for (const rev of reviewsRes.value) {
-            if (rev.status === 'PENDING') {
-              notifs.push({
-                id: `review-${rev.id}-PENDING`,
-                title: 'Review Under Moderation',
-                message: `Your review for ${rev.productName} is being verified.`,
-                status: 'PENDING',
-                type: 'review',
-                timestamp: new Date(rev.createdAt).getTime(),
-                link: '/profile?tab=reviews',
-              });
-            }
-            if (rev.adminFeedback && rev.adminFeedbackAt) {
-              notifs.push({
-                id: `review-${rev.id}-ADMIN_FEEDBACK-${rev.adminFeedbackAt}`,
-                title: `Atelier replied to your review for ${rev.productName}`,
-                message: rev.adminFeedback,
-                status: 'REPLIED',
-                type: 'review',
-                timestamp: new Date(rev.adminFeedbackAt).getTime(),
-                link: '/profile?tab=reviews',
-              });
-            }
-          }
-        }
-
-        // Sort latest first
-        notifs.sort((a, b) => b.timestamp - a.timestamp);
-        setNotifications(notifs);
-      } catch (err) {
-        console.error('Error loading patron notifications', err);
-      }
-    }
-
-    loadNotifications();
-    const refreshInterval = window.setInterval(loadNotifications, 60_000);
-
-    return () => {
-      active = false;
-      window.clearInterval(refreshInterval);
-    };
-  }, [isLoggedIn, user?.id]);
-
-  const isNotificationUnread = (notif: CustomerNotification) => {
-    if (readIds.includes(notif.id)) return false;
-    if (readTimestamp !== null && notif.timestamp <= readTimestamp) return false;
-    return true;
-  };
-
-  const unreadCount = notifications.filter(isNotificationUnread).length;
-
   const handleNotificationClick = (notif: CustomerNotification) => {
     setIsUserMenuOpen(false);
-    if (!isNotificationUnread(notif)) return;
-
-    setReadIds((prev) => {
-      if (prev.includes(notif.id)) return prev;
-      const updated = [notif.id, ...prev].slice(0, 200);
-      try {
-        localStorage.setItem('rongin_customer_read_notification_ids', JSON.stringify(updated));
-      } catch {
-        // ignore
-      }
-      return updated;
-    });
+    markAsRead(notif.id);
   };
 
   const handleMarkAllAsRead = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const now = Date.now();
-    setReadTimestamp(now);
-    const allIds = Array.from(new Set([...readIds, ...notifications.map((n) => n.id)])).slice(0, 200);
-    setReadIds(allIds);
-    try {
-      localStorage.setItem('rongin_customer_notifications_read_at', String(now));
-      localStorage.setItem('rongin_customer_read_notification_ids', JSON.stringify(allIds));
-    } catch {
-      // ignore
-    }
+    markAllAsRead();
   };
 
   // Close dropdown on outside click or Escape
@@ -801,7 +623,7 @@ export const Header: React.FC = () => {
               {/* 1. Wishlist Icon Button */}
               <Link
                 href="/shop?wishlist=true"
-                className="hidden sm:flex relative w-8.5 h-8.5 sm:w-10 sm:h-10 rounded-full bg-white hover:bg-[#fbf9f2] border border-[#deddd3] hover:border-[#c79a45] transition-all duration-300 shadow-xs hover:shadow-md items-center justify-center text-[#1b1c18] hover:text-[#073a2d] group cursor-pointer"
+                className="hidden lg:flex relative w-8.5 h-8.5 sm:w-10 sm:h-10 rounded-full bg-white hover:bg-[#fbf9f2] border border-[#deddd3] hover:border-[#c79a45] transition-all duration-300 shadow-xs hover:shadow-md items-center justify-center text-[#1b1c18] hover:text-[#073a2d] group cursor-pointer"
                 aria-label="Wishlist"
                 title="Saved Wishlist"
               >
@@ -825,8 +647,8 @@ export const Header: React.FC = () => {
               </button>
             </div>
 
-            {/* 3. Luxury Patron User Button with Dropdown & Notifications */}
-            <div className="relative" ref={userMenuRef}>
+            {/* 3. Luxury Patron User Button with Dropdown & Notifications (Desktop Only) */}
+            <div className="relative hidden lg:block" ref={userMenuRef}>
               {isLoggedIn ? (
                 <button
                   type="button"

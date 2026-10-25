@@ -39,10 +39,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const handleQuickAdd = async (size: string) => {
     if (isOutOfStock || isAddingSize) return;
     if (!user) {
-      toast.error('First login please', {
-        description: 'Please login first to add items to your cart.',
+      toast.error('Please Sign In', {
+        description: 'Please sign in to add items to your cart.',
         action: {
-          label: 'Login',
+          label: 'Sign In',
           onClick: () => {
             window.location.href = '/login';
           },
@@ -246,10 +246,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             <Button
               onClick={() => {
                 if (!user) {
-                  toast.error('First login please', {
-                    description: 'Please login first to add items to your cart.',
+                  toast.error('Please Sign In', {
+                    description: 'Please sign in to add items to your cart.',
                     action: {
-                      label: 'Login',
+                      label: 'Sign In',
                       onClick: () => {
                         window.location.href = '/login';
                       },

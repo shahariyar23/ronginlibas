@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
 import PDFDocument from 'pdfkit';
+import chromium from '@sparticuz/chromium';
 import { renderInvoiceHtml, } from '../templates/invoice.template.js';
 const __moduleFilename = fileURLToPath(import.meta.url);
 const __moduleDirname = path.dirname(__moduleFilename);
@@ -76,6 +77,68 @@ export function getLogoBuffer() {
         }
     }
     return null;
+}
+export async function resolveBrowserLaunchConfig() {
+    const envPath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    if (envPath && fs.existsSync(envPath)) {
+        return {
+            executablePath: envPath,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--font-render-hinting=medium',
+            ],
+            headless: true,
+        };
+    }
+    const localCandidates = [
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/chromium',
+        '/usr/bin/chromium-browser',
+        '/snap/bin/chromium',
+    ];
+    for (const c of localCandidates) {
+        if (fs.existsSync(c)) {
+            return {
+                executablePath: c,
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-gpu',
+                    '--font-render-hinting=medium',
+                ],
+                headless: true,
+            };
+        }
+    }
+    try {
+        const sparticuzPath = await chromium.executablePath();
+        if (sparticuzPath) {
+            return {
+                executablePath: sparticuzPath,
+                args: chromium.args,
+                headless: true,
+            };
+        }
+    }
+    catch (err) {
+        console.warn(`[InvoiceGenerator] Failed extracting @sparticuz/chromium binary: ${err?.message}`);
+    }
+    return {
+        executablePath: '/usr/bin/google-chrome',
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--font-render-hinting=medium',
+        ],
+        headless: true,
+    };
 }
 export function getChromeExecutablePath() {
     const envPath = process.env.PUPPETEER_EXECUTABLE_PATH;
@@ -361,20 +424,16 @@ export async function generateInvoicePdf(order, invoice) {
     };
     const html = renderInvoiceHtml(templateData);
     try {
+        const launchConfig = await resolveBrowserLaunchConfig();
         const browser = await puppeteer.launch({
-            executablePath: getChromeExecutablePath(),
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--font-render-hinting=medium',
-            ],
-            headless: true,
+            executablePath: launchConfig.executablePath,
+            args: launchConfig.args,
+            headless: launchConfig.headless,
         });
         try {
             const page = await browser.newPage();
-            await page.setContent(html, { waitUntil: 'load' });
+            await page.setContent(html, { waitUntil: 'load', timeout: 15000 });
+            await page.evaluateHandle('document.fonts.ready').catch(() => { });
             const pdfBuffer = await page.pdf({
                 format: 'A4',
                 printBackground: true,
@@ -392,7 +451,7 @@ export async function generateInvoicePdf(order, invoice) {
         }
     }
     catch (puppeteerErr) {
-        console.warn(`[InvoiceGenerator] Puppeteer headless Chrome launch failed (${puppeteerErr?.message}). Generating fallback PDF invoice via PDFKit to guarantee invoice attachment delivery on this host...`);
+        console.error(`[InvoiceGenerator] Puppeteer headless Chrome launch failed on runtime (platform: ${process.platform}, arch: ${process.arch}, VERCEL: ${Boolean(process.env.VERCEL)}): ${puppeteerErr?.message}. Generating fallback PDF invoice via PDFKit to guarantee invoice attachment delivery on this host...`, puppeteerErr?.stack ? `\nStack: ${puppeteerErr.stack}` : '');
         return generateInvoicePdfKitFallback(templateData);
     }
 }
@@ -520,10 +579,14 @@ export function generateInvoicePdfKitFallback(data) {
             payRow('Payment Method', data.paymentMethod);
             payRow('Payment Status', data.paymentStatus, true);
             payRow('Delivery Method', data.deliveryMethod);
+            if (data.deliveryStatus && data.deliveryStatus.trim().length > 0) {
+                payRow('Delivery Status', data.deliveryStatus, true);
+            }
             if (data.transactionId) {
                 payRow('Transaction ID', data.transactionId);
             }
-            const tableY = cardsY + cardH + 12;
+            const actualCardH = Math.max(cardH, pY - cardsY + 6);
+            const tableY = cardsY + actualCardH + 10;
             const tableHdrHeight = 22;
             doc.roundedRect(margin, tableY, contentWidth, tableHdrHeight, 2).fill('#073A2D');
             doc.fillColor('#FFFFFF').fontSize(7).font('Helvetica-Bold');

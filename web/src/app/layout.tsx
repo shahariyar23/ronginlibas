@@ -3,9 +3,11 @@ import './globals.css';
 import { CartProvider } from '@/context/CartContext';
 import { WishlistProvider } from '@/context/WishlistContext';
 import { AuthProvider } from '@/context/AuthContext';
+import { NotificationProvider } from '@/context/NotificationContext';
 import { Header } from '@/components/common/Header';
 import { Footer } from '@/components/common/Footer';
 import { CartDrawer } from '@/components/common/CartDrawer';
+import { BottomNav } from '@/components/common/BottomNav';
 import { StorefrontProvider } from '@/context/StorefrontContext';
 import { AnalyticsProvider } from '@/components/analytics/AnalyticsProvider';
 import { ConsentBanner } from '@/components/analytics/ConsentBanner';
@@ -89,12 +91,15 @@ export default function RootLayout({
               <AuthProvider>
                 <CartProvider>
                   <WishlistProvider>
-                    <Header />
-                    <main className="flex-1 w-full">{children}</main>
-                    <CartDrawer />
-                    <Footer />
-                    <ConsentBanner />
-                    <Toaster position="top-right" richColors />
+                    <NotificationProvider>
+                      <Header />
+                      <main className="flex-1 w-full pb-14 sm:pb-16 lg:pb-0">{children}</main>
+                      <CartDrawer />
+                      <Footer />
+                      <BottomNav />
+                      <ConsentBanner />
+                      <Toaster position="top-right" richColors />
+                    </NotificationProvider>
                   </WishlistProvider>
                 </CartProvider>
               </AuthProvider>
