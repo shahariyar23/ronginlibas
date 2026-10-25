@@ -1005,6 +1005,12 @@ export class OrdersService {
         },
         select: customerOrderDetailSelect,
       });
+
+      // For COD orders (confirmed on placement), issue official Invoice in this database transaction
+      if (paymentMethod === 'COD' && this.invoicesService) {
+        await this.invoicesService.createInvoiceForOrderInTx(transaction, order.id);
+      }
+
       return { order, couponId };
     }, { maxWait: 10000, timeout: 30000 });
 
@@ -1015,13 +1021,15 @@ export class OrdersService {
       });
     }
 
-    // Asynchronously dispatch Order Confirmation email to customer via orders@ronginlibas.com
+    // Dispatch Order Confirmation notification to customer via orders@ronginlibas.com
     // Only dispatch immediately for COD (since COD is confirmed on placement).
     // For online gateways (UDDOKTAPAY), confirmation email is dispatched after successful payment verification.
     if (dto.paymentMethod === 'COD') {
-      this.dispatchOrderConfirmationNotification(createdOrder.order, trackingToken, customerId).catch((err) => {
+      try {
+        await this.dispatchOrderConfirmationNotification(createdOrder.order, trackingToken, customerId);
+      } catch (err: any) {
         this.logger.warn(`Failed to dispatch order confirmation email for ${createdOrder.order.orderNumber}: ${err.message}`);
-      });
+      }
     }
 
     const responseOrder = {
@@ -1471,6 +1479,14 @@ export class OrdersService {
           },
         });
 
+        // For COD, confirmed, or paid admin orders, issue official Invoice in this database transaction
+        if (
+          this.invoicesService &&
+          (dto.paymentMethod === 'COD' || dto.orderStatus === 'CONFIRMED' || dto.paymentStatus === 'PAID')
+        ) {
+          await this.invoicesService.createInvoiceForOrderInTx(transaction, order.id);
+        }
+
         return { order, couponId };
       },
       { maxWait: 10000, timeout: 30000 },
@@ -1487,11 +1503,17 @@ export class OrdersService {
       });
     }
 
-    // Async email notification if customer email exists
+    // Email notification if customer email exists
     if (createdOrder.order.customer?.email || resolvedAddress.email) {
-      this.dispatchOrderConfirmationNotification(createdOrder.order, undefined, createdOrder.order.customerId || undefined).catch((err) => {
+      try {
+        await this.dispatchOrderConfirmationNotification(
+          createdOrder.order,
+          undefined,
+          createdOrder.order.customerId || undefined,
+        );
+      } catch (err: any) {
         this.logger.warn(`Failed to dispatch order confirmation for admin order ${createdOrder.order.orderNumber}: ${err.message}`);
-      });
+      }
     }
 
     return createdOrder.order;
@@ -1564,19 +1586,28 @@ export class OrdersService {
       productImage: item.productImage || item.product?.images?.[0]?.url,
     }));
 
-    let invoiceBuffer: Buffer | undefined;
+    let invoice: any = null;
     let customerInvoiceNumber: string | undefined;
     try {
-      let invoice = await this.invoicesService?.findByOrderIdOrNumber(order.id);
+      invoice = await this.invoicesService?.findByOrderIdOrNumber(order.id);
       // For COD orders, issue invoice if not already created
       if (!invoice && order.paymentMethod === 'COD' && order.status !== 'CANCELLED') {
         if (this.invoicesService) {
           invoice = await this.invoicesService.getOrCreateInvoiceForOrder(order.id);
         }
       }
-
       if (invoice) {
         customerInvoiceNumber = invoice.invoiceNumber;
+      }
+    } catch (dbErr: any) {
+      this.logger.warn(
+        `Could not obtain or create database invoice record for order ${order.orderNumber}: ${dbErr?.message}`,
+      );
+    }
+
+    let invoiceBuffer: Buffer | undefined;
+    if (invoice) {
+      try {
         const orderForInvoice = {
           ...order,
           guestName: customerName,
@@ -1586,34 +1617,40 @@ export class OrdersService {
         invoiceBuffer = await this.generateInvoiceBuffer(orderForInvoice, invoice);
         if (invoiceBuffer) {
           this.logger.log(
-            `Official PDF invoice generated for order confirmation: ${order.orderNumber} [${invoice.invoiceNumber}] (${invoiceBuffer.length} bytes)`
+            `Official PDF invoice generated for order confirmation: ${order.orderNumber} [${customerInvoiceNumber}] (${invoiceBuffer.length} bytes)`,
           );
         }
+      } catch (pdfErr: any) {
+        this.logger.warn(
+          `Could not generate PDF invoice attachment for ${order.orderNumber}: ${pdfErr?.message}`,
+        );
       }
-    } catch (err) {
-      this.logger.warn(
-        `Could not generate PDF invoice attachment for ${order.orderNumber}: ${(err as Error).message}`
-      );
     }
 
-    await this.mailService.sendOrderConfirmationEmail({
-      email: customerEmail,
-      orderNumber: order.orderNumber,
-      orderStatus: order.status,
-      invoiceNumber: customerInvoiceNumber,
-      customerName,
-      items,
-      subtotal: Number(order.subtotal),
-      deliveryCharge: Number(order.deliveryCharge),
-      discountAmount: Number(order.discountAmount || 0),
-      totalAmount: Number(order.totalAmount),
-      paymentMethod: order.paymentMethod,
-      paymentStatus: order.paymentStatus,
-      shippingAddress: shipping,
-      customerNotes: order.customerNotes,
-      trackingToken,
-      invoiceBuffer,
-    });
+    try {
+      await this.mailService.sendOrderConfirmationEmail({
+        email: customerEmail,
+        orderNumber: order.orderNumber,
+        orderStatus: order.status,
+        invoiceNumber: customerInvoiceNumber,
+        customerName,
+        items,
+        subtotal: Number(order.subtotal),
+        deliveryCharge: Number(order.deliveryCharge),
+        discountAmount: Number(order.discountAmount || 0),
+        totalAmount: Number(order.totalAmount),
+        paymentMethod: order.paymentMethod,
+        paymentStatus: order.paymentStatus,
+        shippingAddress: shipping,
+        customerNotes: order.customerNotes,
+        trackingToken,
+        invoiceBuffer,
+      });
+    } catch (mailErr: any) {
+      this.logger.warn(
+        `Failed to deliver order confirmation email for ${order.orderNumber}: ${mailErr?.message}`,
+      );
+    }
   }
 
   private async saveAddressForCustomerIfEligible(

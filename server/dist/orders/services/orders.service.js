@@ -854,6 +854,9 @@ let OrdersService = OrdersService_1 = class OrdersService {
                 },
                 select: customerOrderDetailSelect,
             });
+            if (paymentMethod === 'COD' && this.invoicesService) {
+                await this.invoicesService.createInvoiceForOrderInTx(transaction, order.id);
+            }
             return { order, couponId };
         }, { maxWait: 10000, timeout: 30000 });
         if (customerId) {
@@ -862,9 +865,12 @@ let OrdersService = OrdersService_1 = class OrdersService {
             });
         }
         if (dto.paymentMethod === 'COD') {
-            this.dispatchOrderConfirmationNotification(createdOrder.order, trackingToken, customerId).catch((err) => {
+            try {
+                await this.dispatchOrderConfirmationNotification(createdOrder.order, trackingToken, customerId);
+            }
+            catch (err) {
                 this.logger.warn(`Failed to dispatch order confirmation email for ${createdOrder.order.orderNumber}: ${err.message}`);
-            });
+            }
         }
         const responseOrder = {
             id: createdOrder.order.id,
@@ -1251,6 +1257,10 @@ let OrdersService = OrdersService_1 = class OrdersService {
                     trackingEvents: { orderBy: { createdAt: 'asc' } },
                 },
             });
+            if (this.invoicesService &&
+                (dto.paymentMethod === 'COD' || dto.orderStatus === 'CONFIRMED' || dto.paymentStatus === 'PAID')) {
+                await this.invoicesService.createInvoiceForOrderInTx(transaction, order.id);
+            }
             return { order, couponId };
         }, { maxWait: 10000, timeout: 30000 });
         if (createdOrder.order.customerId && !dto.addressId && resolvedAddress) {
@@ -1259,9 +1269,12 @@ let OrdersService = OrdersService_1 = class OrdersService {
             });
         }
         if (createdOrder.order.customer?.email || resolvedAddress.email) {
-            this.dispatchOrderConfirmationNotification(createdOrder.order, undefined, createdOrder.order.customerId || undefined).catch((err) => {
+            try {
+                await this.dispatchOrderConfirmationNotification(createdOrder.order, undefined, createdOrder.order.customerId || undefined);
+            }
+            catch (err) {
                 this.logger.warn(`Failed to dispatch order confirmation for admin order ${createdOrder.order.orderNumber}: ${err.message}`);
-            });
+            }
         }
         return createdOrder.order;
     }
@@ -1326,10 +1339,10 @@ let OrdersService = OrdersService_1 = class OrdersService {
             subtotal: Number(item.subtotal),
             productImage: item.productImage || item.product?.images?.[0]?.url,
         }));
-        let invoiceBuffer;
+        let invoice = null;
         let customerInvoiceNumber;
         try {
-            let invoice = await this.invoicesService?.findByOrderIdOrNumber(order.id);
+            invoice = await this.invoicesService?.findByOrderIdOrNumber(order.id);
             if (!invoice && order.paymentMethod === 'COD' && order.status !== 'CANCELLED') {
                 if (this.invoicesService) {
                     invoice = await this.invoicesService.getOrCreateInvoiceForOrder(order.id);
@@ -1337,6 +1350,14 @@ let OrdersService = OrdersService_1 = class OrdersService {
             }
             if (invoice) {
                 customerInvoiceNumber = invoice.invoiceNumber;
+            }
+        }
+        catch (dbErr) {
+            this.logger.warn(`Could not obtain or create database invoice record for order ${order.orderNumber}: ${dbErr?.message}`);
+        }
+        let invoiceBuffer;
+        if (invoice) {
+            try {
                 const orderForInvoice = {
                     ...order,
                     guestName: customerName,
@@ -1345,31 +1366,36 @@ let OrdersService = OrdersService_1 = class OrdersService {
                 };
                 invoiceBuffer = await this.generateInvoiceBuffer(orderForInvoice, invoice);
                 if (invoiceBuffer) {
-                    this.logger.log(`Official PDF invoice generated for order confirmation: ${order.orderNumber} [${invoice.invoiceNumber}] (${invoiceBuffer.length} bytes)`);
+                    this.logger.log(`Official PDF invoice generated for order confirmation: ${order.orderNumber} [${customerInvoiceNumber}] (${invoiceBuffer.length} bytes)`);
                 }
             }
+            catch (pdfErr) {
+                this.logger.warn(`Could not generate PDF invoice attachment for ${order.orderNumber}: ${pdfErr?.message}`);
+            }
         }
-        catch (err) {
-            this.logger.warn(`Could not generate PDF invoice attachment for ${order.orderNumber}: ${err.message}`);
+        try {
+            await this.mailService.sendOrderConfirmationEmail({
+                email: customerEmail,
+                orderNumber: order.orderNumber,
+                orderStatus: order.status,
+                invoiceNumber: customerInvoiceNumber,
+                customerName,
+                items,
+                subtotal: Number(order.subtotal),
+                deliveryCharge: Number(order.deliveryCharge),
+                discountAmount: Number(order.discountAmount || 0),
+                totalAmount: Number(order.totalAmount),
+                paymentMethod: order.paymentMethod,
+                paymentStatus: order.paymentStatus,
+                shippingAddress: shipping,
+                customerNotes: order.customerNotes,
+                trackingToken,
+                invoiceBuffer,
+            });
         }
-        await this.mailService.sendOrderConfirmationEmail({
-            email: customerEmail,
-            orderNumber: order.orderNumber,
-            orderStatus: order.status,
-            invoiceNumber: customerInvoiceNumber,
-            customerName,
-            items,
-            subtotal: Number(order.subtotal),
-            deliveryCharge: Number(order.deliveryCharge),
-            discountAmount: Number(order.discountAmount || 0),
-            totalAmount: Number(order.totalAmount),
-            paymentMethod: order.paymentMethod,
-            paymentStatus: order.paymentStatus,
-            shippingAddress: shipping,
-            customerNotes: order.customerNotes,
-            trackingToken,
-            invoiceBuffer,
-        });
+        catch (mailErr) {
+            this.logger.warn(`Failed to deliver order confirmation email for ${order.orderNumber}: ${mailErr?.message}`);
+        }
     }
     async saveAddressForCustomerIfEligible(customerId, shippingAddress, fallbackEmail) {
         try {

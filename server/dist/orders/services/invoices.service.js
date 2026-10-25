@@ -178,7 +178,49 @@ let InvoicesService = InvoicesService_1 = class InvoicesService {
         return createdInvoice;
     }
     async getOrCreateInvoiceForOrder(orderId, paymentId) {
-        return this.prisma.$transaction(async (tx) => this.createInvoiceForOrderInTx(tx, orderId, paymentId), { maxWait: 10000, timeout: 30000 });
+        const existing = await this.prisma.invoice.findUnique({
+            where: { orderId },
+            include: {
+                items: true,
+                payments: {
+                    select: {
+                        id: true,
+                        provider: true,
+                        providerOrderId: true,
+                        providerInvoiceId: true,
+                        providerTransactionId: true,
+                        amount: true,
+                        status: true,
+                        paidAt: true,
+                    },
+                    orderBy: { createdAt: 'desc' },
+                },
+                order: {
+                    select: {
+                        id: true,
+                        orderNumber: true,
+                        status: true,
+                        paymentStatus: true,
+                        paymentMethod: true,
+                        createdAt: true,
+                    },
+                },
+            },
+        });
+        if (existing) {
+            if (paymentId) {
+                await this.prisma.payment
+                    .update({
+                    where: { id: paymentId },
+                    data: { invoiceId: existing.id },
+                })
+                    .catch((err) => {
+                    this.logger.warn(`Failed to associate payment ${paymentId} with invoice ${existing.id}: ${err.message}`);
+                });
+            }
+            return existing;
+        }
+        return this.prisma.$transaction(async (tx) => this.createInvoiceForOrderInTx(tx, orderId, paymentId), { maxWait: 5000, timeout: 10000 });
     }
     async findByOrderIdOrNumber(idOrNumber) {
         const invoice = await this.prisma.invoice.findFirst({

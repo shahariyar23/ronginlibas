@@ -750,4 +750,362 @@ describe('OrdersService.createByAdmin', () => {
       ).rejects.toThrow('Cannot cancel an already paid order');
     });
   });
+
+  describe('Order confirmation email & invoice PDF generation boundaries', () => {
+    it('creates invoice record within transaction, commits, generates PDF, and attaches to email', async () => {
+      const orderId = 'ord-cod-1';
+      const orderNumber = '#RL99887766';
+      const safeOrder = {
+        id: orderId,
+        orderNumber,
+        status: OrderStatus.CONFIRMED,
+        paymentStatus: 'PENDING',
+        paymentMethod: 'COD',
+        subtotal: 2500,
+        discountAmount: 0,
+        deliveryCharge: 80,
+        totalAmount: 2580,
+        guestEmail: 'patron@example.com',
+        guestName: 'Artisan Patron',
+        shippingAddress: {
+          addressLine1: 'Road 5, Dhanmondi',
+          city: 'Dhaka',
+          division: 'Dhaka',
+          phone: '01711223344',
+          email: 'patron@example.com',
+        },
+        items: [
+          {
+            id: 'item-1',
+            productId: 'prod-1',
+            variantId: 'var-1',
+            productName: 'Bengal Heritage Panjabi',
+            sku: 'BHP-001',
+            quantity: 1,
+            unitPrice: 2500,
+            subtotal: 2500,
+          },
+        ],
+        trackingEvents: [],
+      };
+
+      const transaction = {
+        productVariant: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: 'var-1',
+            productId: 'prod-1',
+            isActive: true,
+            stock: 5,
+            priceOverride: null,
+            color: 'White',
+            sizeLabel: '42',
+            size: '42',
+            sku: 'BHP-001',
+            product: { id: 'prod-1', name: 'Bengal Heritage Panjabi', price: 2500 },
+          }),
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+        inventoryTransaction: { create: vi.fn().mockResolvedValue({ id: 'inv-tx-1' }) },
+        order: { create: vi.fn().mockResolvedValue(safeOrder) },
+      };
+
+      const prisma = {
+        $transaction: vi.fn(async (cb: (tx: typeof transaction) => Promise<unknown>) => cb(transaction)),
+        address: { count: vi.fn().mockResolvedValue(0), findFirst: vi.fn().mockResolvedValue(null), create: vi.fn() },
+      } as unknown as PrismaService;
+
+      const settings = {
+        getPublicSettings: vi.fn().mockResolvedValue({
+          freeDeliveryThreshold: 5000,
+          dhakaDeliveryCharge: 80,
+          outsideDhakaDeliveryCharge: 130,
+        }),
+      } as unknown as SettingsService;
+
+      const mockInvoicesService = {
+        createInvoiceForOrderInTx: vi.fn().mockResolvedValue({
+          id: 'inv-rec-1',
+          invoiceNumber: 'RL-INV-2026-000001',
+          orderId,
+        }),
+        findByOrderIdOrNumber: vi.fn().mockResolvedValue({
+          id: 'inv-rec-1',
+          invoiceNumber: 'RL-INV-2026-000001',
+          orderId,
+        }),
+        getOrCreateInvoiceForOrder: vi.fn().mockResolvedValue({
+          id: 'inv-rec-1',
+          invoiceNumber: 'RL-INV-2026-000001',
+          orderId,
+        }),
+      };
+
+      const mockMailService = {
+        sendOrderConfirmationEmail: vi.fn().mockResolvedValue(true),
+      };
+
+      const service = new OrdersService(
+        prisma,
+        settings,
+        mockMailService as any,
+        undefined,
+        mockInvoicesService as any,
+      );
+
+      const fakePdfBuffer = Buffer.from('%PDF-1.4 test invoice buffer');
+      vi.spyOn(service, 'generateInvoiceBuffer').mockResolvedValue(fakePdfBuffer);
+
+      const result = await service.create({
+        items: [{ productId: 'prod-1', variantId: 'var-1', quantity: 1 }],
+        paymentMethod: 'COD',
+        guestName: 'Artisan Patron',
+        shippingAddress: {
+          addressLine1: 'Road 5, Dhanmondi',
+          city: 'Dhaka',
+          division: 'Dhaka',
+          phone: '01711223344',
+          email: 'patron@example.com',
+        },
+      } as any);
+
+      expect(result).toBeDefined();
+      expect(result.id).toBe(orderId);
+
+      // Verify invoice was created inside database transaction before commit
+      expect(mockInvoicesService.createInvoiceForOrderInTx).toHaveBeenCalledWith(
+        transaction,
+        orderId,
+      );
+
+      // Verify PDF generation was invoked after transaction commit with correct invoice
+      expect(service.generateInvoiceBuffer).toHaveBeenCalledWith(
+        expect.objectContaining({ guestEmail: 'patron@example.com' }),
+        expect.objectContaining({ invoiceNumber: 'RL-INV-2026-000001' }),
+      );
+
+      // Verify mail was sent with the PDF invoice buffer attached
+      expect(mockMailService.sendOrderConfirmationEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'patron@example.com',
+          orderNumber,
+          invoiceNumber: 'RL-INV-2026-000001',
+          invoiceBuffer: fakePdfBuffer,
+        }),
+      );
+    });
+
+    it('gracefully handles PDF rendering failure and dispatches confirmation email without attachment', async () => {
+      const orderId = 'ord-cod-pdf-fail';
+      const orderNumber = '#RL99887755';
+      const safeOrder = {
+        id: orderId,
+        orderNumber,
+        status: OrderStatus.CONFIRMED,
+        paymentStatus: 'PENDING',
+        paymentMethod: 'COD',
+        subtotal: 1500,
+        discountAmount: 0,
+        deliveryCharge: 80,
+        totalAmount: 1580,
+        guestEmail: 'patron2@example.com',
+        guestName: 'Patron Two',
+        shippingAddress: {
+          addressLine1: 'Banani',
+          city: 'Dhaka',
+          division: 'Dhaka',
+          phone: '01711223355',
+          email: 'patron2@example.com',
+        },
+        items: [],
+      };
+
+      const transaction = {
+        productVariant: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: 'var-2',
+            productId: 'prod-2',
+            isActive: true,
+            stock: 5,
+            priceOverride: null,
+            color: 'Black',
+            size: 'L',
+            sku: 'BHP-002',
+            product: { id: 'prod-2', name: 'Panjabi Black', price: 1500 },
+          }),
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+        inventoryTransaction: { create: vi.fn().mockResolvedValue({ id: 'inv-tx-2' }) },
+        order: { create: vi.fn().mockResolvedValue(safeOrder) },
+      };
+
+      const prisma = {
+        $transaction: vi.fn(async (cb: any) => cb(transaction)),
+        address: { count: vi.fn().mockResolvedValue(0), findFirst: vi.fn().mockResolvedValue(null), create: vi.fn() },
+      } as unknown as PrismaService;
+
+      const settings = {
+        getPublicSettings: vi.fn().mockResolvedValue({
+          freeDeliveryThreshold: 5000,
+          dhakaDeliveryCharge: 80,
+          outsideDhakaDeliveryCharge: 130,
+        }),
+      } as unknown as SettingsService;
+
+      const mockInvoicesService = {
+        createInvoiceForOrderInTx: vi.fn().mockResolvedValue({
+          id: 'inv-rec-2',
+          invoiceNumber: 'RL-INV-2026-000002',
+          orderId,
+        }),
+        findByOrderIdOrNumber: vi.fn().mockResolvedValue({
+          id: 'inv-rec-2',
+          invoiceNumber: 'RL-INV-2026-000002',
+          orderId,
+        }),
+      };
+
+      const mockMailService = {
+        sendOrderConfirmationEmail: vi.fn().mockResolvedValue(true),
+      };
+
+      const service = new OrdersService(
+        prisma,
+        settings,
+        mockMailService as any,
+        undefined,
+        mockInvoicesService as any,
+      );
+
+      // Simulate PDF rendering failure
+      vi.spyOn(service, 'generateInvoiceBuffer').mockRejectedValue(
+        new Error('Chromium launch failed on serverless host'),
+      );
+
+      const result = await service.create({
+        items: [{ productId: 'prod-2', variantId: 'var-2', quantity: 1 }],
+        paymentMethod: 'COD',
+        guestName: 'Patron Two',
+        shippingAddress: {
+          addressLine1: 'Banani',
+          city: 'Dhaka',
+          division: 'Dhaka',
+          phone: '01711223355',
+          email: 'patron2@example.com',
+        },
+      } as any);
+
+      expect(result).toBeDefined();
+
+      // Email is still sent, but invoiceBuffer is undefined (no false claims of attachment)
+      expect(mockMailService.sendOrderConfirmationEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'patron2@example.com',
+          orderNumber,
+          invoiceBuffer: undefined,
+        }),
+      );
+    });
+
+    it('isolates email dispatch failure so order creation still succeeds', async () => {
+      const orderId = 'ord-cod-mail-fail';
+      const orderNumber = '#RL99887744';
+      const safeOrder = {
+        id: orderId,
+        orderNumber,
+        status: OrderStatus.CONFIRMED,
+        paymentStatus: 'PENDING',
+        paymentMethod: 'COD',
+        subtotal: 1000,
+        discountAmount: 0,
+        deliveryCharge: 80,
+        totalAmount: 1080,
+        guestEmail: 'patron3@example.com',
+        shippingAddress: {
+          addressLine1: 'Gulshan',
+          city: 'Dhaka',
+          division: 'Dhaka',
+          phone: '01711223366',
+          email: 'patron3@example.com',
+        },
+        items: [],
+      };
+
+      const transaction = {
+        productVariant: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: 'var-3',
+            productId: 'prod-3',
+            isActive: true,
+            stock: 3,
+            priceOverride: null,
+            color: 'Red',
+            size: 'M',
+            sku: 'BHP-003',
+            product: { id: 'prod-3', name: 'Panjabi Red', price: 1000 },
+          }),
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+        inventoryTransaction: { create: vi.fn().mockResolvedValue({ id: 'inv-tx-3' }) },
+        order: { create: vi.fn().mockResolvedValue(safeOrder) },
+      };
+
+      const prisma = {
+        $transaction: vi.fn(async (cb: any) => cb(transaction)),
+        address: { count: vi.fn().mockResolvedValue(0), findFirst: vi.fn().mockResolvedValue(null), create: vi.fn() },
+      } as unknown as PrismaService;
+
+      const settings = {
+        getPublicSettings: vi.fn().mockResolvedValue({
+          freeDeliveryThreshold: 5000,
+          dhakaDeliveryCharge: 80,
+          outsideDhakaDeliveryCharge: 130,
+        }),
+      } as unknown as SettingsService;
+
+      const mockInvoicesService = {
+        createInvoiceForOrderInTx: vi.fn().mockResolvedValue({
+          id: 'inv-rec-3',
+          invoiceNumber: 'RL-INV-2026-000003',
+          orderId,
+        }),
+        findByOrderIdOrNumber: vi.fn().mockResolvedValue({
+          id: 'inv-rec-3',
+          invoiceNumber: 'RL-INV-2026-000003',
+          orderId,
+        }),
+      };
+
+      const mockMailService = {
+        sendOrderConfirmationEmail: vi.fn().mockRejectedValue(new Error('SMTP connection timeout')),
+      };
+
+      const service = new OrdersService(
+        prisma,
+        settings,
+        mockMailService as any,
+        undefined,
+        mockInvoicesService as any,
+      );
+
+      vi.spyOn(service, 'generateInvoiceBuffer').mockResolvedValue(Buffer.from('pdf'));
+
+      // Order creation succeeds even if email delivery fails
+      const result = await service.create({
+        items: [{ productId: 'prod-3', variantId: 'var-3', quantity: 1 }],
+        paymentMethod: 'COD',
+        guestName: 'Patron Three',
+        shippingAddress: {
+          addressLine1: 'Gulshan',
+          city: 'Dhaka',
+          division: 'Dhaka',
+          phone: '01711223366',
+          email: 'patron3@example.com',
+        },
+      } as any);
+
+      expect(result).toBeDefined();
+      expect(result.id).toBe(orderId);
+      expect(result.orderNumber).toBe(orderNumber);
+    });
+  });
 });

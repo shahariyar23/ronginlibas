@@ -687,11 +687,12 @@ let UddoktaPaymentService = UddoktaPaymentService_1 = class UddoktaPaymentServic
         this.logger.log(`[UddoktaPay] Successfully settled payment for order ${order.orderNumber} (Gateway Invoice: ${invoiceId}${customerInvoiceNumber ? `, RL Invoice: ${customerInvoiceNumber}` : ''}, Trx: ${transactionId}, Amount: ৳${amount})`);
         if (this.ordersService &&
             typeof this.ordersService.dispatchConfirmationNotificationForPaidOrder === 'function') {
-            this.ordersService
-                .dispatchConfirmationNotificationForPaidOrder(payment.order.id)
-                .catch((err) => {
+            try {
+                await this.ordersService.dispatchConfirmationNotificationForPaidOrder(payment.order.id);
+            }
+            catch (err) {
                 this.logger.warn(`Failed to dispatch confirmation email after UddoktaPay payment for ${payment.order.orderNumber}: ${err.message}`);
-            });
+            }
         }
         if (this.ga4Service && typeof this.ga4Service.sendPurchaseEvent === 'function') {
             this.ga4Service

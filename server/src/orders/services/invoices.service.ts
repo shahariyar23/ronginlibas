@@ -263,9 +263,57 @@ export class InvoicesService {
     orderId: string,
     paymentId?: string,
   ): Promise<InvoiceWithDetails> {
+    // 1. Fast check if invoice already exists without opening a transaction
+    const existing = await this.prisma.invoice.findUnique({
+      where: { orderId },
+      include: {
+        items: true,
+        payments: {
+          select: {
+            id: true,
+            provider: true,
+            providerOrderId: true,
+            providerInvoiceId: true,
+            providerTransactionId: true,
+            amount: true,
+            status: true,
+            paidAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        order: {
+          select: {
+            id: true,
+            orderNumber: true,
+            status: true,
+            paymentStatus: true,
+            paymentMethod: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    if (existing) {
+      if (paymentId) {
+        await this.prisma.payment
+          .update({
+            where: { id: paymentId },
+            data: { invoiceId: existing.id },
+          })
+          .catch((err) => {
+            this.logger.warn(
+              `Failed to associate payment ${paymentId} with invoice ${existing.id}: ${err.message}`,
+            );
+          });
+      }
+      return existing as InvoiceWithDetails;
+    }
+
+    // 2. Narrowly-scoped transaction for newly creating the invoice record
     return this.prisma.$transaction(
       async (tx) => this.createInvoiceForOrderInTx(tx, orderId, paymentId),
-      { maxWait: 10000, timeout: 30000 },
+      { maxWait: 5000, timeout: 10000 },
     );
   }
 

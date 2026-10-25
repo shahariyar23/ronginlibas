@@ -963,18 +963,18 @@ export class UddoktaPaymentService {
       `[UddoktaPay] Successfully settled payment for order ${order.orderNumber} (Gateway Invoice: ${invoiceId}${customerInvoiceNumber ? `, RL Invoice: ${customerInvoiceNumber}` : ''}, Trx: ${transactionId}, Amount: ৳${amount})`,
     );
 
-    // Asynchronously dispatch order confirmation notification
+    // Dispatch order confirmation notification after database settlement commits
     if (
       this.ordersService &&
       typeof this.ordersService.dispatchConfirmationNotificationForPaidOrder === 'function'
     ) {
-      this.ordersService
-        .dispatchConfirmationNotificationForPaidOrder(payment.order.id)
-        .catch((err) => {
-          this.logger.warn(
-            `Failed to dispatch confirmation email after UddoktaPay payment for ${payment.order.orderNumber}: ${err.message}`,
-          );
-        });
+      try {
+        await this.ordersService.dispatchConfirmationNotificationForPaidOrder(payment.order.id);
+      } catch (err: any) {
+        this.logger.warn(
+          `Failed to dispatch confirmation email after UddoktaPay payment for ${payment.order.orderNumber}: ${err.message}`,
+        );
+      }
     }
 
     // Report server-side verified purchase to Google Analytics 4 via Measurement Protocol
