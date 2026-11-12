@@ -228,7 +228,7 @@ export default function PrivacyPolicyPage() {
                 <strong>Browser LocalStorage:</strong> Used to temporarily store a short-lived (15-minute) JSON Web Token (<code>rongin_access_token</code>) for authorized API requests, and local guest shopping bag data prior to login.
               </li>
               <li>
-                <strong>Tracking &amp; Analytics:</strong> We <strong>do not</strong> use third-party behavioral cookies, Google Analytics tracking tags, or Facebook tracking pixels on our storefront.
+                <strong>Tracking &amp; Analytics:</strong> Optional analytics and marketing tools, including Google Analytics, Microsoft Clarity, and the Meta Pixel, run only after you grant the applicable consent in our privacy controls.
               </li>
             </ul>
           </section>

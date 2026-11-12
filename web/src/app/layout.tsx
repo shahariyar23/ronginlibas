@@ -93,7 +93,7 @@ export default function RootLayout({
                   <WishlistProvider>
                     <NotificationProvider>
                       <Header />
-                      <main className="flex-1 w-full pb-14 sm:pb-16 lg:pb-0">{children}</main>
+                      <main className="flex-1 w-full pb-20 sm:pb-24 lg:pb-0">{children}</main>
                       <CartDrawer />
                       <Footer />
                       <BottomNav />

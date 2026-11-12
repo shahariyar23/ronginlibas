@@ -10,6 +10,7 @@ import {
   ConsentPreferences,
 } from '@/lib/analytics/consent';
 import Clarity from '@microsoft/clarity';
+import { MetaPixel } from './MetaPixel';
 
 const GA_MEASUREMENT_ID =
   process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || process.env.NEXT_PUBLIC_GA_ID;
@@ -105,6 +106,9 @@ export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
           </Script>
         </>
       )}
+
+      {/* Meta is advertising measurement, so it only loads after marketing consent. */}
+      {consent?.marketing && <MetaPixel />}
 
       {children}
     </>

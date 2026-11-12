@@ -18,6 +18,7 @@ declare global {
   interface Window {
     gtag?: (...args: any[]) => void;
     fbq?: (...args: any[]) => void;
+    __rlMetaPixelInitialized?: boolean;
     clarity?: (...args: any[]) => void;
   }
 }

@@ -16,6 +16,7 @@ import {
 } from './events';
 import { getStoredConsent, ConsentPreferences } from './consent';
 import Clarity from '@microsoft/clarity';
+import { trackMetaEvent } from '@/lib/meta-pixel';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:4000/api/v1';
@@ -151,7 +152,12 @@ class AnalyticsClient {
       }
     }
 
-    // 2. Microsoft Clarity (requires analytics consent)
+    // 2. Meta Pixel (requires marketing consent)
+    if (hasMarketingConsent) {
+      this.trackMetaEvent(eventType, payload);
+    }
+
+    // 3. Microsoft Clarity (requires analytics consent)
     if (hasAnalyticsConsent) {
       try {
         Clarity.event(eventType);
@@ -160,7 +166,7 @@ class AnalyticsClient {
       }
     }
 
-    // 3. Rongin Libas Backend Ingestion (persists if analytics consent granted)
+    // 4. Rongin Libas Backend Ingestion (persists if analytics consent granted)
     if (hasAnalyticsConsent) {
       this.queue.push({
         eventType,
@@ -175,6 +181,50 @@ class AnalyticsClient {
 
       if (this.flushTimeout) clearTimeout(this.flushTimeout);
       this.flushTimeout = setTimeout(() => this.flushQueue(), 1000);
+    }
+  }
+
+  /** Maps the existing ecommerce events to Meta's standard browser events. */
+  private trackMetaEvent(eventType: StandardEventType, payload: BaseEventPayload & { productId?: string }) {
+    const properties = payload.properties || {};
+    const currency = properties.currency || 'BDT';
+    const items = Array.isArray(properties.items) ? properties.items : [];
+    const contents = items.map((item) => ({
+      id: item.item_id,
+      quantity: item.quantity || 1,
+      item_price: item.price,
+    }));
+
+    switch (eventType) {
+      case 'view_item':
+        trackMetaEvent('ViewContent', {
+          content_ids: [payload.productId], content_name: properties.productName,
+          content_category: properties.category, content_type: 'product', contents,
+          value: properties.price, currency,
+        });
+        break;
+      case 'search':
+        trackMetaEvent('Search', { search_string: properties.search_term });
+        break;
+      case 'add_to_cart':
+        trackMetaEvent('AddToCart', {
+          content_ids: [payload.productId], content_name: properties.productName, content_type: 'product',
+          contents: contents.length ? contents : [{ id: payload.productId, quantity: properties.quantity || 1, item_price: properties.price }],
+          value: properties.value, currency,
+        });
+        break;
+      case 'begin_checkout':
+        trackMetaEvent('InitiateCheckout', { contents, content_type: 'product', value: properties.value, currency });
+        break;
+      case 'add_payment_info':
+        trackMetaEvent('AddPaymentInfo', { contents, content_type: 'product', value: properties.value, currency });
+        break;
+      case 'purchase':
+        trackMetaEvent('Purchase', {
+          contents, content_type: 'product', value: properties.value, currency,
+          order_id: properties.orderNumber || properties.orderId,
+        });
+        break;
     }
   }
 

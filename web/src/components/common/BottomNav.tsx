@@ -11,6 +11,7 @@ import {
   User,
   X,
   ArrowRight,
+  Plus,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useStorefront } from '@/context/StorefrontContext';
@@ -70,171 +71,144 @@ function BottomNavContent() {
     pathname === '/login' ||
     pathname === '/register';
 
+  // Hide on checkout flow to avoid cart distraction
+  const isCheckout = pathname === '/checkout' || pathname?.startsWith('/checkout/');
+  if (isCheckout) return null;
+
   const visibleCategories = categories.filter(
     (category) => (category._count?.products ?? 1) > 0,
   );
 
+  const userInitial = user?.name?.trim()?.charAt(0)?.toUpperCase() || user?.email?.trim()?.charAt(0)?.toUpperCase() || 'U';
+
   return (
     <>
-      {/* ================= COMPACT LUXURY BOTTOM NAV BAR ================= */}
-      {/* Structure: Home | Offers | Category | Orders | Profile */}
+      {/* ================= FLOATING GLASSMORPHIC CAPSULE DOCK (YOUTUBE-STYLE) ================= */}
       <nav
         aria-label="Mobile Bottom Navigation"
-        className="fixed bottom-0 inset-x-0 z-40 lg:hidden bg-[#073a2d] border-t border-[#0f5442] shadow-[0_-4px_24px_rgba(0,0,0,0.22)] select-none"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        className="fixed inset-x-3 z-40 lg:hidden max-w-[430px] mx-auto select-none pointer-events-none"
+        style={{
+          bottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))',
+        }}
       >
-        <div className="grid grid-cols-5 items-stretch h-[54px] sm:h-[58px] max-w-lg mx-auto px-1">
+        <div className="pointer-events-auto flex items-center justify-around h-[54px] px-2.5 rounded-full bg-[#05261e]/85 backdrop-blur-xl border border-white/20 shadow-[0_12px_36px_rgba(0,0,0,0.45),0_2px_8px_rgba(0,0,0,0.2)]">
           {/* 1. HOME */}
           <Link
             href="/"
             aria-label="Home"
-            className={`flex flex-col items-center justify-center relative py-1 px-0.5 group transition-all duration-200 cursor-pointer ${
+            title="Home"
+            className={`flex items-center justify-center transition-all duration-200 cursor-pointer ${
               isHomeActive
-                ? 'text-[#c79a45]'
-                : 'text-[#d3ddd8]/75 hover:text-white'
+                ? 'w-12 h-9 rounded-full bg-white/20 text-[#c79a45] shadow-inner'
+                : 'w-10 h-9 rounded-full text-white/75 hover:text-white hover:bg-white/10'
             }`}
           >
-            {isHomeActive && (
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-7 h-0.5 bg-[#c79a45] rounded-full shadow-[0_0_8px_#c79a45]" />
-            )}
             <Home
-              className={`w-[19px] h-[19px] sm:w-5 sm:h-5 transition-transform duration-200 ${
-                isHomeActive ? 'scale-110 stroke-[2.2]' : 'stroke-[1.75] group-hover:scale-105'
+              className={`w-5 h-5 transition-transform duration-200 ${
+                isHomeActive ? 'scale-110 stroke-[2.2]' : 'stroke-[1.8]'
               }`}
             />
-            <span
-              className={`text-[9.5px] sm:text-[10px] font-sans font-medium tracking-[0.04em] uppercase mt-0.5 leading-none transition-colors ${
-                isHomeActive ? 'font-bold text-[#c79a45]' : 'text-[#d3ddd8]/80'
-              }`}
-            >
-              Home
-            </span>
           </Link>
 
-          {/* 2. OFFERS */}
+          {/* 2. OFFERS / SHORTS */}
           <Link
             href="/offers"
             aria-label="Special Offers"
-            className={`flex flex-col items-center justify-center relative py-1 px-0.5 group transition-all duration-200 cursor-pointer ${
+            title="Special Offers"
+            className={`flex items-center justify-center relative transition-all duration-200 cursor-pointer ${
               isOffersActive
-                ? 'text-[#c79a45]'
-                : 'text-[#d3ddd8]/75 hover:text-white'
+                ? 'w-12 h-9 rounded-full bg-white/20 text-[#c79a45] shadow-inner'
+                : 'w-10 h-9 rounded-full text-white/75 hover:text-white hover:bg-white/10'
             }`}
           >
-            {isOffersActive && (
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-7 h-0.5 bg-[#c79a45] rounded-full shadow-[0_0_8px_#c79a45]" />
-            )}
-            <div className="relative">
-              <Sparkles
-                className={`w-[19px] h-[19px] sm:w-5 sm:h-5 transition-transform duration-200 ${
-                  isOffersActive ? 'scale-110 stroke-[2.2]' : 'stroke-[1.75] group-hover:scale-105'
-                }`}
-              />
-              <span className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-[#c79a45] rounded-full animate-pulse" />
-            </div>
-            <span
-              className={`text-[9.5px] sm:text-[10px] font-sans font-medium tracking-[0.04em] uppercase mt-0.5 leading-none transition-colors ${
-                isOffersActive ? 'font-bold text-[#c79a45]' : 'text-[#d3ddd8]/80'
+            <Sparkles
+              className={`w-5 h-5 transition-transform duration-200 ${
+                isOffersActive ? 'scale-110 stroke-[2.2]' : 'stroke-[1.8]'
               }`}
-            >
-              Offers
-            </span>
+            />
+            <span className="absolute top-1.5 right-2 w-1.5 h-1.5 bg-[#c79a45] rounded-full animate-pulse shadow-[0_0_6px_#c79a45]" />
           </Link>
 
-          {/* 3. CATEGORY */}
+          {/* 3. CENTER BUTTON (+) - BROWSE CATEGORIES */}
           <button
             type="button"
             onClick={() => setIsCategorySheetOpen((prev) => !prev)}
             aria-label="Browse Categories"
+            title="Wardrobe Categories"
             aria-expanded={isCategorySheetOpen}
-            className={`flex flex-col items-center justify-center relative py-1 px-0.5 group transition-all duration-200 cursor-pointer ${
-              isCategoriesActive
-                ? 'text-[#c79a45]'
-                : 'text-[#d3ddd8]/75 hover:text-white'
+            className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all duration-200 cursor-pointer active:scale-90 shadow-sm ${
+              isCategorySheetOpen || isCategoriesActive
+                ? 'border-[#c79a45] bg-[#c79a45]/20 text-[#c79a45]'
+                : 'border-white/35 bg-white/10 text-white hover:bg-white/20 hover:border-white/50'
             }`}
           >
-            {isCategoriesActive && (
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-7 h-0.5 bg-[#c79a45] rounded-full shadow-[0_0_8px_#c79a45]" />
-            )}
-            <LayoutGrid
-              className={`w-[19px] h-[19px] sm:w-5 sm:h-5 transition-transform duration-200 ${
-                isCategoriesActive ? 'scale-110 stroke-[2.2]' : 'stroke-[1.75] group-hover:scale-105'
+            <Plus
+              className={`w-5 h-5 stroke-[2.4] transition-transform duration-200 ${
+                isCategorySheetOpen ? 'rotate-45' : ''
               }`}
             />
-            <span
-              className={`text-[9.5px] sm:text-[10px] font-sans font-medium tracking-[0.04em] uppercase mt-0.5 leading-none transition-colors ${
-                isCategoriesActive ? 'font-bold text-[#c79a45]' : 'text-[#d3ddd8]/80'
-              }`}
-            >
-              Category
-            </span>
           </button>
 
-          {/* 4. ORDERS (Reuse existing /orders page) */}
+          {/* 4. ORDERS */}
           <Link
             href="/orders"
             aria-label="Order History & Tracking"
-            className={`flex flex-col items-center justify-center relative py-1 px-0.5 group transition-all duration-200 cursor-pointer ${
+            title="My Orders"
+            className={`flex items-center justify-center transition-all duration-200 cursor-pointer ${
               isOrdersActive
-                ? 'text-[#c79a45]'
-                : 'text-[#d3ddd8]/75 hover:text-white'
+                ? 'w-12 h-9 rounded-full bg-white/20 text-[#c79a45] shadow-inner'
+                : 'w-10 h-9 rounded-full text-white/75 hover:text-white hover:bg-white/10'
             }`}
           >
-            {isOrdersActive && (
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-7 h-0.5 bg-[#c79a45] rounded-full shadow-[0_0_8px_#c79a45]" />
-            )}
             <Package
-              className={`w-[19px] h-[19px] sm:w-5 sm:h-5 transition-transform duration-200 ${
-                isOrdersActive ? 'scale-110 stroke-[2.2]' : 'stroke-[1.75] group-hover:scale-105'
+              className={`w-5 h-5 transition-transform duration-200 ${
+                isOrdersActive ? 'scale-110 stroke-[2.2]' : 'stroke-[1.8]'
               }`}
             />
-            <span
-              className={`text-[9.5px] sm:text-[10px] font-sans font-medium tracking-[0.04em] uppercase mt-0.5 leading-none transition-colors ${
-                isOrdersActive ? 'font-bold text-[#c79a45]' : 'text-[#d3ddd8]/80'
-              }`}
-            >
-              Orders
-            </span>
           </Link>
 
-          {/* 5. USER / PROFILE (With Notification Badge) */}
+          {/* 5. USER / PROFILE (Circular Avatar initial like YouTube M-circle) */}
           <Link
             href={isLoggedIn ? '/profile' : '/login'}
             aria-label={isLoggedIn ? 'User Profile' : 'Sign In'}
-            className={`flex flex-col items-center justify-center relative py-1 px-0.5 group transition-all duration-200 cursor-pointer ${
+            title={isLoggedIn ? (user?.name || 'My Profile') : 'Sign In'}
+            className={`flex items-center justify-center relative transition-all duration-200 cursor-pointer ${
               isProfileActive
-                ? 'text-[#c79a45]'
-                : 'text-[#d3ddd8]/75 hover:text-white'
+                ? 'w-12 h-9 rounded-full bg-white/20 text-[#c79a45] shadow-inner'
+                : 'w-10 h-9 rounded-full text-white/75 hover:text-white hover:bg-white/10'
             }`}
           >
-            {isProfileActive && (
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-7 h-0.5 bg-[#c79a45] rounded-full shadow-[0_0_8px_#c79a45]" />
+            {mounted && isLoggedIn ? (
+              <div className="relative">
+                <div className="w-7 h-7 rounded-full bg-[#10b981] text-white font-bold text-xs flex items-center justify-center border border-white/40 shadow-xs uppercase">
+                  {userInitial}
+                </div>
+                {unreadCount > 0 ? (
+                  <span
+                    key={unreadCount}
+                    className="absolute -top-1 -right-1 bg-[#ba1a1a] text-white text-[9px] font-bold min-w-3.5 h-3.5 px-0.5 rounded-full flex items-center justify-center border border-[#073a2d]"
+                  >
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                ) : (
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#10b981] border border-[#073a2d]" />
+                )}
+              </div>
+            ) : (
+              <div className="relative">
+                <div className="w-7 h-7 rounded-full bg-white/10 border border-white/25 flex items-center justify-center text-white">
+                  <User className="w-4 h-4 stroke-[2]" />
+                </div>
+                {mounted && unreadCount > 0 && (
+                  <span
+                    key={unreadCount}
+                    className="absolute -top-1 -right-1 bg-[#ba1a1a] text-white text-[9px] font-bold min-w-3.5 h-3.5 px-0.5 rounded-full flex items-center justify-center border border-[#073a2d]"
+                  >
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </div>
             )}
-            <div className="relative">
-              <User
-                className={`w-[19px] h-[19px] sm:w-5 sm:h-5 transition-transform duration-200 ${
-                  isProfileActive ? 'scale-110 stroke-[2.2]' : 'stroke-[1.75] group-hover:scale-105'
-                }`}
-              />
-              {/* Notification Badge if customer has unread order/review updates */}
-              {mounted && unreadCount > 0 ? (
-                <span
-                  key={unreadCount}
-                  className="absolute -top-1.5 -right-2 bg-[#ba1a1a] text-white text-[9px] font-bold min-w-4 h-4 px-1 rounded-full flex items-center justify-center border border-[#073a2d] shadow-xs animate-in zoom-in-75 duration-200"
-                >
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              ) : mounted && isLoggedIn ? (
-                <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-[#10b981] border border-[#073a2d]" />
-              ) : null}
-            </div>
-            <span
-              className={`text-[9.5px] sm:text-[10px] font-sans font-medium tracking-[0.04em] uppercase mt-0.5 leading-none transition-colors truncate max-w-[56px] text-center ${
-                isProfileActive ? 'font-bold text-[#c79a45]' : 'text-[#d3ddd8]/80'
-              }`}
-            >
-              Profile
-            </span>
           </Link>
         </div>
       </nav>
